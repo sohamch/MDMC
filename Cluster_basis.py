@@ -1,7 +1,8 @@
 from onsager import crystal, cluster, supercell
 import numpy as np
 
-def Create_LBAM(sup, clusexp, mobile_occ=None, spec_count=1):
+
+def createLbam(sup, clusexp, mobile_occ, spec_count=0):
     """
 
     :param sup: supercell object, which is also the current state of the object
@@ -19,4 +20,7 @@ def Create_LBAM(sup, clusexp, mobile_occ=None, spec_count=1):
     # Now, we need to assign spins to each species - how to do this quickly
     # get the halfpoint
     m = (len(mobile_occ) + spec_count)//2
-    spins = range(-m, m+1)
+    spins = list(range(-m, m+1))
+    if m % 2 == 1:
+        spins.remove(0)  # zero not required here
+    spins_mobile = spins[:(len(mobile_occ))]  # the last two spin variables belong to the occupied sites
