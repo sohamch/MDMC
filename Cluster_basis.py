@@ -13,6 +13,13 @@ def createSpins(mobile_count, spec_count=0):
 
     return np.array(spins)
 
+def specProducts(sup, clusexp, speclist, spins):
+    """
+    for a given occupancy, store the products of the spectator spins in each cluster.
+    This can be done only once and used over and over again, since spectators don't move.
+    """
+    pass
+
 def createLbam(sup, clusexp, mobile_occ, spins):
     """
 
