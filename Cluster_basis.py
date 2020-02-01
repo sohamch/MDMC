@@ -1,28 +1,45 @@
 from onsager import crystal, cluster, supercell
 import numpy as np
+import collections
 
 def createSpins(mobile_count, spec_count=0):
 
     """
-    Intended use - up to spec_count, the spins are for spectator species, after that for mobile species
+    Intended use - mobile spins symmetric about zero - make spec spins positive after that
     """
     m = (len(mobile_occ) + spec_count) // 2
     # The number of species in 2m+1 or 2m.
 
-    spins = list(range(-m, m + 1))
+    spins_mobile = np.array(list(range(-m, m + 1)))
+    spins_spec = None
+    if spec_count > 0:
+        spins_spec = np.array(list(range(m+1, m+spec_count+1)))
 
     if m % 2 == 1:
         spins.remove(0)  # zero not required here
 
-    return np.array(spins)
+    return spins_mobile, spins_spec
 
-def DiffOcc(occlist1, occlist2):
+def createClusterBasis(sup, clusexp, mobileOccList, SpecOccList, spins_mobile, spins_spec=None):
     """
-    Takes two occupancy lists and returns one that only contains 1 for sites that have exchanged.
-    The returned array must contain only ones
+    Function to generate mobile site-based reduced cluster basis. Whole basis returned if no spectator sites
+    Output - mobileClusterbasis - len(Rvectlist)xlen(mobilebasis) array each element contains the norm of the basis
+    functions. Since the spectator sites do not move, this needs to be done only once.
     """
-    diff = [np.abs(occ1 - occ2).astype(int) for occ1, occ2 in zip(occlist1, occlist2)]
-    return diff
+    if spins_spec is None and len(SpecOccList) > 0:
+        raise ValueError("The spectator sites have non-zero occupancies but no spins given.")
+    # 1. First generate the mobile basis
+    if spins_spec is not None:
+        mobClusterset = collections.defaultdict(list)
+        for clust in [cl for clist in clusexp for cl in clist]:
+            # get the mobile sites out of this cluster and form a new cluster
+            mobClust = cluster.Cluster([site for site in clust.sites if site.ci in sup.mobileindices])
+            mobClusterset[mobClust].append(clust)
+        Norms = np.zeros((len(sup.Rvectlist), len(mobClusterset.items())))
+
+        # Now, extend the mobile clusters across the whole lattice and store the normalizations
+
+
 
 def ClusterProducts(sup, clusexp, mobilelist, spins):
     """
