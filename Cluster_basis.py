@@ -20,25 +20,52 @@ def createSpins(mobile_count, spec_count=0):
 
     return spins_mobile, spins_spec
 
-def createClusterBasis(sup, clusexp, mobileOccList, SpecOccList, spins_mobile, spins_spec=None):
+
+def createClusterBasis(sup, clusexp, mobileOccList, spins_mobile, SpecOccList=None, spins_spec=None):
     """
     Function to generate mobile site-based reduced cluster basis. Whole basis returned if no spectator sites
     Output - mobileClusterbasis - len(Rvectlist)xlen(mobilebasis) array each element contains the norm of the basis
     functions. Since the spectator sites do not move, this needs to be done only once.
     """
-    if spins_spec is None and len(SpecOccList) > 0:
+    if spins_spec is None and SpecOccList is not None:
         raise ValueError("The spectator sites have non-zero occupancies but no spins given.")
-    # 1. First generate the mobile basis
+
+    # Generate the mobile basis
+    m = len(spins_mobile)
     if spins_spec is not None:
         mobClusterset = collections.defaultdict(list)
+        mobClusterList = []
         for clust in [cl for clist in clusexp for cl in clist]:
             # get the mobile sites out of this cluster and form a new cluster
             mobClust = cluster.Cluster([site for site in clust.sites if site.ci in sup.mobileindices])
-            mobClusterset[mobClust].append(clust)
-        Norms = np.zeros((len(sup.Rvectlist), len(mobClusterset.items())))
-
+            mobClusterset[mobClust].append(clust) # store the clusters where clust is present
+            mobClusterList.append(mobClust) # The order of the mobile clusters in this list will be the order in
+            # which they appear in the columns of the final output array
         # Now, extend the mobile clusters across the whole lattice and store the normalizations
+        mobileClusterbasis = np.zeros((len(sup.Rvectlist), len(mobClusterset.items())))
+        for Rind, R in enumerate(sup.Rvectlist):
+            for clustind, clust in enumerate(mobClusterList):
+                lambda_clust = 0
+                for FullClust in mobClusterset[clust]:
+                    # Extracting the spins for the spectator sites in each cluster where clust is present.
+                    spinprod = np.prod(np.array([sum([spin*occlist[idx]
+                                                      for spin, occlist in zip(spins_spec, SpecOccList)])
+                                                 for idx in [sup.index(R, site.ci) for site in FullClust.sites
+                                                             if site in sup.indexspectator]]))
+                    lambda_clust += spinprod
+                lambda_clust *= (m*(m+1)*(2*m+1)//3)**len(clust.sites)
+                mobileClusterbasis[Rind, clustind] = lambda_clust
 
+        return mobileClusterbasis, mobClusterList, mobClusterset
+    else:
+        clustList = [cl for clist in clusexp for cl in clist]
+        mobileClusterbasis = np.zeros((len(sup.Rvectlist), len(clustList)))
+        for Rind, R in enumerate(sup.Rvectlist):
+            for clustind, clust in enumerate(mobClusterList):
+                lambda_clust = (m * (m + 1) * (2 * m + 1) // 3) ** len(clust.sites)
+                mobileClusterbasis[Rind, clustind] = lambda_clust
+
+        return mobileClusterbasis, clustList
 
 
 def ClusterProducts(sup, clusexp, mobilelist, spins):
