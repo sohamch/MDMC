@@ -68,6 +68,13 @@ def createClusterBasis(sup, clusexp, mobileOccList, spins_mobile, SpecOccList=No
         return mobileClusterbasis, clustList
 
 
+def FormLBAM(sup, mobileOccList, mobileClusterbasis, clustList, transitions):
+    """
+    Function to get the LBAM expansion terms for the current state given by mobileOccList
+    """
+    pass
+
+
 def ClusterProducts(sup, clusexp, mobilelist, spins):
     """
 
