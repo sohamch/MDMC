@@ -7,16 +7,16 @@ def createSpins(mobile_count, spec_count=0):
     """
     Intended use - mobile spins symmetric about zero - make spec spins positive after that
     """
-    m = (len(mobile_occ) + spec_count) // 2
+    m = (mobile_count + spec_count) // 2
     # The number of species in 2m+1 or 2m.
 
-    spins_mobile = np.array(list(range(-m, m + 1)))
+    spins_mobile = np.array(list(range(-mobile_count, mobile_count + 1)))
     spins_spec = None
     if spec_count > 0:
-        spins_spec = np.array(list(range(m+1, m+spec_count+1)))
+        spins_spec = np.array(list(range(mobile_count+1, mobile_count+spec_count+1)))
 
-    if m % 2 == 1:
-        spins.remove(0)  # zero not required here
+    if mobile_count % 2 == 1:
+        spins_spec.remove(0)  # zero not required here
 
     return spins_mobile, spins_spec
 
@@ -87,8 +87,8 @@ def FormLBAM(sup, spins_mobile, mobileOccList, mobileClusterbasis, clustIndDict,
     ijlist, ratelist, dxlist = transitions
     # First, we need to enumerate all the ways we can leave the present state
     init2finSiteDict = collections.defaultdict(list)
-    for jmp in ijlist:
-        init2finSiteDict[jmp[0]].append(jmp1)
+    for jmp, rate, dx in zip(ijlist, ratelist, dxlist):
+        init2finSiteDict[jmp[0]].append((jmp, rate, dx))
     Ntrans = len(clustIndDict.items())
     NrepClusts = len(clustIndDict.items())
     Wbar = np.zeros((Ntrans*NrepClusts+1, Ntrans*NrepClusts+1))  # +1 for the constant term
@@ -98,7 +98,8 @@ def FormLBAM(sup, spins_mobile, mobileOccList, mobileClusterbasis, clustIndDict,
         # First, we must get the clusters in which initState belongs.
         # ciR in sup - mapping from a site index to an actual state - as tuple ((c,i), R).
         site_i = sup.ciR(initState)
-        sites_j = [sup.ciR(finstate) for finstate in listFinState]
+        spin_i = sum([spin*occlist[initState] for spin, occlist in zip(spins_mobile, mobileOccList)])
+        sites_j = [sup.ciR(finstate[0]) for finstate in listFinState]
         # Get the clusters the initial state belongs to, and the translations that take the cluster there.
         # We have to find the representative clusters the initial state is a part of.
         # We have to translate the sites in that cluster so that the representative site matches up with the initial
@@ -108,6 +109,7 @@ def FormLBAM(sup, spins_mobile, mobileOccList, mobileClusterbasis, clustIndDict,
         initClustList = [(cl, clind) for cl, clind in clustIndDict.items() if site_i[0] in set([site.ci
                                                                                                 for site in cl.sites])]
         initClustIndlist = []
+        spinprodListi = []
         for clust, clustind in initClustList:
             for site in clust.sites:
                 if site.ci == site_i[0]:
@@ -116,11 +118,20 @@ def FormLBAM(sup, spins_mobile, mobileOccList, mobileClusterbasis, clustIndDict,
                     # Get the index of this translation in Rvectlist
                     RtransInd = sup.Rvectind[(Rtrans[0], Rtrans[1], Rtrans[2])]
                     initClustIndlist.append(RtransInd*NrepClusts + clustind)
-        for sites_j in sites_j:
+                    spinprodListi.append(
+                        np.prod(np.array([sum([spin * occlist[idx]
+                                               for spin, occlist in zip(mobileOccList, spins_mobile)])
+                                          for idx in [sup.index(site + Rtrans) for site in clust.sites]]))
+                    )
+
+        for finstate, site_j in zip(listFinState, sites_j):
+            spin_j = sum([spin * occlist[finstate[0]] for spin, occlist in zip(spins_mobile, mobileOccList)])
             finClustList = [(cl, clind) for cl, clind in clustIndDict.items() if site_j[0] in set([site.ci
                                                                                                    for site in
                                                                                                    cl.sites])]
             finClustIndlist = []
+            spinprodListj = []
+            commonIndList = []
             for clust, clustind in finClustList:
                 for site in clust.sites:
                     if site.ci == site_j[0]:
@@ -128,12 +139,28 @@ def FormLBAM(sup, spins_mobile, mobileOccList, mobileClusterbasis, clustIndDict,
                         Rtrans = site_j[1] - site.R
                         # Get the index of this translation in Rvectlist
                         RtransInd = sup.Rvectind[(Rtrans[0], Rtrans[1], Rtrans[2])]
-                        finClustIndlist.append(RtransInd * NrepClusts + clustind)
+                        newfinInd = RtransInd * NrepClusts + clustind
+                        if any(newfinInd == ind for ind in initClustIndlist):
+                            commonIndList.append(newfinInd)
+                        else:
+                            finClustIndlist.append(RtransInd * NrepClusts + clustind)
+                            spinprodListj.append(
+                                np.prod(np.array([sum([spin*occlist[idx]
+                                                       for spin, occlist in zip(mobileOccList, spins_mobile)])
+                                                  for idx in [sup.index(site+Rtrans) for site in clust.sites]]))
+                            )
+            # Now form a list of the delphis
+            delPhi_i = [int(spinprod_i*(spin_j/spin_i - 1)) for spinprod_i in spinprodListi]
+            delPhi_j = [int(spinprod_j*(spin_i/spin_j - 1)) for spinprod_j in spinprodListj]
 
+            delPhi_all = delPhi_i + delPhi_j
+            FunctionIndices_all = initClustIndlist + finClustIndlist
 
-
-
-
+            for n1, delphi_n1 in zip(FunctionIndices_all, delPhi_all):
+                Bbar[n1] += finstate[1]*finstate[2]*delphi_n1
+                for n2, delPhi_n2 in zip(FunctionIndices_all, delPhi_all):
+                    Wbar[n1, n2] += finstate[1]*delphi_n1*delPhi_n2
+    return Wbar, Bbar
 
 def ClusterProducts(sup, clusexp, mobilelist, spins):
     """
