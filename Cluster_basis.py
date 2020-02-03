@@ -35,11 +35,13 @@ def createClusterBasis(sup, clusexp, mobileOccList, spins_mobile, SpecOccList=No
     if spins_spec is not None:
         mobClusterset = collections.defaultdict(list)
         mobClusterList = []
+        clustindDict = {}
         for clust in [cl for clist in clusexp for cl in clist]:
             # get the mobile sites out of this cluster and form a new cluster
             mobClust = cluster.Cluster([site for site in clust.sites if site.ci in sup.mobileindices])
             mobClusterset[mobClust].append(clust) # store the clusters where clust is present
-            mobClusterList.append(mobClust) # The order of the mobile clusters in this list will be the order in
+            clustindDict[mobClust] = len(mobClusterList)
+            mobClusterList.append(mobClust)  # The order of the mobile clusters in this list will be the order in
             # which they appear in the columns of the final output array
         # Now, extend the mobile clusters across the whole lattice and store the normalizations
         mobileClusterbasis = np.zeros((len(sup.Rvectlist), len(mobClusterset.items())))
@@ -56,23 +58,81 @@ def createClusterBasis(sup, clusexp, mobileOccList, spins_mobile, SpecOccList=No
                 lambda_clust *= (m*(m+1)*(2*m+1)//3)**len(clust.sites)
                 mobileClusterbasis[Rind, clustind] = lambda_clust
 
-        return mobileClusterbasis, mobClusterList, mobClusterset
+        return mobileClusterbasis, mobClusterList, clustindDict
     else:
         clustList = [cl for clist in clusexp for cl in clist]
+        clustindDict = {}
         mobileClusterbasis = np.zeros((len(sup.Rvectlist), len(clustList)))
         for Rind, R in enumerate(sup.Rvectlist):
-            for clustind, clust in enumerate(mobClusterList):
+            for clustind, clust in enumerate(clustList):
                 lambda_clust = (m * (m + 1) * (2 * m + 1) // 3) ** len(clust.sites)
+                clustindDict[clust] = clustind
                 mobileClusterbasis[Rind, clustind] = lambda_clust
 
-        return mobileClusterbasis, clustList
+        return mobileClusterbasis, clustList, clustindDict
 
 
-def FormLBAM(sup, mobileOccList, mobileClusterbasis, clustList, transitions):
+def FormLBAM(sup, spins_mobile, mobileOccList, mobileClusterbasis, clustIndDict, transitions):
     """
     Function to get the LBAM expansion terms for the current state given by mobileOccList
+    :param transitions; tuple containing (ijlist, ratelist, dxlist)
+    :param clustIndDict: {cluster: column index of cluster in mobileClusterBasis}
+    :param mobileOccList - List of occupancy vectors for the various species on the mobile sublattice in the present
+    state.
+    :param mobileClusterbasis: len(Rvectlist)xNBasisClusters array
+    :param sup: supercell object.
+    :param spins_mobile: spins on the occupied mobile sites, given by mobileOccList
     """
-    pass
+
+    ijlist, ratelist, dxlist = transitions
+    # First, we need to enumerate all the ways we can leave the present state
+    init2finSiteDict = collections.defaultdict(list)
+    for jmp in ijlist:
+        init2finSiteDict[jmp[0]].append(jmp1)
+    Ntrans = len(clustIndDict.items())
+    NrepClusts = len(clustIndDict.items())
+    Wbar = np.zeros((Ntrans*NrepClusts+1, Ntrans*NrepClusts+1))  # +1 for the constant term
+    Bbar = np.zeros(Ntrans*NrepClusts+1)
+
+    for (initState, listFinState) in init2finSiteDict.items():
+        # First, we must get the clusters in which initState belongs.
+        # ciR in sup - mapping from a site index to an actual state - as tuple ((c,i), R).
+        site_i = sup.ciR(initState)
+        sites_j = [sup.ciR(finstate) for finstate in listFinState]
+        # Get the clusters the initial state belongs to, and the translations that take the cluster there.
+        # We have to find the representative clusters the initial state is a part of.
+        # We have to translate the sites in that cluster so that the representative site matches up with the initial
+        # site.
+        # The function sup.index(R, ci) takes care of periodic boundary conditions too.
+        # For a site R, ci - get the index using sup.ciR(sup.index(R, ci)) to get the image in the supercell.
+        initClustList = [(cl, clind) for cl, clind in clustIndDict.items() if site_i[0] in set([site.ci
+                                                                                                for site in cl.sites])]
+        initClustIndlist = []
+        for clust, clustind in initClustList:
+            for site in clust.sites:
+                if site.ci == site_i[0]:
+                    # Get the translated sites
+                    Rtrans = site_i[1] - site.R
+                    # Get the index of this translation in Rvectlist
+                    RtransInd = sup.Rvectind[(Rtrans[0], Rtrans[1], Rtrans[2])]
+                    initClustIndlist.append(RtransInd*NrepClusts + clustind)
+        for sites_j in sites_j:
+            finClustList = [(cl, clind) for cl, clind in clustIndDict.items() if site_j[0] in set([site.ci
+                                                                                                   for site in
+                                                                                                   cl.sites])]
+            finClustIndlist = []
+            for clust, clustind in finClustList:
+                for site in clust.sites:
+                    if site.ci == site_j[0]:
+                        # Get the translated sites
+                        Rtrans = site_j[1] - site.R
+                        # Get the index of this translation in Rvectlist
+                        RtransInd = sup.Rvectind[(Rtrans[0], Rtrans[1], Rtrans[2])]
+                        finClustIndlist.append(RtransInd * NrepClusts + clustind)
+
+
+
+
 
 
 def ClusterProducts(sup, clusexp, mobilelist, spins):
