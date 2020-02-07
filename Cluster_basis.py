@@ -37,8 +37,8 @@ def createClusterBasis(sup, clusexp, specList, mobList, vacSite=None):
         return TypeError("Mobile species also identified as spectator?")
 
     # The no. species that can be present at each site is in sup.Nchem
-    arrangements = []
-    for clist in clusexp:
+    clusterGates = []
+    for clistInd, clist in enumerate(clusexp):
         cl0 = clist[0]  # get the representative cluster
         order = cl0.order
         # separate out the spectator and mobile sites
@@ -47,10 +47,10 @@ def createClusterBasis(sup, clusexp, specList, mobList, vacSite=None):
         Nspec = len([1 for site in cl0.sites if site in sup.indexspectator])
 
         arrangespecs = itertools.product(specList, repeat=Nspec)
-        arrangemobs = itertools.product(mobList, repeat=Nspec)
+        arrangemobs = itertools.product(mobList, repeat=Nmobile)
 
         for tup1 in arrangemobs:
             for tup2 in arrangespecs:
-                arrangements.append((tup1, tup2))
+                clusterGates.append((tup1, tup2, clistInd))
 
-    return arrangements
+    return clusterGates
