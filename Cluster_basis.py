@@ -52,15 +52,22 @@ def createClusterBasis(sup, clusexp, specList, mobList):
         if len(list(arrangespecs)) == 0:  # if there are no spectators then just order the mobile sites.
             for tup1 in arrangemobs:
                 # TODO- Insert code for elimination of unwanted clusters
+                mobcount = collections.Counter(tup1)
+                if any(j > lenMob[i] for i, j in mobcount.items()):
+                    continue
                 clusterGates.append((tup1, clistInd))
             return clusterGates
 
         for tup1 in arrangemobs:
             # Now, check that the count of each species does not exceed the actual number of atoms that is present.
-            # This will helpful in case of clusters for example, when we have only one or two vacancies.
+            # This will be helpful in case of clusters for example, when we have only one or two vacancies.
             # We can also identify those clusters separately as part of the initialization process.
+            mobcount = collections.Counter(tup1)
+            if any(j > lenMob[i] for i, j in mobcount.items()):
+                continue
             for tup2 in arrangespecs:
-                # TODO - Insert code to eliminate unwanted clusters.
+                specCount = collections.Counter(tup1)
+                if any(j > lenSpec[i] for i, j in specCount.items()):
+                    continue
                 clusterGates.append((tup1, tup2, clistInd))
-
     return clusterGates
