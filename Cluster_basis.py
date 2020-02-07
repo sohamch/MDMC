@@ -1,6 +1,7 @@
 from onsager import crystal, cluster, supercell
 import numpy as np
 import collections
+import itertools
 
 def createSpins(mobile_count, spec_count=0):
 
@@ -21,101 +22,35 @@ def createSpins(mobile_count, spec_count=0):
     return spins_mobile, spins_spec
 
 
-def createClusterBasis(sup, clusexp, mobileOccList, spins_mobile, SpecOccList=None, spins_spec=None):
+def createClusterBasis(sup, clusexp, specList, mobList, vacSite=None):
     """
-    Function to generate mobile site-based reduced cluster basis. Whole basis returned if no spectator sites
-    Output - mobileClusterbasis - len(Rvectlist)xlen(mobilebasis) array each element contains the norm of the basis
-    functions. Since the spectator sites do not move, this needs to be done only once.
+    Function to generate binary representer clusters.
+    :param sup : ClusterSupercell object.
+    :param clusexp - representative clusters grouped symmetrically.
+    :param specList - chemical identifiers for spectator species.
+    :param mobOcc - chemical identifiers for mobile species.
+    :param vacSite - whether a certain site is specified as a vacancy.
+
+    return gates - all the clusterr gates that determine state functions.
     """
-    pass
+    if any(specChem==mobChem for specChem in specList for mobChem in mobList):
+        return TypeError("Mobile species also identified as spectator?")
 
+    # The no. species that can be present at each site is in sup.Nchem
+    arrangements = []
+    for clist in clusexp:
+        cl0 = clist[0]  # get the representative cluster
+        order = cl0.order
+        # separate out the spectator and mobile sites
+        # cluster.sites is a tuple, which maintains the order of the elements.
+        Nmobile = len([1 for site in cl0.sites if site in sup.indexmobile])
+        Nspec = len([1 for site in cl0.sites if site in sup.indexspectator])
 
-def FormLBAM(sup, spins_mobile, mobileOccList, mobileClusterbasis, clustIndDict, transitions):
-    """
-    Function to get the LBAM expansion terms for the current state given by mobileOccList
-    :param transitions; tuple containing (ijlist, ratelist, dxlist)
-    :param clustIndDict: {cluster: column index of cluster in mobileClusterBasis}
-    :param mobileOccList - List of occupancy vectors for the various species on the mobile sublattice in the present
-    state.
-    :param mobileClusterbasis: len(Rvectlist)xNBasisClusters array
-    :param sup: supercell object.
-    :param spins_mobile: spins on the occupied mobile sites, given by mobileOccList
-    """
+        arrangespecs = itertools.product(specList, repeat=Nspec)
+        arrangemobs = itertools.product(mobList, repeat=Nspec)
 
-    ijlist, ratelist, dxlist = transitions
-    # First, we need to enumerate all the ways we can leave the present state
-    init2finSiteDict = collections.defaultdict(list)
-    for jmp, rate, dx in zip(ijlist, ratelist, dxlist):
-        init2finSiteDict[jmp[0]].append((jmp, rate, dx))
-    Ntrans = len(clustIndDict.items())
-    NrepClusts = len(clustIndDict.items())
-    Wbar = np.zeros((Ntrans*NrepClusts+1, Ntrans*NrepClusts+1))  # +1 for the constant term
-    Bbar = np.zeros(Ntrans*NrepClusts+1)
+        for tup1 in arrangemobs:
+            for tup2 in arrangespecs:
+                arrangements.append((tup1, tup2))
 
-    for (initState, listFinState) in init2finSiteDict.items():
-        # First, we must get the clusters in which initState belongs.
-        # ciR in sup - mapping from a site index to an actual state - as tuple ((c,i), R).
-        site_i = sup.ciR(initState)
-        spin_i = sum([spin*occlist[initState] for spin, occlist in zip(spins_mobile, mobileOccList)])
-        sites_j = [sup.ciR(finstate[0]) for finstate in listFinState]
-        # Get the clusters the initial state belongs to, and the translations that take the cluster there.
-        # We have to find the representative clusters the initial state is a part of.
-        # We have to translate the sites in that cluster so that the representative site matches up with the initial
-        # site.
-        # The function sup.index(R, ci) takes care of periodic boundary conditions too.
-        # For a site R, ci - get the index using sup.ciR(sup.index(R, ci)) to get the image in the supercell.
-        initClustList = [(cl, clind) for cl, clind in clustIndDict.items() if site_i[0] in set([site.ci
-                                                                                                for site in cl.sites])]
-        initClustIndlist = []
-        spinprodListi = []
-        for clust, clustind in initClustList:
-            for site in clust.sites:
-                if site.ci == site_i[0]:
-                    # Get the translated sites
-                    Rtrans = site_i[1] - site.R
-                    # Get the index of this translation in Rvectlist
-                    RtransInd = sup.Rvectind[(Rtrans[0], Rtrans[1], Rtrans[2])]
-                    initClustIndlist.append(RtransInd*NrepClusts + clustind)
-                    spinprodListi.append(
-                        np.prod(np.array([sum([spin * occlist[idx]
-                                               for spin, occlist in zip(mobileOccList, spins_mobile)])
-                                          for idx in [sup.index(site + Rtrans) for site in clust.sites]]))
-                    )
-
-        for finstate, site_j in zip(listFinState, sites_j):
-            spin_j = sum([spin * occlist[finstate[0]] for spin, occlist in zip(spins_mobile, mobileOccList)])
-            finClustList = [(cl, clind) for cl, clind in clustIndDict.items() if site_j[0] in set([site.ci
-                                                                                                   for site in
-                                                                                                   cl.sites])]
-            finClustIndlist = []
-            spinprodListj = []
-            commonIndList = []
-            for clust, clustind in finClustList:
-                for site in clust.sites:
-                    if site.ci == site_j[0]:
-                        # Get the translated sites
-                        Rtrans = site_j[1] - site.R
-                        # Get the index of this translation in Rvectlist
-                        RtransInd = sup.Rvectind[(Rtrans[0], Rtrans[1], Rtrans[2])]
-                        newfinInd = RtransInd * NrepClusts + clustind
-                        if any(newfinInd == ind for ind in initClustIndlist):
-                            commonIndList.append(newfinInd)
-                        else:
-                            finClustIndlist.append(RtransInd * NrepClusts + clustind)
-                            spinprodListj.append(
-                                np.prod(np.array([sum([spin*occlist[idx]
-                                                       for spin, occlist in zip(mobileOccList, spins_mobile)])
-                                                  for idx in [sup.index(site+Rtrans) for site in clust.sites]]))
-                            )
-            # Now form a list of the delphis
-            delPhi_i = [int(spinprod_i*(spin_j/spin_i - 1)) for spinprod_i in spinprodListi]
-            delPhi_j = [int(spinprod_j*(spin_i/spin_j - 1)) for spinprod_j in spinprodListj]
-
-            delPhi_all = delPhi_i + delPhi_j
-            FunctionIndices_all = initClustIndlist + finClustIndlist
-
-            for n1, delphi_n1 in zip(FunctionIndices_all, delPhi_all):
-                Bbar[n1] += finstate[1]*finstate[2]*delphi_n1
-                for n2, delPhi_n2 in zip(FunctionIndices_all, delPhi_all):
-                    Wbar[n1, n2] += finstate[1]*delphi_n1*delPhi_n2
-    return Wbar, Bbar
+    return arrangements
