@@ -22,7 +22,7 @@ def createSpins(mobile_count, spec_count=0):
     return spins_mobile, spins_spec
 
 
-def createClusterBasis(sup, clusexp, specList, mobList, vacSite=None):
+def createClusterBasis(sup, clusexp, specList, mobList):
     """
     Function to generate binary representer clusters.
     :param sup : ClusterSupercell object.
@@ -33,14 +33,14 @@ def createClusterBasis(sup, clusexp, specList, mobList, vacSite=None):
 
     return gates - all the clusterr gates that determine state functions.
     """
-    if any(specChem==mobChem for specChem in specList for mobChem in mobList):
-        return TypeError("Mobile species also identified as spectator?")
+    # count the number of each species in the spectator list and mobile list.
+    # This will be used to eliminate unrealistic clusters that are always "off".
+    lenMob = [np.sum(occArray) for occArray in mobList]
+    lenSpec = [np.sum(occArray) for occArray in specList]
 
-    # The no. species that can be present at each site is in sup.Nchem
     clusterGates = []
     for clistInd, clist in enumerate(clusexp):
         cl0 = clist[0]  # get the representative cluster
-        order = cl0.order
         # separate out the spectator and mobile sites
         # cluster.sites is a tuple, which maintains the order of the elements.
         Nmobile = len([1 for site in cl0.sites if site in sup.indexmobile])
@@ -49,8 +49,18 @@ def createClusterBasis(sup, clusexp, specList, mobList, vacSite=None):
         arrangespecs = itertools.product(specList, repeat=Nspec)
         arrangemobs = itertools.product(mobList, repeat=Nmobile)
 
+        if len(list(arrangespecs)) == 0:  # if there are no spectators then just order the mobile sites.
+            for tup1 in arrangemobs:
+                # TODO- Insert code for elimination of unwanted clusters
+                clusterGates.append((tup1, clistInd))
+            return clusterGates
+
         for tup1 in arrangemobs:
+            # Now, check that the count of each species does not exceed the actual number of atoms that is present.
+            # This will helpful in case of clusters for example, when we have only one or two vacancies.
+            # We can also identify those clusters separately as part of the initialization process.
             for tup2 in arrangespecs:
+                # TODO - Insert code to eliminate unwanted clusters.
                 clusterGates.append((tup1, tup2, clistInd))
 
     return clusterGates
