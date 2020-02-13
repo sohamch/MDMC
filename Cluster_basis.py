@@ -4,29 +4,46 @@ import collections
 import itertools
 
 
-def vectorClusterExp(sup, clusexp):
-    """
-    Function to generate a symmetry-grouped vector cluster expansion similar to vector stars in the onsager code.
-    """
-    Id3 = np.eye(3)
-    clusterList = []
-    vecList = []
-    for clist in clusexp:
-        cl0 = clist[0]
-        for vec in Id3:
-            symclList = []
-            symvecList = []
-            for cl in clist:
-                for gop in sup.crys.G:
-                    if cl0.g(sup.crys, gop) == cl:
-                        if any(cl1 == cl for cl1 in symclList):
-                            continue
-                        symclList.append(cl0)
-                        symvecList.append(np.dot(gop.cartrot, vec))
-            clusterList.append(symclList)
-            vecList.append(symvecList)
+class VectorClusters(object):
 
-    return clusterList, vecList
+    def __init__(self, sup, clusexp):
+
+        self.sup = sup
+        self.clusexp = clusexp
+        self.generate(sup, clusexp)
+        self.index()
+
+    def generate(self, sup, clusexp):
+        """
+        Function to generate a symmetry-grouped vector cluster expansion similar to vector stars in the onsager code.
+        """
+        Id3 = np.eye(3)
+        self.clusterList = []
+        self.vecList = []
+        for clist in clusexp:
+            cl0 = clist[0]
+            for vec in Id3:
+                symclList = []
+                symvecList = []
+                for cl in clist:
+                    for gop in sup.crys.G:
+                        if cl0.g(sup.crys, gop) == cl:
+                            if any(cl1 == cl for cl1 in symclList):
+                                continue
+                            symclList.append(cl0)
+                            symvecList.append(np.dot(gop.cartrot, vec))
+                self.clusterList.append(symclList)
+                self.vecList.append(symvecList)
+
+    def __index__(self):
+        """
+        Index each cluster to a list in the cluster expansion.
+        """
+        # First, index clusters to symmetric lists
+        cluster2exp = {}
+        for clListInd, clList in enumerate(self.clusexp):
+            for cl in clList:
+                cluster2exp[cl] = clListInd
 
 
 def createClusterBasis(sup, clusexp, specList, mobList):
