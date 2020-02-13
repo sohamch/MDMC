@@ -3,23 +3,30 @@ import numpy as np
 import collections
 import itertools
 
-def createSpins(mobile_count, spec_count=0):
 
+def vectorClusterExp(sup, clusexp):
     """
-    Intended use - mobile spins symmetric about zero - make spec spins positive after that
+    Function to generate a symmetry-grouped vector cluster expansion similar to vector stars in the onsager code.
     """
-    m = (mobile_count + spec_count) // 2
-    # The number of species in 2m+1 or 2m.
+    Id3 = np.eye(3)
+    clusterList = []
+    vecList = []
+    for clist in clusexp:
+        cl0 = clist[0]
+        for vec in Id3:
+            symclList = []
+            symvecList = []
+            for cl in clist:
+                for gop in sup.crys.G:
+                    if cl0.g(sup.crys, gop) == cl:
+                        if any(cl1 == cl for cl1 in symclList):
+                            continue
+                        symclList.append(cl0)
+                        symvecList.append(np.dot(gop.cartrot, vec))
+            clusterList.append(symclList)
+            vecList.append(symvecList)
 
-    spins_mobile = np.array(list(range(-mobile_count, mobile_count + 1)))
-    spins_spec = None
-    if spec_count > 0:
-        spins_spec = np.array(list(range(mobile_count+1, mobile_count+spec_count+1)))
-
-    if mobile_count % 2 == 1:
-        spins_spec.remove(0)  # zero not required here
-
-    return spins_mobile, spins_spec
+    return clusterList, vecList
 
 
 def createClusterBasis(sup, clusexp, specList, mobList):
