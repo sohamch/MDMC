@@ -4,21 +4,30 @@ import collections
 import itertools
 
 
-class VectorClusters(object):
-
-    def __init__(self, sup, clusexp):
+class VectorClusterExpansion(object):
+    """
+    class to expand velocities and rates in vector cluster functions.
+    """
+    def __init__(self, sup, clusexp, specList, mobList):
 
         self.sup = sup
         self.clusexp = clusexp
-        self.generate(sup, clusexp)
-        self.index()
 
-    def generate(self, sup, clusexp):
+        self.specList = specList
+        self.mobList = mobList
+
+        self.genVecs()
+        self.index()
+        self.createFullBasis()  # Generate the complete cluster basis including the arrangement of species
+
+    def genVecs(self):
         """
         Function to generate a symmetry-grouped vector cluster expansion similar to vector stars in the onsager code.
         """
+        sup = self.sup
+        clusexp = self.clusexp
         Id3 = np.eye(3)
-        self.clusterList = []
+        self.VclusterList = []
         self.vecList = []
         for clist in clusexp:
             cl0 = clist[0]
@@ -32,69 +41,81 @@ class VectorClusters(object):
                                 continue
                             symclList.append(cl0)
                             symvecList.append(np.dot(gop.cartrot, vec))
-                self.clusterList.append(symclList)
+                self.VclusterList.append(symclList)
                 self.vecList.append(symvecList)
 
-    def __index__(self):
+    def index(self):
         """
-        Index each cluster to a list in the cluster expansion.
+        Index each site to a vector cluster list.
         """
-        # First, index clusters to symmetric lists
-        cluster2exp = {}
+        siteToVclus = collections.defaultdict(list)
         for clListInd, clList in enumerate(self.clusexp):
-            for cl in clList:
-                cluster2exp[cl] = clListInd
+            for clInd, cl in enumerate(clList):
+                for siteInd, site in enumerate(cl.sites):
+                    siteToVclus[site.ci].append([clListInd * 3, clInd, siteInd])
+                    siteToVclus[site.ci].append([clListInd * 3 + 1, clInd, siteInd])
+                    siteToVclus[site.ci].append([clListInd * 3 + 2, clInd, siteInd])
+        self.site2Vclus = siteToVclus
 
 
-def createClusterBasis(sup, clusexp, specList, mobList):
-    """
-    Function to generate binary representer clusters.
-    :param sup : ClusterSupercell object.
-    :param clusexp - representative clusters grouped symmetrically.
-    :param specList - chemical identifiers for spectator species.
-    :param mobOcc - chemical identifiers for mobile species.
-    :param vacSite - whether a certain site is specified as a vacancy.
+    def createFullBasis(self):
+        """
+        Function to add in the species arrangements to the cluster basis functions.
+        """
+        # count the number of each species in the spectator list and mobile list.
+        # This will be used to eliminate unrealistic clusters that are always "off".
+        sup = self.sup
+        clusexp = self.clusexp
+        mobList = self.mobList
+        specList = self.specList
 
-    return gates - all the clusterr gates that determine state functions.
-    """
-    # count the number of each species in the spectator list and mobile list.
-    # This will be used to eliminate unrealistic clusters that are always "off".
-    lenMob = [np.sum(occArray) for occArray in mobList]
-    lenSpec = [np.sum(occArray) for occArray in specList]
+        lenMob = [np.sum(occArray) for occArray in mobList]
+        lenSpec = [np.sum(occArray) for occArray in specList]
 
-    clusterGates = []
-    for clistInd, clist in enumerate(clusexp):
-        cl0 = clist[0]  # get the representative cluster
-        # separate out the spectator and mobile sites
-        # cluster.sites is a tuple, which maintains the order of the elements.
-        Nmobile = len([1 for site in cl0.sites if site in sup.indexmobile])
-        Nspec = len([1 for site in cl0.sites if site in sup.indexspectator])
+        clusterGates = []
+        for clistInd, clist in enumerate(clusexp):
+            cl0 = clist[0]  # get the representative cluster
+            # separate out the spectator and mobile sites
+            # cluster.sites is a tuple, which maintains the order of the elements.
+            Nmobile = len([1 for site in cl0.sites if site in sup.indexmobile])
+            Nspec = len([1 for site in cl0.sites if site in sup.indexspectator])
 
-        arrangespecs = itertools.product(specList, repeat=Nspec)
-        arrangemobs = itertools.product(mobList, repeat=Nmobile)
+            arrangespecs = itertools.product(specList, repeat=Nspec)  # arrange spectator species on spec sites.
+            # Although spectator species never really move, a particular spectator configuration may be on in one
+            # cluster while off in another.
+            # Todo - Any way to "remember" this?
 
-        if len(list(arrangespecs)) == 0:  # if there are no spectators then just order the mobile sites.
+            arrangemobs = itertools.product(mobList, repeat=Nmobile)  # arrange mobile sites on mobile species.
+
+            if len(list(arrangespecs)) == 0:  # if there are no spectators then just order the mobile sites.
+                for tup1 in arrangemobs:
+                    # TODO- Insert code for elimination of unwanted clusters
+                    mobcount = collections.Counter(tup1)
+                    if any(j > lenMob[i] for i, j in mobcount.items()):
+                        continue
+                    # Each cluster is associated with three vectors
+                    clusterGates.append((tup1, [], clistInd*3))
+                    clusterGates.append((tup1, [], clistInd*3 + 1))
+                    clusterGates.append((tup1, [], clistInd*3 + 2))
+                return clusterGates
+
             for tup1 in arrangemobs:
-                # TODO- Insert code for elimination of unwanted clusters
+                # Now, check that the count of each species does not exceed the actual number of atoms that is present.
+                # This will be helpful in case of clusters for example, when we have only one or two vacancies.
+                # We can also identify those clusters separately as part of the initialization process.
                 mobcount = collections.Counter(tup1)
                 if any(j > lenMob[i] for i, j in mobcount.items()):
                     continue
-                clusterGates.append((tup1, [], clistInd))
-            return clusterGates
+                for tup2 in arrangespecs:
+                    specCount = collections.Counter(tup1)
+                    if any(j > lenSpec[i] for i, j in specCount.items()):
+                        continue
+                    # each cluster is associated to three vectors
+                    clusterGates.append((tup1, tup2, clistInd*3))
+                    clusterGates.append((tup1, tup2, clistInd*3 + 1))
+                    clusterGates.append((tup1, tup2, clistInd*3 + 2))
 
-        for tup1 in arrangemobs:
-            # Now, check that the count of each species does not exceed the actual number of atoms that is present.
-            # This will be helpful in case of clusters for example, when we have only one or two vacancies.
-            # We can also identify those clusters separately as part of the initialization process.
-            mobcount = collections.Counter(tup1)
-            if any(j > lenMob[i] for i, j in mobcount.items()):
-                continue
-            for tup2 in arrangespecs:
-                specCount = collections.Counter(tup1)
-                if any(j > lenSpec[i] for i, j in specCount.items()):
-                    continue
-                clusterGates.append((tup1, tup2, clistInd))
-    return clusterGates
+        self.FullClusterBasis = clusterGates
 
 
 def countGates(sup, mobOcc, clusexp, clusterGates, specOcc=None):
