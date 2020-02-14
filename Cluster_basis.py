@@ -56,8 +56,7 @@ class VectorClusterExpansion(object):
         """
         siteToVclus = collections.defaultdict(list)
         for BasisInd, BasisDat in enumerate(self.FullClusterBasis):
-            clListInd = self.VclusterList[BasisDat[2]]
-            for clInd, cl in enumerate(self.VclusterList[clListInd]):
+            for clInd, cl in enumerate(self.VclusterList[BasisDat[1]]):
                 for siteInd, site in enumerate(cl.sites):
                     siteToVclus[site.ci].append((BasisInd, clInd, siteInd))
         self.site2Vclus = siteToVclus
