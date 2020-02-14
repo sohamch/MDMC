@@ -54,12 +54,12 @@ class VectorClusterExpansion(object):
         """
         Index each site to a vector cluster list.
         """
-        siteToVclus = collections.defaultdict(list)
+        siteToVclusBasis = collections.defaultdict(list)
         for BasisInd, BasisDat in enumerate(self.FullClusterBasis):
             for clInd, cl in enumerate(self.VclusterList[BasisDat[1]]):
                 for siteInd, site in enumerate(cl.sites):
-                    siteToVclus[site.ci].append((BasisInd, clInd, siteInd))
-        self.site2Vclus = siteToVclus
+                    siteToVclusBasis[site.ci].append((BasisInd, clInd, siteInd))
+        self.site2VclusBasis = siteToVclusBasis
 
     def createFullBasis(self):
         """
@@ -136,10 +136,11 @@ class VectorClusterExpansion(object):
 
         vacLabel = self.mobList[-1]
         initSite, initRvec = self.sup.ciR(ij[0])
-        BasisList_init = self.site2Vclus[initSite]  # get those sites which contain the initial site.
+        BasisList_init = self.site2VclusBasis[initSite]  # get those sites which contain the initial site.
+        # contains a list of tuples (basis index, cluster index, site index)
 
         for ind in BasisList_init:
-            mobiles, specs, vClustInd = self.FullClusterBasis[ind]
+            species, vClustInd = self.FullClusterBasis[ind]
 
 
 
