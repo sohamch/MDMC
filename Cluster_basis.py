@@ -54,11 +54,13 @@ class VectorClusterExpansion(object):
         """
         Index each site to a vector cluster list.
         """
-        siteToVclusBasis = collections.defaultdict(list)
+        siteToVclusBasis = {}
         for BasisInd, BasisDat in enumerate(self.FullClusterBasis):
             for clInd, cl in enumerate(self.VclusterList[BasisDat[1]]):
                 for siteInd, site in enumerate(cl.sites):
-                    siteToVclusBasis[site.ci].append((BasisInd, clInd, siteInd))
+                    if site.ci not in siteToVclusBasis:
+                        siteToVclusBasis[site.ci] = collections.defaultdict(list)
+                    siteToVclusBasis[site.ci][BasisInd].append((clInd, siteInd))
         self.site2VclusBasis = siteToVclusBasis
 
     def createFullBasis(self):
@@ -125,24 +127,24 @@ class VectorClusterExpansion(object):
                         else:
                             total.append(tup2[nextspec])
                             nextspec += 1
-
+                    # each cluster is associated with 3 vectors in the vector function basis. Check this.
                     clusterGates.append((tuple(total), clistInd*3))
                     clusterGates.append((tuple(total), clistInd*3 + 1))
                     clusterGates.append((tuple(total), clistInd*3 + 2))
 
         self.FullClusterBasis = clusterGates
 
-    def countGatechange(self, ij, specOcc, mobOcc):
+    def countGatechange(self, translist, specOcc, mobOcc):
 
-        vacLabel = self.mobList[-1]
-        initSite, initRvec = self.sup.ciR(ij[0])
-        BasisList_init = self.site2VclusBasis[initSite]  # get those sites which contain the initial site.
-        # contains a list of tuples (basis index, cluster index, site index)
+        ijlist, ratelist, dxlist = translist
 
-        for ind in BasisList_init:
-            species, vClustInd = self.FullClusterBasis[ind]
+        for ij, dx in zip(ijlist, dxlist):
+            initSite, initRvec = self.sup.ciR(ij[0])
+            BasisList_init = self.site2VclusBasis[initSite]  # get those basis groups which contain the initial site.
+            # This is a dictionary - the keys are the basis indices, and the values are the cluster, site tuples
 
-
-
+            for BasisGroups, clList in BasisList_init:
+                # Get the atomic arrangements
+                for cl in clList:
 
 
