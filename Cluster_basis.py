@@ -9,6 +9,12 @@ class VectorClusterExpansion(object):
     class to expand velocities and rates in vector cluster functions.
     """
     def __init__(self, sup, clusexp, specList, mobList):
+        """
+        param sup : clusterSupercell object
+        clusexp: cluster expansion about a single unit cell.
+        specList - list of labels for chemical species on spectator sites - in order as their occupancies are defined.
+        mobList - list of labels for chemical species on mobile sites - in order as their occupancies are defined.
+        """
 
         self.sup = sup
         self.clusexp = clusexp
@@ -17,8 +23,8 @@ class VectorClusterExpansion(object):
         self.mobList = mobList
 
         self.genVecs()
-        self.index()
         self.createFullBasis()  # Generate the complete cluster basis including the arrangement of species
+        self.index()
 
     def genVecs(self):
         """
@@ -49,14 +55,12 @@ class VectorClusterExpansion(object):
         Index each site to a vector cluster list.
         """
         siteToVclus = collections.defaultdict(list)
-        for clListInd, clList in enumerate(self.clusexp):
-            for clInd, cl in enumerate(clList):
+        for BasisInd, BasisDat in enumerate(self.FullClusterBasis):
+            clListInd = self.VclusterList[BasisDat[2]]
+            for clInd, cl in enumerate(self.VclusterList[clListInd]):
                 for siteInd, site in enumerate(cl.sites):
-                    siteToVclus[site.ci].append([clListInd * 3, clInd, siteInd])
-                    siteToVclus[site.ci].append([clListInd * 3 + 1, clInd, siteInd])
-                    siteToVclus[site.ci].append([clListInd * 3 + 2, clInd, siteInd])
+                    siteToVclus[site.ci].append((BasisInd, clInd, siteInd))
         self.site2Vclus = siteToVclus
-
 
     def createFullBasis(self):
         """
@@ -94,9 +98,10 @@ class VectorClusterExpansion(object):
                     if any(j > lenMob[i] for i, j in mobcount.items()):
                         continue
                     # Each cluster is associated with three vectors
-                    clusterGates.append((tup1, [], clistInd*3))
-                    clusterGates.append((tup1, [], clistInd*3 + 1))
-                    clusterGates.append((tup1, [], clistInd*3 + 2))
+                    clusterGates.append((tup1, clistInd*3))
+                    clusterGates.append((tup1, clistInd*3 + 1))
+                    clusterGates.append((tup1, clistInd*3 + 2))
+
                 return clusterGates
 
             for tup1 in arrangemobs:
@@ -111,44 +116,33 @@ class VectorClusterExpansion(object):
                     if any(j > lenSpec[i] for i, j in specCount.items()):
                         continue
                     # each cluster is associated to three vectors
-                    clusterGates.append((tup1, tup2, clistInd*3))
-                    clusterGates.append((tup1, tup2, clistInd*3 + 1))
-                    clusterGates.append((tup1, tup2, clistInd*3 + 2))
+                    nextmob = 0
+                    nextspec = 0
+                    total = []
+                    for site in cl0.sites:
+                        if site in sup.indexmobile:
+                            total.append(tup1[nextmob])
+                            nextmob += 1
+                        else:
+                            total.append(tup2[nextspec])
+                            nextspec += 1
+
+                    clusterGates.append((tuple(total), clistInd*3))
+                    clusterGates.append((tuple(total), clistInd*3 + 1))
+                    clusterGates.append((tuple(total), clistInd*3 + 2))
 
         self.FullClusterBasis = clusterGates
 
+    def countGatechange(self, ij, specOcc, mobOcc):
 
-def countGates(sup, mobOcc, clusexp, clusterGates, specOcc=None):
-    """
-    Takes in a set of occupancy vectors, and returns counts of open cluster gates.
-    """
-    # TODO - Need to verify that this worls when specOcc = None
-    gateCounts = np.zeros(len(clusterGates), dtype=int)
-    for gateIndex, gate in enumerate(clusterGates):
-        MobSpecies = gate[0]
-        SpecSpecies = gate[1]
-        if specOcc is None and len(SpecSpecies) != 0:
-            raise TypeError("spectator occupancy passed as None, but spectator states specified in gates.")
-        clusterList = clusexp[gate[2]]
+        vacLabel = self.mobList[-1]
+        initSite, initRvec = self.sup.ciR(ij[0])
+        BasisList_init = self.site2Vclus[initSite]  # get those sites which contain the initial site.
 
-        # Now translate the clusters
-        for Rtrans in sup.Rvectlist:
-            for clust in clusterList:
-                # The index function takes care of the modulus (periodicity).
-                Mobsitesnew = [sup.index(site.R+Rtrans, site.ci)[0] for site in cluster.sites
-                               if site.ci in sup.indexmobile]
-                Specsitesnew = []
-                if specOcc is not None:
-                    Specsitesnew = [sup.index(site.R + Rtrans, site.ci)[0] for site in cluster.sites
-                                    if site.ci in sup.indexspectator]
-                # Now get the occupancies at each site
-                species_mob = tuple([sum([i*occlist[j] for i, occlist in enumerate(mobOcc)]) for j in Mobsitesnew])
-                species_spec = tuple([sum([i * occlist[j] for i, occlist in enumerate(specOcc)]) for j in Specsitesnew])
-                if specOcc is None:
-                    if species_mob == MobSpecies:
-                        gateCounts[gateIndex] += 1
-                else:
-                    if species_mob == MobSpecies and species_spec == SpecSpecies:
-                        gateCounts[gateIndex] += 1
+        for ind in BasisList_init:
+            mobiles, specs, vClustInd = self.FullClusterBasis[ind]
+
+
+
 
 
