@@ -140,7 +140,11 @@ class VectorClusterExpansion(object):
 
         # This stores the changed in the basis functions due to all the jumps out of the current state.
 
-        for ij, dx in zip(ijlist, dxlist):
+        W = np.zeros((len(self.FullClusterBasis), len(self.FullClusterBasis)))
+        # W is the contribution to Wbar by the current state
+
+        for ij, rate, dx in zip(ijlist, ratelist, dxlist):
+            del_lamb_vecs = np.zeros((len(self.FullClusterBasis), 3))
             initSite, initRvec = self.sup.ciR(ij[0])
             finSite, finRvec = self.sup.ciR(ij[1])
             BasisList_init = self.site2VclusBasis[initSite]  # get those basis groups which contain the initial site.
@@ -149,6 +153,7 @@ class VectorClusterExpansion(object):
 
             for BasisGroupIndex, inGroupLocList in BasisList_init.items():
                 # Get the atomic arrangements
+                # The update with be made to the row "BasisGroupIndex" of the matric del_lamb_vecs.
                 atoms = self.FullClusterBasis[BasisGroupIndex][0]
                 # Now we have to check if the atomic configurations match
                 # get the translational vector
@@ -158,21 +163,19 @@ class VectorClusterExpansion(object):
                     cl = self.VclusterList[self.FullClusterBasis[BasisGroupIndex][1]][loc[0]]
                     carrier = cl.sites[loc[1]]
                     trans = initRvec - carrier.R
-                    newSites = [self.sup.index(site.R, site.ci) for site in cl.sites]
-                    # newSpecies = []
-                    # for site in newSites:
-                    #     if site[1] is True:
-                    #         newSpecies.append(sum([occ[site[0]]*label for occ, label in zip(self.mobList, mobOcc)]))
-                    #     else:
-                    #         newSpecies.append(sum([occ[site[0]] * label for occ, label in zip(self.specList,
-                    #         specOcc)]))
-
-                    # Let's see if we can convert this into a comprehension
                     newSpecies = [
                         sum([occ[site[0]] * label for occ, label in zip(self.mobList, mobOcc)]) if site[1] is True
                         else sum([occ[site[0]] * label for occ, label in zip(self.specList, specOcc)])
-                        for site in newSites
+                        for site in [self.sup.index(site.R + trans, site.ci) for site in cl.sites]
                     ]
+                    # 1. Check changes due to initial sites
+                    if tuple(newSpecies) == atoms:  # Then the cluster is on in the intial state, and will be off
+                        # in the final state
+                        clVec = self.vecList[self.FullClusterBasis[BasisGroupIndex][1]][loc[0]]
+                        # take it away from the change vector
+                        current_change -= clVec
+
+                    # 2. Check changes due to after-jump clusters switching on
 
 
 
