@@ -138,13 +138,41 @@ class VectorClusterExpansion(object):
 
         ijlist, ratelist, dxlist = translist
 
+        # This stores the changed in the basis functions due to all the jumps out of the current state.
+
         for ij, dx in zip(ijlist, dxlist):
             initSite, initRvec = self.sup.ciR(ij[0])
+            finSite, finRvec = self.sup.ciR(ij[1])
             BasisList_init = self.site2VclusBasis[initSite]  # get those basis groups which contain the initial site.
-            # This is a dictionary - the keys are the basis indices, and the values are the cluster, site tuples
+            # A "basis group" is defined by a an atomic configuration, and a symmetric list of (cluster, vector) pairs.
+            # This is a dictionary - the keys are the basis indices, and the values are the (clusterInd, siteInd) tuples
 
-            for BasisGroups, clList in BasisList_init:
+            for BasisGroupIndex, inGroupLocList in BasisList_init.items():
                 # Get the atomic arrangements
-                for cl in clList:
+                atoms = self.FullClusterBasis[BasisGroupIndex][0]
+                # Now we have to check if the atomic configurations match
+                # get the translational vector
+                # first get the actual cluster
+                current_change = np.zeros(3)  # This is where we will add in the changes in the vectors
+                for loc in inGroupLocList:
+                    cl = self.VclusterList[self.FullClusterBasis[BasisGroupIndex][1]][loc[0]]
+                    carrier = cl.sites[loc[1]]
+                    trans = initRvec - carrier.R
+                    newSites = [self.sup.index(site.R, site.ci) for site in cl.sites]
+                    # newSpecies = []
+                    # for site in newSites:
+                    #     if site[1] is True:
+                    #         newSpecies.append(sum([occ[site[0]]*label for occ, label in zip(self.mobList, mobOcc)]))
+                    #     else:
+                    #         newSpecies.append(sum([occ[site[0]] * label for occ, label in zip(self.specList,
+                    #         specOcc)]))
+
+                    # Let's see if we can convert this into a comprehension
+                    newSpecies = [
+                        sum([occ[site[0]] * label for occ, label in zip(self.mobList, mobOcc)]) if site[1] is True
+                        else sum([occ[site[0]] * label for occ, label in zip(self.specList, specOcc)])
+                        for site in newSites
+                    ]
+
 
 
