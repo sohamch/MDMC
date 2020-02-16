@@ -193,19 +193,18 @@ class VectorClusterExpansion(object):
                         current_change -= clVec
 
                     # 2. Turn on if specJ is at the initial carrier site
-                    # First check by just changing the carrier site to final species and all others same
-                    # if true - this will only turn on clusters containing the contain final species at the initial
+                    # First check by just changing the carrier site occupancy to final species and keeping all
+                    # others same
+                    # if true - this will only turn on clusters containing that contain the final species at the initial
                     # carrier site, but DO NOT contain the final carrier site.
                     elif newSpecies == tuple([at if l != loc[1] else specJ for l, at in enumerate(atoms)]):
                         clVec = self.vecList[self.FullClusterBasis[BasisGroupIndex][1]][loc[0]]
                         # take it away from the change vector
                         current_change += clVec
 
-
-
-
                 del_lamb_vecs[BasisGroupIndex] += current_change
 
+            # Now, let's work with the final site
             # for BasisGroupIndex, inGroupLocList in BasisList_fin.items():
             #     atoms = self.FullClusterBasis[BasisGroupIndex][0]
             #     current_change = np.zeros(3)
@@ -219,13 +218,17 @@ class VectorClusterExpansion(object):
             #             else sum([occ[site[0]] * label for occ, label in zip(self.specList, specOcc)])
             #             for site in newSites
             #         ]
-            #         if tuple(newSpecies) == atoms:  # Then the cluster is on in the intial state, and will be off
-            #             # in the final state
+            #         if newSpecies == atoms:
+            #             # This also turns off clusters that contain both the carrier and the jumping species
+            #             # which we skipped when dealing with the carrier alone.
             #             clVec = self.vecList[self.FullClusterBasis[BasisGroupIndex][1]][loc[0]]
             #             # take it away from the change vector
             #             current_change -= clVec
             #
-            #     del_lamb_vecs[BasisGroupIndex] += current_change
-
-
-
+            #         # else check if there is the carrier at the final site J
+            #         elif newSpecies == [at if l != loc[1] else self.mobList[-1] for l, at in enumerate(atoms)]:
+            #             clVec = self.vecList[self.FullClusterBasis[BasisGroupIndex][1]][loc[0]]
+            #             # take it away from the change vector
+            #             current_change += clVec
+            #
+            #         # Now, we need to turn on those clusters that contain BOTH specJ at the initial carrier site and
