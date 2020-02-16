@@ -197,7 +197,7 @@ class VectorClusterExpansion(object):
                     # others same
                     # if true - this will only turn on clusters containing that contain the final species at the initial
                     # carrier site, but DO NOT contain the final carrier site.
-                    elif newSpecies == tuple([at if l != loc[1] else specJ for l, at in enumerate(atoms)]):
+                    elif atoms == tuple([atm if l != loc[1] else specJ for l, atm in enumerate(newSpecies)]):
                         clVec = self.vecList[self.FullClusterBasis[BasisGroupIndex][1]][loc[0]]
                         # take it away from the change vector
                         current_change += clVec
