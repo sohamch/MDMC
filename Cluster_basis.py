@@ -139,11 +139,11 @@ class VectorClusterExpansion(object):
         ijlist, ratelist, dxlist = translist
 
         # This stores the changed in the basis functions due to all the jumps out of the current state.
-
         W = np.zeros((len(self.FullClusterBasis), len(self.FullClusterBasis)))
         # W is the contribution to Wbar by the current state
 
         for ij, rate, dx in zip(ijlist, ratelist, dxlist):
+            specJ = sum([occ[ij[1]]*label for label,occ in zip(self.mobList, mobOcc)])
             del_lamb_vecs = np.zeros((len(self.FullClusterBasis), 3))
             initSite, initRvec = self.sup.ciR(ij[0])
             finSite, finRvec = self.sup.ciR(ij[1])
@@ -175,42 +175,57 @@ class VectorClusterExpansion(object):
                         else sum([occ[site[0]] * label for occ, label in zip(self.specList, specOcc)])
                         for site in newSites
                     ]
+
+                    # check if both the initial and final sites are in the same cluster
+                    # Then, depending on species occupancies, it will need to be turned on or off only once.
+                    bothSites = ij[1] in [site[0] for site in newSites if site[1] is True]
+
                     # 1. Turn off if carrier is at initial carrier site
-                    if tuple(newSpecies) == atoms:  # Then the cluster is on in the intial state, and will be off
+                    if tuple(newSpecies) == atoms:  # Then the cluster is on in the initial state, and will be off
                         # in the final state
                         # A cluster that contains both the initial and final sites can be skipped and turned off during
                         # final state analysis (next for loop), since it switches off only once.
                         # So, get the mobile sites from newSites, and see if the final state is there
-                        if ij[1] in [site[0] for site in newSites if site[1] is True]:
+                        if bothSites:
                             continue
                         clVec = self.vecList[self.FullClusterBasis[BasisGroupIndex][1]][loc[0]]
                         # take it away from the change vector
                         current_change -= clVec
 
-                    # 2. Turn on if specJ is at initial carrier site
-
-                del_lamb_vecs[BasisGroupIndex] += current_change
-
-            for BasisGroupIndex, inGroupLocList in BasisList_fin.items():
-                atoms = self.FullClusterBasis[BasisGroupIndex][0]
-                current_change = np.zeros(3)
-                for loc in inGroupLocList:
-                    cl = self.VclusterList[self.FullClusterBasis[BasisGroupIndex][1]][loc[0]]
-                    finalLoc = cl.sites[loc[1]]
-                    trans = finRvec - finalLoc.R
-                    newSites = [self.sup.index(site.R + trans, site.ci) for site in cl.sites]
-                    newSpecies = [
-                        sum([occ[site[0]] * label for occ, label in zip(self.mobList, mobOcc)]) if site[1] is True
-                        else sum([occ[site[0]] * label for occ, label in zip(self.specList, specOcc)])
-                        for site in newSites
-                    ]
-                    if tuple(newSpecies) == atoms:  # Then the cluster is on in the intial state, and will be off
-                        # in the final state
+                    # 2. Turn on if specJ is at the initial carrier site
+                    # First check by just changing the carrier site to final species and all others same
+                    # if true - this will only turn on clusters containing the contain final species at the initial
+                    # carrier site, but DO NOT contain the final carrier site.
+                    elif newSpecies == tuple([at if l != loc[1] else specJ for l, at in enumerate(atoms)]):
                         clVec = self.vecList[self.FullClusterBasis[BasisGroupIndex][1]][loc[0]]
                         # take it away from the change vector
-                        current_change -= clVec
+                        current_change += clVec
+
+
+
 
                 del_lamb_vecs[BasisGroupIndex] += current_change
+
+            # for BasisGroupIndex, inGroupLocList in BasisList_fin.items():
+            #     atoms = self.FullClusterBasis[BasisGroupIndex][0]
+            #     current_change = np.zeros(3)
+            #     for loc in inGroupLocList:
+            #         cl = self.VclusterList[self.FullClusterBasis[BasisGroupIndex][1]][loc[0]]
+            #         finalLoc = cl.sites[loc[1]]
+            #         trans = finRvec - finalLoc.R
+            #         newSites = [self.sup.index(site.R + trans, site.ci) for site in cl.sites]
+            #         newSpecies = [
+            #             sum([occ[site[0]] * label for occ, label in zip(self.mobList, mobOcc)]) if site[1] is True
+            #             else sum([occ[site[0]] * label for occ, label in zip(self.specList, specOcc)])
+            #             for site in newSites
+            #         ]
+            #         if tuple(newSpecies) == atoms:  # Then the cluster is on in the intial state, and will be off
+            #             # in the final state
+            #             clVec = self.vecList[self.FullClusterBasis[BasisGroupIndex][1]][loc[0]]
+            #             # take it away from the change vector
+            #             current_change -= clVec
+            #
+            #     del_lamb_vecs[BasisGroupIndex] += current_change
 
 
 
