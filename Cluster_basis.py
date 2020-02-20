@@ -23,7 +23,8 @@ class VectorClusterExpansion(object):
         self.mobList = mobList
 
         self.genVecs()
-        self.createFullBasis()  # Generate the complete cluster basis including the arrangement of species
+        self.FullClusterBasis = self.createFullBasis()  # Generate the complete cluster basis including the
+        # arrangement of species
         self.index()
 
     def genVecs(self):
@@ -67,31 +68,25 @@ class VectorClusterExpansion(object):
         """
         Function to add in the species arrangements to the cluster basis functions.
         """
-        # count the number of each species in the spectator list and mobile list.
-        # This will be used to eliminate unrealistic clusters that are always "off".
-        sup = self.sup
-        clusexp = self.clusexp
-        mobList = self.mobList
-        lenMob = [np.sum(occArray) for occArray in mobList]
 
-        clusterGates = []
-        for clistInd, clist in enumerate(clusexp):
+        lenMob = [np.sum(occArray) for occArray in self.mobList]
+
+        clusterBasis = []
+        for clistInd, clist in enumerate(self.clusexp):
             cl0 = clist[0]  # get the representative cluster
             # cluster.sites is a tuple, which maintains the order of the elements.
             Nmobile = len(cl0.sites)
-
-            arrangemobs = itertools.product(mobList, repeat=Nmobile)  # arrange mobile sites on mobile species.
-
+            arrangemobs = itertools.product(self.mobList, repeat=Nmobile)  # arrange mobile sites on mobile species.
             for tup1 in arrangemobs:
                 mobcount = collections.Counter(tup1)
                 if any(j > lenMob[i] for i, j in mobcount.items()):
                     continue
                 # Each cluster is associated with three vectors
-                clusterGates.append((tup1, clistInd*3))
-                clusterGates.append((tup1, clistInd*3 + 1))
-                clusterGates.append((tup1, clistInd*3 + 2))
+                clusterBasis.append((tup1, clistInd*3))
+                clusterBasis.append((tup1, clistInd*3 + 1))
+                clusterBasis.append((tup1, clistInd*3 + 2))
 
-        self.FullClusterBasis = clusterGates
+        return clusterBasis
 
     def countGatechange(self, translist, specOcc, mobOcc):
 
