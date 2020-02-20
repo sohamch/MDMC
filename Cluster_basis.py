@@ -8,18 +8,18 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, specList, mobList):
+    def __init__(self, sup, clusexp, mobList):
         """
         param sup : clusterSupercell object
         clusexp: cluster expansion about a single unit cell.
-        specList - list of labels for chemical species on spectator sites - in order as their occupancies are defined.
         mobList - list of labels for chemical species on mobile sites - in order as their occupancies are defined.
+
+        In this type of simulations, we consider a solid with a single wyckoff set on which atoms are arranged.
         """
 
         self.sup = sup
         self.clusexp = clusexp
 
-        self.specList = specList
         self.mobList = mobList
 
         self.genVecs()
@@ -72,65 +72,24 @@ class VectorClusterExpansion(object):
         sup = self.sup
         clusexp = self.clusexp
         mobList = self.mobList
-        specList = self.specList
-
         lenMob = [np.sum(occArray) for occArray in mobList]
-        lenSpec = [np.sum(occArray) for occArray in specList]
 
         clusterGates = []
         for clistInd, clist in enumerate(clusexp):
             cl0 = clist[0]  # get the representative cluster
-            # separate out the spectator and mobile sites
             # cluster.sites is a tuple, which maintains the order of the elements.
-            Nmobile = len([1 for site in cl0.sites if site in sup.indexmobile])
-            Nspec = len([1 for site in cl0.sites if site in sup.indexspectator])
-
-            arrangespecs = itertools.product(specList, repeat=Nspec)  # arrange spectator species on spec sites.
-            # Although spectator species never really move, a particular spectator configuration may be on in one
-            # cluster while off in another.
-            # Todo - Any way to "remember" this?
+            Nmobile = len(cl0.sites)
 
             arrangemobs = itertools.product(mobList, repeat=Nmobile)  # arrange mobile sites on mobile species.
 
-            if len(list(arrangespecs)) == 0:  # if there are no spectators then just order the mobile sites.
-                for tup1 in arrangemobs:
-                    # TODO- Insert code for elimination of unwanted clusters
-                    mobcount = collections.Counter(tup1)
-                    if any(j > lenMob[i] for i, j in mobcount.items()):
-                        continue
-                    # Each cluster is associated with three vectors
-                    clusterGates.append((tup1, clistInd*3))
-                    clusterGates.append((tup1, clistInd*3 + 1))
-                    clusterGates.append((tup1, clistInd*3 + 2))
-
-                return clusterGates
-
             for tup1 in arrangemobs:
-                # Now, check that the count of each species does not exceed the actual number of atoms that is present.
-                # This will be helpful in case of clusters for example, when we have only one or two vacancies.
-                # We can also identify those clusters separately as part of the initialization process.
                 mobcount = collections.Counter(tup1)
                 if any(j > lenMob[i] for i, j in mobcount.items()):
                     continue
-                for tup2 in arrangespecs:
-                    specCount = collections.Counter(tup1)
-                    if any(j > lenSpec[i] for i, j in specCount.items()):
-                        continue
-                    # each cluster is associated to three vectors
-                    nextmob = 0
-                    nextspec = 0
-                    total = []
-                    for site in cl0.sites:
-                        if site in sup.indexmobile:
-                            total.append(tup1[nextmob])
-                            nextmob += 1
-                        else:
-                            total.append(tup2[nextspec])
-                            nextspec += 1
-                    # each cluster is associated with 3 vectors in the vector function basis. Check this.
-                    clusterGates.append((tuple(total), clistInd*3))
-                    clusterGates.append((tuple(total), clistInd*3 + 1))
-                    clusterGates.append((tuple(total), clistInd*3 + 2))
+                # Each cluster is associated with three vectors
+                clusterGates.append((tup1, clistInd*3))
+                clusterGates.append((tup1, clistInd*3 + 1))
+                clusterGates.append((tup1, clistInd*3 + 2))
 
         self.FullClusterBasis = clusterGates
 
