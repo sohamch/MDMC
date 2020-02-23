@@ -50,7 +50,7 @@ class VectorClusterExpansion(object):
                         if cl0.g(sup.crys, gop) == cl:
                             if any(cl1 == cl for cl1 in symclList):
                                 continue
-                            symclList.append(cl0)
+                            symclList.append(cl)
                             symvecList.append(np.dot(gop.cartrot, vec))
                 self.VclusterList.append(symclList)
                 self.vecList.append(symvecList)
@@ -110,22 +110,39 @@ class VectorClusterExpansion(object):
 
     def Expand(self, mobOccs, transitions):
         ijlist, ratelist, dxlist = transitions
-
+        mobOccs_final = mobOccs.copy()
         for (ij, rate, dx) in zip(ijlist, ratelist, dxlist):
             specJ = sum([occ[ij[1]]*label for occ, label in zip(mobOccs, self.mobList)])
             siteJ = self.sup.ciR(ij[1])  # get the lattice site where the jumping species initially sits
 
+            # switch the occupancies in the final state
+            mobOccs_final[specJ][ij[0]] = 1
+            mobOccs_final[specJ][ij[1]] = 0
+
+            mobOccs_final[-1][ij[0]] = 0
+            mobOccs_final[specJ][ij[1]] = 1
+
+            # delOcc = mobOccs_final - mobOccs  # Doesn't seem to be much we can do with this
+
             # Get all the clusters that contain the vacancy at the vacancy site and/or specJ at ij[1]
             # and are On in the initial state.
             # noinspection PyUnresolvedReferences
-            On_clusters_vac = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2Clus[ij[0]]
-                               if np.prod([mobOccs[species][self.sup.index(site.ci, site.R)]
-                                           for species, site in zip(self.FullClusterBasis[bInd][0],
-                                                                    self.VclusterList[bInd][clInd].sites)]) == 1
-                               ]
-            On_clusters_specJ = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2Clus[ij[1]]
+            InitOnClustersVac = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2Clus[ij[0]]
                                  if np.prod([mobOccs[species][self.sup.index(site.ci, site.R)]
-                                            for species, site in zip(self.FullClusterBasis[bInd][0],
-                                                                     self.VclusterList[bInd][clInd].sites)]) == 1
+                                             for species, site in zip(self.FullClusterBasis[bInd][0],
+                                                                      self.VclusterList[bInd][clInd].sites)]) == 1
                                  ]
+            # noinspection PyUnresolvedReferences
+            InitOnClustersSpecJ = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2Clus[ij[1]]
+                                   if np.prod([mobOccs[species][self.sup.index(site.ci, site.R)]
+                                              for species, site in zip(self.FullClusterBasis[bInd][0],
+                                                                       self.VclusterList[bInd][clInd].sites)]) == 1
+                                   ]
+
+            FinOnClustersVac = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2Clus[ij[0]]
+                                if np.prod([mobOccs_final[species][self.sup.index(site.ci, site.R)]
+                                              for species, site in zip(self.FullClusterBasis[bInd][0],
+                                                                       self.VclusterList[bInd][clInd].sites)]) == 1
+                                   ]
+
 
