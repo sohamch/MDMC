@@ -39,11 +39,13 @@ class VectorClusterExpansion(object):
         clusexp = self.clusexp
         Id3 = np.eye(3)
         self.VclusterList = []
+        self.VclusterSupIndList = []
         self.vecList = []
         for clist in clusexp:
             cl0 = clist[0]
             for vec in Id3:
                 symclList = []
+                symcLSupIndList = []
                 symvecList = []
                 for cl in clist:
                     for gop in sup.crys.G:
@@ -51,6 +53,7 @@ class VectorClusterExpansion(object):
                             if any(cl1 == cl for cl1 in symclList):
                                 continue
                             symclList.append(cl)
+                            symcLSupIndList.append([site for site in cl.sites])
                             symvecList.append(np.dot(gop.cartrot, vec))
                 self.VclusterList.append(symclList)
                 self.vecList.append(symvecList)
