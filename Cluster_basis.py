@@ -27,7 +27,7 @@ class VectorClusterExpansion(object):
         self.clusexp = clusexp
         self.mobList = mobList  # labels of the mobile species - the last label is for the vacancy.
         self.genVecs()
-        self.FullClusterBasis, self.occBasis = self.createFullBasis()
+        self.FullClusterBasis, self.ScalarBasis = self.createFullBasis()
         # Generate the complete cluster basis including the
         # arrangement of species on sites other than the vacancy site.
         self.index()
@@ -73,6 +73,15 @@ class VectorClusterExpansion(object):
                     siteToVclusBasis[site.ci][BasisInd].append((clInd, siteInd))
         self.site2VclusBasis = siteToVclusBasis
 
+        site2ScalClusBasis = {}
+        for BasisInd, BasisDat in enumerate(self.ScalarBasis):
+            for clInd, cl in enumerate(self.clusexp[BasisDat[1]]):
+                for siteInd, site in enumerate(cl.sites):
+                    if site.ci not in site2ScalClusBasis:
+                        siteToVclusBasis[site.ci] = collections.defaultdict(list)
+                    siteToVclusBasis[site.ci][BasisInd].append((clInd, siteInd))
+        self.site2ScalBasis = siteToVclusBasis
+
     def indexSupInd2Clus(self):
         """
         Takes the sites in the clusters, get their indices in the supercell sitelist, and store the clusters they
@@ -83,8 +92,14 @@ class VectorClusterExpansion(object):
             for clInd, cl in enumerate(self.VclusterList[BasisDat[1]]):
                 for siteInd, site in enumerate(cl.sites):
                     siteToVclusBasis[self.sup.index(site.ci, site.R)].append((BasisInd, clInd, siteInd))
+        self.SupInd2VClus = siteToVclusBasis
 
-        self.SupInd2Clus = siteToVclusBasis
+        supInd2scalBasis = {}
+        for BasisInd, BasisDat in enumerate(self.ScalarBasis):
+            for clInd, cl in enumerate(self.clusexp[BasisDat[1]]):
+                for siteInd, site in enumerate(cl.sites):
+                    supInd2scalBasis[self.sup.index(site.ci, site.R)].append((BasisInd, clInd, siteInd))
+        self.supInd2scalBasis = supInd2scalBasis
 
     def createFullBasis(self):
         """
@@ -144,25 +159,25 @@ class VectorClusterExpansion(object):
             # Get all the clusters that contain the vacancy at the vacancy site and/or specJ at ij[1]
             # and are On in the initial state.
 
-            InitOnClustersVac = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2Clus[ij[0]]
+            InitOnClustersVac = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[0]]
                                  if np.prod(np.array([mobOccs[species][idx]
                                             for species, idx in zip(self.FullClusterBasis[bInd][0],
                                                                     self.VclusterSupIndList[bInd][clInd])])) == 1
                                  ]
 
-            InitOnClustersSpecJ = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2Clus[ij[1]]
+            InitOnClustersSpecJ = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[1]]
                                    if np.prod(np.array([mobOccs[species][idx]
                                               for species, idx in zip(self.FullClusterBasis[bInd][0],
                                                                       self.VclusterSupIndList[bInd][clInd])])) == 1
                                    ]
 
-            FinOnClustersVac = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2Clus[ij[0]]
+            FinOnClustersVac = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[0]]
                                 if np.prod(np.array([mobOccs_final[species][idx]
                                            for species, idx in zip(self.FullClusterBasis[bInd][0],
                                                                    self.VclusterSupIndList[bInd][clInd])])) == 1
                                 ]
 
-            FinOnClustersSpecJ = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2Clus[ij[1]]
+            FinOnClustersSpecJ = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[1]]
                                   if np.prod(np.array([mobOccs_final[species][idx]
                                              for species, idx in zip(self.FullClusterBasis[bInd][0],
                                                                      self.VclusterSupIndList[bInd][clInd])])) == 1
