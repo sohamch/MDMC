@@ -115,7 +115,17 @@ class VectorClusterExpansion(object):
     def Expand(self, mobOccs, transitions):
         ijlist, ratelist, dxlist = transitions
         mobOccs_final = mobOccs.copy()
-        for (ij, rate, dx) in zip(ijlist, ratelist, dxlist):
+
+        del_lamb_mat = np.zeros((len(self.FullClusterBasis), len(self.FullClusterBasis), len(ijlist)))
+        delxDotdelLamb = np.zeros(len(ijlist))
+
+        delLambDx = np.zeros((len(self.FullClusterBasis), len(ijlist)))
+        # To be tensor dotted with ratelist with axes = (0,1)
+
+        for (jnum, ij, rate, dx) in zip(itertools.count(), ijlist, ratelist, dxlist):
+
+            del_lamb = np.zeros((len(self.FullClusterBasis), 3))
+
             specJ = sum([occ[ij[1]]*label for occ, label in zip(mobOccs, self.mobList)])
             siteJ = self.sup.ciR(ij[1])  # get the lattice site where the jumping species initially sits
 
@@ -153,5 +163,26 @@ class VectorClusterExpansion(object):
                                   if np.prod(np.array([mobOccs_final[species][idx]
                                                 for species, idx in zip(self.FullClusterBasis[bInd][0],
                                                                         self.VclusterSupIndList[bInd][clInd])])) == 1
-                                ]
+                                  ]
+
+            # Turn of the On clusters
+            for (bInd, clInd) in set(InitOnClustersVac).union(set(InitOnClustersSpecJ)):
+                del_lamb[bInd] -= self.vecList[bInd][clInd]
+
+            # Turn on the Off clusters
+            for (bInd, clInd) in set(FinOnClustersVac).union(FinOnClustersSpecJ):
+                del_lamb[bInd] += self.vecList[bInd][clInd]
+
+            # Create the matrix to find Wbar
+            del_lamb_mat[:, :, jnum] = np.dot(del_lamb, del_lamb.T)
+
+            # Create the matrix to find Bbar
+            delxDotdelLamb[:, jnum] = np.tensordot(del_lamb_mat, dx, axes=(1, 0))
+
+        Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 0))
+        Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
+
+        return Wbar, Bbar
+
+
 
