@@ -27,7 +27,8 @@ class VectorClusterExpansion(object):
         self.clusexp = clusexp
         self.mobList = mobList  # labels of the mobile species - the last label is for the vacancy.
         self.genVecs()
-        self.FullClusterBasis = self.createFullBasis()  # Generate the complete cluster basis including the
+        self.FullClusterBasis, self.occBasis = self.createFullBasis()
+        # Generate the complete cluster basis including the
         # arrangement of species on sites other than the vacancy site.
         self.index()
 
@@ -92,6 +93,7 @@ class VectorClusterExpansion(object):
 
         lenMob = [np.sum(occArray) for occArray in self.mobList]
 
+        FullclusterBasis = []
         clusterBasis = []
         for clistInd, clist in enumerate(self.clusexp):
             cl0 = clist[0]  # get the representative cluster
@@ -107,10 +109,11 @@ class VectorClusterExpansion(object):
                     continue
                 # Each cluster is associated with three vectors
                 # Any cluster that contains a vacancy is shifted so that the vacancy is at the origin.
-                clusterBasis.append((tup, clistInd*3))
-                clusterBasis.append((tup, clistInd*3 + 1))
-                clusterBasis.append((tup, clistInd*3 + 2))
-        return clusterBasis
+                clusterBasis.append((tup, clistInd))
+                FullclusterBasis.append((tup, clistInd*3))
+                FullclusterBasis.append((tup, clistInd*3 + 1))
+                FullclusterBasis.append((tup, clistInd*3 + 2))
+        return FullclusterBasis, clusterBasis
 
     def Expand(self, mobOccs, transitions):
         ijlist, ratelist, dxlist = transitions
@@ -184,7 +187,14 @@ class VectorClusterExpansion(object):
 
         return Wbar, Bbar
 
-    def transitions(self):
+    def transitions(self, mobOcc, jumpnetwork):
+        """
+        Function to calculate the transitions and their rates out of a given state.
+        :param mobOcc: occupancy vectors for mobile species
+        :param jumpnetwork: vacancy jumpnetwork
+        :return: (ijlist, ratelist, dxlist)
+        """
+        jumplist = [jump for jlist in jumpnetwork for jump in jlist]
         pass
 
 
