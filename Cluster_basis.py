@@ -184,5 +184,8 @@ class VectorClusterExpansion(object):
 
         return Wbar, Bbar
 
+    def transitions(self):
+        pass
+
 
 
