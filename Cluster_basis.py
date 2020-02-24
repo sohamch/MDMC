@@ -161,8 +161,8 @@ class VectorClusterExpansion(object):
 
             FinOnClustersSpecJ = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2Clus[ij[1]]
                                   if np.prod(np.array([mobOccs_final[species][idx]
-                                                for species, idx in zip(self.FullClusterBasis[bInd][0],
-                                                                        self.VclusterSupIndList[bInd][clInd])])) == 1
+                                             for species, idx in zip(self.FullClusterBasis[bInd][0],
+                                                                     self.VclusterSupIndList[bInd][clInd])])) == 1
                                   ]
 
             # Turn of the On clusters
