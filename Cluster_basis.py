@@ -117,7 +117,7 @@ class VectorClusterExpansion(object):
         mobOccs_final = mobOccs.copy()
 
         del_lamb_mat = np.zeros((len(self.FullClusterBasis), len(self.FullClusterBasis), len(ijlist)))
-        delxDotdelLamb = np.zeros(len(ijlist))
+        delxDotdelLamb = np.zeros((len(self.FullClusterBasis), len(ijlist)))
 
         delLambDx = np.zeros((len(self.FullClusterBasis), len(ijlist)))
         # To be tensor dotted with ratelist with axes = (0,1)
