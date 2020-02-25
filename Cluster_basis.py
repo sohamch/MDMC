@@ -17,9 +17,6 @@ class VectorClusterExpansion(object):
         In this type of simulations, we consider a solid with a single wyckoff set on which atoms are arranged.
         """
         self.chem = 0  # we'll work with a monoatomic basis
-
-        self.vacSite = cluster.clusterSite((self.chem, vacSite), np.zeros(3, dtype=int))
-        # vacSite is the basis site index in which the vacancy is fixed.
         self.sup = sup
         # vacInd will always be the initial state in the transitions that we consider.
         self.clusexp = clusexp
