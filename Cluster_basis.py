@@ -8,7 +8,7 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, mobList, vacSite):
+    def __init__(self, sup, clusexp, mobList):
         """
         param sup : clusterSupercell object
         clusexp: cluster expansion about a single unit cell.
@@ -21,8 +21,6 @@ class VectorClusterExpansion(object):
         self.vacSite = cluster.clusterSite((self.chem, vacSite), np.zeros(3, dtype=int))
         # vacSite is the basis site index in which the vacancy is fixed.
         self.sup = sup
-        self.vacInd = sup.index((self.chem, vacSite), np.zeros(3, dtype=int))
-
         # vacInd will always be the initial state in the transitions that we consider.
         self.clusexp = clusexp
         self.mobList = mobList  # labels of the mobile species - the last label is for the vacancy.
@@ -91,14 +89,14 @@ class VectorClusterExpansion(object):
         for BasisInd, BasisDat in enumerate(self.FullClusterBasis):
             for clInd, cl in enumerate(self.VclusterList[BasisDat[1]]):
                 for siteInd, site in enumerate(cl.sites):
-                    siteToVclusBasis[self.sup.index(site.ci, site.R)].append((BasisInd, clInd, siteInd))
+                    siteToVclusBasis[self.sup.index(site.R, site.ci)].append((BasisInd, clInd, siteInd))
         self.SupInd2VClus = siteToVclusBasis
 
         supInd2scalBasis = {}
         for BasisInd, BasisDat in enumerate(self.ScalarBasis):
             for clInd, cl in enumerate(self.clusexp[BasisDat[1]]):
                 for siteInd, site in enumerate(cl.sites):
-                    supInd2scalBasis[self.sup.index(site.ci, site.R)].append((BasisInd, clInd, siteInd))
+                    supInd2scalBasis[self.sup.index(site.R, site.ci)].append((BasisInd, clInd, siteInd))
         self.supInd2scalBasis = supInd2scalBasis
 
     def createFullBasis(self):
