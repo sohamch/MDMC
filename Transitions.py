@@ -6,6 +6,9 @@ This is to create KRA expansions of activation barriers. We assume for now that 
 """
 
 class KRAExpand(object):
+    """
+    Object that contains all information regarding the KRA expansion of a jumpnetwork in a supercell.
+    """
     def __init__(self, sup, jumpnetwork, clusexp, InteractionCutoff):
         """
         :param sup: clusterSupercell Object
