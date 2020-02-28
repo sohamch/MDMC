@@ -2,17 +2,19 @@ from onsager import crystal, cluster, supercell
 import numpy as np
 import collections
 import itertools
+import Transitions
 
 
 class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, mobList):
+    def __init__(self, sup, clusexp, mobList, sampleMobOccs):
         """
-        param sup : clusterSupercell object
-        clusexp: cluster expansion about a single unit cell.
-        mobList - list of labels for chemical species on mobile sites - in order as their occupancies are defined.
+        :param sup : clusterSupercell object
+        :param clusexp: cluster expansion about a single unit cell.
+        :param mobList - list of labels for chemical species on mobile sites - in order as their occupancies are defined.
+        :param sampleMobOccs - a starting mobile occupancy array to just count the number of each species
 
         In this type of simulations, we consider a solid with a single wyckoff set on which atoms are arranged.
         """
@@ -21,10 +23,13 @@ class VectorClusterExpansion(object):
         # vacInd will always be the initial state in the transitions that we consider.
         self.clusexp = clusexp
         self.mobList = mobList  # labels of the mobile species - the last label is for the vacancy.
+        self.sampleOccs = sampleMobOccs
+        # TODO - think of a better way to do this.
         self.genVecs()
         self.FullClusterBasis, self.ScalarBasis = self.createFullBasis()
         # Generate the complete cluster basis including the
         # arrangement of species on sites other than the vacancy site.
+        self.KRAExpander = Transitions.KRAExpand
         self.index()
 
     def genVecs(self):
@@ -101,7 +106,7 @@ class VectorClusterExpansion(object):
         Function to add in the species arrangements to the cluster basis functions.
         """
 
-        lenMob = [np.sum(occArray) for occArray in self.mobList]
+        lenMob = [np.sum(occArray) for occArray in self.sampleOccs]
 
         FullclusterBasis = []
         clusterBasis = []
@@ -126,13 +131,13 @@ class VectorClusterExpansion(object):
         return FullclusterBasis, clusterBasis
 
     def Expand(self, mobOccs, transitions):
+
         ijlist, ratelist, dxlist = transitions
         mobOccs_final = mobOccs.copy()
 
         del_lamb_mat = np.zeros((len(self.FullClusterBasis), len(self.FullClusterBasis), len(ijlist)))
         delxDotdelLamb = np.zeros((len(self.FullClusterBasis), len(ijlist)))
 
-        delLambDx = np.zeros((len(self.FullClusterBasis), len(ijlist)))
         # To be tensor dotted with ratelist with axes = (0,1)
 
         for (jnum, ij, rate, dx) in zip(itertools.count(), ijlist, ratelist, dxlist):
