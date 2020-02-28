@@ -55,5 +55,22 @@ class KRAExpand(object):
                 siteB = self.sup.index((self.chem, j), Rj)
                 newtrans = [R + Rj for R in Rvecs] + Rvecs
 
-
+                # start cluster translations
+                myClList = []
+                for Rtrans in newtrans:
+                    # take a cluster and translate it.
+                    for cl in [clust for clustList in self.clusexp for clust in clustList]:
+                        # translate all the sites in the cluster
+                        newsiteList = [site + Rtrans for site in cl.sites]
+                        # Get distances of new sites from initial and final state
+                        dists_i = [np.dot(self.crys.lattice, (site.R - siteA.R + self.crys.basis[site.ci[0]][site.ci[1]]
+                                                              - self.crys.basis[siteA.ci[0]][siteA.ci[1]]))
+                                   for site in newsiteList]
+                        dists_j = [np.dot(self.crys.lattice, (site.R - siteB.R + self.crys.basis[site.ci[0]][site.ci[1]]
+                                                              - self.crys.basis[siteB.ci[0]][siteB.ci[1]]))
+                                   for site in newsiteList]
+                        # Check if all the sites have crossed the cutoff distance - else keep this cluster
+                        if any(dist*dist > self.cutoff*self.cutoff for dist in dists_i+dists_j):
+                            continue
+                        myClList.append(cluster.Cluster(newsiteList))
 
