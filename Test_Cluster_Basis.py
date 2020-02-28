@@ -19,7 +19,7 @@ class MyTestCase(unittest.TestCase):
         for siteindex, site in enumerate(self.supBCC.mobilepos):
             # speciesAtSites[siteindex]
             (c, i), R = self.supBCC.ciR(siteindex)
-            if (c, i)==(0, 0) and np.allclose(R,0):
+            if (c, i) == (0, 0) and np.allclose(R, 0):
                 speciesAtSites[siteindex] = 4
             else:
                 speciesAtSites[siteindex] = np.random.randint(0, 4)
@@ -36,11 +36,6 @@ class MyTestCase(unittest.TestCase):
 
         # Then, generate the TSClusters - not sure if I will need these though
         self.TSclusexp = cluster.makeTSclusters(self.crys, 0, self.jnetwork, self.clusexp)
-
-
-
-    def test_vector_arrangement(self):
-        pass
 
 
 if __name__ == '__main__':
