@@ -29,7 +29,6 @@ class VectorClusterExpansion(object):
         self.FullClusterBasis, self.ScalarBasis = self.createFullBasis()
         # Generate the complete cluster basis including the
         # arrangement of species on sites other than the vacancy site.
-        self.KRAExpander = Transitions.KRAExpand
         self.index()
 
     def genVecs(self):
