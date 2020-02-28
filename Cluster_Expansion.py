@@ -204,8 +204,8 @@ class VectorClusterExpansion(object):
         :param jumpnetwork: vacancy jumpnetwork
         :return: (ijlist, ratelist, dxlist)
         """
-        jumplist = [jump for jlist in jumpnetwork for jump in jlist]
-        pass
+        # TODO - ijlist, dxlist will be calculated from the lattice, ratelist will be calculated from Transitions
+        # KRA module
 
 
 
