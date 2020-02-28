@@ -20,6 +20,7 @@ class VectorClusterExpansion(object):
         """
         self.chem = 0  # we'll work with a monoatomic basis
         self.sup = sup
+        self.crys = self.sup.crys
         # vacInd will always be the initial state in the transitions that we consider.
         self.clusexp = clusexp
         self.mobList = mobList  # labels of the mobile species - the last label is for the vacancy.
@@ -204,12 +205,27 @@ class VectorClusterExpansion(object):
     def transitions(self, mobOcc, jumpnetwork):
         """
         Function to calculate the transitions and their rates out of a given state.
-        :param mobOcc: occupancy vectors for mobile species
+        :param mobOcc: occupancy vectors for mobile species in the current state
         :param jumpnetwork: vacancy jumpnetwork
-        :return: (ijlist, ratelist, dxlist)
+        :return: (ijlist, dxlist)
         """
         # TODO - ijlist, dxlist will be calculated from the lattice, ratelist will be calculated from Transitions
-        # KRA module
+
+        transitions = []
+        for jump in [jmp for jList in jumpnetwork for jmp in jList]:
+            siteA = self.sup.index((self.chem, jump[0][0]), np.zeros(3, dtype=int))
+            Rj, (c, cj) = self.crys.cart2pos(jump[1] + np.dot(self.crys.lattice, self.crys.basis[self.chem][jump[0][1]]))
+            # check we have the correct site
+            if not cj == jump[0][1]:
+                raise ValueError("improper coordinate transformation, did not get same site")
+            siteB = self.sup.index((self.chem, jump[0][1]), Rj)
+
+            specJ = np.prod(np.array([mobOcc[spec][siteB] for spec in self.mobList]))
+
+            transitions.append((siteA, siteB, specJ))
+
+        return transitions
+
 
 
 

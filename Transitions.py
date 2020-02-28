@@ -184,4 +184,5 @@ class KRAExpand(object):
                 if all([mobOcc[spec][idx] for spec, idx in zip(clust[0], [self.sup.index(site.R + clust.R, site.ci)
                                                                           for site in clust.cluster.sites])]) == 1:
                     DelEKRA += KRACoeffs[index]
+
         return DelEKRA
