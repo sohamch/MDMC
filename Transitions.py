@@ -37,6 +37,13 @@ class KRAExpand(object):
         """
         # Go through the jumps in the jumpnetwork
         # Define Rvecs.
+        Rvecs = []
+        nmax = [int(np.round(self.cutoff*self.cutoff/self.crys.metric[i, i])) + 1 for i in range(3)]
+        Rvecs = [np.array([n0, n1, n2])
+                 for n0 in range(-nmax[0], nmax[0] + 1)
+                 for n1 in range(-nmax[1], nmax[1] + 1)
+                 for n2 in range(-nmax[2], nmax[2] + 1)]
+
         clusterjumplist = {}
         for jlist in self.jumpnetwork:
             for ((i, j), dx) in jlist:
@@ -46,5 +53,7 @@ class KRAExpand(object):
                 if not cj == j:
                     raise ValueError("improper coordinate transformation, did not get same site")
                 siteB = self.sup.index((self.chem, j), Rj)
+                newtrans = [R + Rj for R in Rvecs] + Rvecs
+
 
 
