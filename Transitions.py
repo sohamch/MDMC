@@ -5,6 +5,20 @@ import numpy as np
 This is to create KRA expansions of activation barriers. We assume for now that the expansion coefficients are given.
 """
 
+class ClusterTranslation(object):
+
+    def __init__(self, RepCluster, Rtrans):
+        self.cluster = RepCluster
+        self.R = Rtrans
+
+    def __hash__(self):
+        return hash((self.cluster, self.R[0], self.R[1], self.R[2]))
+
+    def g(self, crys, g):
+        Rnew = crys.dot(g.rot, self.R)
+        clusterNew = self.cluster.g(crys, g)
+        return self.__class__(clusterNew, Rnew)
+
 class KRAExpand(object):
     """
     Object that contains all information regarding the KRA expansion of a jumpnetwork in a supercell.
@@ -82,10 +96,32 @@ class KRAExpand(object):
                         # Check if all the sites have crossed the cutoff distance - else keep this cluster
                         if any(dist*dist > self.cutoff*self.cutoff for dist in dists_i+dists_j):
                             continue
-                        newClust = cluster.Cluster(newsiteList)
+                        # newClust = cluster.Cluster(newsiteList)
+                        # # This will not work. All clusters are automatically shifted with respect to the first site.
+                        # if newClust not in clTracker:
+                        #     newsymList = [newClust.g(self.crys, gop) for gop in ijPtGroup]
+                        #     ijClexp.append(newsymList)
+                        #     clTracker.update(newsymList)
+                        newClust = ClusterTranslation(cluster.Cluster(newsiteList), newsiteList[0].R)
                         if newClust not in clTracker:
                             newsymList = [newClust.g(self.crys, gop) for gop in ijPtGroup]
                             ijClexp.append(newsymList)
                             clTracker.update(newsymList)
 
+                clusterjumplist[(siteA, siteB)] = ijClexp
+                
+        return clusterjumplist
+
+    def defineSpecies(self, Nmobile):
+        """
+        Used to assign chemical species to the jump cluster expansions.
+        :param Nmobile: number of mobile species in the lattice, including the carrier. It is assumed that the species
+        are labelled with numbers and that the number Nmobile-1 is the label for the carrier.
+
+        :returns  SpecClusterJumpList - a cluster expansion for KRA with species assigned to the clusters.
+        """
+
+        clusterJumps = getattr(self, "clusterJumps", None)
+        if clusterJumps is None:
+            raise ValueError("Need to have generated cluster expansions for the jumps first.")
 
