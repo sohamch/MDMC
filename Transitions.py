@@ -172,6 +172,16 @@ class KRAExpand(object):
             raise ValueError("improper coordinate transformation, did not get same site")
         siteB = self.sup.index((self.chem, j), Rj)
 
-        key = (siteA, siteB, specJ)
-
-        # SymClusterlists =
+        # key = (siteA, siteB, specJ)
+        SymClusterlists = self.clusterSpeciesJumps[(siteA, siteB, specJ)]
+        if not len(SymClusterlists) == len(KRACoeffs):
+            raise TypeError("Number of KRA coefficients entered does not match the number of clusters"
+                            "for the transition")
+        # Now, check which clusters are on and calculate the KRA values
+        DelEKRA = 0
+        for index, clusterList in enumerate(SymClusterlists):
+            for clust in clusterList:
+                if all([mobOcc[spec][idx] for spec, idx in zip(clust[0], [self.sup.index(site.R + clust.R, site.ci)
+                                                                          for site in clust.cluster.sites])]) == 1:
+                    DelEKRA += KRACoeffs[index]
+        return DelEKRA
