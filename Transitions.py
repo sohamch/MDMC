@@ -55,8 +55,18 @@ class KRAExpand(object):
                 siteB = self.sup.index((self.chem, j), Rj)
                 newtrans = [R + Rj for R in Rvecs] + Rvecs
 
+                # build "point group" for this jump, from the space group of the crystal
+                ijPtGroup = []
+                for gop in self.crys.G:
+                    siteAnew = siteA.g(self.crys, gop)
+                    siteBnew = siteB.g(self.crys, gop)
+
+                    if siteA == siteAnew and siteB==siteBnew:
+                        ijPtGroup.append(gop)
+
                 # start cluster translations
-                myClList = []
+                ijClexp = []
+                clTracker = set()
                 for Rtrans in newtrans:
                     # take a cluster and translate it.
                     for cl in [clust for clustList in self.clusexp for clust in clustList]:
@@ -72,5 +82,10 @@ class KRAExpand(object):
                         # Check if all the sites have crossed the cutoff distance - else keep this cluster
                         if any(dist*dist > self.cutoff*self.cutoff for dist in dists_i+dists_j):
                             continue
-                        myClList.append(cluster.Cluster(newsiteList))
+                        newClust = cluster.Cluster(newsiteList)
+                        if newClust not in clTracker:
+                            newsymList = [newClust.g(self.crys, gop) for gop in ijPtGroup]
+                            ijClexp.append(newsymList)
+                            clTracker.update(newsymList)
+
 
