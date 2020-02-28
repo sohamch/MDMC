@@ -86,6 +86,9 @@ class KRAExpand(object):
                     for cl in [clust for clustList in self.clusexp for clust in clustList]:
                         # translate all the sites in the cluster
                         newsiteList = [site + Rtrans for site in cl.sites]
+                        # The new cluster should not contain the initial or final site of the jump.
+                        if siteA in newsiteList or siteB in newsiteList:
+                            continue
                         # Get distances of new sites from initial and final state
                         dists_i = [np.dot(self.crys.lattice, (site.R - siteA.R + self.crys.basis[site.ci[0]][site.ci[1]]
                                                               - self.crys.basis[siteA.ci[0]][siteA.ci[1]]))
@@ -96,12 +99,6 @@ class KRAExpand(object):
                         # Check if all the sites have crossed the cutoff distance - else keep this cluster
                         if any(dist*dist > self.cutoff*self.cutoff for dist in dists_i+dists_j):
                             continue
-                        # newClust = cluster.Cluster(newsiteList)
-                        # # This will not work. All clusters are automatically shifted with respect to the first site.
-                        # if newClust not in clTracker:
-                        #     newsymList = [newClust.g(self.crys, gop) for gop in ijPtGroup]
-                        #     ijClexp.append(newsymList)
-                        #     clTracker.update(newsymList)
                         newClust = ClusterTranslation(cluster.Cluster(newsiteList), newsiteList[0].R)
                         if newClust not in clTracker:
                             newsymList = [newClust.g(self.crys, gop) for gop in ijPtGroup]
@@ -118,10 +115,23 @@ class KRAExpand(object):
         :param Nmobile: number of mobile species in the lattice, including the carrier. It is assumed that the species
         are labelled with numbers and that the number Nmobile-1 is the label for the carrier.
 
+        We'll have separate expansions for every species that occupies the final site of a carrier jump,
+        and every cluster for a given jump will have species assigned to it.
+
         :returns  SpecClusterJumpList - a cluster expansion for KRA with species assigned to the clusters.
         """
 
         clusterJumps = getattr(self, "clusterJumps", None)
         if clusterJumps is None:
             raise ValueError("Need to have generated cluster expansions for the jumps first.")
+
+        clusterJumpsSpecies = {}
+        for AB, clusterSymLists in clusterJumps.items():
+            # For this transition, first assign species to the clusters
+            # use itertools.product like in normal cluster expansion.
+
+            # Then, assign species to te final site of the jumps.
+            for specJ in range(Nmobile-1):
+                ABspecJ = (AB[0], AB[1], specJ)
+
 
