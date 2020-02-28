@@ -155,27 +155,27 @@ class VectorClusterExpansion(object):
             # and are On in the initial state.
 
             InitOnClustersVac = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[0]]
-                                 if np.prod(np.array([mobOccs[species][idx]
+                                 if all([mobOccs[species][idx]
                                             for species, idx in zip(self.FullClusterBasis[bInd][0],
-                                                                    self.VclusterSupIndList[bInd][clInd])])) == 1
+                                                                    self.VclusterSupIndList[bInd][clInd])]) == 1
                                  ]
 
             InitOnClustersSpecJ = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[1]]
-                                   if np.prod(np.array([mobOccs[species][idx]
+                                   if all([mobOccs[species][idx]
                                               for species, idx in zip(self.FullClusterBasis[bInd][0],
-                                                                      self.VclusterSupIndList[bInd][clInd])])) == 1
+                                                                      self.VclusterSupIndList[bInd][clInd])]) == 1
                                    ]
 
             FinOnClustersVac = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[0]]
-                                if np.prod(np.array([mobOccs_final[species][idx]
+                                if all([mobOccs_final[species][idx]
                                            for species, idx in zip(self.FullClusterBasis[bInd][0],
-                                                                   self.VclusterSupIndList[bInd][clInd])])) == 1
+                                                                   self.VclusterSupIndList[bInd][clInd])]) == 1
                                 ]
 
             FinOnClustersSpecJ = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[1]]
-                                  if np.prod(np.array([mobOccs_final[species][idx]
+                                  if all([mobOccs_final[species][idx]
                                              for species, idx in zip(self.FullClusterBasis[bInd][0],
-                                                                     self.VclusterSupIndList[bInd][clInd])])) == 1
+                                                                     self.VclusterSupIndList[bInd][clInd])]) == 1
                                   ]
 
             # Turn of the On clusters
