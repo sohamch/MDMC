@@ -88,9 +88,8 @@ class KRAExpand(object):
             for clusterList in clusterSymLists:
                 cl0 = clusterList[0].cluster
                 # Get the order of the cluster and assign species to the sites
-                Specs = itertools.product(mobileSpecs, repeat=cl0.Norder - 2)
+                Specs = itertools.product(mobileSpecs, repeat=cl0.Norder - 2)  # take away the first two sites
                 for tup in Specs:
-                    newsymlist = []
                     # Check if the number of atoms crosses the total number of atoms of a species.
                     MobNumber = collections.Counter(tup)
                     if any(self.mobCountList[i] < j for i, j in MobNumber.items()):
@@ -104,27 +103,24 @@ class KRAExpand(object):
 
         return clusterJumpsSpecies
 
-    def getdelE_KRA(self, transition, mobOcc, specJ, KRACoeffs):
+    def getdelE_KRA(self, transition, mobOcc, KRACoeffs):
         """
         Given a transition and a state, get the KRA activation value for that jump in that state.
         During testing, we'll assume that fitting KRA coefficients has already been done.
-        :param transition: the transition in the form of ((i,j), dx)
+        :param transition: the transition in the form of ((I,J), dx) - supercell indices
         :param mobOcc: the state as an array of occupancy vectors.
         :param specJ: the species that exchanges with the vacancies.
         :param KRACoeffs: the KRA coefficients for that type of jump, arranged appropriately for each cluster.
         :return: The Calculated KRA activation energy.
         """
-        i, j, dx = transition[0][0], transition[0][1], transition[1]
-        siteA = self.sup.index((self.chem, i), np.zeros(3, dtype=int))
-        Rj, (c, cj) = self.crys.cart2pos(dx + np.dot(self.crys.lattice, self.crys.basis[self.chem][j]))
-        # check we have the correct site
-        if not cj == j:
-            raise ValueError("improper coordinate transformation, did not get same site")
-        siteB = self.sup.index((self.chem, j), Rj)
+        I, J, dx = transition[0][0], transition[0][1], transition[1]
+        specJ = sum([occ[J]*spec for spec, occ in zip(itertools.count(), mobOcc)])
+        SymClusterlists = self.clusterSpeciesJumps[(I, J, specJ)]
 
-        # key = (siteA, siteB, specJ)
-        SymClusterlists = self.clusterSpeciesJumps[(siteA, siteB, specJ)]
-        if not len(SymClusterlists) == len(KRACoeffs):
+        # SymClusterlists : Key=(A,B,SpecJ) :[[tup11, clusterlist1], [tup12, clusterlist1],...
+        # ...,[tup21, clusterlist2], [tup22, clusterlist2],....]
+        if not len(SymClusterlists) == len(KRACoeffs):  # Every clusterlist with a species must have its own
+            # coefficients
             raise TypeError("Number of KRA coefficients entered does not match the number of clusters"
                             "for the transition")
         # Now, check which clusters are on and calculate the KRA values
