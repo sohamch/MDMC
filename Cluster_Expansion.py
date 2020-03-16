@@ -160,27 +160,27 @@ class VectorClusterExpansion(object):
             # and    are On in the initial state.
 
             InitOnClustersVac = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[0]]
-                                 if all([mobOccs[species][idx]
+                                 if all([mobOccs[species][idx] == 1
                                             for species, idx in zip(self.FullClusterBasis[bInd][0],
-                                                                    self.VclusterSupIndList[bInd][clInd])]) == 1
+                                                                    self.VclusterSupIndList[bInd][clInd])])
                                  ]
 
             InitOnClustersSpecJ = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[1]]
-                                   if all([mobOccs[species][idx]
+                                   if all([mobOccs[species][idx] == 1
                                               for species, idx in zip(self.FullClusterBasis[bInd][0],
-                                                                      self.VclusterSupIndList[bInd][clInd])]) == 1
+                                                                      self.VclusterSupIndList[bInd][clInd])])
                                    ]
 
             FinOnClustersVac = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[0]]
-                                if all([mobOccs_final[species][idx]
+                                if all([mobOccs_final[species][idx] == 1
                                            for species, idx in zip(self.FullClusterBasis[bInd][0],
-                                                                   self.VclusterSupIndList[bInd][clInd])]) == 1
+                                                                   self.VclusterSupIndList[bInd][clInd])])
                                 ]
 
             FinOnClustersSpecJ = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[1]]
-                                  if all([mobOccs_final[species][idx]
+                                  if all([mobOccs_final[species][idx] == 1
                                              for species, idx in zip(self.FullClusterBasis[bInd][0],
-                                                                     self.VclusterSupIndList[bInd][clInd])]) == 1
+                                                                     self.VclusterSupIndList[bInd][clInd])])
                                   ]
 
             # Turn of the On clusters
