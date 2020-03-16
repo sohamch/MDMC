@@ -157,7 +157,7 @@ class VectorClusterExpansion(object):
             # delOcc = mobOccs_final - mobOccs  # Doesn't seem to be much we can do with this
 
             # Get all the clusters that contain the vacancy at the vacancy site and/or specJ at ij[1]
-            # and are On in the initial state.
+            # and    are On in the initial state.
 
             InitOnClustersVac = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[0]]
                                  if all([mobOccs[species][idx]
