@@ -106,9 +106,6 @@ class VectorClusterExpansion(object):
         """
         Function to add in the species arrangements to the cluster basis functions.
         """
-
-        lenMob = [np.sum(occArray) for occArray in self.sampleOccs]
-
         FullclusterBasis = []
         clusterBasis = []
         for clistInd, clist in enumerate(self.clusexp):
@@ -121,7 +118,7 @@ class VectorClusterExpansion(object):
                 mobcount = collections.Counter(tup)
                 # Check if the number of atoms of a given species does not exceed the total number of atoms of that
                 # species in the solid.
-                if any(j > lenMob[i] for i, j in mobcount.items()):
+                if any(j > self.mobCountList[i] for i, j in mobcount.items()):
                     continue
                 # Each cluster is associated with three vectors
                 # Any cluster that contains a vacancy is shifted so that the vacancy is at the origin.
@@ -131,11 +128,12 @@ class VectorClusterExpansion(object):
                 FullclusterBasis.append((tup, clistInd*3 + 2))
         return FullclusterBasis, clusterBasis
 
-    def Expand(self, mobOccs, transitions, EnCoeffs, KRACoeffs):
+    def Expand(self, beta, mobOccs, transitions, EnCoeffs, KRACoeffs):
 
         """
+        :param beta : 1/KB*T
         :param mobOccs: the mobile occupancy in the current state
-        :param transitions: the jumps out of the current transition
+        :param transitions: the jumps out of the current state - supercell indices for initial and final sites
         :param EnCoeffs: energy interaction coefficients in a cluster expansion
         :param KRACoeffs: kinetic energy coefficients - pre-formed
         :return: Wbar, Bbar - rate and bias expansions in the cluster basis
@@ -154,12 +152,12 @@ class VectorClusterExpansion(object):
 
             del_lamb = np.zeros((len(self.FullClusterBasis), 3))
 
-            # Get the KRA energy for this jump
-            # delEKRA =
-            delE = 0.0  # This will added to the KRA energy to get the activation barrier
-
             specJ = sum([occ[ij[1]]*label for occ, label in zip(mobOccs, self.mobList)])
-            siteJ = self.sup.ciR(ij[1])  # get the lattice site where the jumping species initially sits
+            # siteJ = self.sup.ciR(ij[1])  # get the lattice site where the jumping species initially sits
+
+            # Get the KRA energy for this jump
+            delEKRA = self.KRAexpander.GetKRA((ij, dx), mobOccs, KRACoeffs[(ij[0], ij[1], specJ)])
+            delE = 0.0  # This will added to the KRA energy to get the activation barrier
 
             # switch the occupancies in the final state
             mobOccs_final[specJ][ij[0]] = 1
@@ -205,7 +203,10 @@ class VectorClusterExpansion(object):
             # Turn on the Off clusters
             for (bInd, clInd) in set(FinOnClustersVac).union(FinOnClustersSpecJ):
                 del_lamb[bInd] += self.vecList[bInd][clInd]
-                delE += self.ScalarBasis[bInd // 3]
+                delE += self.ScalarBasis[bInd//3]
+
+            # append to the rateList
+            ratelist[jnum] = np.exp(-(0.5*delE + delEKRA))
 
             # Create the matrix to find Wbar
             del_lamb_mat[:, :, jnum] = np.dot(del_lamb, del_lamb.T)
