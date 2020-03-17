@@ -116,7 +116,7 @@ class KRAExpand(object):
             for clusterList in clusterSymLists:
                 cl0 = clusterList[0]
                 # Get the order of the cluster and assign species to the sites
-                Specs = itertools.product(mobileSpecs, repeat=cl0.Norder - 2)  # take away the first two sites
+                Specs = itertools.product(mobileSpecs, repeat=cl0.Norder)
                 for tup in Specs:
                     # Check if the number of atoms crosses the total number of atoms of a species.
                     MobNumber = collections.Counter(tup)
