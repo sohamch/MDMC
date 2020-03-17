@@ -9,7 +9,7 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, mobList, sampleMobOccs):
+    def __init__(self, sup, clusexp, mobList, jumpnetwork, mobCountList):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
@@ -24,13 +24,14 @@ class VectorClusterExpansion(object):
         # vacInd will always be the initial state in the transitions that we consider.
         self.clusexp = clusexp
         self.mobList = mobList  # labels of the mobile species - the last label is for the vacancy.
-        self.sampleOccs = sampleMobOccs
+        self.mobCountList = mobCountList
         # TODO - think of a better way to do this.
         self.genVecs()
         self.FullClusterBasis, self.ScalarBasis = self.createFullBasis()
         # Generate the complete cluster basis including the
         # arrangement of species on sites other than the vacancy site.
         self.index()
+        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, clusexp, mobCountList)
 
     def genVecs(self):
         """
@@ -153,6 +154,8 @@ class VectorClusterExpansion(object):
 
             del_lamb = np.zeros((len(self.FullClusterBasis), 3))
 
+            # Get the KRA energy for this jump
+            # delEKRA =
             delE = 0.0  # This will added to the KRA energy to get the activation barrier
 
             specJ = sum([occ[ij[1]]*label for occ, label in zip(mobOccs, self.mobList)])
@@ -197,10 +200,12 @@ class VectorClusterExpansion(object):
             # Turn of the On clusters
             for (bInd, clInd) in set(InitOnClustersVac).union(set(InitOnClustersSpecJ)):
                 del_lamb[bInd] -= self.vecList[bInd][clInd]
+                delE -= self.ScalarBasis[bInd//3]
 
             # Turn on the Off clusters
             for (bInd, clInd) in set(FinOnClustersVac).union(FinOnClustersSpecJ):
                 del_lamb[bInd] += self.vecList[bInd][clInd]
+                delE += self.ScalarBasis[bInd // 3]
 
             # Create the matrix to find Wbar
             del_lamb_mat[:, :, jnum] = np.dot(del_lamb, del_lamb.T)
