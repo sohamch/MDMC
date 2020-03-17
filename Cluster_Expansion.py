@@ -198,12 +198,12 @@ class VectorClusterExpansion(object):
             # Turn of the On clusters
             for (bInd, clInd) in set(InitOnClustersVac).union(set(InitOnClustersSpecJ)):
                 del_lamb[bInd] -= self.vecList[bInd][clInd]
-                delE -= self.ScalarBasis[bInd//3]
+                delE -= EnCoeffs[self.ScalarBasis[bInd//3]]
 
             # Turn on the Off clusters
             for (bInd, clInd) in set(FinOnClustersVac).union(FinOnClustersSpecJ):
                 del_lamb[bInd] += self.vecList[bInd][clInd]
-                delE += self.ScalarBasis[bInd//3]
+                delE += EnCoeffs[self.ScalarBasis[bInd//3]]
 
             # append to the rateList
             ratelist[jnum] = np.exp(-(0.5*delE + delEKRA))
@@ -228,7 +228,8 @@ class VectorClusterExpansion(object):
         """
         # TODO - ijlist, dxlist will be calculated from the lattice, ratelist will be calculated from Transitions
 
-        transitions = []
+        ijList = []
+        dxList = []
         for jump in [jmp for jList in jumpnetwork for jmp in jList]:
             siteA = self.sup.index((self.chem, jump[0][0]), np.zeros(3, dtype=int))
             Rj, (c, cj) = self.crys.cart2pos(jump[1] + np.dot(self.crys.lattice, self.crys.basis[self.chem][jump[0][1]]))
@@ -239,9 +240,10 @@ class VectorClusterExpansion(object):
 
             specJ = np.prod(np.array([mobOcc[spec][siteB] for spec in self.mobList]))
 
-            transitions.append((siteA, siteB, specJ))
+            ijList.append((siteA, siteB, jump[1]))
+            dxList.append(jump[1])
 
-        return transitions
+        return ijList, dxList
 
 
 
