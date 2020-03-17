@@ -26,7 +26,8 @@ class KRAExpand(object):
         # First, we reform the jumpnetwork
         self.TSClusters = cluster.makeTSclusters(sup.crys, chem, jumpnetwork, clusexp)
         self.SymTransClusters = self.GroupTransClusters()
-        self.clusterSpeciesJumps = self.defineSpecies()
+        self.clusterSpeciesJumps = self.defineTransSpecies()
+        self.clusterSpecies = self.defineSpecies()
 
     def GroupTransClusters(self):
         TransClustersAll = collections.defaultdict(list)
@@ -64,6 +65,16 @@ class KRAExpand(object):
         return TransClustersSym
 
     def defineSpecies(self):
+        """
+        Used to assign chemical species to site clusters
+        :return: symmetry grouped cluster expansions, with species assigned to sites
+        """
+
+        for clList in self.clusexp:
+            cl0 = clList[0]  # get the starting cluster
+
+
+    def defineTransSpecies(self):
         """
         Used to assign chemical species to the jump cluster expansions.
 
@@ -103,7 +114,7 @@ class KRAExpand(object):
 
         return clusterJumpsSpecies
 
-    def getdelE_KRA(self, transition, mobOcc, KRACoeffs):
+    def Etrans(self, transition, mobOcc, KRACoeffs, clusterCoefficient):
         """
         Given a transition and a state, get the KRA activation value for that jump in that state.
         During testing, we'll assume that fitting KRA coefficients has already been done.
@@ -125,10 +136,10 @@ class KRAExpand(object):
                             "for the transition")
         # Now, check which clusters are on and calculate the KRA values
         DelEKRA = 0
-        for index, clusterList in enumerate(SymClusterlists):
-            for clust in clusterList:
-                if all([mobOcc[spec][idx] for spec, idx in zip(clust[0], [self.sup.index(site.R + clust.R, site.ci)
-                                                                          for site in clust.cluster.sites])]) == 1:
-                    DelEKRA += KRACoeffs[index]
+        # How do we speed this up?
+        for interactIdx, (tup, clusterList) in zip(itertools.count(), SymClusterlists):
+            for cluster in clusterList:
+                if all([mobOcc[spec][site] == 1 for spec, site in zip(tup, cluster.sites[2:])]):
+                    DelEKRA += KRACoeffs[interactIdx]
 
-        return DelEKRA
+        # Next, we need the contributions of the initial and final states.
