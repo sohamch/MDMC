@@ -39,8 +39,8 @@ class KRAExpand(object):
                 siteA = clust.sites[0]
                 siteB = clust.sites[1]
 
-                IndA = self.sup.index(siteA.R, siteA.ci)
-                IndB = self.sup.index(siteB.R, siteB.ci)
+                IndA = self.sup.index(siteA.R, siteA.ci)[0]
+                IndB = self.sup.index(siteB.R, siteB.ci)[0]
 
                 TransClustersAll[(IndA, IndB)].append(clust)
 
