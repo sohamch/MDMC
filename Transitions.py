@@ -47,8 +47,8 @@ class KRAExpand(object):
         for key, clustList in TransClustersAll.items():
             Glist = []
             for g in self.crys.G:
-                siteANew = key[0].g(self.crys, g)
-                siteBNew = key[1].g(self.crys, g)
+                siteANew = siteA.g(self.crys, g)
+                siteBNew = siteB.g(self.crys, g)
 
                 if key[0] == siteANew and key[1] == siteBNew:
                     Glist.append(g)
@@ -100,7 +100,7 @@ class KRAExpand(object):
         """
 
         Nmobile = len(self.mobCountList)
-        clusterJumps = getattr(self, "clusterJumps", None)
+        clusterJumps = getattr(self, "SymTransClusters", None)
         if clusterJumps is None:
             raise ValueError("Need to generate cluster expansions for the jumps first.")
 
@@ -110,7 +110,7 @@ class KRAExpand(object):
             # For this transition, first assign species to the clusters
             AtomicClusterSymList = []
             for clusterList in clusterSymLists:
-                cl0 = clusterList[0].cluster
+                cl0 = clusterList[0]
                 # Get the order of the cluster and assign species to the sites
                 Specs = itertools.product(mobileSpecs, repeat=cl0.Norder - 2)  # take away the first two sites
                 for tup in Specs:
