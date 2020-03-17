@@ -130,19 +130,30 @@ class VectorClusterExpansion(object):
                 FullclusterBasis.append((tup, clistInd*3 + 2))
         return FullclusterBasis, clusterBasis
 
-    def Expand(self, mobOccs, transitions):
+    def Expand(self, mobOccs, transitions, EnCoeffs, KRACoeffs):
 
-        ijlist, ratelist, dxlist = transitions
+        """
+        :param mobOccs: the mobile occupancy in the current state
+        :param transitions: the jumps out of the current transition
+        :param EnCoeffs: energy interaction coefficients in a cluster expansion
+        :param KRACoeffs: kinetic energy coefficients - pre-formed
+        :return: Wbar, Bbar - rate and bias expansions in the cluster basis
+        """
+
+        ijlist, dxlist = transitions
         mobOccs_final = mobOccs.copy()
 
         del_lamb_mat = np.zeros((len(self.FullClusterBasis), len(self.FullClusterBasis), len(ijlist)))
         delxDotdelLamb = np.zeros((len(self.FullClusterBasis), len(ijlist)))
 
         # To be tensor dotted with ratelist with axes = (0,1)
+        ratelist = np.zeros(len(ijlist))
 
-        for (jnum, ij, rate, dx) in zip(itertools.count(), ijlist, ratelist, dxlist):
+        for (jnum, ij, dx) in zip(itertools.count(), ijlist, dxlist):
 
             del_lamb = np.zeros((len(self.FullClusterBasis), 3))
+
+            delE = 0.0  # This will added to the KRA energy to get the activation barrier
 
             specJ = sum([occ[ij[1]]*label for occ, label in zip(mobOccs, self.mobList)])
             siteJ = self.sup.ciR(ij[1])  # get the lattice site where the jumping species initially sits

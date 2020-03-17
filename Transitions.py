@@ -69,10 +69,23 @@ class KRAExpand(object):
         Used to assign chemical species to site clusters
         :return: symmetry grouped cluster expansions, with species assigned to sites
         """
+        clusterSpecies = []
+        for clistInd, clist in enumerate(self.clusexp):
+            cl0 = clist[0]  # get the representative cluster
+            # cluster.sites is a tuple, which maintains the order of the elements.
+            Nmobile = len(cl0.sites)
+            arrangemobs = itertools.product(range(len(self.mobCountList)), repeat=Nmobile)
+            # arrange mobile sites on mobile species.
 
-        for clList in self.clusexp:
-            cl0 = clList[0]  # get the starting cluster
-
+            for tup in arrangemobs:
+                mobcount = collections.Counter(tup)
+                # Check if the number of atoms of a given species does not exceed the total number of atoms of that
+                # species in the solid.
+                if any(j > self.mobCountList[i] for i, j in mobcount.items()):
+                    continue
+                # TODO - can we check for absence of vacancy at origin and ignore it?
+                clusterSpecies.append([tup, clist])
+        return clusterSpecies
 
     def defineTransSpecies(self):
         """
@@ -114,7 +127,7 @@ class KRAExpand(object):
 
         return clusterJumpsSpecies
 
-    def Etrans(self, transition, mobOcc, KRACoeffs, clusterCoefficient):
+    def GetKRA(self, transition, mobOcc, KRACoeffs):
         """
         Given a transition and a state, get the KRA activation value for that jump in that state.
         During testing, we'll assume that fitting KRA coefficients has already been done.
@@ -142,4 +155,6 @@ class KRAExpand(object):
                 if all([mobOcc[spec][site] == 1 for spec, site in zip(tup, cluster.sites[2:])]):
                     DelEKRA += KRACoeffs[interactIdx]
 
+        return DelEKRA
         # Next, we need the contributions of the initial and final states.
+        # Have to check which clusters are on and which are off
