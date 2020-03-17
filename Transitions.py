@@ -56,6 +56,7 @@ class KRAExpand(object):
 
                 if siteA == siteANew and siteB == siteBNew:
                     Glist.append(g)
+
             newSymList = []
             clusts_done = set()
             for clust in clustList:
@@ -74,7 +75,8 @@ class KRAExpand(object):
         :return: symmetry grouped cluster expansions, with species assigned to sites
         """
         clusterSpecies = []
-        for clistInd, clist in enumerate(self.clusexp):
+        for clistInd, clset in enumerate(self.clusexp):
+            clist = list(clset)
             cl0 = clist[0]  # get the representative cluster
             # cluster.sites is a tuple, which maintains the order of the elements.
             Nmobile = len(cl0.sites)

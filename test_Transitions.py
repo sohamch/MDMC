@@ -18,7 +18,7 @@ class testKRA(unittest.TestCase):
             spec = np.random.randint(0, 4)
             self.mobOccs[spec][site] = 1
         self.mobOccs[-1, 0] = 1
-        self.mobCountList = [(i, np.sum(self.mobOccs[i])) for i in range(5)]
+        self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(5)]
         self.clusexp = cluster.makeclusters(self.crys, 0.29, 4)
         self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.clusexp, self.mobCountList)
 
@@ -27,17 +27,23 @@ class testKRA(unittest.TestCase):
         To check if the group operations that form the clusters keep the transition sites unchanged.
         """
         for key, clusterLists in self.KRAexpander.SymTransClusters.items():
-            siteA = self.superBCC.ciR(key[0])
-            siteB = self.superBCC.ciR(key[1])
+
+            ciA, RA = self.superBCC.ciR(key[0])
+            ciB, RB = self.superBCC.ciR(key[1])
+            siteA = cluster.ClusterSite(ci=ciA, R=RA)
+            siteB = cluster.ClusterSite(ci=ciB, R=RB)
+
             for clist in clusterLists:
                 cl0 = clist[0]
                 for clust in clist:
                     count = 0
+                    countSym = 0
                     for g in self.crys.G:
-                        clNew = cl0.g(self.crys, self.g)
+                        clNew = cl0.g(self.crys, g)
                         if clNew == clust:
                             count += 1
-                            self.assertEqual(siteA, siteA.g(self.crys, g))
-                            self.assertEqual(siteB, siteB.g(self.crys, g))
+                            if siteA == siteA.g(self.crys, g) and siteB == siteB.g(self.crys, g):
+                                countSym += 1
                     self.assertNotEqual(count, 0)
+                    self.assertNotEqual(countSym, 0)
 
