@@ -45,12 +45,16 @@ class KRAExpand(object):
                 TransClustersAll[(IndA, IndB)].append(clust)
 
         for key, clustList in TransClustersAll.items():
+            ciA, RA = self.sup.ciR(key[0])
+            ciB, RB = self.sup.ciR(key[1])
+            siteA = cluster.ClusterSite(ci=ciA, R=RA)
+            siteB = cluster.ClusterSite(ci=ciB, R=RB)
             Glist = []
             for g in self.crys.G:
                 siteANew = siteA.g(self.crys, g)
                 siteBNew = siteB.g(self.crys, g)
 
-                if key[0] == siteANew and key[1] == siteBNew:
+                if siteA == siteANew and siteB == siteBNew:
                     Glist.append(g)
             newSymList = []
             clusts_done = set()
