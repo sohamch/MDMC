@@ -3,6 +3,7 @@ import numpy as np
 import collections
 import Transitions
 import unittest
+import timeit
 
 class testKRA(unittest.TestCase):
 
