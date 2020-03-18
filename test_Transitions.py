@@ -78,5 +78,22 @@ class testKRA(unittest.TestCase):
                 numTrue = 4**(cl0.Norder)
                 self.assertEqual(numTrue, count, msg="{}, {}, {}".format(numTrue, count, cl0.Norder))
 
+    def test_KRA(self):
+        """
+        Checking whether the KRA expansions are done correctly
+        """
+        # Go through each transition
+        for transition, clusterLists in self.KRAexpander.clusterSpeciesJumps:
+            # get the number of clusterLists, and generate that many coefficients
+            KRACoeffs = np.array([np.random.rand() for i in range(len(clusterLists))])
+            numOn = np.zeros(len(KRACoeffs))
+            # Now go through the clusterLists and note which clusters are on
+            for Idx, (tup, clList) in enumerate(clusterLists):
+                for cl in clList:
+                    # check if this cluster is On
+
+
+        pass
+
 
 
