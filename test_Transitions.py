@@ -33,10 +33,11 @@ class testKRA(unittest.TestCase):
             ciB, RB = self.superBCC.ciR(key[1])
             siteA = cluster.ClusterSite(ci=ciA, R=RA)
             siteB = cluster.ClusterSite(ci=ciB, R=RB)
-
+            clusterListCount = collections.defaultdict(int)  # each cluster should only appear in one list
             for clist in clusterLists:
                 cl0 = clist[0]
                 for clust in clist:
+                    clusterListCount[clust] += 1
                     count = 0
                     countSym = 0
                     for g in self.crys.G:
@@ -47,6 +48,8 @@ class testKRA(unittest.TestCase):
                                 countSym += 1
                     self.assertNotEqual(count, 0)
                     self.assertNotEqual(countSym, 0)
+            for clust, count in clusterListCount.items():
+                self.assertEqual(count, 1)
 
     def test_species_grouping(self):
         """
