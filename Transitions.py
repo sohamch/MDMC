@@ -99,7 +99,7 @@ class KRAExpand(object):
                         continue
                     AtomicClusterSymList.append([tup, clusterList])
             # use itertools.product like in normal cluster expansion.
-            # Then, assign species to te final site of the jumps.
+            # Then, assign species to the final site of the jumps.
             for specJ in range(Nmobile-1):
                 ABspecJ = (AB[0], AB[1], specJ)
                 clusterJumpsSpecies[ABspecJ] = AtomicClusterSymList
@@ -133,7 +133,6 @@ class KRAExpand(object):
             for cluster in clusterList:
                 if all([mobOcc[spec][site] == 1 for spec, site in zip(tup, cluster.sites[2:])]):
                     DelEKRA += KRACoeffs[interactIdx]
-
         return DelEKRA
         # Next, we need the contributions of the initial and final states.
         # Have to check which clusters are on and which are off

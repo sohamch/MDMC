@@ -1,5 +1,6 @@
 from onsager import crystal, supercell, cluster
 import numpy as np
+import collections
 import Transitions
 import unittest
 
@@ -52,4 +53,30 @@ class testKRA(unittest.TestCase):
         The objective for this is to check that each clusterlist is repeated as many times as there should be
         species in its sites.
         """
+        # First, count that every transition has every specJ at the end site
+        clusterSpeciesJumps = self.KRAexpander.clusterSpeciesJumps
+
+        counter = collections.defaultdict(int)
+        for key, items in clusterSpeciesJumps.items():
+            counter[(key[0], key[1])] += 1
+
+        for key, item in counter.items():
+            self.assertEqual(item, 4)
+
+        # Now check that all possible atomic arrangements have been accounted for
+        clusterCounts = collections.defaultdict(int)
+        keyset = set()
+        for key, SpeciesclusterLists in clusterSpeciesJumps.items():
+            if (key[0], key[1]) in keyset:
+                continue
+            keyset.add((key[0], key[1]))
+            for species, clusterList in SpeciesclusterLists:
+                cl0 = clusterList[0]
+                clusterCounts[cl0] += 1
+
+        for cl0, count in clusterCounts.items():
+            numTrue = 4**(cl0.Norder)
+            self.assertEqual(numTrue, count, msg="{}, {}, {}".format(numTrue, count, cl0.Norder))
+
+
 
