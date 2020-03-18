@@ -13,7 +13,7 @@ class testKRA(unittest.TestCase):
         self.superBCC = supercell.ClusterSupercell(self.crys, self.superlatt)
         # get the number of sites in the supercell - should be 8x8x8
         numSites = len(self.superBCC.mobilepos)
-        vacsite = self.superBCC.index(np.zeros(3, dtype=int), (0, 0))[0]
+        self.vacsite = self.superBCC.index(np.zeros(3, dtype=int), (0, 0))[0]
         self.mobOccs = np.zeros((5, numSites), dtype=int)
         for site in range(1, numSites):
             spec = np.random.randint(0, 4)
@@ -83,17 +83,35 @@ class testKRA(unittest.TestCase):
         Checking whether the KRA expansions are done correctly
         """
         # Go through each transition
-        for transition, clusterLists in self.KRAexpander.clusterSpeciesJumps:
+        for transition, clusterLists in self.KRAexpander.clusterSpeciesJumps.items():
             # get the number of clusterLists, and generate that many coefficients
             KRACoeffs = np.array([np.random.rand() for i in range(len(clusterLists))])
-            numOn = np.zeros(len(KRACoeffs))
+            valOn = np.zeros(len(KRACoeffs))
             # Now go through the clusterLists and note which clusters are on
             for Idx, (tup, clList) in enumerate(clusterLists):
                 for cl in clList:
                     # check if this cluster is On
+                    prod = 1
+                    for siteInd, site in enumerate(cl.sites):
+                        siteIdx = self.superBCC.index(site.R, site.ci)[0]
+                        if siteInd == 0:
+                            # vacancy site is always occupied by vacancy
+                            self.assertEqual(siteIdx, self.vacsite)
+                            self.assertEqual(self.mobOccs[-1, siteInd], 1)
+                        elif siteInd == 1:
+                            # SpecJ
+                            specJ = transition[2]
+                            # check if this site is occupied
+                            self.assertEqual(self.superBCC.index(site.R, site.ci)[0], transition[1])
+                            if self.mobOccs[specJ][transition[1]] == 0:
+                                continue  # this is not the transition we are looking for for this state
+                        elif self.mobOccs[tup[siteInd - 2], siteIdx] == 0:
+                            prod = 0
 
+                    if prod == 1:
+                        valOn[Idx] += KRACoeffs[Idx]
 
-        pass
-
-
-
+            KRAen = np.sum(valOn)
+            KRAcalc = self.KRAexpander.GetKRA(transition, self.mobOccs, KRACoeffs)
+            self.assertTrue(np.allclose(KRAen, KRAcalc), msg="{}, {}".format(KRAen, KRAcalc))
+            print("Envalues : {}, {}".format(KRAcalc, KRAen))

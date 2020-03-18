@@ -116,8 +116,7 @@ class KRAExpand(object):
         :param KRACoeffs: the KRA coefficients for that type of jump, arranged appropriately for each cluster.
         :return: The Calculated KRA activation energy.
         """
-        I, J, dx = transition[0][0], transition[0][1], transition[1]
-        specJ = sum([occ[J]*spec for spec, occ in zip(itertools.count(), mobOcc)])
+        I, J, specJ = transition[0], transition[1], transition[2]
         SymClusterlists = self.clusterSpeciesJumps[(I, J, specJ)]
 
         # SymClusterlists : Key=(A,B,SpecJ) :[[tup11, clusterlist1], [tup12, clusterlist1],...
@@ -131,7 +130,7 @@ class KRAExpand(object):
         # How do we speed this up?
         for interactIdx, (tup, clusterList) in zip(itertools.count(), SymClusterlists):
             for cluster in clusterList:
-                if all([mobOcc[spec][site] == 1 for spec, site in zip(tup, cluster.sites[2:])]):
+                if all(mobOcc[spec, self.sup.index(site.R, site.ci)[0]] == 1 for spec, site in zip(tup, cluster.sites[2:])):
                     DelEKRA += KRACoeffs[interactIdx]
         return DelEKRA
         # Next, we need the contributions of the initial and final states.
