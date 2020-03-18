@@ -27,7 +27,6 @@ class KRAExpand(object):
         self.TSClusters = cluster.makeTSclusters(sup.crys, chem, jumpnetwork, clusexp)
         self.SymTransClusters = self.GroupTransClusters()
         self.clusterSpeciesJumps = self.defineTransSpecies()
-        self.clusterSpecies = self.defineSpecies()
 
     def GroupTransClusters(self):
         TransClustersAll = collections.defaultdict(list)
@@ -68,30 +67,6 @@ class KRAExpand(object):
             TransClustersSym[key] = newSymList
 
         return TransClustersSym
-
-    def defineSpecies(self):
-        """
-        Used to assign chemical species to site clusters
-        :return: symmetry grouped cluster expansions, with species assigned to sites
-        """
-        clusterSpecies = []
-        for clistInd, clset in enumerate(self.clusexp):
-            clist = list(clset)
-            cl0 = clist[0]  # get the representative cluster
-            # cluster.sites is a tuple, which maintains the order of the elements.
-            Nmobile = len(cl0.sites)
-            arrangemobs = itertools.product(range(len(self.mobCountList)), repeat=Nmobile)
-            # arrange mobile sites on mobile species.
-
-            for tup in arrangemobs:
-                mobcount = collections.Counter(tup)
-                # Check if the number of atoms of a given species does not exceed the total number of atoms of that
-                # species in the solid.
-                if any(j > self.mobCountList[i] for i, j in mobcount.items()):
-                    continue
-                # TODO - can we check for absence of vacancy at origin and ignore it?
-                clusterSpecies.append([tup, clist])
-        return clusterSpecies
 
     def defineTransSpecies(self):
         """
