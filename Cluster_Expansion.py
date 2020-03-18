@@ -9,7 +9,7 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, mobList, jumpnetwork, mobCountList):
+    def __init__(self, sup, clusexp, jumpnetwork, mobCountList):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
@@ -23,8 +23,8 @@ class VectorClusterExpansion(object):
         self.crys = self.sup.crys
         # vacInd will always be the initial state in the transitions that we consider.
         self.clusexp = clusexp
-        self.mobList = mobList  # labels of the mobile species - the last label is for the vacancy.
         self.mobCountList = mobCountList
+        self.mobList = list(range(len(mobCountList)))
         # TODO - think of a better way to do this.
         self.genVecs()
         self.FullClusterBasis, self.ScalarBasis = self.createFullBasis()
@@ -121,7 +121,6 @@ class VectorClusterExpansion(object):
                 if any(j > self.mobCountList[i] for i, j in mobcount.items()):
                     continue
                 # Each cluster is associated with three vectors
-                # Any cluster that contains a vacancy is shifted so that the vacancy is at the origin.
                 clusterBasis.append((tup, clistInd))
                 FullclusterBasis.append((tup, clistInd*3))
                 FullclusterBasis.append((tup, clistInd*3 + 1))

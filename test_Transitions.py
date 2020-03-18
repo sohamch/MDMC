@@ -2,8 +2,8 @@ from onsager import crystal, supercell, cluster
 import numpy as np
 import collections
 import Transitions
+import Cluster_Expansion
 import unittest
-import timeit
 
 class testKRA(unittest.TestCase):
 
@@ -23,6 +23,7 @@ class testKRA(unittest.TestCase):
         self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(5)]
         self.clusexp = cluster.makeclusters(self.crys, 0.29, 4)
         self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.clusexp, self.mobCountList)
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, )
 
     def test_groupTrans(self):
         """
@@ -76,7 +77,7 @@ class testKRA(unittest.TestCase):
                 clusterCounts[cl0] += 1
 
             for cl0, count in clusterCounts.items():
-                numTrue = 4**(cl0.Norder)
+                numTrue = 4**cl0.Norder
                 self.assertEqual(numTrue, count, msg="{}, {}, {}".format(numTrue, count, cl0.Norder))
 
     def test_KRA(self):
@@ -116,3 +117,14 @@ class testKRA(unittest.TestCase):
             KRAcalc = self.KRAexpander.GetKRA(transition, self.mobOccs, KRACoeffs)
             self.assertTrue(np.allclose(KRAen, KRAcalc), msg="{}, {}".format(KRAen, KRAcalc))
             print("Envalues : {}, {}".format(KRAcalc, KRAen))
+
+
+class test_Vector_Cluster_Expansion(testKRA):
+
+    def test_genvecs(self):
+        """
+        Here, we test if we have generated the vector cluster basis (site-based only) properly
+        """
+
+        # Test 1 - check that every clusterList is repeated exactly three times
+        for
