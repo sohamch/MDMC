@@ -67,19 +67,16 @@ class testKRA(unittest.TestCase):
             self.assertEqual(item, 4)
 
         # Now check that all possible atomic arrangements have been accounted for
-        clusterCounts = collections.defaultdict(int)
-        keyset = set()
         for key, SpeciesclusterLists in clusterSpeciesJumps.items():
-            if (key[0], key[1]) in keyset:
-                continue
-            keyset.add((key[0], key[1]))
+            clusterCounts = collections.defaultdict(int)
             for species, clusterList in SpeciesclusterLists:
                 cl0 = clusterList[0]
+                self.assertEqual(cl0.Norder, len(species))
                 clusterCounts[cl0] += 1
 
-        for cl0, count in clusterCounts.items():
-            numTrue = 4**(cl0.Norder)
-            self.assertEqual(numTrue, count, msg="{}, {}, {}".format(numTrue, count, cl0.Norder))
+            for cl0, count in clusterCounts.items():
+                numTrue = 4**(cl0.Norder)
+                self.assertEqual(numTrue, count, msg="{}, {}, {}".format(numTrue, count, cl0.Norder))
 
 
 
