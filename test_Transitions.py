@@ -47,3 +47,9 @@ class testKRA(unittest.TestCase):
                     self.assertNotEqual(count, 0)
                     self.assertNotEqual(countSym, 0)
 
+    def test_species_grouping(self):
+        """
+        The objective for this is to check that each clusterlist is repeated as many times as there should be
+        species in its sites.
+        """
+
