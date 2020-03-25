@@ -4,6 +4,40 @@ import collections
 import itertools
 import Transitions
 
+class ClusterSpecies():
+
+    def __init__(self, specList, siteList):
+        if len(specList)!= len(siteList):
+            raise ValueError("Species and site lists must have same length")
+        if not all(isinstance(site, cluster.ClusterSite) for site in siteList):
+            raise TypeError("The sites must be entered as clusterSite object instances")
+        # Form (site, species) set
+        # Calculate the translation to bring center of the sites to the origin unit cell
+        self.specList = specList
+        self.siteList = siteList
+        Rtrans = sum([site.R for site in siteList])//len(siteList)
+        self.SiteSpecs = set([(site-Rtrans, spec) for site, spec in zip(siteList, specList)])
+        self.__hashcache__ = sum([hash((site-Rtrans, spec))for site, spec in zip(siteList, specList)])
+
+    def __eq__(self, other):
+        if self.SiteSpecs == other.SiteSpecs:
+            return True
+        return False
+
+    def __hash__(self):
+        return self.__hashcache__
+
+    def g(self, crys, g):
+        return self.__class__(self.specList, [site.g(crys, g) for site in self.siteList])
+
+    def __repr__(self):
+        str= ""
+        for site, spec in zip(self.siteList, self.specList):
+            str += "Spec:{}, site:{},{}".format(spec, site.ci, site.R)
+        return str
+
+    def __str__(self):
+        return self.__repr__()
 
 class VectorClusterExpansion(object):
     """
@@ -40,25 +74,26 @@ class VectorClusterExpansion(object):
         sup = self.sup
         clusexp = self.clusexp
         Id3 = np.eye(3)
-        self.VclusterList = []
+        self.SymVecClustList = []
         self.VclusterSupIndList = []
-        self.vecList = []
+        self.SymVecList = []
         for clist in clusexp:
-            cl0 = clist[0]
+            cl0 = list(clist)[0]
             for vec in Id3:
-                symclList = []
+                symclList = [cl0]
                 symcLSupIndList = []
-                symvecList = []
+                symvecList = [vec]
                 for cl in clist:
                     for gop in sup.crys.G:
                         if cl0.g(sup.crys, gop) == cl:
                             if any(cl1 == cl for cl1 in symclList):
                                 continue
                             symclList.append(cl)
-                            symcLSupIndList.append([site for site in cl.sites])
                             symvecList.append(np.dot(gop.cartrot, vec))
-                self.VclusterList.append(symclList)
-                self.vecList.append(symvecList)
+                            symcLSupIndList.append([self.sup.index(site.R, site.ci) for site in cl.sites])
+
+                self.SymVecClustList.append(symclList)
+                self.SymVecList.append(symvecList)
                 self.VclusterSupIndList.append(symcLSupIndList)
 
     def index(self):
@@ -67,7 +102,7 @@ class VectorClusterExpansion(object):
         """
         siteToVclusBasis = {}
         for BasisInd, BasisDat in enumerate(self.FullClusterBasis):
-            for clInd, cl in enumerate(self.VclusterList[BasisDat[1]]):
+            for clInd, cl in enumerate(self.SymVecClustList[BasisDat[1]]):
                 for siteInd, site in enumerate(cl.sites):
                     if site.ci not in siteToVclusBasis:
                         siteToVclusBasis[site.ci] = collections.defaultdict(list)
@@ -90,7 +125,7 @@ class VectorClusterExpansion(object):
         """
         siteToVclusBasis = collections.defaultdict(list)
         for BasisInd, BasisDat in enumerate(self.FullClusterBasis):
-            for clInd, cl in enumerate(self.VclusterList[BasisDat[1]]):
+            for clInd, cl in enumerate(self.SymVecClustList[BasisDat[1]]):
                 for siteInd, site in enumerate(cl.sites):
                     siteToVclusBasis[self.sup.index(site.R, site.ci)].append((BasisInd, clInd, siteInd))
         self.SupInd2VClus = siteToVclusBasis
@@ -109,7 +144,7 @@ class VectorClusterExpansion(object):
         FullclusterBasis = []
         clusterBasis = []
         for clistInd, clist in enumerate(self.clusexp):
-            cl0 = clist[0]  # get the representative cluster
+            cl0 = list(clist)[0]  # get the representative cluster
             # cluster.sites is a tuple, which maintains the order of the elements.
             Nmobile = len(cl0.sites)
             arrangemobs = itertools.product(self.mobList, repeat=Nmobile)  # arrange mobile sites on mobile species.
@@ -196,12 +231,12 @@ class VectorClusterExpansion(object):
 
             # Turn of the On clusters
             for (bInd, clInd) in set(InitOnClustersVac).union(set(InitOnClustersSpecJ)):
-                del_lamb[bInd] -= self.vecList[bInd][clInd]
+                del_lamb[bInd] -= self.SymVecList[bInd][clInd]
                 delE -= EnCoeffs[self.ScalarBasis[bInd//3]]
 
             # Turn on the Off clusters
             for (bInd, clInd) in set(FinOnClustersVac).union(FinOnClustersSpecJ):
-                del_lamb[bInd] += self.vecList[bInd][clInd]
+                del_lamb[bInd] += self.SymVecList[bInd][clInd]
                 delE += EnCoeffs[self.ScalarBasis[bInd//3]]
 
             # append to the rateList
