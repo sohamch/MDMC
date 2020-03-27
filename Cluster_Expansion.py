@@ -30,26 +30,30 @@ class ClusterSpecies():
     def g(self, crys, g):
         return self.__class__(self.specList, [site.g(crys, g) for site in self.siteList])
 
-    def __repr__(self):
+    def strRep(self):
         str= ""
         for site, spec in zip(self.siteList, self.specList):
             str += "Spec:{}, site:{},{}".format(spec, site.ci, site.R)
         return str
 
+    def __repr__(self):
+        return self.strRep()
+
     def __str__(self):
-        return self.__repr__()
+        return self.strRep()
+
 
 class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, jumpnetwork, mobCountList):
+    def __init__(self, sup, clusexp, jumpnetwork, mobCountList, vacSite):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
         :param mobList - list of labels for chemical species on mobile sites - in order as their occupancies are defined.
         :param sampleMobOccs - a starting mobile occupancy array to just count the number of each species
-
+        :param vacSite - the site of the vacancy as a clusterSite object. This does not change during the simulation.
         In this type of simulations, we consider a solid with a single wyckoff set on which atoms are arranged.
         """
         self.chem = 0  # we'll work with a monoatomic basis
@@ -59,13 +63,33 @@ class VectorClusterExpansion(object):
         self.clusexp = clusexp
         self.mobCountList = mobCountList
         self.mobList = list(range(len(mobCountList)))
+        self.vacSite = vacSite
         # TODO - think of a better way to do this.
         self.genVecs()
-        self.FullClusterBasis, self.ScalarBasis = self.createFullBasis()
+        self.ScalarBasis = self.createScalarBasis()
         # Generate the complete cluster basis including the
         # arrangement of species on sites other than the vacancy site.
         self.index()
         self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, clusexp, mobCountList)
+
+    def recalcClusters(self):
+        """
+        Intended to take in a site based cluster expansion and recalculate the clusters with species in them
+        """
+        considered = set()
+        for clList in self.clusexp:
+            for clust in clList:
+                Nsites = len(clust.sites)
+                occupancies = itertools.product(self.mobList, repeat=Nsites)
+                for siteOcc in occupancies:
+                    # Make the cluster site object
+                    ClustSpec = ClusterSpecies(siteOcc, clust.sites)
+                    # check if this has already been considered
+                    if ClustSpec in considered:
+                        continue
+                    # Otherwise, find all symmetry-grouped counterparts
+
+
 
     def genVecs(self):
         """
@@ -96,59 +120,57 @@ class VectorClusterExpansion(object):
                 self.SymVecList.append(symvecList)
                 self.VclusterSupIndList.append(symcLSupIndList)
 
-    def index(self):
-        """
-        Index each site to a vector cluster list.
-        """
-        siteToVclusBasis = {}
-        for BasisInd, BasisDat in enumerate(self.FullClusterBasis):
-            for clInd, cl in enumerate(self.SymVecClustList[BasisDat[1]]):
-                for siteInd, site in enumerate(cl.sites):
-                    if site.ci not in siteToVclusBasis:
-                        siteToVclusBasis[site.ci] = collections.defaultdict(list)
-                    siteToVclusBasis[site.ci][BasisInd].append((clInd, siteInd))
-        self.site2VclusBasis = siteToVclusBasis
+    # def index(self):
+    #     """
+    #     Index each site to a vector cluster list.
+    #     """
+    #     siteToVclusBasis = {}
+    #     for BasisInd, BasisDat in enumerate(self.FullClusterBasis):
+    #         for clInd, cl in enumerate(self.SymVecClustList[BasisDat[1]]):
+    #             for siteInd, site in enumerate(cl.sites):
+    #                 if site.ci not in siteToVclusBasis:
+    #                     siteToVclusBasis[site.ci] = collections.defaultdict(list)
+    #                 siteToVclusBasis[site.ci][BasisInd].append((clInd, siteInd))
+    #     self.site2VclusBasis = siteToVclusBasis
+    #
+    #     site2ScalClusBasis = {}
+    #     for BasisInd, BasisDat in enumerate(self.ScalarBasis):
+    #         for clInd, cl in enumerate(self.clusexp[BasisDat[1]]):
+    #             for siteInd, site in enumerate(cl.sites):
+    #                 if site.ci not in site2ScalClusBasis:
+    #                     siteToVclusBasis[site.ci] = collections.defaultdict(list)
+    #                 siteToVclusBasis[site.ci][BasisInd].append((clInd, siteInd))
+    #     self.site2ScalBasis = siteToVclusBasis
+    #
+    # def indexSupInd2Clus(self):
+    #     """
+    #     Takes the sites in the clusters, get their indices in the supercell sitelist, and store the clusters they
+    #     belong to, with these indices as keys.
+    #     """
+    #     siteToVclusBasis = collections.defaultdict(list)
+    #     for BasisInd, BasisDat in enumerate(self.FullClusterBasis):
+    #         for clInd, cl in enumerate(self.SymVecClustList[BasisDat[1]]):
+    #             for siteInd, site in enumerate(cl.sites):
+    #                 siteToVclusBasis[self.sup.index(site.R, site.ci)].append((BasisInd, clInd, siteInd))
+    #     self.SupInd2VClus = siteToVclusBasis
+    #
+    #     supInd2scalBasis = {}
+    #     for BasisInd, BasisDat in enumerate(self.ScalarBasis):
+    #         for clInd, cl in enumerate(self.clusexp[BasisDat[1]]):
+    #             for siteInd, site in enumerate(cl.sites):
+    #                 supInd2scalBasis[self.sup.index(site.R, site.ci)].append((BasisInd, clInd, siteInd))
+    #     self.supInd2scalBasis = supInd2scalBasis
 
-        site2ScalClusBasis = {}
-        for BasisInd, BasisDat in enumerate(self.ScalarBasis):
-            for clInd, cl in enumerate(self.clusexp[BasisDat[1]]):
-                for siteInd, site in enumerate(cl.sites):
-                    if site.ci not in site2ScalClusBasis:
-                        siteToVclusBasis[site.ci] = collections.defaultdict(list)
-                    siteToVclusBasis[site.ci][BasisInd].append((clInd, siteInd))
-        self.site2ScalBasis = siteToVclusBasis
-
-    def indexSupInd2Clus(self):
-        """
-        Takes the sites in the clusters, get their indices in the supercell sitelist, and store the clusters they
-        belong to, with these indices as keys.
-        """
-        siteToVclusBasis = collections.defaultdict(list)
-        for BasisInd, BasisDat in enumerate(self.FullClusterBasis):
-            for clInd, cl in enumerate(self.SymVecClustList[BasisDat[1]]):
-                for siteInd, site in enumerate(cl.sites):
-                    siteToVclusBasis[self.sup.index(site.R, site.ci)].append((BasisInd, clInd, siteInd))
-        self.SupInd2VClus = siteToVclusBasis
-
-        supInd2scalBasis = {}
-        for BasisInd, BasisDat in enumerate(self.ScalarBasis):
-            for clInd, cl in enumerate(self.clusexp[BasisDat[1]]):
-                for siteInd, site in enumerate(cl.sites):
-                    supInd2scalBasis[self.sup.index(site.R, site.ci)].append((BasisInd, clInd, siteInd))
-        self.supInd2scalBasis = supInd2scalBasis
-
-    def createFullBasis(self):
+    def createScalarBasis(self):
         """
         Function to add in the species arrangements to the cluster basis functions.
         """
-        FullclusterBasis = []
         clusterBasis = []
         for clistInd, clist in enumerate(self.clusexp):
             cl0 = list(clist)[0]  # get the representative cluster
             # cluster.sites is a tuple, which maintains the order of the elements.
             Nmobile = len(cl0.sites)
             arrangemobs = itertools.product(self.mobList, repeat=Nmobile)  # arrange mobile sites on mobile species.
-
             for tup in arrangemobs:
                 mobcount = collections.Counter(tup)
                 # Check if the number of atoms of a given species does not exceed the total number of atoms of that
@@ -157,10 +179,7 @@ class VectorClusterExpansion(object):
                     continue
                 # Each cluster is associated with three vectors
                 clusterBasis.append((tup, clistInd))
-                FullclusterBasis.append((tup, clistInd*3))
-                FullclusterBasis.append((tup, clistInd*3 + 1))
-                FullclusterBasis.append((tup, clistInd*3 + 2))
-        return FullclusterBasis, clusterBasis
+        return clusterBasis
 
     def Expand(self, beta, mobOccs, transitions, EnCoeffs, KRACoeffs):
 
