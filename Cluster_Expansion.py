@@ -66,10 +66,10 @@ class VectorClusterExpansion(object):
         self.clusexp = clusexp
         self.mobCountList = mobCountList
         self.mobList = list(range(len(mobCountList)))
-
+        self.vacSite = vacSite
         self.ScalarBasis = self.createScalarBasis()
         self.SpecClusters = self.recalcClusters()
-        self.vecCLus, self.vecVec = self.genVecClustBasis(self.SpecClusters)
+        self.vecClus, self.vecVec = self.genVecClustBasis(self.SpecClusters)
 
         # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
         self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, clusexp, mobCountList)
@@ -153,97 +153,64 @@ class VectorClusterExpansion(object):
                 # Each cluster is associated with three vectors
                 clusterBasis.append((tup, clistInd))
         return clusterBasis
+         
+    def Expand(self, beta, mobOccs, transitions, EnCoeffs, KRACoeffs):
 
-    # def Expand(self, beta, mobOccs, transitions, EnCoeffs, KRACoeffs):
-    #
-    #     """
-    #     :param beta : 1/KB*T
-    #     :param mobOccs: the mobile occupancy in the current state
-    #     :param transitions: the jumps out of the current state - supercell indices for initial and final sites
-    #     :param EnCoeffs: energy interaction coefficients in a cluster expansion
-    #     :param KRACoeffs: kinetic energy coefficients - pre-formed
-    #     :return: Wbar, Bbar - rate and bias expansions in the cluster basis
-    #     """
-    #
-    #     ijlist, dxlist = transitions
-    #     mobOccs_final = mobOccs.copy()
-    #
-    #     del_lamb_mat = np.zeros((len(self.FullClusterBasis), len(self.FullClusterBasis), len(ijlist)))
-    #     delxDotdelLamb = np.zeros((len(self.FullClusterBasis), len(ijlist)))
-    #
-    #     # To be tensor dotted with ratelist with axes = (0,1)
-    #     ratelist = np.zeros(len(ijlist))
-    #
-    #     for (jnum, ij, dx) in zip(itertools.count(), ijlist, dxlist):
-    #
-    #         del_lamb = np.zeros((len(self.FullClusterBasis), 3))
-    #
-    #         specJ = sum([occ[ij[1]]*label for occ, label in zip(mobOccs, self.mobList)])
-    #         # siteJ = self.sup.ciR(ij[1])  # get the lattice site where the jumping species initially sits
-    #
-    #         # Get the KRA energy for this jump
-    #         delEKRA = self.KRAexpander.GetKRA((ij, dx), mobOccs, KRACoeffs[(ij[0], ij[1], specJ)])
-    #         delE = 0.0  # This will added to the KRA energy to get the activation barrier
-    #
-    #         # switch the occupancies in the final state
-    #         mobOccs_final[specJ][ij[0]] = 1
-    #         mobOccs_final[specJ][ij[1]] = 0
-    #
-    #         mobOccs_final[-1][ij[0]] = 0
-    #         mobOccs_final[specJ][ij[1]] = 1
-    #
-    #         # delOcc = mobOccs_final - mobOccs  # Doesn't seem to be much we can do with this
-    #
-    #         # Get all the clusters that contain the vacancy at the vacancy site and/or specJ at ij[1]
-    #         # and    are On in the initial state.
-    #
-    #         InitOnClustersVac = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[0]]
-    #                              if all([mobOccs[species][idx] == 1
-    #                                         for species, idx in zip(self.FullClusterBasis[bInd][0],
-    #                                                                 self.VclusterSupIndList[bInd][clInd])])
-    #                              ]
-    #
-    #         InitOnClustersSpecJ = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[1]]
-    #                                if all([mobOccs[species][idx] == 1
-    #                                           for species, idx in zip(self.FullClusterBasis[bInd][0],
-    #                                                                   self.VclusterSupIndList[bInd][clInd])])
-    #                                ]
-    #
-    #         FinOnClustersVac = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[0]]
-    #                             if all([mobOccs_final[species][idx] == 1
-    #                                        for species, idx in zip(self.FullClusterBasis[bInd][0],
-    #                                                                self.VclusterSupIndList[bInd][clInd])])
-    #                             ]
-    #
-    #         FinOnClustersSpecJ = [(bInd, clInd) for bInd, clInd, siteInd in self.SupInd2VClus[ij[1]]
-    #                               if all([mobOccs_final[species][idx] == 1
-    #                                          for species, idx in zip(self.FullClusterBasis[bInd][0],
-    #                                                                  self.VclusterSupIndList[bInd][clInd])])
-    #                               ]
-    #
-    #         # Turn of the On clusters
-    #         for (bInd, clInd) in set(InitOnClustersVac).union(set(InitOnClustersSpecJ)):
-    #             del_lamb[bInd] -= self.SymVecList[bInd][clInd]
-    #             delE -= EnCoeffs[self.ScalarBasis[bInd//3]]
-    #
-    #         # Turn on the Off clusters
-    #         for (bInd, clInd) in set(FinOnClustersVac).union(FinOnClustersSpecJ):
-    #             del_lamb[bInd] += self.SymVecList[bInd][clInd]
-    #             delE += EnCoeffs[self.ScalarBasis[bInd//3]]
-    #
-    #         # append to the rateList
-    #         ratelist[jnum] = np.exp(-(0.5*delE + delEKRA))
-    #
-    #         # Create the matrix to find Wbar
-    #         del_lamb_mat[:, :, jnum] = np.dot(del_lamb, del_lamb.T)
-    #
-    #         # Create the matrix to find Bbar
-    #         delxDotdelLamb[:, jnum] = np.tensordot(del_lamb_mat, dx, axes=(1, 0))
-    #
-    #     Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 0))
-    #     Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
-    #
-    #     return Wbar, Bbar
+        """
+        :param beta : 1/KB*T
+        :param mobOccs: the mobile occupancy in the current state
+        :param transitions: the jumps out of the current state - supercell indices for initial and final sites
+        :param EnCoeffs: energy interaction coefficients in a cluster expansion
+        :param KRACoeffs: kinetic energy coefficients - pre-formed
+        :return: Wbar, Bbar - rate and bias expansions in the cluster basis
+        """
+
+        ijlist, dxlist = transitions
+        mobOccs_final = mobOccs.copy()
+
+        del_lamb_mat = np.zeros((len(self.vecClus), len(self.vecClus), len(ijlist)))
+        delxDotdelLamb = np.zeros((len(self.vecClus), len(ijlist)))
+
+        # To be tensor dotted with ratelist with axes = (0,1)
+        ratelist = np.zeros(len(ijlist))
+
+        for (jnum, ij, dx) in zip(itertools.count(), ijlist, dxlist):
+
+            del_lamb = np.zeros((len(self.vecClus), 3))
+
+            specJ = sum([occ[ij[1]]*label for label, occ in enumerate(mobOccs)])
+            # siteJ = self.sup.ciR(ij[1])  # get the lattice site where the jumping species initially sits
+
+            # Get the KRA energy for this jump
+            delEKRA = self.KRAexpander.GetKRA((ij, dx), mobOccs, KRACoeffs[(ij[0], ij[1], specJ)])
+            delE = 0.0  # This will added to the KRA energy to get the activation barrier
+
+            # switch the occupancies in the final state
+            mobOccs_final[specJ][ij[0]] = 1
+            mobOccs_final[specJ][ij[1]] = 0
+
+            mobOccs_final[-1][ij[0]] = 0
+            mobOccs_final[specJ][ij[1]] = 1
+
+            for clListInd, clList in enumerate(self.vecClus):
+                for clInd, clus in enumerate(clList):
+                    for siteSpec in clus.SiteSpecs:
+                        site, spec = siteSpec[0], siteSpec[1]
+                        if site.ci ==
+
+            # append to the rateList
+            ratelist[jnum] = np.exp(-(0.5*delE + delEKRA))
+
+            # Create the matrix to find Wbar
+            del_lamb_mat[:, :, jnum] = np.dot(del_lamb, del_lamb.T)
+
+            # Create the matrix to find Bbar
+            delxDotdelLamb[:, jnum] = np.tensordot(del_lamb_mat, dx, axes=(1, 0))
+
+        Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 0))
+        Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
+
+        return Wbar, Bbar
     #
     # def transitions(self, mobOcc, jumpnetwork):
     #     """
