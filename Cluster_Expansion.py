@@ -66,14 +66,11 @@ class VectorClusterExpansion(object):
         self.clusexp = clusexp
         self.mobCountList = mobCountList
         self.mobList = list(range(len(mobCountList)))
-        self.vacSite = vacSite
-        # TODO - think of a better way to do this.
-        start = time.time()
-        self.SpecClusters = self.recalcClusters()
-        print("Created clusters with atomic species: {}".format(time.time() - start))
-        # self.genVecs()
-        start = time.time()
+
         self.ScalarBasis = self.createScalarBasis()
+        self.SpecClusters = self.recalcClusters()
+        self.vecCLus, self.vecVec = self.genVecClustBasis(self.SpecClusters)
+
         print("Created clusters with atomic species: {}".format(time.time() - start))
         # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
         self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, clusexp, mobCountList)
@@ -108,75 +105,35 @@ class VectorClusterExpansion(object):
 
         return symClusterList
 
-    # def genVecs(self):
-    #     """
-    #     Function to generate a symmetry-grouped vector cluster expansion similar to vector stars in the onsager code.
-    #     """
-    #     sup = self.sup
-    #     clusexp = self.clusexp
-    #     Id3 = np.eye(3)
-    #     self.SymVecClustList = []
-    #     self.VclusterSupIndList = []
-    #     self.SymVecList = []
-    #     for clist in clusexp:
-    #         cl0 = list(clist)[0]
-    #         for vec in Id3:
-    #             symclList = [cl0]
-    #             symcLSupIndList = []
-    #             symvecList = [vec]
-    #             for cl in clist:
-    #                 for gop in sup.crys.G:
-    #                     if cl0.g(sup.crys, gop) == cl:
-    #                         if any(cl1 == cl for cl1 in symclList):
-    #                             continue
-    #                         symclList.append(cl)
-    #                         symvecList.append(np.dot(gop.cartrot, vec))
-    #                         symcLSupIndList.append([self.sup.index(site.R, site.ci) for site in cl.sites])
-    #
-    #             self.SymVecClustList.append(symclList)
-    #             self.SymVecList.append(symvecList)
-    #             self.VclusterSupIndList.append(symcLSupIndList)
+    def genVecClustBasis(self, specClusters):
 
-    # def index(self):
-    #     """
-    #     Index each site to a vector cluster list.
-    #     """
-    #     siteToVclusBasis = {}
-    #     for BasisInd, BasisDat in enumerate(self.FullClusterBasis):
-    #         for clInd, cl in enumerate(self.SymVecClustList[BasisDat[1]]):
-    #             for siteInd, site in enumerate(cl.sites):
-    #                 if site.ci not in siteToVclusBasis:
-    #                     siteToVclusBasis[site.ci] = collections.defaultdict(list)
-    #                 siteToVclusBasis[site.ci][BasisInd].append((clInd, siteInd))
-    #     self.site2VclusBasis = siteToVclusBasis
-    #
-    #     site2ScalClusBasis = {}
-    #     for BasisInd, BasisDat in enumerate(self.ScalarBasis):
-    #         for clInd, cl in enumerate(self.clusexp[BasisDat[1]]):
-    #             for siteInd, site in enumerate(cl.sites):
-    #                 if site.ci not in site2ScalClusBasis:
-    #                     siteToVclusBasis[site.ci] = collections.defaultdict(list)
-    #                 siteToVclusBasis[site.ci][BasisInd].append((clInd, siteInd))
-    #     self.site2ScalBasis = siteToVclusBasis
-    #
-    # def indexSupInd2Clus(self):
-    #     """
-    #     Takes the sites in the clusters, get their indices in the supercell sitelist, and store the clusters they
-    #     belong to, with these indices as keys.
-    #     """
-    #     siteToVclusBasis = collections.defaultdict(list)
-    #     for BasisInd, BasisDat in enumerate(self.FullClusterBasis):
-    #         for clInd, cl in enumerate(self.SymVecClustList[BasisDat[1]]):
-    #             for siteInd, site in enumerate(cl.sites):
-    #                 siteToVclusBasis[self.sup.index(site.R, site.ci)].append((BasisInd, clInd, siteInd))
-    #     self.SupInd2VClus = siteToVclusBasis
-    #
-    #     supInd2scalBasis = {}
-    #     for BasisInd, BasisDat in enumerate(self.ScalarBasis):
-    #         for clInd, cl in enumerate(self.clusexp[BasisDat[1]]):
-    #             for siteInd, site in enumerate(cl.sites):
-    #                 supInd2scalBasis[self.sup.index(site.R, site.ci)].append((BasisInd, clInd, siteInd))
-    #     self.supInd2scalBasis = supInd2scalBasis
+        vecClustList = []
+        vecVecList = []
+        for clList in specClusters:
+            cl0 = clList[0]
+            glist0 = []
+            for g in self.crys.G:
+                if cl0.g(self.crys, g) == cl0:
+                    glist0.append(g)
+
+            G0 = sum([g.cartrot for g in glist0])/len(glist0)
+            vals, vecs = np.linalg.eig(G0)
+            vlist = [vecs[:, i]/np.linalg.norm(vecs[:, i]) for i in range(3) if np.isclose(vals[i], 1.0)]
+
+            for v in vlist:
+                newClustList = []
+                newVecList = []
+                for g in self.crys.G:
+                    cl1 = cl0.g(self.crys, g)
+                    if cl1 in newClustList:
+                        continue
+                    newClustList.append(cl1)
+                    newVecList.append(np.dot(g.cartrot, v))
+
+                vecClustList.append(newClustList)
+                vecVecList.append(newVecList)
+
+        return vecClustList, vecVecList
 
     def createScalarBasis(self):
         """
