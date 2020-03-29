@@ -120,6 +120,9 @@ class VectorClusterExpansion(object):
             vals, vecs = np.linalg.eig(G0)
             vlist = [vecs[:, i]/np.linalg.norm(vecs[:, i]) for i in range(3) if np.isclose(vals[i], 1.0)]
 
+            if len(vlist) == 0:  # For systems with inversion symmetry
+
+
             for v in vlist:
                 newClustList = []
                 newVecList = []
