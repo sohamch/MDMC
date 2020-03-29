@@ -1,6 +1,7 @@
 from onsager import crystal, supercell, cluster
 import numpy as np
 import collections
+import itertools
 import Transitions
 import Cluster_Expansion
 import unittest
@@ -22,8 +23,10 @@ class testKRA(unittest.TestCase):
         self.mobOccs[-1, 0] = 1
         self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(5)]
         self.clusexp = cluster.makeclusters(self.crys, 0.29, 4)
+        self.vacsite = cluster.ClusterSite((0,0), np.zeros(3, dtype=int))
         self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.clusexp, self.mobCountList)
-        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, )
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.jnetBCC,
+                                                                 self.mobCountList, self.vacsite)
 
     def test_groupTrans(self):
         """
@@ -127,4 +130,22 @@ class test_Vector_Cluster_Expansion(testKRA):
         """
 
         # Test 1 - check that every clusterList is repeated exactly three times
-        for
+        # And the that the vectors associated with the clusters are orthogonal to each other
+        for clListInd, clList, vecList in zip(itertools.count(), self.VclusExp.vecClus,
+                                              self.VclusExp.vecVec):
+            self.assertEqual(len(clList), len(vecList))
+            cl0, vec0 = clList[0], vecList[0]
+            for clust, vec in zip(clList, vecList):
+                # First check that symmetry operations are consistent
+                count = 0
+                for g in self.crys.G:
+                    if cl0.g(self.crys, g) == clust:
+                        count += 1
+                        self.assertTrue(np.allclose(np.dot(g.cartrot, vec0), vec) or
+                                        np.allclose(np.dot(g.cartrot, vec0) + vec, np.zeros(3)),
+                                        msg="\n{}, {} \n{}, {}\n{}\n{}".format(vec0, vec, cl0, clust,
+                                                                               self.crys.lattice, g.cartrot))
+                self.assertGreater(count, 0)
+
+
+

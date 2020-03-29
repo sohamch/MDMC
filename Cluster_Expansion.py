@@ -165,14 +165,12 @@ class VectorClusterExpansion(object):
     def indexVclus2Clus(self):
 
         self.Vclus2Clus = np.zeros(len(self.vecClus), dtype=int)
-        for vClusListInd, vClusList in self.vecClus:
+        for vClusListInd, vClusList in enumerate(self.vecClus):
             clVec0 = vClusList[0]
-            for cLlistInd, clList in self.SpecClusters:
+            for cLlistInd, clList in enumerate(self.SpecClusters):
                 cl0 = clList[0]
                 if clVec0 == cl0:
                     self.Vclus2Clus[vClusListInd] = cLlistInd
-
-
 
     def Expand(self, beta, mobOccs, transitions, EnCoeffs, KRACoeffs):
 
