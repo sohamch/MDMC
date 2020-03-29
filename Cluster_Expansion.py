@@ -71,6 +71,7 @@ class VectorClusterExpansion(object):
         self.ScalarBasis = self.createScalarBasis()
         self.SpecClusters = self.recalcClusters()
         self.vecClus, self.vecVec = self.genVecClustBasis(self.SpecClusters)
+        self.indexVclus2Clus()
 
         # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
         self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, clusexp, mobCountList)
@@ -123,10 +124,12 @@ class VectorClusterExpansion(object):
             if len(vlist) == 0:  # For systems with inversion symmetry
                 vecClustList.append(clList)
                 vecVecList.append([np.zeros(3) for i in range(len(clList))])
+                continue
 
             for v in vlist:
-                newClustList = []
-                newVecList = []
+                newClustList = [cl0]
+                # The first state being the same helps in indexing
+                newVecList = [v]
                 for g in self.crys.G:
                     cl1 = cl0.g(self.crys, g)
                     if cl1 in newClustList:
@@ -158,7 +161,19 @@ class VectorClusterExpansion(object):
                 # Each cluster is associated with three vectors
                 clusterBasis.append((tup, clistInd))
         return clusterBasis
-         
+
+    def indexVclus2Clus(self):
+
+        self.Vclus2Clus = np.zeros(len(self.vecClus), dtype=int)
+        for vClusListInd, vClusList in self.vecClus:
+            clVec0 = vClusList[0]
+            for cLlistInd, clList in self.SpecClusters:
+                cl0 = clList[0]
+                if clVec0 == cl0:
+                    self.Vclus2Clus[vClusListInd] = cLlistInd
+
+
+
     def Expand(self, beta, mobOccs, transitions, EnCoeffs, KRACoeffs):
 
         """
@@ -213,14 +228,14 @@ class VectorClusterExpansion(object):
                                     for clSite, spec in siteSpecNew]):
                                 # Turn in off
                                 del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
-                                delE -= EnCoeffs[clListInd]
+                                delE -= EnCoeffs[self.Vclus2Clus[clListInd]]
 
                             # Check if this cluster is on in the final state
                             if all([mobOccs_final[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
                                     for clSite, spec in siteSpecNew]):
                                 # Turn it on
                                 del_lamb[clListInd] += self.vecVec[clListInd][clInd]
-                                delE += EnCoeffs[clListInd]
+                                delE += EnCoeffs[self.Vclus2Clus[clListInd]]
 
                         # Next, we check for specJ
                         if site.ci == siteJ.ci:
@@ -231,14 +246,14 @@ class VectorClusterExpansion(object):
                                     for clSite, spec in siteSpecNew]):
                                 # Turn it off
                                 del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
-                                delE -= EnCoeffs[clListInd]
+                                delE -= EnCoeffs[self.Vclus2Clus[clListInd]]
 
                             # Check if this cluster is on in the final state
                             if all([mobOccs_final[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
                                     for clSite, spec in siteSpecNew]):
                                 # Turn it on
                                 del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
-                                delE -= EnCoeffs[clListInd]
+                                delE -= EnCoeffs[self.Vclus2Clus[clListInd]]
 
             # append to the rateList
             ratelist[jnum] = np.exp(-(0.5*delE + delEKRA))
