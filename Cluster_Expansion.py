@@ -71,7 +71,6 @@ class VectorClusterExpansion(object):
         self.SpecClusters = self.recalcClusters()
         self.vecCLus, self.vecVec = self.genVecClustBasis(self.SpecClusters)
 
-        print("Created clusters with atomic species: {}".format(time.time() - start))
         # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
         self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, clusexp, mobCountList)
 
@@ -153,7 +152,6 @@ class VectorClusterExpansion(object):
                     continue
                 # Each cluster is associated with three vectors
                 clusterBasis.append((tup, clistInd))
-
         return clusterBasis
 
     # def Expand(self, beta, mobOccs, transitions, EnCoeffs, KRACoeffs):
