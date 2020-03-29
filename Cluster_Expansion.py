@@ -166,7 +166,6 @@ class VectorClusterExpansion(object):
         """
 
         ijlist, dxlist = transitions
-        mobOccs_final = mobOccs.copy()
 
         del_lamb_mat = np.zeros((len(self.vecClus), len(self.vecClus), len(ijlist)))
         delxDotdelLamb = np.zeros((len(self.vecClus), len(ijlist)))
@@ -179,24 +178,63 @@ class VectorClusterExpansion(object):
             del_lamb = np.zeros((len(self.vecClus), 3))
 
             specJ = sum([occ[ij[1]]*label for label, occ in enumerate(mobOccs)])
-            # siteJ = self.sup.ciR(ij[1])  # get the lattice site where the jumping species initially sits
+            siteJ = self.sup.ciR(ij[1])  # get the lattice site where the jumping species initially sits
+            siteI = self.sup.ciR(ij[0])  # get the lattice site where the jumping species finally sits
+
+            if siteI != self.vacSite:
+                raise ValueError("The initial site must be the vacancy site")
 
             # Get the KRA energy for this jump
             delEKRA = self.KRAexpander.GetKRA((ij, dx), mobOccs, KRACoeffs[(ij[0], ij[1], specJ)])
             delE = 0.0  # This will added to the KRA energy to get the activation barrier
 
             # switch the occupancies in the final state
+            mobOccs_final = mobOccs.copy()
             mobOccs_final[specJ][ij[0]] = 1
             mobOccs_final[specJ][ij[1]] = 0
-
             mobOccs_final[-1][ij[0]] = 0
-            mobOccs_final[specJ][ij[1]] = 1
+            mobOccs_final[-1][ij[1]] = 1
 
             for clListInd, clList in enumerate(self.vecClus):
                 for clInd, clus in enumerate(clList):
                     for siteSpec in clus.SiteSpecs:
                         site, spec = siteSpec[0], siteSpec[1]
-                        if site.ci ==
+
+                        # First, we check for vacancies
+                        # Check if any translation of this cluster needs to be turned off
+                        if site.ci == self.vacSite.ci:
+                            siteSpecNew = set([(clsite - site.R, spec) for clsite, spec in clus.SiteSpecs])
+                            # Check if this translated cluster is on in the initial state
+                            if all([mobOccs[spec][self.sup.index(clSite.ci, clSite.R)] == 1
+                                    for clSite, spec in siteSpecNew]):
+                                # Turn in off
+                                del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
+                                delE -= EnCoeffs[clListInd]
+
+                            # Check if this cluster is on in the final state
+                            if all([mobOccs_final[spec][self.sup.index(clSite.ci, clSite.R)] == 1
+                                    for clSite, spec in siteSpecNew]):
+                                # Turn it on
+                                del_lamb[clListInd] += self.vecVec[clListInd][clInd]
+                                delE += EnCoeffs[clListInd]
+
+                        # Next, we check for specJ
+                        if site.ci == siteJ.ci:
+                            # Bring this site to Rj instead of site.R
+                            siteSpecNew = set([(clsite - site.R + siteJ.R, spec) for clsite, spec in clus.SiteSpecs])
+                            # Check if this translated cluster is on in the initial state
+                            if all([mobOccs[spec][self.sup.index(clSite.ci, clSite.R)] == 1
+                                    for clSite, spec in siteSpecNew]):
+                                # Turn it off
+                                del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
+                                delE -= EnCoeffs[clListInd]
+
+                            # Check if this cluster is on in the final state
+                            if all([mobOccs_final[spec][self.sup.index(clSite.ci, clSite.R)] == 1
+                                    for clSite, spec in siteSpecNew]):
+                                # Turn it on
+                                del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
+                                delE -= EnCoeffs[clListInd]
 
             # append to the rateList
             ratelist[jnum] = np.exp(-(0.5*delE + delEKRA))
@@ -211,34 +249,35 @@ class VectorClusterExpansion(object):
         Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
 
         return Wbar, Bbar
-    #
-    # def transitions(self, mobOcc, jumpnetwork):
-    #     """
-    #     Function to calculate the transitions and their rates out of a given state.
-    #     :param mobOcc: occupancy vectors for mobile species in the current state
-    #     :param jumpnetwork: vacancy jumpnetwork
-    #     :return: (ijlist, dxlist)
-    #     """
-    #     # TODO - ijlist, dxlist will be calculated from the lattice, ratelist will be calculated from Transitions
-    #
-    #     ijList = []
-    #     dxList = []
-    #     for jump in [jmp for jList in jumpnetwork for jmp in jList]:
-    #         siteA = self.sup.index((self.chem, jump[0][0]), np.zeros(3, dtype=int))
-    #         Rj, (c, cj) = self.crys.cart2pos(jump[1] -
-    #                                          np.dot(self.crys.lattice, self.crys.basis[self.chem][jump[0][1]]) +
-    #                                          np.dot(self.crys.lattice, self.crys.basis[self.chem][jump[0][0]]))
-    #         # check we have the correct site
-    #         if not cj == jump[0][1]:
-    #             raise ValueError("improper coordinate transformation, did not get same site")
-    #         siteB = self.sup.index((self.chem, jump[0][1]), Rj)
-    #
-    #         specJ = np.prod(np.array([mobOcc[spec][siteB] for spec in self.mobList]))
-    #
-    #         ijList.append((siteA, siteB, jump[1]))
-    #         dxList.append(jump[1])
-    #
-    #     return ijList, dxList
+
+    def GenTransitions(self, mobOcc, jumpnetwork):
+        """
+        Function to calculate the transitions and their rates out of a given state.
+        The rate for each jump is calculated in-situ while computing the vector expansion, since they require
+        similar operations.
+        :param mobOcc: occupancy vectors for mobile species in the current state
+        :param jumpnetwork: vacancy jumpnetwork
+        :return: (ijlist, dxlist)
+        """
+
+        ijList = []
+        dxList = []
+        for jump in [jmp for jList in jumpnetwork for jmp in jList]:
+            siteA = self.sup.index((self.chem, jump[0][0]), np.zeros(3, dtype=int))
+            Rj, (c, cj) = self.crys.cart2pos(jump[1] -
+                                             np.dot(self.crys.lattice, self.crys.basis[self.chem][jump[0][1]]) +
+                                             np.dot(self.crys.lattice, self.crys.basis[self.chem][jump[0][0]]))
+            # check we have the correct site
+            if not cj == jump[0][1]:
+                raise ValueError("improper coordinate transformation, did not get same site")
+            siteB = self.sup.index((self.chem, jump[0][1]), Rj)
+
+            specJ = np.prod(np.array([mobOcc[spec][siteB] for spec in self.mobList]))
+
+            ijList.append((siteA, siteB, jump[1]))
+            dxList.append(jump[1])
+
+        return ijList, dxList
 
 
 
