@@ -147,5 +147,12 @@ class test_Vector_Cluster_Expansion(testKRA):
                                                                                self.crys.lattice, g.cartrot))
                 self.assertGreater(count, 0)
 
+    def test_indexing(self):
+
+        for vclusListInd, clListInd in enumerate(self.VclusExp.Vclus2Clus):
+            cl0 = self.VclusExp.vecClus[vclusListInd][0]
+            self.assertEqual(cl0, self.VclusExp.SpecClusters[clListInd][0])
+
+
 
 
