@@ -20,7 +20,8 @@ class ClusterSpecies():
         Rtrans = sum([site.R for site in siteList])//len(siteList)
         self.transPairs = [(site-Rtrans, spec) for site, spec in zip(siteList, specList)]
         self.SiteSpecs = set(self.transPairs)
-        self.__hashcache__ = int(np.prod(np.array([hash((site, spec)) for site, spec in self.transPairs])))
+        self.__hashcache__ = int(np.prod(np.array([hash((site, spec)) for site, spec in self.transPairs]))) +\
+                             sum([hash((site, spec)) for site, spec in self.transPairs])
 
     def __eq__(self, other):
         if self.SiteSpecs == other.SiteSpecs:
@@ -178,10 +179,10 @@ class VectorClusterExpansion(object):
             del_lamb = np.zeros((len(self.vecClus), 3))
 
             specJ = sum([occ[ij[1]]*label for label, occ in enumerate(mobOccs)])
-            siteJ = self.sup.ciR(ij[1])  # get the lattice site where the jumping species initially sits
-            siteI = self.sup.ciR(ij[0])  # get the lattice site where the jumping species finally sits
+            siteJ, Rj = self.sup.ciR(ij[1])  # get the lattice site where the jumping species initially sits
+            siteI, Ri = self.sup.ciR(ij[0])  # get the lattice site where the jumping species finally sits
 
-            if siteI != self.vacSite:
+            if siteI != self.vacSite.ci or not np.allclose(Ri, self.vacSite.R):
                 raise ValueError("The initial site must be the vacancy site")
 
             # Get the KRA energy for this jump
@@ -190,29 +191,28 @@ class VectorClusterExpansion(object):
 
             # switch the occupancies in the final state
             mobOccs_final = mobOccs.copy()
-            mobOccs_final[specJ][ij[0]] = 1
-            mobOccs_final[specJ][ij[1]] = 0
             mobOccs_final[-1][ij[0]] = 0
             mobOccs_final[-1][ij[1]] = 1
+            mobOccs_final[specJ][ij[0]] = 1
+            mobOccs_final[specJ][ij[1]] = 0
 
             for clListInd, clList in enumerate(self.vecClus):
                 for clInd, clus in enumerate(clList):
                     for siteSpec in clus.SiteSpecs:
                         site, spec = siteSpec[0], siteSpec[1]
-
                         # First, we check for vacancies
                         # Check if any translation of this cluster needs to be turned off
-                        if site.ci == self.vacSite.ci:
+                        if site.ci == siteI:
                             siteSpecNew = set([(clsite - site.R, spec) for clsite, spec in clus.SiteSpecs])
                             # Check if this translated cluster is on in the initial state
-                            if all([mobOccs[spec][self.sup.index(clSite.ci, clSite.R)] == 1
+                            if all([mobOccs[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
                                     for clSite, spec in siteSpecNew]):
                                 # Turn in off
                                 del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
                                 delE -= EnCoeffs[clListInd]
 
                             # Check if this cluster is on in the final state
-                            if all([mobOccs_final[spec][self.sup.index(clSite.ci, clSite.R)] == 1
+                            if all([mobOccs_final[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
                                     for clSite, spec in siteSpecNew]):
                                 # Turn it on
                                 del_lamb[clListInd] += self.vecVec[clListInd][clInd]
@@ -223,14 +223,14 @@ class VectorClusterExpansion(object):
                             # Bring this site to Rj instead of site.R
                             siteSpecNew = set([(clsite - site.R + siteJ.R, spec) for clsite, spec in clus.SiteSpecs])
                             # Check if this translated cluster is on in the initial state
-                            if all([mobOccs[spec][self.sup.index(clSite.ci, clSite.R)] == 1
+                            if all([mobOccs[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
                                     for clSite, spec in siteSpecNew]):
                                 # Turn it off
                                 del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
                                 delE -= EnCoeffs[clListInd]
 
                             # Check if this cluster is on in the final state
-                            if all([mobOccs_final[spec][self.sup.index(clSite.ci, clSite.R)] == 1
+                            if all([mobOccs_final[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
                                     for clSite, spec in siteSpecNew]):
                                 # Turn it on
                                 del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
