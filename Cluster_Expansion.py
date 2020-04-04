@@ -219,7 +219,7 @@ class VectorClusterExpansion(object):
                         site, spec = siteSpec[0], siteSpec[1]
                         # First, we check for vacancies
                         # Check if any translation of this cluster needs to be turned off
-                        if site.ci == siteI:
+                        if site.ci == siteI and spec == len(mobOccs)-1:
                             siteSpecNew = set([(clsite - site.R, spec) for clsite, spec in clus.SiteSpecs])
                             # Check if this translated cluster is on in the initial state
                             if all([mobOccs[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
@@ -236,7 +236,7 @@ class VectorClusterExpansion(object):
                                 delE += EnCoeffs[self.Vclus2Clus[clListInd]]
 
                         # Next, we check for specJ
-                        if site.ci == siteJ.ci:
+                        if site.ci == siteJ.ci and spec == specJ:
                             # Bring this site to Rj instead of site.R
                             siteSpecNew = set([(clsite - site.R + siteJ.R, spec) for clsite, spec in clus.SiteSpecs])
                             # Check if this translated cluster is on in the initial state
@@ -267,12 +267,11 @@ class VectorClusterExpansion(object):
 
         return Wbar, Bbar
 
-    def GenTransitions(self, mobOcc, jumpnetwork):
+    def GenTransitions(self, jumpnetwork):
         """
         Function to calculate the transitions and their rates out of a given state.
         The rate for each jump is calculated in-situ while computing the vector expansion, since they require
         similar operations.
-        :param mobOcc: occupancy vectors for mobile species in the current state
         :param jumpnetwork: vacancy jumpnetwork
         :return: (ijlist, dxlist)
         """
@@ -288,8 +287,6 @@ class VectorClusterExpansion(object):
             if not cj == jump[0][1]:
                 raise ValueError("improper coordinate transformation, did not get same site")
             siteB = self.sup.index((self.chem, jump[0][1]), Rj)
-
-            specJ = np.prod(np.array([mobOcc[spec][siteB] for spec in self.mobList]))
 
             ijList.append((siteA, siteB, jump[1]))
             dxList.append(jump[1])
