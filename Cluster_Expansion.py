@@ -66,8 +66,10 @@ class VectorClusterExpansion(object):
         # vacInd will always be the initial state in the transitions that we consider.
         self.clusexp = clusexp
         self.mobCountList = mobCountList
+        self.vacInd = len(mobCountList) - 1
         self.mobList = list(range(len(mobCountList)))
-        self.vacSite = vacSite
+        self.vacSite = vacSite  # This stays fixed throughout the simulation, so makes sense to store it.
+        self.jumpnetwork = jumpnetwork
         self.ScalarBasis = self.createScalarBasis()
         self.SpecClusters = self.recalcClusters()
         self.vecClus, self.vecVec = self.genVecClustBasis(self.SpecClusters)
@@ -76,7 +78,7 @@ class VectorClusterExpansion(object):
         # Generate the transitions-based data structures
 
         # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
-        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, clusexp, mobCountList)
+        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, clusexp, mobCountList, vacSite)
 
     def recalcClusters(self):
         """
@@ -201,9 +203,6 @@ class VectorClusterExpansion(object):
             siteJ, Rj = self.sup.ciR(ij[1])  # get the lattice site where the jumping species initially sits
             siteI, Ri = self.sup.ciR(ij[0])  # get the lattice site where the jumping species finally sits
 
-            if siteI != self.vacSite.ci or not np.allclose(Ri, self.vacSite.R):
-                raise ValueError("The initial site must be the vacancy site")
-
             # Get the KRA energy for this jump
             delEKRA = self.KRAexpander.GetKRA((ij, dx), mobOccs, KRACoeffs[(ij[0], ij[1], specJ)])
             delE = 0.0  # This will added to the KRA energy to get the activation barrier
@@ -280,8 +279,25 @@ class VectorClusterExpansion(object):
 
         ijList = []
         dxList = []
+        clusterTransOff = collections.defaultdict(list)  # these are clusters that need to be turned off
+        clusterTransOn = collections.defaultdict(list)  # these are clusters that need to be turned off
+
+        # pre-process those clusters that contain vacancy at vacSite.
+        for vclusListInd, clustList, vecList in zip(itertools.count(), self.vecClus, self.vecVec):
+            for clInd, clust, vec in zip(itertools.count(), clustList, vecList):
+                for site, spec in clust.SiteSpecs:
+                    # see if the cluster has a vacancy site with the vacancy on it
+                    if site.ci == self.vacSite.ci and spec == self.vacInd:
+                        clusterTransOff[self.vacSite].append((vclusListInd, clInd, clust, vec, self.vacSite.R - site.R))
+
+
+
         for jump in [jmp for jList in jumpnetwork for jmp in jList]:
             siteA = cluster.ClusterSite(ci=(self.chem, jump[0][0]), R=np.zeros(3, dtype=int))
+            if siteA != self.vacSite:
+                # if the initial site of the vacancy is not the vacSite, it is not a jump out of this state.
+                # Ignore it - removes reverse jumps from multi-site, single-Wyckoff lattices.
+                continue
             Rj, (c, cj) = self.crys.cart2pos(jump[1] -
                                              np.dot(self.crys.lattice, self.crys.basis[self.chem][jump[0][1]]) +
                                              np.dot(self.crys.lattice, self.crys.basis[self.chem][jump[0][0]]))
@@ -293,9 +309,10 @@ class VectorClusterExpansion(object):
             ijList.append((siteA, siteB, jump[1]))
             dxList.append(jump[1])
 
-        # Set up dictionaries to look up in each state
-        clusterTrans = {}
-        # first, we find clusters which contain the vacancy sites
+
+
+
+
 
 
 
