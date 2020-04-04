@@ -130,9 +130,6 @@ class test_Vector_Cluster_Expansion(testKRA):
         """
         Here, we test if we have generated the vector cluster basis (site-based only) properly
         """
-
-        # Test 1 - check that every clusterList is repeated exactly three times
-        # And the that the vectors associated with the clusters are orthogonal to each other
         for clListInd, clList, vecList in zip(itertools.count(), self.VclusExp.vecClus,
                                               self.VclusExp.vecVec):
             self.assertEqual(len(clList), len(vecList))
