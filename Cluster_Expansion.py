@@ -73,6 +73,8 @@ class VectorClusterExpansion(object):
         self.vecClus, self.vecVec = self.genVecClustBasis(self.SpecClusters)
         self.indexVclus2Clus()
 
+        # Generate the transitions-based data structures
+
         # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
         self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, clusexp, mobCountList)
 
@@ -279,19 +281,22 @@ class VectorClusterExpansion(object):
         ijList = []
         dxList = []
         for jump in [jmp for jList in jumpnetwork for jmp in jList]:
-            siteA = self.sup.index((self.chem, jump[0][0]), np.zeros(3, dtype=int))
+            siteA = cluster.ClusterSite(ci=(self.chem, jump[0][0]), R=np.zeros(3, dtype=int))
             Rj, (c, cj) = self.crys.cart2pos(jump[1] -
                                              np.dot(self.crys.lattice, self.crys.basis[self.chem][jump[0][1]]) +
                                              np.dot(self.crys.lattice, self.crys.basis[self.chem][jump[0][0]]))
             # check we have the correct site
             if not cj == jump[0][1]:
-                raise ValueError("improper coordinate transformation, did not get same site")
-            siteB = self.sup.index((self.chem, jump[0][1]), Rj)
+                raise ValueError("improper coordinate transformation, did not get same final jump site")
+            siteB = cluster.ClusterSite(ci=(self.chem, jump[0][1]), R=Rj)
 
             ijList.append((siteA, siteB, jump[1]))
             dxList.append(jump[1])
 
-        return ijList, dxList
+        # Set up dictionaries to look up in each state
+        clusterTrans = {}
+        # first, we find clusters which contain the vacancy sites
+
 
 
 
