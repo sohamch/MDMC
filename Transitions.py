@@ -8,7 +8,7 @@ class KRAExpand(object):
     """
     Object that contains all information regarding the KRA expansion of a jumpnetwork in a supercell.
     """
-    def __init__(self, sup, chem, jumpnetwork, clusexp, mobCountList):
+    def __init__(self, sup, chem, jumpnetwork, clusexp, mobCountList, vacSite):
         """
         :param sup: clusterSupercell Object
         :param chem: the sublattice index on which the jumpnetwork has been built.
@@ -21,6 +21,8 @@ class KRAExpand(object):
         self.crys = self.sup.crys
         self.jumpnetwork = jumpnetwork
         self.clusexp = clusexp
+        self.vacSite = vacSite  # We'll be concerned with only those jumps where this is site A in A->B jumps.
+                                # The reverse jumps are not jumps out of this state, we need not worry about them.
         self.mobCountList = mobCountList
 
         # First, we reform the jumpnetwork
@@ -37,6 +39,9 @@ class KRAExpand(object):
                 # get supercell indices of the jumps.
                 siteA = clust.sites[0]
                 siteB = clust.sites[1]
+
+                if siteA != self.vacSite:  # If the jump is not out of the vacancy site, don't consider it.
+                    continue
 
                 IndA = self.sup.index(siteA.R, siteA.ci)[0]
                 IndB = self.sup.index(siteB.R, siteB.ci)[0]

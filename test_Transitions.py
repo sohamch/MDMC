@@ -23,8 +23,9 @@ class testKRA(unittest.TestCase):
         self.mobOccs[-1, 0] = 1
         self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(5)]
         self.clusexp = cluster.makeclusters(self.crys, 0.29, 4)
-        self.vacsite = cluster.ClusterSite((0,0), np.zeros(3, dtype=int))
-        self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.clusexp, self.mobCountList)
+        self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
+        self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.clusexp, self.mobCountList,
+                                                 self.vacsite)
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.jnetBCC,
                                                                  self.mobCountList, self.vacsite)
 
@@ -38,6 +39,7 @@ class testKRA(unittest.TestCase):
             ciB, RB = self.superBCC.ciR(key[1])
             siteA = cluster.ClusterSite(ci=ciA, R=RA)
             siteB = cluster.ClusterSite(ci=ciB, R=RB)
+            self.assertEqual(siteA, self.vacsite)
             clusterListCount = collections.defaultdict(int)  # each cluster should only appear in one list
             for clist in clusterLists:
                 cl0 = clist[0]
