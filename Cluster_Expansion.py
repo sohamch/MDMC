@@ -66,7 +66,7 @@ class VectorClusterExpansion(object):
         # vacInd will always be the initial state in the transitions that we consider.
         self.clusexp = clusexp
         self.mobCountList = mobCountList
-        self.vacInd = len(mobCountList) - 1
+        self.vacSpec = len(mobCountList) - 1
         self.mobList = list(range(len(mobCountList)))
         self.vacSite = vacSite  # This stays fixed throughout the simulation, so makes sense to store it.
         self.jumpnetwork = jumpnetwork
@@ -287,9 +287,14 @@ class VectorClusterExpansion(object):
             for clInd, clust, vec in zip(itertools.count(), clustList, vecList):
                 for site, spec in clust.SiteSpecs:
                     # see if the cluster has a vacancy site with the vacancy on it
-                    if site.ci == self.vacSite.ci and spec == self.vacInd:
-                        clusterTransOff[self.vacSite].append((vclusListInd, clInd, clust, vec, self.vacSite.R - site.R))
-
+                    if site.ci == self.vacSite.ci:
+                        if spec == self.vacSpec:
+                            clusterTransOff[(self.vacSite, self.vacSpec)].append((vclusListInd, clInd, clust, vec,
+                                                                                  self.vacSite.R - site.R))
+                        elif spec != self.vacSpec:
+                            # There is some other species at the vacancy site, must be the final state of some jump.
+                            clusterTransOn[(self.vacSite, spec)].append((vclusListInd, clInd, clust, vec,
+                                                                                  self.vacSite.R - site.R))
 
 
         for jump in [jmp for jList in jumpnetwork for jmp in jList]:
@@ -308,6 +313,30 @@ class VectorClusterExpansion(object):
 
             ijList.append((siteA, siteB, jump[1]))
             dxList.append(jump[1])
+            # See which clusters contain specJ at siteJ
+            for vclusListInd, clustList, vecList in zip(itertools.count(), self.vecClus, self.vecVec):
+                for clInd, clust, vec in zip(itertools.count(), clustList, vecList):
+                    for site, spec in clust.SiteSpecs:
+                        # see if the cluster has a vacancy site with the vacancy on it
+                        if site.ci == siteB.ci and spec != self.vacSpec:
+                            # translate all the sites and see if the vacancy is in there as well
+                            # if yes, We will not consider this to prevent double counting
+                            Rt = siteB.R - site.R  # to make the sites coincide
+                            if not (self.vacSite, self.vacSpec) in [(site - Rt, spec)
+                                                                    for (site, spec) in clust.SiteSpecs]:
+                                clusterTransOff[(siteB, spec)].append((vclusListInd, clInd, clust, vec, Rt))
+
+                        elif site.ci == siteB.ci and spec == self.vacSpec:
+                            Rt = siteB.R - site.R
+                            # check if vacSite is present in any of the translated sites
+                            if not(self.vacSite, self.vacSpec) in [(site-Rt, spec)
+                                                                   for (site, spec) in clust.SiteSpecs]:
+                                # Check for double counting
+                                if not (vclusListInd, clInd, clust, vec, Rt) in clusterTransOn[(self.vacSite, spec)]:
+                                    clusterTransOn[(siteB, self.vacSpec)].append((vclusListInd, clInd, clust, vec, Rt))
+
+
+
 
 
 
