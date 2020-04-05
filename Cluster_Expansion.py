@@ -76,6 +76,7 @@ class VectorClusterExpansion(object):
         self.indexVclus2Clus()
 
         # Generate the transitions-based data structures
+        self.ijLst, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
 
         # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
         self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, clusexp, mobCountList, vacSite)
