@@ -76,7 +76,7 @@ class VectorClusterExpansion(object):
         self.indexVclus2Clus()
 
         # Generate the transitions-based data structures
-        self.ijLst, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
+        self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
 
         # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
         self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, clusexp, mobCountList, vacSite)
@@ -177,18 +177,17 @@ class VectorClusterExpansion(object):
                 if clVec0 == cl0:
                     self.Vclus2Clus[vClusListInd] = cLlistInd
 
-    def Expand(self, beta, mobOccs, transitions, EnCoeffs, KRACoeffs):
+    def Expand(self, beta, mobOccs, EnCoeffs, KRACoeffs):
 
         """
         :param beta : 1/KB*T
         :param mobOccs: the mobile occupancy in the current state
-        :param transitions: the jumps out of the current state - supercell indices for initial and final sites
         :param EnCoeffs: energy interaction coefficients in a cluster expansion
-        :param KRACoeffs: kinetic energy coefficients - pre-formed
+        :param KRACoeffs: kinetic energy coefficients - pre-formed for each transition.
         :return: Wbar, Bbar - rate and bias expansions in the cluster basis
         """
 
-        ijlist, dxlist = transitions
+        ijlist, dxlist = self.ijList, self.dxList
 
         del_lamb_mat = np.zeros((len(self.vecClus), len(self.vecClus), len(ijlist)))
         delxDotdelLamb = np.zeros((len(self.vecClus), len(ijlist)))
@@ -215,54 +214,54 @@ class VectorClusterExpansion(object):
             mobOccs_final[specJ][ij[0]] = 1
             mobOccs_final[specJ][ij[1]] = 0
 
-            for clListInd, clList in enumerate(self.vecClus):
-                for clInd, clus in enumerate(clList):
-                    for siteSpec in clus.SiteSpecs:
-                        site, spec = siteSpec[0], siteSpec[1]
-                        # First, we check for vacancies
-                        # Check if any translation of this cluster needs to be turned off
-                        if site.ci == siteI and spec == len(mobOccs)-1:
-                            siteSpecNew = set([(clsite - site.R, spec) for clsite, spec in clus.SiteSpecs])
-                            # Check if this translated cluster is on in the initial state
-                            if all([mobOccs[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
-                                    for clSite, spec in siteSpecNew]):
-                                # Turn in off
-                                del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
-                                delE -= EnCoeffs[self.Vclus2Clus[clListInd]]
-
-                            # Check if this cluster is on in the final state
-                            if all([mobOccs_final[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
-                                    for clSite, spec in siteSpecNew]):
-                                # Turn it on
-                                del_lamb[clListInd] += self.vecVec[clListInd][clInd]
-                                delE += EnCoeffs[self.Vclus2Clus[clListInd]]
-
-                        # Next, we check for specJ
-                        if site.ci == siteJ.ci and spec == specJ:
-                            # Bring this site to Rj instead of site.R
-                            siteSpecNew = set([(clsite - site.R + siteJ.R, spec) for clsite, spec in clus.SiteSpecs])
-                            # Check if this translated cluster is on in the initial state
-                            if all([mobOccs[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
-                                    for clSite, spec in siteSpecNew]):
-                                # Turn it off
-                                del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
-                                delE -= EnCoeffs[self.Vclus2Clus[clListInd]]
-
-                            # Check if this cluster is on in the final state
-                            if all([mobOccs_final[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
-                                    for clSite, spec in siteSpecNew]):
-                                # Turn it on
-                                del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
-                                delE -= EnCoeffs[self.Vclus2Clus[clListInd]]
-
-            # append to the rateList
-            ratelist[jnum] = np.exp(-(0.5*delE + delEKRA))
-
-            # Create the matrix to find Wbar
-            del_lamb_mat[:, :, jnum] = np.dot(del_lamb, del_lamb.T)
-
-            # Create the matrix to find Bbar
-            delxDotdelLamb[:, jnum] = np.tensordot(del_lamb_mat, dx, axes=(1, 0))
+            # for clListInd, clList in enumerate(self.vecClus):
+            #     for clInd, clus in enumerate(clList):
+            #         for siteSpec in clus.SiteSpecs:
+            #             site, spec = siteSpec[0], siteSpec[1]
+            #             # First, we check for vacancies
+            #             # Check if any translation of this cluster needs to be turned off
+            #             if site.ci == siteI and spec == len(mobOccs)-1:
+            #                 siteSpecNew = set([(clsite - site.R, spec) for clsite, spec in clus.SiteSpecs])
+            #                 # Check if this translated cluster is on in the initial state
+            #                 if all([mobOccs[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
+            #                         for clSite, spec in siteSpecNew]):
+            #                     # Turn in off
+            #                     del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
+            #                     delE -= EnCoeffs[self.Vclus2Clus[clListInd]]
+            #
+            #                 # Check if this cluster is on in the final state
+            #                 if all([mobOccs_final[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
+            #                         for clSite, spec in siteSpecNew]):
+            #                     # Turn it on
+            #                     del_lamb[clListInd] += self.vecVec[clListInd][clInd]
+            #                     delE += EnCoeffs[self.Vclus2Clus[clListInd]]
+            #
+            #             # Next, we check for specJ
+            #             if site.ci == siteJ.ci and spec == specJ:
+            #                 # Bring this site to Rj instead of site.R
+            #                 siteSpecNew = set([(clsite - site.R + siteJ.R, spec) for clsite, spec in clus.SiteSpecs])
+            #                 # Check if this translated cluster is on in the initial state
+            #                 if all([mobOccs[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
+            #                         for clSite, spec in siteSpecNew]):
+            #                     # Turn it off
+            #                     del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
+            #                     delE -= EnCoeffs[self.Vclus2Clus[clListInd]]
+            #
+            #                 # Check if this cluster is on in the final state
+            #                 if all([mobOccs_final[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
+            #                         for clSite, spec in siteSpecNew]):
+            #                     # Turn it on
+            #                     del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
+            #                     delE -= EnCoeffs[self.Vclus2Clus[clListInd]]
+            #
+            # # append to the rateList
+            # ratelist[jnum] = np.exp(-(0.5*delE + delEKRA))
+            #
+            # # Create the matrix to find Wbar
+            # del_lamb_mat[:, :, jnum] = np.dot(del_lamb, del_lamb.T)
+            #
+            # # Create the matrix to find Bbar
+            # delxDotdelLamb[:, jnum] = np.tensordot(del_lamb_mat, dx, axes=(1, 0))
 
         Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 0))
         Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
@@ -296,6 +295,7 @@ class VectorClusterExpansion(object):
 
         for jump in [jmp for jList in jumpnetwork for jmp in jList]:
             siteA = cluster.ClusterSite(ci=(self.chem, jump[0][0]), R=np.zeros(3, dtype=int))
+
             if siteA != self.vacSite:
                 # if the initial site of the vacancy is not the vacSite, it is not a jump out of this state.
                 # Ignore it - removes reverse jumps from multi-site, single-Wyckoff lattices.
@@ -308,7 +308,9 @@ class VectorClusterExpansion(object):
                 raise ValueError("improper coordinate transformation, did not get same final jump site")
             siteB = cluster.ClusterSite(ci=(self.chem, jump[0][1]), R=Rj)
 
-            ijList.append((siteA, siteB, jump[1]))
+            indA = self.sup.index(siteA.R, siteA.ci)[0]
+            indB = self.sup.index(siteB.R, siteB.ci)[0]
+            ijList.append((indA, indB))
             dxList.append(jump[1])
             # See which clusters contain specJ at siteJ
             for vclusListInd, clustList, vecList in zip(itertools.count(), self.vecClus, self.vecVec):
