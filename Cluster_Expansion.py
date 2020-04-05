@@ -217,15 +217,52 @@ class VectorClusterExpansion(object):
             mobOccs_final[specJ][ij[0]] = 1
             mobOccs_final[specJ][ij[1]] = 0
 
-            # First, we deal with clusters that need to be turned off
+            # (1) First, we deal with clusters that need to be switched off
+            # (1.1) Check clusters that contain vacancy at vacSite.
             for clusterTupList in self.clustersOff[(self.vacSite, self.vacSpec)]:
                 for clusterTup in clusterTupList:
                     # Check if the cluster is on
                     clust = clusterTup[2]
-                    Rt = clusterTup
+                    Rt = clusterTup[-1]
                     if all([mobOccs[spec][self.sup.index(site.R + Rt, site.ci)[0]] == 1
                             for site, spec in clust.SiteSpecs]):
                         del_lamb[clusterTup[0]] -= clusterTup[3]  # take away the vector associated with it.
+                        delE -= EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # take away the energy coefficient
+
+            # (1.2) Next, we deal with those clusters that have specJ at site B, and check if they are on.
+            for clusterTupList in self.clustersOff[(siteB, specJ)]:
+                for clusterTup in clusterTupList:
+                    # Check if the cluster is on
+                    clust = clusterTup[2]
+                    Rt = clusterTup[-1]
+                    if all([mobOccs[spec][self.sup.index(site.R + Rt, site.ci)[0]] == 1
+                            for site, spec in clust.SiteSpecs]):
+                        del_lamb[clusterTup[0]] -= clusterTup[3]  # take away the vector associated with it.
+                        delE -= EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # take away the energy coefficient
+
+            # (2) Now, we deal with clusters that need to be switched on
+            # (2.1) - check clusters that contain the vacancy at siteB
+            for clusterTupList in self.clustersOn[(siteB, self.vacSpec)]:
+                for clusterTup in clusterTupList:
+                    # Check if the cluster is on
+                    clust = clusterTup[2]
+                    Rt = clusterTup[-1]
+                    if all([mobOccs_final[spec][self.sup.index(site.R + Rt, site.ci)[0]] == 1
+                            for site, spec in clust.SiteSpecs]):
+                        del_lamb[clusterTup[0]] += clusterTup[3]  # take away the vector associated with it.
+                        delE += EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # add the energy coefficient
+
+            # (2.2) - check clusters that contain the specJ at vacSite
+            for clusterTupList in self.clustersOn[(self.vacSite, specJ)]:
+                for clusterTup in clusterTupList:
+                    # Check if the cluster is on
+                    clust = clusterTup[2]
+                    Rt = clusterTup[-1]
+                    if all([mobOccs_final[spec][self.sup.index(site.R + Rt, site.ci)[0]] == 1
+                            for site, spec in clust.SiteSpecs]):
+                        del_lamb[clusterTup[0]] += clusterTup[3]  # take away the vector associated with it.
+                        delE += EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # add the energy coefficient
+
 
 
             # for clListInd, clList in enumerate(self.vecClus):
