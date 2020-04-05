@@ -346,7 +346,6 @@ class VectorClusterExpansion(object):
 
         for jump in [jmp for jList in jumpnetwork for jmp in jList]:
             siteA = cluster.ClusterSite(ci=(self.chem, jump[0][0]), R=np.zeros(3, dtype=int))
-
             if siteA != self.vacSite:
                 # if the initial site of the vacancy is not the vacSite, it is not a jump out of this state.
                 # Ignore it - removes reverse jumps from multi-site, single-Wyckoff lattices.
@@ -380,7 +379,7 @@ class VectorClusterExpansion(object):
                                 # if the cluster contains a vacancy at siteB.ci
                                 Rt = siteB.R - site.R
                                 # Check for double counting
-                                if not self.vacSite in [site + Rt for site in clust.SiteSpecs]:
+                                if not self.vacSite in [site + Rt for site, spec in clust.SiteSpecs]:
                                     # if vacSite IS present, then this means that there is some other species
                                     # on it, which has already been accounted for previously.
                                     clusterTransOn[(siteB, self.vacSpec)].append((vclusListInd, clInd, clust, vec,

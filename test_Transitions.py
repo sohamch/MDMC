@@ -9,6 +9,8 @@ import unittest
 class testKRA(unittest.TestCase):
 
     def setUp(self):
+        self.NSpec = 3
+        self.MaxOrder = 3
         self.crys = crystal.Crystal.BCC(0.2836, chemistry="A")
         self.jnetBCC = self.crys.jumpnetwork(0, 0.26)
         self.superlatt = 8 * np.eye(3, dtype=int)
@@ -16,13 +18,13 @@ class testKRA(unittest.TestCase):
         # get the number of sites in the supercell - should be 8x8x8
         numSites = len(self.superBCC.mobilepos)
         self.vacsite = self.superBCC.index(np.zeros(3, dtype=int), (0, 0))[0]
-        self.mobOccs = np.zeros((5, numSites), dtype=int)
+        self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
         for site in range(1, numSites):
-            spec = np.random.randint(0, 4)
+            spec = np.random.randint(0, self.NSpec-1)
             self.mobOccs[spec][site] = 1
         self.mobOccs[-1, 0] = 1
-        self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(5)]
-        self.clusexp = cluster.makeclusters(self.crys, 0.29, 4)
+        self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
+        self.clusexp = cluster.makeclusters(self.crys, 0.29, self.MaxOrder)
         self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
         self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.clusexp, self.mobCountList,
                                                  self.vacsite)
@@ -151,6 +153,60 @@ class test_Vector_Cluster_Expansion(testKRA):
         for vclusListInd, clListInd in enumerate(self.VclusExp.Vclus2Clus):
             cl0 = self.VclusExp.vecClus[vclusListInd][0]
             self.assertEqual(cl0, self.VclusExp.SpecClusters[clListInd][0])
+
+    def test_activeClusters(self):
+        """
+         We do three tests here:
+         (1) Every cluster is present as many times as it contains either vacancy (c,i) or final site's (c,i)
+         (2) The transition vectors are the correct ones.
+         (3) The clusters collected under the final sites, do not also contain vacSite when translated
+        """
+
+        clusterTransOff = self.VclusExp.clustersOff
+        # # 1. First, we check for the vacSite
+        # clusteroffcount_vac = collections.defaultdict(int)
+        # for clusterTup in clusterTransOff[(self.VclusExp.vacSite, self.VclusExp.vacSpec)]:
+        #     clusteroffcount_vac[clusterTup[2]] += 1  # count how many times this cluster occurs
+        #
+        # # Now check that we have the correct count for each cluster
+        # for clust, count in clusteroffcount_vac.items():
+        #     c = 0
+        #     for site, spec in clust.SiteSpecs:
+        #         if site.ci == self.VclusExp.vacSite.ci and spec == self.VclusExp.vacSpec:
+        #             c += 1
+        #     self.assertEqual(count, c, msg="{} \n {}".format(clust, self.VclusExp.vacSite))
+        #     self.assertEqual(c, 1, msg="{} \n {}".format(clust, self.VclusExp.vacSite))
+
+        # 1.2 - Next, test the other jumps
+        for stSpc, clustTupList in clusterTransOff.items():
+            clusterCounts = collections.defaultdict(int)
+            clust2Tup = collections.defaultdict(list)
+            for clusterTup in clustTupList:
+                clusterCounts[clusterTup[2]] += 1
+                clust2Tup[clusterTup[2]].append(clusterTup)
+
+            for clust, count in clusterCounts.items():
+                c = 0
+                for site, spec in clust.SiteSpecs:
+                    if site.ci == stSpc[0].ci and spec == stSpc[1]:
+                        Rtrans = stSpc[0].R - site.R
+                        if (self.VclusExp.vacSite, self.VclusExp.vacSpec) in [(site + Rtrans, spec)
+                                                                              for site, spec in clust.SiteSpecs]:
+                            if stSpc[0] != self.vacsite:
+                                continue
+                        c += 1
+                # Now multiply the dimensionality of the vector basis
+
+                dimBasis = 0
+                for clustList in self.VclusExp.vecClus:
+                    for cl in clustList:
+                        if cl == clust:
+                            dimBasis += 1
+
+                self.assertEqual(c*dimBasis, count, msg="\nsite, species : {}\ncluster:{}\ncount:{}\n{}\ndimBasis: {}\nc:{}".format(
+                    stSpc, clust, count, clust2Tup[clust], dimBasis, c))
+
+
 
 
 
