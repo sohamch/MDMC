@@ -86,7 +86,6 @@ class KRAExpand(object):
         """
 
         Nmobile = len(self.mobCountList)
-        clusterJumps = getattr(self, "SymTransClusters", None)
 
         mobileSpecs = tuple(range(Nmobile-1))  # the last species is the vacancy, so we are not considering it.
         clusterJumpsSpecies = {}
