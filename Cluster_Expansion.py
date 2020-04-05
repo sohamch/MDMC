@@ -268,17 +268,12 @@ class VectorClusterExpansion(object):
 
         return Wbar, Bbar
 
-    def GenTransitions(self, jumpnetwork):
+    def GetTransActiveClusts(self, jumpnetwork):
         """
-        Function to calculate the transitions and their rates out of a given state.
-        The rate for each jump is calculated in-situ while computing the vector expansion, since they require
-        similar operations.
+        Function to find and store those clusters that wither turn on or off due to transitons
+        out of a given state
         :param jumpnetwork: vacancy jumpnetwork
-        :return: (ijlist, dxlist)
         """
-
-        ijList = []
-        dxList = []
         clusterTransOff = collections.defaultdict(list)  # these are clusters that need to be turned off
         clusterTransOn = collections.defaultdict(list)  # these are clusters that need to be turned off
 
