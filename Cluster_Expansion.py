@@ -296,7 +296,6 @@ class VectorClusterExpansion(object):
                             clusterTransOn[(self.vacSite, spec)].append((vclusListInd, clInd, clust, vec,
                                                                                   self.vacSite.R - site.R))
 
-
         for jump in [jmp for jList in jumpnetwork for jmp in jList]:
             siteA = cluster.ClusterSite(ci=(self.chem, jump[0][0]), R=np.zeros(3, dtype=int))
             if siteA != self.vacSite:
@@ -318,22 +317,23 @@ class VectorClusterExpansion(object):
                 for clInd, clust, vec in zip(itertools.count(), clustList, vecList):
                     for site, spec in clust.SiteSpecs:
                         # see if the cluster has a vacancy site with the vacancy on it
-                        if site.ci == siteB.ci and spec != self.vacSpec:
-                            # translate all the sites and see if the vacancy is in there as well
-                            # if yes, We will not consider this to prevent double counting
-                            Rt = siteB.R - site.R  # to make the sites coincide
-                            if not (self.vacSite, self.vacSpec) in [(site - Rt, spec)
-                                                                    for (site, spec) in clust.SiteSpecs]:
-                                clusterTransOff[(siteB, spec)].append((vclusListInd, clInd, clust, vec, Rt))
-
-                        elif site.ci == siteB.ci and spec == self.vacSpec:
-                            Rt = siteB.R - site.R
-                            # check if vacSite is present in any of the translated sites
-                            if not(self.vacSite, self.vacSpec) in [(site-Rt, spec)
-                                                                   for (site, spec) in clust.SiteSpecs]:
+                        if site.ci == siteB.ci:
+                            if spec != self.vacSpec:
+                                # translate all the sites and see if the vacancy is in there as well
+                                # if yes, We will not consider this to prevent double counting
+                                Rt = siteB.R - site.R  # to make the sites coincide
+                                if not (self.vacSite, self.vacSpec) in [(site - Rt, spec)
+                                                                        for (site, spec) in clust.SiteSpecs]:
+                                    clusterTransOff[(siteB, spec)].append((vclusListInd, clInd, clust, vec, Rt))
+                            else:
+                                # if the cluster contains a vacancy at siteB.ci
+                                Rt = siteB.R - site.R
                                 # Check for double counting
-                                if not (vclusListInd, clInd, clust, vec, Rt) in clusterTransOn[(self.vacSite, spec)]:
-                                    clusterTransOn[(siteB, self.vacSpec)].append((vclusListInd, clInd, clust, vec, Rt))
+                                if not self.vacSite in [site - Rt for site in clust.SiteSpecs]:
+                                    # if vacSite IS present, then this means that there is some other species
+                                    # on it, which has already been accounted for previously.
+                                    clusterTransOn[(siteB, self.vacSpec)].append((vclusListInd, clInd, clust, vec,
+                                                                                  Rt))
 
 
 
