@@ -200,11 +200,14 @@ class VectorClusterExpansion(object):
             del_lamb = np.zeros((len(self.vecClus), 3))
 
             specJ = sum([occ[ij[1]]*label for label, occ in enumerate(mobOccs)])
-            siteJ, Rj = self.sup.ciR(ij[1])  # get the lattice site where the jumping species initially sits
-            siteI, Ri = self.sup.ciR(ij[0])  # get the lattice site where the jumping species finally sits
+            indB, siteB = ij[1]
+            indA, siteA = ij[0]
 
-            # Get the KRA energy for this jump
-            delEKRA = self.KRAexpander.GetKRA((ij, dx), mobOccs, KRACoeffs[(ij[0], ij[1], specJ)])
+            if siteA != self.vacSite:
+                raise ValueError("Incorrect initial jump site for vacancy. Got {}, expected {}".format(siteA,
+                                                                                                       self.vacSite))
+            # Get the KRA energy for this jump - stored in a dictionary element with key (indA, indB, specJ)
+            delEKRA = self.KRAexpander.GetKRA((ij, dx), mobOccs, KRACoeffs[(indA, indB, specJ)])
             delE = 0.0  # This will added to the KRA energy to get the activation barrier
 
             # switch the occupancies in the final state
@@ -213,6 +216,17 @@ class VectorClusterExpansion(object):
             mobOccs_final[-1][ij[1]] = 1
             mobOccs_final[specJ][ij[0]] = 1
             mobOccs_final[specJ][ij[1]] = 0
+
+            # First, we deal with clusters that need to be turned off
+            for clusterTupList in self.clustersOff[(self.vacSite, self.vacSpec)]:
+                for clusterTup in clusterTupList:
+                    # Check if the cluster is on
+                    clust = clusterTup[2]
+                    Rt = clusterTup
+                    if all([mobOccs[spec][self.sup.index(site.R + Rt, site.ci)[0]] == 1
+                            for site, spec in clust.SiteSpecs]):
+                        del_lamb[clusterTup[0]] -= clusterTup[3]  # take away the vector associated with it.
+
 
             # for clListInd, clList in enumerate(self.vecClus):
             #     for clInd, clus in enumerate(clList):
@@ -254,14 +268,14 @@ class VectorClusterExpansion(object):
             #                     del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
             #                     delE -= EnCoeffs[self.Vclus2Clus[clListInd]]
             #
-            # # append to the rateList
-            # ratelist[jnum] = np.exp(-(0.5*delE + delEKRA))
-            #
-            # # Create the matrix to find Wbar
-            # del_lamb_mat[:, :, jnum] = np.dot(del_lamb, del_lamb.T)
-            #
-            # # Create the matrix to find Bbar
-            # delxDotdelLamb[:, jnum] = np.tensordot(del_lamb_mat, dx, axes=(1, 0))
+            # append to the rateList
+            ratelist[jnum] = np.exp(-(0.5*delE + delEKRA))
+
+            # Create the matrix to find Wbar
+            del_lamb_mat[:, :, jnum] = np.dot(del_lamb, del_lamb.T)
+
+            # Create the matrix to find Bbar
+            delxDotdelLamb[:, jnum] = np.tensordot(del_lamb_mat, dx, axes=(1, 0))
 
         Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 0))
         Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
@@ -310,7 +324,7 @@ class VectorClusterExpansion(object):
 
             indA = self.sup.index(siteA.R, siteA.ci)[0]
             indB = self.sup.index(siteB.R, siteB.ci)[0]
-            ijList.append((indA, indB))
+            ijList.append(((indA, siteA), (indB, siteB)))
             dxList.append(jump[1])
             # See which clusters contain specJ at siteJ
             for vclusListInd, clustList, vecList in zip(itertools.count(), self.vecClus, self.vecVec):
@@ -322,14 +336,14 @@ class VectorClusterExpansion(object):
                                 # translate all the sites and see if the vacancy is in there as well
                                 # if yes, We will not consider this to prevent double counting
                                 Rt = siteB.R - site.R  # to make the sites coincide
-                                if not (self.vacSite, self.vacSpec) in [(site - Rt, spec)
+                                if not (self.vacSite, self.vacSpec) in [(site + Rt, spec)
                                                                         for (site, spec) in clust.SiteSpecs]:
                                     clusterTransOff[(siteB, spec)].append((vclusListInd, clInd, clust, vec, Rt))
                             else:
                                 # if the cluster contains a vacancy at siteB.ci
                                 Rt = siteB.R - site.R
                                 # Check for double counting
-                                if not self.vacSite in [site - Rt for site in clust.SiteSpecs]:
+                                if not self.vacSite in [site + Rt for site in clust.SiteSpecs]:
                                     # if vacSite IS present, then this means that there is some other species
                                     # on it, which has already been accounted for previously.
                                     clusterTransOn[(siteB, self.vacSpec)].append((vclusListInd, clInd, clust, vec,
