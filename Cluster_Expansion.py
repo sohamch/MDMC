@@ -274,6 +274,8 @@ class VectorClusterExpansion(object):
         out of a given state
         :param jumpnetwork: vacancy jumpnetwork
         """
+        ijList = []
+        dxList = []
         clusterTransOff = collections.defaultdict(list)  # these are clusters that need to be turned off
         clusterTransOn = collections.defaultdict(list)  # these are clusters that need to be turned off
 
@@ -329,6 +331,8 @@ class VectorClusterExpansion(object):
                                     # on it, which has already been accounted for previously.
                                     clusterTransOn[(siteB, self.vacSpec)].append((vclusListInd, clInd, clust, vec,
                                                                                   Rt))
+
+        return ijList, dxList, clusterTransOn, clusterTransOff
 
 
 
