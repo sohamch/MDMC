@@ -163,21 +163,9 @@ class test_Vector_Cluster_Expansion(testKRA):
         """
 
         clusterTransOff = self.VclusExp.clustersOff
-        # # 1. First, we check for the vacSite
-        # clusteroffcount_vac = collections.defaultdict(int)
-        # for clusterTup in clusterTransOff[(self.VclusExp.vacSite, self.VclusExp.vacSpec)]:
-        #     clusteroffcount_vac[clusterTup[2]] += 1  # count how many times this cluster occurs
-        #
-        # # Now check that we have the correct count for each cluster
-        # for clust, count in clusteroffcount_vac.items():
-        #     c = 0
-        #     for site, spec in clust.SiteSpecs:
-        #         if site.ci == self.VclusExp.vacSite.ci and spec == self.VclusExp.vacSpec:
-        #             c += 1
-        #     self.assertEqual(count, c, msg="{} \n {}".format(clust, self.VclusExp.vacSite))
-        #     self.assertEqual(c, 1, msg="{} \n {}".format(clust, self.VclusExp.vacSite))
+        clusterTransOn = self.VclusExp.clustersOn
 
-        # 1.2 - Next, test the other jumps
+        # First, we test clusters that need to be turned off
         for stSpc, clustTupList in clusterTransOff.items():
             clusterCounts = collections.defaultdict(int)
             clust2Tup = collections.defaultdict(list)
@@ -203,8 +191,40 @@ class test_Vector_Cluster_Expansion(testKRA):
                         if cl == clust:
                             dimBasis += 1
 
-                self.assertEqual(c*dimBasis, count, msg="\nsite, species : {}\ncluster:{}\ncount:{}\n{}\ndimBasis: {}\nc:{}".format(
+                self.assertEqual(c*dimBasis, count, msg="\nsite, species : {}\ncluster:{}\ncount:{}\n{}\ndimBasis:"
+                                                        "{}\nc:{}".format(
                     stSpc, clust, count, clust2Tup[clust], dimBasis, c))
+
+        # Next, we test the clusters that need to be turned on
+        for stSpc, clustTupList in clusterTransOn.items():
+            clusterCounts = collections.defaultdict(int)
+            clust2Tup = collections.defaultdict(list)
+            for clusterTup in clustTupList:
+                clusterCounts[clusterTup[2]] += 1
+                clust2Tup[clusterTup[2]].append(clusterTup)
+
+            for clust, count in clusterCounts.items():
+                c = 0
+                for site, spec in clust.SiteSpecs:
+                    if site.ci == stSpc[0].ci and spec == stSpc[1]:
+                        Rtrans = stSpc[0].R - site.R
+                        if (self.VclusExp.vacSite, self.VclusExp.vacSpec) in [(site + Rtrans, spec)
+                                                                              for site, spec in clust.SiteSpecs]:
+                            if stSpc[0] != self.vacsite:
+                                continue
+                        c += 1
+                # Now multiply the dimensionality of the vector basis
+
+                dimBasis = 0
+                for clustList in self.VclusExp.vecClus:
+                    for cl in clustList:
+                        if cl == clust:
+                            dimBasis += 1
+
+                self.assertEqual(c * dimBasis, count, msg="\nsite, species : {}\ncluster:{}\ncount:{}\n{}\ndimBasis:"
+                                                          "{}\nc:{}".format(
+                    stSpc, clust, count, clust2Tup[clust], dimBasis, c))
+        
 
 
 
