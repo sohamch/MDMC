@@ -199,7 +199,7 @@ class VectorClusterExpansion(object):
 
             del_lamb = np.zeros((len(self.vecClus), 3))
 
-            specJ = sum([occ[ij[1]]*label for label, occ in enumerate(mobOccs)])
+            specJ = sum([occ[ij[1][0]]*label for label, occ in enumerate(mobOccs)])
             indB, siteB = ij[1]
             indA, siteA = ij[0]
 
@@ -207,15 +207,18 @@ class VectorClusterExpansion(object):
                 raise ValueError("Incorrect initial jump site for vacancy. Got {}, expected {}".format(siteA,
                                                                                                        self.vacSite))
             # Get the KRA energy for this jump - stored in a dictionary element with key (indA, indB, specJ)
-            delEKRA = self.KRAexpander.GetKRA((ij, dx), mobOccs, KRACoeffs[(indA, indB, specJ)])
+            delEKRA = self.KRAexpander.GetKRA((indA, indB, specJ), mobOccs, KRACoeffs[(indA, indB, specJ)])
             delE = 0.0  # This will added to the KRA energy to get the activation barrier
 
             # switch the occupancies in the final state
+            # put in small check to see we have calculated specJ correctly
+            assert(mobOccs[specJ][indB] == 1)
+
             mobOccs_final = mobOccs.copy()
-            mobOccs_final[-1][ij[0]] = 0
-            mobOccs_final[-1][ij[1]] = 1
-            mobOccs_final[specJ][ij[0]] = 1
-            mobOccs_final[specJ][ij[1]] = 0
+            mobOccs_final[-1][indA] = 0
+            mobOccs_final[-1][indB] = 1
+            mobOccs_final[specJ][indA] = 1
+            mobOccs_final[specJ][indB] = 0
 
             # (1) First, we deal with clusters that need to be switched off
             for clusterTup in self.clustersOff[(self.vacSite, self.vacSpec)] + self.clustersOff[(siteB, specJ)]:
