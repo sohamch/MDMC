@@ -170,8 +170,15 @@ class test_Vector_Cluster_Expansion(testKRA):
             clusterCounts = collections.defaultdict(int)
             clust2Tup = collections.defaultdict(list)
             for clusterTup in clustTupList:
-                clusterCounts[clusterTup[2]] += 1
-                clust2Tup[clusterTup[2]].append(clusterTup)
+                transSites = clusterTup[2]
+                siteList, specList = [tup[0] for tup in transSites], [tup[1] for tup in transSites]
+                clust = Cluster_Expansion.ClusterSpecies(specList, siteList)
+                # Check that we get back the correct representative cluster
+                vecListInd, clustInd = clusterTup[0], clusterTup[1]
+                self.assertEqual(self.VclusExp.vecClus[vecListInd][clustInd], clust,
+                                 msg="{} \n {}".format(self.VclusExp.vecClus[vecListInd][clustInd], clust))
+                clusterCounts[clust] += 1
+                clust2Tup[clust].append(clusterTup)
 
             for clust, count in clusterCounts.items():
                 c = 0
