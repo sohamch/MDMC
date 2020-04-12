@@ -219,30 +219,29 @@ class VectorClusterExpansion(object):
 
             # (1) First, we deal with clusters that need to be switched off
             # (1.1) Check clusters that contain vacancy at vacSite.
-            for clusterTupList in self.clustersOff[(self.vacSite, self.vacSpec)]:
+            for clusterTupList in self.clustersOff[(self.vacSite, self.vacSpec)] + self.clustersOff[(siteB, specJ)]:
                 for clusterTup in clusterTupList:
                     # Check if the cluster is on
-                    transSites = clusterTup[2]
-                    Rt = clusterTup[-1]
-                    if all([mobOccs[spec][self.sup.index(site.R, site.ci)[0]] == 1
-                            for site, spec in transSites]):
-                        del_lamb[clusterTup[0]] -= clusterTup[3]  # take away the vector associated with it.
+                    transSiteInds = clusterTup[3]
+                    if all([mobOccs[spec][siteInd] == 1
+                            for siteInd, spec in transSiteInds]):
+                        del_lamb[clusterTup[0]] -= clusterTup[4]  # take away the vector associated with it.
                         delE -= EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # take away the energy coefficient
 
             # (1.2) Next, we deal with those clusters that have specJ at site B, and check if they are on.
-            for clusterTupList in self.clustersOff[(siteB, specJ)]:
-                for clusterTup in clusterTupList:
-                    # Check if the cluster is on
-                    clust = clusterTup[2]
-                    Rt = clusterTup[-1]
-                    if all([mobOccs[spec][self.sup.index(site.R + Rt, site.ci)[0]] == 1
-                            for site, spec in clust.SiteSpecs]):
-                        del_lamb[clusterTup[0]] -= clusterTup[3]  # take away the vector associated with it.
-                        delE -= EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # take away the energy coefficient
+            # for clusterTupList in self.clustersOff[(siteB, specJ)]:
+            #     for clusterTup in clusterTupList:
+            #         # Check if the cluster is on
+            #         transSiteInds = clusterTup[3]
+            #         Rt = clusterTup[-1]
+            #         if all([mobOccs[spec][self.sup.index(site.R + Rt, site.ci)[0]] == 1
+            #                 for site, spec in clust.SiteSpecs]):
+            #             del_lamb[clusterTup[0]] -= clusterTup[3]  # take away the vector associated with it.
+            #             delE -= EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # take away the energy coefficient
 
             # (2) Now, we deal with clusters that need to be switched on
             # (2.1) - check clusters that contain the vacancy at siteB
-            for clusterTupList in self.clustersOn[(siteB, self.vacSpec)]:
+            for clusterTupList in self.clustersOn[(siteB, self.vacSpec)] + self.clustersOn[(self.vacSite, specJ)]:
                 for clusterTup in clusterTupList:
                     # Check if the cluster is on
                     clust = clusterTup[2]
@@ -253,15 +252,15 @@ class VectorClusterExpansion(object):
                         delE += EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # add the energy coefficient
 
             # (2.2) - check clusters that contain the specJ at vacSite
-            for clusterTupList in self.clustersOn[(self.vacSite, specJ)]:
-                for clusterTup in clusterTupList:
-                    # Check if the cluster is on
-                    clust = clusterTup[2]
-                    Rt = clusterTup[-1]
-                    if all([mobOccs_final[spec][self.sup.index(site.R + Rt, site.ci)[0]] == 1
-                            for site, spec in clust.SiteSpecs]):
-                        del_lamb[clusterTup[0]] += clusterTup[3]  # take away the vector associated with it.
-                        delE += EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # add the energy coefficient
+            # for clusterTupList in self.clustersOn[(self.vacSite, specJ)]:
+            #     for clusterTup in clusterTupList:
+            #         # Check if the cluster is on
+            #         clust = clusterTup[2]
+            #         Rt = clusterTup[-1]
+            #         if all([mobOccs_final[spec][self.sup.index(site.R + Rt, site.ci)[0]] == 1
+            #                 for site, spec in clust.SiteSpecs]):
+            #             del_lamb[clusterTup[0]] += clusterTup[3]  # take away the vector associated with it.
+            #             delE += EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # add the energy coefficient
 
             # append to the rateList
             ratelist[jnum] = np.exp(-(0.5*delE + delEKRA))
@@ -333,18 +332,23 @@ class VectorClusterExpansion(object):
                         if site.ci == siteB.ci:
                             Rt = siteB.R - site.R  # to make the sites coincide
                             transSites = tuple((site + Rt, spec) for (site, spec) in clust.SiteSpecs)
+                            transSiteInds = tuple((self.sup.index(site.R, site.ci)[0], spec)
+                                                  for site, spec in transSites)
                             if spec != self.vacSpec:
                                 # translate all the sites and see if the vacancy is in there as well
                                 # if yes, We will not consider this to prevent double counting
                                 if not (self.vacSite, self.vacSpec) in transSites:
-                                    clusterTransOff[(siteB, spec)].append([vclusListInd, clInd, transSites, vec, Rt])
+                                    clusterTransOff[(siteB, spec)].append([vclusListInd, clInd,
+                                                                           transSites, transSiteInds,
+                                                                           vec, Rt])
                             else:
                                 # Check for double counting
                                 if self.vacSite not in [site + Rt for site, spec in clust.SiteSpecs]:
                                     # if vacSite IS present, then this means that there is some other species
                                     # on it, which has already been accounted for previously.
-                                    clusterTransOn[(siteB, self.vacSpec)].append([vclusListInd, clInd, transSites, vec,
-                                                                                  Rt])
+                                    clusterTransOn[(siteB, self.vacSpec)].append([vclusListInd, clInd,
+                                                                                  transSites, transSiteInds,
+                                                                                  vec, Rt])
 
         return ijList, dxList, clusterTransOn, clusterTransOff
 
