@@ -188,6 +188,7 @@ class test_Vector_Cluster_Expansion(testKRA):
                     if site.ci == stSpc[0].ci and spec == stSpc[1]:
                         Rtrans = stSpc[0].R - site.R
                         # What is the point of the check below - to prevent double counting
+                        # re-verify this part again - how does this work?
                         if (self.VclusExp.vacSite, self.VclusExp.vacSpec) in [(site + Rtrans, spec)
                                                                               for site, spec in clust.SiteSpecs]:
                             if stSpc[0] != self.vacsite:
@@ -247,6 +248,17 @@ class test_Vector_Cluster_Expansion(testKRA):
                 self.assertEqual(c * dimBasis, count, msg="\nsite, species : {}\ncluster:{}\ncount:{}\n{}\ndimBasis:"
                                                           "{}\nc:{}".format(
                     stSpc, clust, count, clust2Tup[clust], dimBasis, c))
+
+    def test_MC_step(self):
+        """
+        Here, we have to test an MC step to make sure the expansion is working properly.
+        """
+        # 1. set up energy coefficients
+        EnCoeffs = np.random.rand(len(self.VclusExp.SpecClusters))
+
+        # 2. set up KRA coefficients
+        # Need to do this for each transition
+        KRA_Coeff_List = []
         
 
 
