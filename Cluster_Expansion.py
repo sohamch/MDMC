@@ -218,24 +218,20 @@ class VectorClusterExpansion(object):
             mobOccs_final[specJ][ij[1]] = 0
 
             # (1) First, we deal with clusters that need to be switched off
-            # (1.1) Check clusters that contain vacancy at vacSite.
             for clusterTup in self.clustersOff[(self.vacSite, self.vacSpec)] + self.clustersOff[(siteB, specJ)]:
                 # Check if the cluster is on
                 transSiteInds = clusterTup[3]
-                if all([mobOccs[spec][siteInd] == 1
-                        for siteInd, spec in transSiteInds]):
+                if all([mobOccs[spec][siteInd] == 1 for siteInd, spec in transSiteInds]):
                     del_lamb[clusterTup[0]] -= clusterTup[4]  # take away the vector associated with it.
                     delE -= EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # take away the energy coefficient
 
             # (2) Now, we deal with clusters that need to be switched on
-            # (2.1) - check clusters that contain the vacancy at siteB
             for clusterTup in self.clustersOn[(siteB, self.vacSpec)] + self.clustersOn[(self.vacSite, specJ)]:
                 # Check if the cluster is on
-                clust = clusterTup[2]
+                transSiteInds = clusterTup[3]
                 Rt = clusterTup[-1]
-                if all([mobOccs_final[spec][self.sup.index(site.R + Rt, site.ci)[0]] == 1
-                        for site, spec in clust.SiteSpecs]):
-                    del_lamb[clusterTup[0]] += clusterTup[3]  # take away the vector associated with it.
+                if all([mobOccs_final[spec][siteInd] == 1 for siteInd, spec in transSiteInds]):
+                    del_lamb[clusterTup[0]] += clusterTup[4]  # add the vector associated with it.
                     delE += EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # add the energy coefficient
 
             # append to the rateList
