@@ -258,7 +258,16 @@ class test_Vector_Cluster_Expansion(testKRA):
 
         # 2. set up KRA coefficients
         # Need to do this for each transition
-        KRA_Coeff_List = []
+        KRA_Coeff_List = {}
+        for transition, clusterLists in self.VclusExp.KRAexpander.clusterSpeciesJumps.items():
+            KRACoeffs = np.random.rand(len(clusterLists))
+            KRA_Coeff_List[transition] = KRACoeffs
+
+        beta = 1.0
+        # Now perform an expansion with the random occupancy array we have defined
+        # Expand(self, beta, mobOccs, EnCoeffs, KRACoeffs)
+        Wbar, bbar = self.VclusExp.Expand(beta, self.mobOccs, EnCoeffs, KRA_Coeff_List)
+
         
 
 
