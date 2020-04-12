@@ -244,9 +244,9 @@ class VectorClusterExpansion(object):
             del_lamb_mat[:, :, jnum] = np.dot(del_lamb, del_lamb.T)
 
             # Create the matrix to find Bbar
-            delxDotdelLamb[:, jnum] = np.tensordot(del_lamb_mat, dx, axes=(1, 0))
+            delxDotdelLamb[:, jnum] = np.tensordot(del_lamb, dx, axes=(1, 0))
 
-        Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 0))
+        Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 2))
         Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
 
         return Wbar, Bbar
