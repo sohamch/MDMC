@@ -222,10 +222,10 @@ class VectorClusterExpansion(object):
             for clusterTupList in self.clustersOff[(self.vacSite, self.vacSpec)]:
                 for clusterTup in clusterTupList:
                     # Check if the cluster is on
-                    clust = clusterTup[2]
+                    transSites = clusterTup[2]
                     Rt = clusterTup[-1]
-                    if all([mobOccs[spec][self.sup.index(site.R + Rt, site.ci)[0]] == 1
-                            for site, spec in clust.SiteSpecs]):
+                    if all([mobOccs[spec][self.sup.index(site.R, site.ci)[0]] == 1
+                            for site, spec in transSites]):
                         del_lamb[clusterTup[0]] -= clusterTup[3]  # take away the vector associated with it.
                         delE -= EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # take away the energy coefficient
 
@@ -263,48 +263,6 @@ class VectorClusterExpansion(object):
                         del_lamb[clusterTup[0]] += clusterTup[3]  # take away the vector associated with it.
                         delE += EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # add the energy coefficient
 
-
-
-            # for clListInd, clList in enumerate(self.vecClus):
-            #     for clInd, clus in enumerate(clList):
-            #         for siteSpec in clus.SiteSpecs:
-            #             site, spec = siteSpec[0], siteSpec[1]
-            #             # First, we check for vacancies
-            #             # Check if any translation of this cluster needs to be turned off
-            #             if site.ci == siteI and spec == len(mobOccs)-1:
-            #                 siteSpecNew = set([(clsite - site.R, spec) for clsite, spec in clus.SiteSpecs])
-            #                 # Check if this translated cluster is on in the initial state
-            #                 if all([mobOccs[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
-            #                         for clSite, spec in siteSpecNew]):
-            #                     # Turn in off
-            #                     del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
-            #                     delE -= EnCoeffs[self.Vclus2Clus[clListInd]]
-            #
-            #                 # Check if this cluster is on in the final state
-            #                 if all([mobOccs_final[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
-            #                         for clSite, spec in siteSpecNew]):
-            #                     # Turn it on
-            #                     del_lamb[clListInd] += self.vecVec[clListInd][clInd]
-            #                     delE += EnCoeffs[self.Vclus2Clus[clListInd]]
-            #
-            #             # Next, we check for specJ
-            #             if site.ci == siteJ.ci and spec == specJ:
-            #                 # Bring this site to Rj instead of site.R
-            #                 siteSpecNew = set([(clsite - site.R + siteJ.R, spec) for clsite, spec in clus.SiteSpecs])
-            #                 # Check if this translated cluster is on in the initial state
-            #                 if all([mobOccs[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
-            #                         for clSite, spec in siteSpecNew]):
-            #                     # Turn it off
-            #                     del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
-            #                     delE -= EnCoeffs[self.Vclus2Clus[clListInd]]
-            #
-            #                 # Check if this cluster is on in the final state
-            #                 if all([mobOccs_final[spec][self.sup.index(clSite.R, clSite.ci)[0]] == 1
-            #                         for clSite, spec in siteSpecNew]):
-            #                     # Turn it on
-            #                     del_lamb[clListInd] -= self.vecVec[clListInd][clInd]
-            #                     delE -= EnCoeffs[self.Vclus2Clus[clListInd]]
-            #
             # append to the rateList
             ratelist[jnum] = np.exp(-(0.5*delE + delEKRA))
 
@@ -336,13 +294,18 @@ class VectorClusterExpansion(object):
                 for site, spec in clust.SiteSpecs:
                     # see if the cluster has a vacancy site with the vacancy on it
                     if site.ci == self.vacSite.ci:
+                        Rt = self.vacSite.R - site.R
+                        transSites = tuple((site + Rt, spec) for site, spec in clust.SiteSpecs)
+                        transSiteInds = tuple((self.sup.index(site.R, site.ci)[0], spec) for site, spec in transSites)
                         if spec == self.vacSpec:
-                            clusterTransOff[(self.vacSite, self.vacSpec)].append((vclusListInd, clInd, clust, vec,
-                                                                                  self.vacSite.R - site.R))
-                        elif spec != self.vacSpec:
+                            clusterTransOff[(self.vacSite, self.vacSpec)].append([vclusListInd, clInd,
+                                                                                  transSites, transSiteInds,
+                                                                                  vec, Rt])
+                        else:
                             # There is some other species at the vacancy site, must be the final state of some jump.
-                            clusterTransOn[(self.vacSite, spec)].append((vclusListInd, clInd, clust, vec,
-                                                                                  self.vacSite.R - site.R))
+                            clusterTransOn[(self.vacSite, spec)].append([vclusListInd, clInd,
+                                                                         transSites, transSiteInds,
+                                                                         vec, Rt])
 
         for jump in [jmp for jList in jumpnetwork for jmp in jList]:
             siteA = cluster.ClusterSite(ci=(self.chem, jump[0][0]), R=np.zeros(3, dtype=int))
@@ -368,22 +331,20 @@ class VectorClusterExpansion(object):
                     for site, spec in clust.SiteSpecs:
                         # see if the cluster has a vacancy site with the vacancy on it
                         if site.ci == siteB.ci:
+                            Rt = siteB.R - site.R  # to make the sites coincide
+                            transSites = tuple((site + Rt, spec) for (site, spec) in clust.SiteSpecs)
                             if spec != self.vacSpec:
                                 # translate all the sites and see if the vacancy is in there as well
                                 # if yes, We will not consider this to prevent double counting
-                                Rt = siteB.R - site.R  # to make the sites coincide
-                                if not (self.vacSite, self.vacSpec) in [(site + Rt, spec)
-                                                                        for (site, spec) in clust.SiteSpecs]:
-                                    clusterTransOff[(siteB, spec)].append((vclusListInd, clInd, clust, vec, Rt))
+                                if not (self.vacSite, self.vacSpec) in transSites:
+                                    clusterTransOff[(siteB, spec)].append([vclusListInd, clInd, transSites, vec, Rt])
                             else:
-                                # if the cluster contains a vacancy at siteB.ci
-                                Rt = siteB.R - site.R
                                 # Check for double counting
-                                if not self.vacSite in [site + Rt for site, spec in clust.SiteSpecs]:
+                                if self.vacSite not in [site + Rt for site, spec in clust.SiteSpecs]:
                                     # if vacSite IS present, then this means that there is some other species
                                     # on it, which has already been accounted for previously.
-                                    clusterTransOn[(siteB, self.vacSpec)].append((vclusListInd, clInd, clust, vec,
-                                                                                  Rt))
+                                    clusterTransOn[(siteB, self.vacSpec)].append([vclusListInd, clInd, transSites, vec,
+                                                                                  Rt])
 
         return ijList, dxList, clusterTransOn, clusterTransOff
 
