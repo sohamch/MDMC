@@ -5,6 +5,7 @@ import itertools
 import Transitions
 import Cluster_Expansion
 import unittest
+import time
 
 class testKRA(unittest.TestCase):
 
@@ -17,15 +18,15 @@ class testKRA(unittest.TestCase):
         self.superBCC = supercell.ClusterSupercell(self.crys, self.superlatt)
         # get the number of sites in the supercell - should be 8x8x8
         numSites = len(self.superBCC.mobilepos)
-        self.vacsite = self.superBCC.index(np.zeros(3, dtype=int), (0, 0))[0]
+        self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
+        self.vacsiteInd = self.superBCC.index(np.zeros(3, dtype=int), (0, 0))[0]
         self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
         for site in range(1, numSites):
             spec = np.random.randint(0, self.NSpec-1)
             self.mobOccs[spec][site] = 1
-        self.mobOccs[-1, 0] = 1
+        self.mobOccs[-1, self.vacsiteInd] = 1
         self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
         self.clusexp = cluster.makeclusters(self.crys, 0.29, self.MaxOrder)
-        self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
         self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.clusexp, self.mobCountList,
                                                  self.vacsite)
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.jnetBCC,
@@ -266,7 +267,9 @@ class test_Vector_Cluster_Expansion(testKRA):
         beta = 1.0
         # Now perform an expansion with the random occupancy array we have defined
         # Expand(self, beta, mobOccs, EnCoeffs, KRACoeffs)
+        start = time.time()
         Wbar, bbar = self.VclusExp.Expand(beta, self.mobOccs, EnCoeffs, KRA_Coeff_List)
+        print(time.time() - start)
 
         
 
