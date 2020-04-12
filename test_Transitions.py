@@ -180,11 +180,14 @@ class test_Vector_Cluster_Expansion(testKRA):
                 clusterCounts[clust] += 1
                 clust2Tup[clust].append(clusterTup)
 
+            # Next, we check that a cluster is repeated as many times as it contains the species in the key
+            # in a translated image of the site in the key, multiplied by the dimensionality of its vector basis.
             for clust, count in clusterCounts.items():
                 c = 0
                 for site, spec in clust.SiteSpecs:
                     if site.ci == stSpc[0].ci and spec == stSpc[1]:
                         Rtrans = stSpc[0].R - site.R
+                        # What is the point of the check below - to prevent double counting
                         if (self.VclusExp.vacSite, self.VclusExp.vacSpec) in [(site + Rtrans, spec)
                                                                               for site, spec in clust.SiteSpecs]:
                             if stSpc[0] != self.vacsite:
@@ -204,11 +207,24 @@ class test_Vector_Cluster_Expansion(testKRA):
 
         # Next, we test the clusters that need to be turned on
         for stSpc, clustTupList in clusterTransOn.items():
+            # clusterCounts = collections.defaultdict(int)
+            # clust2Tup = collections.defaultdict(list)
+            # for clusterTup in clustTupList:
+            #     clusterCounts[clusterTup[2]] += 1
+            #     clust2Tup[clusterTup[2]].append(clusterTup)
             clusterCounts = collections.defaultdict(int)
             clust2Tup = collections.defaultdict(list)
             for clusterTup in clustTupList:
-                clusterCounts[clusterTup[2]] += 1
-                clust2Tup[clusterTup[2]].append(clusterTup)
+                transSites = clusterTup[2]
+                siteList, specList = [tup[0] for tup in transSites], [tup[1] for tup in transSites]
+                clust = Cluster_Expansion.ClusterSpecies(specList, siteList)
+                # creating a cluster object out of the sites will bring the centroid unit cell back to the origin.
+                # Check that we get back the correct representative cluster
+                vecListInd, clustInd = clusterTup[0], clusterTup[1]
+                self.assertEqual(self.VclusExp.vecClus[vecListInd][clustInd], clust,
+                                 msg="{} \n {}".format(self.VclusExp.vecClus[vecListInd][clustInd], clust))
+                clusterCounts[clust] += 1
+                clust2Tup[clust].append(clusterTup)
 
             for clust, count in clusterCounts.items():
                 c = 0
