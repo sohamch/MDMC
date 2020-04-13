@@ -188,15 +188,13 @@ class VectorClusterExpansion(object):
         :return: Wbar, Bbar - rate and bias expansions in the cluster basis
         """
 
-        ijlist, dxlist = self.ijList, self.dxList
-
-        del_lamb_mat = np.zeros((len(self.vecClus), len(self.vecClus), len(ijlist)))
-        delxDotdelLamb = np.zeros((len(self.vecClus), len(ijlist)))
+        del_lamb_mat = np.zeros((len(self.vecClus), len(self.vecClus), len(self.ijList)))
+        delxDotdelLamb = np.zeros((len(self.vecClus), len(self.ijList)))
 
         # To be tensor dotted with ratelist with axes = (0,1)
-        ratelist = np.zeros(len(ijlist))
+        ratelist = np.zeros(len(self.ijList))
 
-        for (jnum, ij, dx) in zip(itertools.count(), ijlist, dxlist):
+        for (jnum, ij, dx) in zip(itertools.count(), self.ijList, self.dxList):
             del_lamb = np.zeros((len(self.vecClus), 3))
 
             specJ = sum([occ[ij[1][0]]*label for label, occ in enumerate(mobOccs)])
