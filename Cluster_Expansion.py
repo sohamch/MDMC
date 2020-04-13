@@ -3,6 +3,7 @@ import numpy as np
 import collections
 import itertools
 import Transitions
+from numba import jit
 import time
 
 
@@ -231,7 +232,7 @@ class VectorClusterExpansion(object):
                     delE += EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # add the energy coefficient
 
             # append to the rateList
-            ratelist[jnum] = np.exp(-(0.5*delE + delEKRA))
+            ratelist[jnum] = np.exp(-(0.5*delE + delEKRA)*beta)
 
             # Create the matrix to find Wbar
             del_lamb_mat[:, :, jnum] = np.dot(del_lamb, del_lamb.T)
