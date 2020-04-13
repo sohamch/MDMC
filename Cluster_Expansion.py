@@ -195,9 +195,8 @@ class VectorClusterExpansion(object):
         ratelist = np.zeros(len(self.ijList))
 
         for (jnum, ij, dx) in zip(itertools.count(), self.ijList, self.dxList):
+            specJ = sum([occ[ij[1][0]] * label for label, occ in enumerate(mobOccs)])
             del_lamb = np.zeros((len(self.vecClus), 3))
-
-            specJ = sum([occ[ij[1][0]]*label for label, occ in enumerate(mobOccs)])
             indB, siteB = ij[1]
             indA, siteA = ij[0]
 
@@ -220,17 +219,14 @@ class VectorClusterExpansion(object):
             # (1) First, we deal with clusters that need to be switched off
             for clusterTup in self.clustersOff[(self.vacSite, self.vacSpec)] + self.clustersOff[(siteB, specJ)]:
                 # Check if the cluster is on
-                transSiteInds = clusterTup[3]
-                if all([mobOccs[spec][siteInd] == 1 for siteInd, spec in transSiteInds]):
+                if all([mobOccs[spec][siteInd] == 1 for siteInd, spec in clusterTup[3]]):
                     del_lamb[clusterTup[0]] -= clusterTup[4]  # take away the vector associated with it.
                     delE -= EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # take away the energy coefficient
 
             # (2) Now, we deal with clusters that need to be switched on
             for clusterTup in self.clustersOn[(siteB, self.vacSpec)] + self.clustersOn[(self.vacSite, specJ)]:
                 # Check if the cluster is on
-                transSiteInds = clusterTup[3]
-                Rt = clusterTup[-1]
-                if all([mobOccs_final[spec][siteInd] == 1 for siteInd, spec in transSiteInds]):
+                if all([mobOccs_final[spec][siteInd] == 1 for siteInd, spec in clusterTup[3]]):
                     del_lamb[clusterTup[0]] += clusterTup[4]  # add the vector associated with it.
                     delE += EnCoeffs[self.Vclus2Clus[clusterTup[0]]]  # add the energy coefficient
 
