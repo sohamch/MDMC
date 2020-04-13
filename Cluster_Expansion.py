@@ -197,7 +197,6 @@ class VectorClusterExpansion(object):
         ratelist = np.zeros(len(ijlist))
 
         for (jnum, ij, dx) in zip(itertools.count(), ijlist, dxlist):
-
             del_lamb = np.zeros((len(self.vecClus), 3))
 
             specJ = sum([occ[ij[1][0]]*label for label, occ in enumerate(mobOccs)])
@@ -220,7 +219,6 @@ class VectorClusterExpansion(object):
             mobOccs_final[-1][indB] = 1
             mobOccs_final[specJ][indA] = 1
             mobOccs_final[specJ][indB] = 0
-
             # (1) First, we deal with clusters that need to be switched off
             for clusterTup in self.clustersOff[(self.vacSite, self.vacSpec)] + self.clustersOff[(siteB, specJ)]:
                 # Check if the cluster is on
