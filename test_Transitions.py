@@ -150,7 +150,6 @@ class test_Vector_Cluster_Expansion(testKRA):
                 self.assertGreater(count, 0)
 
     def test_indexing(self):
-
         for vclusListInd, clListInd in enumerate(self.VclusExp.Vclus2Clus):
             cl0 = self.VclusExp.vecClus[vclusListInd][0]
             self.assertEqual(cl0, self.VclusExp.SpecClusters[clListInd][0])
@@ -162,7 +161,6 @@ class test_Vector_Cluster_Expansion(testKRA):
          (2) The transition vectors are the correct ones.
          (3) The clusters collected under the final sites, do not also contain vacSite when translated
         """
-
         clusterTransOff = self.VclusExp.clustersOff
         clusterTransOn = self.VclusExp.clustersOn
 
