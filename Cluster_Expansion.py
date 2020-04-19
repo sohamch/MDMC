@@ -52,12 +52,13 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, jumpnetwork, mobCountList, vacSite):
+    def __init__(self, sup, clusexp, jumpnetwork, mobCountList, vacSite, maxorder):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
         :param mobCountList - list of members of each species in the supercell.
         :param vacSite - the site of the vacancy as a clusterSite object. This does not change during the simulation.
+        :param maxorder - the maximum order of a cluster in our cluster expansion.
         In this type of simulations, we consider a solid with a single wyckoff set on which atoms are arranged.
         """
         self.chem = 0  # we'll work with a monoatomic basis
@@ -66,6 +67,7 @@ class VectorClusterExpansion(object):
         self.crys = self.sup.crys
         # vacInd will always be the initial state in the transitions that we consider.
         self.clusexp = clusexp
+        self.maxOrder = maxorder
         self.mobCountList = mobCountList
         self.vacSpec = len(mobCountList) - 1
         self.mobList = list(range(len(mobCountList)))
@@ -73,7 +75,7 @@ class VectorClusterExpansion(object):
         self.jumpnetwork = jumpnetwork
         self.ScalarBasis = self.createScalarBasis()
         self.SpecClusters = self.recalcClusters()
-        self.SiteSpecInteractions = self.generateSiteSpecInteracts()
+        self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
         self.vecClus, self.vecVec = self.genVecClustBasis(self.SpecClusters)
         self.indexVclus2Clus()
 
@@ -327,6 +329,7 @@ class VectorClusterExpansion(object):
         generate interactions for every site - for MC moves
         """
         SiteSpecinteractList = {}
+        InteractCounts = []  # this is to later find out the maximum number of interactions.
         for siteInd in range(self.Nsites):
             # get the cluster site
             ci, R = self.sup.ciR(siteInd)
@@ -344,8 +347,9 @@ class VectorClusterExpansion(object):
                                 interaction = [(site + Rtrans, spec) for site, spec in cl.SiteSpecs]
                                 interactionList.append([interaction, clListInd, Rtrans])
                 SiteSpecinteractList[(clSite, sp)] = interactionList
-
-        return SiteSpecinteractList
+                InteractCounts.append(len(interactionList))
+        maxinteractions = max(InteractCounts)
+        return SiteSpecinteractList, maxinteractions
 
 
     def makeJitData(self):
@@ -377,9 +381,21 @@ class VectorClusterExpansion(object):
                 InteractCounts.append(len(self.SiteSpecInteractions[(clSite, spec)]))
 
         maxInteract = max(InteractCounts)
+        # Count this beforehand, and combine the loop above and below into one
 
         # Next, we need an array that stores how many sites there are in every interaction.
         numSitesInInteracts = np.full((self.Nsites, len(self.mobCountList), maxInteract), -1, dtype=int)
+        for siteInd in range(self.Nsites):
+            # convert to cluster site to index
+            ci, R = self.sup.ciR(siteInd)
+            clSite = cluster.ClusterSite(ci=ci, R=R)
+            for spec in range(len(self.mobCountList)):
+                for interactInd, interactInfoList in enumerate(self.SiteSpecInteractions[(clSite, spec)]):
+                    numSites = len(interactInfoList[0])
+                    numSitesInInteracts[siteInd, spec, interactInd] = numSites
+
+        # Next, we need a structure that stores the species that are there on the interaction sites
+        SpecOnInteractSites = np.full((self.Nsites, len(self.mobCountList), maxInteract, self.maxOrder), -1, dtype=int)
         for siteInd in range(self.Nsites):
             # convert to cluster site to index
             ci, R = self.sup.ciR(siteInd)
