@@ -325,11 +325,24 @@ class VectorClusterExpansion(object):
         """
         generate interactions for every site - for MC moves
         """
+        SiteSpecinteractList = {}
         for siteInd in range(self.Nsites):
             # get the cluster site
             ci, R = self.sup.ciR(siteInd)[0]
+            clSite = cluster.ClusterSite(ci=ci, R=R)
             # assign species to this
-
+            for sp in range(len(self.mobCountList)):
+                # For each (clSite, sp) pair, we need an interaction list
+                interactionList = []
+                # Now, go through all the clusters
+                for clListInd, clList in enumerate(self.SpecClusters):
+                    for cl in clList:
+                        for site, spec in cl.SiteSpecs:
+                            if site.ci == clSite.ci and sp == spec:
+                                Rtrans = clSite.R - site.R
+                                interaction = [site + Rtrans for site in cl.SiteSpecs]
+                                interactionList.append([interaction, clListInd])
+                SiteSpecinteractList[(clSite, sp)] = interactionList
 
 
     def makeJitData(self):
