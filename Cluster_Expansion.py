@@ -56,13 +56,13 @@ class VectorClusterExpansion(object):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
-        :param mobList - list of labels for chemical species on mobile sites - in order as their occupancies are defined.
-        :param sampleMobOccs - a starting mobile occupancy array to just count the number of each species
+        :param mobCountList - list of members of each species in the supercell.
         :param vacSite - the site of the vacancy as a clusterSite object. This does not change during the simulation.
         In this type of simulations, we consider a solid with a single wyckoff set on which atoms are arranged.
         """
         self.chem = 0  # we'll work with a monoatomic basis
         self.sup = sup
+        self.Nsites = len(self.sup.mobilepos)
         self.crys = self.sup.crys
         # vacInd will always be the initial state in the transitions that we consider.
         self.clusexp = clusexp
@@ -320,6 +320,27 @@ class VectorClusterExpansion(object):
                                                                                   vec, Rt])
 
         return ijList, dxList, clusterTransOn, clusterTransOff
+
+    def generateSiteInteracts(self):
+        """
+        generate interactions for every site - for MC moves
+        """
+        for siteInd in range(self.Nsites):
+            # get the cluster site
+            ci, R = self.sup.ciR(siteInd)[0]
+            # assign species to this
+
+
+
+    def makeJitData(self):
+        """
+        Function to represent all the data structures in the form of numpy arrays so that they can be accelerated with
+        numba's jit compilations.
+        :return:
+        """
+
+        # First let's just make arrays relevant to finding active clusters for transitions
+
 
 
 
