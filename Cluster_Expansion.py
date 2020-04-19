@@ -413,7 +413,7 @@ class VectorClusterExpansion(object):
         # For each interaction, there can at the max be three spanning vectors.
         VecsInteracts = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount, 3, 3), -1, dtype=float)
 
-        # Part 2 - storing cluster symmetry index of each interaction so that energy contribution of the interaction
+        # Part 3 - storing cluster symmetry index of each interaction so that energy contribution of the interaction
         # can be looked up during MC moves
         EnListInteract = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount), -1, dtype=float)
 
@@ -444,9 +444,13 @@ class VectorClusterExpansion(object):
                     # Next, store the cluster list to look up energies
                     EnListInteract[siteInd, spec, interactInd] = self.clust2SpecClus[interactInfoList[1]]
 
-                    for interactSiteInd, (site, spec) in enumerate(interactInfoList[0]):
+                    for interactSiteInd, (site, sp) in enumerate(interactInfoList[0]):
                         # For each interaction site, store what species it contains
-                        SpecOnInteractSites[siteInd, spec, interactInd, interactSiteInd] = spec
+                        # will be used to check if the cluster is on or off
+                        SpecOnInteractSites[siteInd, spec, interactInd, interactSiteInd] = sp
+
+        return numSiteSpecInteracts, numSitesInInteracts, SpecOnInteractSites, numVecsInteract, VecsInteracts,\
+               EnListInteract
 
 
 
