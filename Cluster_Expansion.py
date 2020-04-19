@@ -411,8 +411,11 @@ class VectorClusterExpansion(object):
 
         # 2.2 - create an array that stores the vectors corresponding to the interactions
         # For each interaction, there can at the max be three spanning vectors.
-        VecsInteracts = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount, 3, 3), -1,
-                                dtype=float)
+        VecsInteracts = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount, 3, 3), -1, dtype=float)
+
+        # Part 2 - storing cluster symmetry index of each interaction so that energy contribution of the interaction
+        # can be looked up during MC moves
+        EnListInteract = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount), -1, dtype=float)
 
         for siteInd in range(self.Nsites):
             # convert to cluster site to index
@@ -431,11 +434,16 @@ class VectorClusterExpansion(object):
                     # len(self.Clus2Vclus[interactInfoList[1]]) -> number of vectors in the basis
 
                     # First, store the number of vectors in the basis
-                    numVecsBasis = len(self.Clus2VClus[interactInfoList[1]])
+                    numVecsBasis = len(self.clust2vecClus[interactInfoList[1]])
                     numVecsInteract[siteInd, spec, interactInd] = numVecsBasis
 
                     # Next, store the vectors
-                    #for idx, vecStarIdx in range(numVecsBasis):
+                    for idx, tup in zip(range(numVecsBasis), self.clust2vecClus[interactInfoList[1]]):
+                        VecsInteracts[siteInd, spec, interactInd, idx, :] = self.vecVec[tup[0]][tup[1]]
+
+                    # Next, store the cluster list to look up energies
+                    EnListInteract[siteInd, spec, interactInd] = self.clust2SpecClus[interactInfoList[1]]
+
                     for interactSiteInd, (site, spec) in enumerate(interactInfoList[0]):
                         # For each interaction site, store what species it contains
                         SpecOnInteractSites[siteInd, spec, interactInd, interactSiteInd] = spec
