@@ -248,6 +248,24 @@ class test_Vector_Cluster_Expansion(testKRA):
                                                           "{}\nc:{}".format(
                     stSpc, clust, count, clust2Tup[clust], dimBasis, c))
 
+    def test_site_interactions(self):
+
+        # test that every interaction is valid with the given Rtrans provided
+        # The key site should be present only once
+        for (key, infoList) in self.VclusExp.SiteSpecInteractions.items():
+            clSite = key[0]
+            sp = key[1]
+            # print(infoList[0][0])
+            for interactionData in infoList:
+                interaction = interactionData[0]
+                count = 0
+                for (site, spec) in interaction:
+                    if site == clSite and sp == spec:
+                        count += 1
+
+                self.assertEqual(count, 1)
+
+
     def test_MC_step(self):
         """
         Here, we have to test an MC step to make sure the expansion is working properly.

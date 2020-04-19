@@ -73,6 +73,7 @@ class VectorClusterExpansion(object):
         self.jumpnetwork = jumpnetwork
         self.ScalarBasis = self.createScalarBasis()
         self.SpecClusters = self.recalcClusters()
+        self.SiteSpecInteractions = self.generateSiteSpecInteracts()
         self.vecClus, self.vecVec = self.genVecClustBasis(self.SpecClusters)
         self.indexVclus2Clus()
 
@@ -321,14 +322,15 @@ class VectorClusterExpansion(object):
 
         return ijList, dxList, clusterTransOn, clusterTransOff
 
-    def generateSiteInteracts(self):
+    def generateSiteSpecInteracts(self):
         """
         generate interactions for every site - for MC moves
         """
+        # TODO : test this function
         SiteSpecinteractList = {}
         for siteInd in range(self.Nsites):
             # get the cluster site
-            ci, R = self.sup.ciR(siteInd)[0]
+            ci, R = self.sup.ciR(siteInd)
             clSite = cluster.ClusterSite(ci=ci, R=R)
             # assign species to this
             for sp in range(len(self.mobCountList)):
@@ -340,9 +342,11 @@ class VectorClusterExpansion(object):
                         for site, spec in cl.SiteSpecs:
                             if site.ci == clSite.ci and sp == spec:
                                 Rtrans = clSite.R - site.R
-                                interaction = [site + Rtrans for site in cl.SiteSpecs]
-                                interactionList.append([interaction, clListInd])
+                                interaction = [(site + Rtrans, spec) for site, spec in cl.SiteSpecs]
+                                interactionList.append([interaction, clListInd, Rtrans])
                 SiteSpecinteractList[(clSite, sp)] = interactionList
+
+        return SiteSpecinteractList
 
 
     def makeJitData(self):
@@ -351,8 +355,8 @@ class VectorClusterExpansion(object):
         numba's jit compilations.
         :return:
         """
-
         # First let's just make arrays relevant to finding active clusters for transitions
+        pass
 
 
 
