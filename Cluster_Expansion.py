@@ -370,40 +370,29 @@ class VectorClusterExpansion(object):
         numSiteSpecInteracts = np.full((self.Nsites, len(self.mobCountList)), -1, dtype=int)
         # numSiteSpecInteracts[siteIndex][specIndex] -> number of interactions the (site,spec) pair
 
-        # (siteIndex, specIndex) is a part of
-        InteractCounts = []  # this is to later find out the maximum number of interactions.
+        # 2 Next, we need an array that stores how many sites there are in every interaction.
+        numSitesInInteracts = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount), -1, dtype=int)
+
+        # 3. Next, we need an array that stores the species that are there on the interaction sites
+        SpecOnInteractSites = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount, self.maxOrder), -1,
+                                      dtype=int)
+
         for siteInd in range(self.Nsites):
             # convert to cluster site to index
             ci, R = self.sup.ciR(siteInd)
             clSite = cluster.ClusterSite(ci=ci, R=R)
             for spec in range(len(self.mobCountList)):
+                # store number of interactions for this (site, species) pair
                 numSiteSpecInteracts[siteInd, spec] = len(self.SiteSpecInteractions[(clSite, spec)])
-                InteractCounts.append(len(self.SiteSpecInteractions[(clSite, spec)]))
-
-        maxInteract = max(InteractCounts)
-        # Count this beforehand, and combine the loop above and below into one
-
-        # Next, we need an array that stores how many sites there are in every interaction.
-        numSitesInInteracts = np.full((self.Nsites, len(self.mobCountList), maxInteract), -1, dtype=int)
-        for siteInd in range(self.Nsites):
-            # convert to cluster site to index
-            ci, R = self.sup.ciR(siteInd)
-            clSite = cluster.ClusterSite(ci=ci, R=R)
-            for spec in range(len(self.mobCountList)):
                 for interactInd, interactInfoList in enumerate(self.SiteSpecInteractions[(clSite, spec)]):
+                    # for each such interaction, store the number of sites in these interactions
                     numSites = len(interactInfoList[0])
                     numSitesInInteracts[siteInd, spec, interactInd] = numSites
 
-        # Next, we need a structure that stores the species that are there on the interaction sites
-        SpecOnInteractSites = np.full((self.Nsites, len(self.mobCountList), maxInteract, self.maxOrder), -1, dtype=int)
-        for siteInd in range(self.Nsites):
-            # convert to cluster site to index
-            ci, R = self.sup.ciR(siteInd)
-            clSite = cluster.ClusterSite(ci=ci, R=R)
-            for spec in range(len(self.mobCountList)):
-                for interactInd, interactInfoList in enumerate(numSiteSpecInteracts[siteInd, spec]):
-                    numSites = len(interactInfoList[0])
-                    numSitesInInteracts[siteInd, spec, interactInd] = numSites
+                    # for each interaction, store also the vector it contributes
+                    for interactSiteInd, (site, spec) in enumerate(interactInfoList[0]):
+                        # For each interaction site, store what species it contains
+                        SpecOnInteractSites[siteInd, spec, interactInd, interactSiteInd] = spec
 
 
 
