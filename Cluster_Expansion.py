@@ -352,10 +352,30 @@ class VectorClusterExpansion(object):
         """
         Function to represent all the data structures in the form of numpy arrays so that they can be accelerated with
         numba's jit compilations.
-        :return:
+        Data structures to cast into numpy arrays:
+        SiteInteractions
+        KRAexpander.clusterSpeciesJumps - these correspond to transitions - We'll proceed with this later on
         """
-        # First let's just make arrays relevant to finding active clusters for transitions
-        pass
+
+        # First, let's think of numpy arrays we'll need to get everything we need to expand Wbar and bbar
+        # Follow the for loop in the notes:
+
+        # 1. numSiteInteracts - an np array that contains the number of interactions each (site, species)
+        # pair is a part of.
+        # use numpy.full(shape, fill_value, dtype=None, order='C')
+        numSiteSpecInteracts = np.full((self.Nsites, len(self.mobCountList)), -1, dtype=int)
+        # numSiteSpecInteracts[siteIndex][specIndex] -> number of interactions the (site,spec) pair
+        # (siteIndex, specIndex) is a part of
+
+        for siteInd in range(self.Nsites):
+            # convert to cluster site to index
+            ci, R = self.sup.ciR(siteInd)
+            clSite = cluster.ClusterSite(ci=ci, R=R)
+            for spec in range(len(self.mobCountList)):
+                numSiteSpecInteracts[siteInd, spec] = len(self.SiteSpecInteractions[(clSite, spec)])
+
+
+
 
 
 
