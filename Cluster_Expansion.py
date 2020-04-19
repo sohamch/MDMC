@@ -175,6 +175,8 @@ class VectorClusterExpansion(object):
     def indexVclus2Clus(self):
 
         self.Vclus2Clus = np.zeros(len(self.vecClus), dtype=int)
+        self.Clus2VClus = np.zeros(len(self.vecClus), dtype=int)
+
         for vClusListInd, vClusList in enumerate(self.vecClus):
             clVec0 = vClusList[0]
             for cLlistInd, clList in enumerate(self.SpecClusters):
@@ -364,6 +366,7 @@ class VectorClusterExpansion(object):
         # First, let's think of numpy arrays we'll need to get everything we need to expand Wbar and bbar
         # Follow the for loop in the notes:
 
+        # Part 1 - storing atomic information for cluster interactions
         # 1. numSiteInteracts - an np array that contains the number of interactions each (site, species)
         # pair is a part of.
         # use numpy.full(shape, fill_value, dtype=None, order='C')
@@ -393,6 +396,8 @@ class VectorClusterExpansion(object):
                     for interactSiteInd, (site, spec) in enumerate(interactInfoList[0]):
                         # For each interaction site, store what species it contains
                         SpecOnInteractSites[siteInd, spec, interactInd, interactSiteInd] = spec
+
+    # Part 2 - storing vector basis information for cluster interactions
 
 
 
