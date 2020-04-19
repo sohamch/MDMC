@@ -30,7 +30,7 @@ class testKRA(unittest.TestCase):
         self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.clusexp, self.mobCountList,
                                                  self.vacsite)
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.jnetBCC,
-                                                                 self.mobCountList, self.vacsite)
+                                                                 self.mobCountList, self.vacsite, self.MaxOrder)
 
     def test_groupTrans(self):
         """
@@ -265,6 +265,13 @@ class test_Vector_Cluster_Expansion(testKRA):
 
                 self.assertEqual(count, 1)
 
+    def testcluster2vecClus(self):
+
+        for clListInd, clList in enumerate(self.VclusExp.SpecClusters):
+            for clust in clList:
+                vecList = self.VclusExp.clust2vecClus[clust]
+                for tup in vecList:
+                    self.assertEqual(clust, self.VclusExp.vecClus[tup[0]][tup[1]])
 
     def test_MC_step(self):
         """

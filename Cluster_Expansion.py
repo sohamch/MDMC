@@ -78,6 +78,7 @@ class VectorClusterExpansion(object):
         self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
         self.vecClus, self.vecVec = self.genVecClustBasis(self.SpecClusters)
         self.indexVclus2Clus()
+        self.indexClustertoVecClus()
 
         # Generate the transitions-based data structures
         self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
@@ -175,14 +176,29 @@ class VectorClusterExpansion(object):
     def indexVclus2Clus(self):
 
         self.Vclus2Clus = np.zeros(len(self.vecClus), dtype=int)
-        self.Clus2VClus = np.zeros(len(self.vecClus), dtype=int)
-
-        for vClusListInd, vClusList in enumerate(self.vecClus):
-            clVec0 = vClusList[0]
-            for cLlistInd, clList in enumerate(self.SpecClusters):
-                cl0 = clList[0]
+        self.Clus2VClus = []
+        for cLlistInd, clList in enumerate(self.SpecClusters):
+            cl0 = clList[0]
+            vecClusts = []
+            for vClusListInd, vClusList in enumerate(self.vecClus):
+                clVec0 = vClusList[0]
                 if clVec0 == cl0:
                     self.Vclus2Clus[vClusListInd] = cLlistInd
+                    vecClusts.append(vClusListInd)
+            self.Clus2VClus.append(vecClusts)
+
+    def indexClustertoVecClus(self):
+        """
+        For a given cluster, store which vector cluster it belongs to
+        """
+        self.clust2vecClus = collections.defaultdict(list)
+        for clListInd, clList in enumerate(self.SpecClusters):
+            vecClusIndList = self.Clus2VClus[clListInd]
+            for clust1 in clList:
+                for vecClusInd in vecClusIndList:
+                    for clust2Ind, clust2 in enumerate(self.vecClus[vecClusInd]):
+                        if clust1 == clust2:
+                            self.clust2vecClus[clust1].append((vecClusInd, clust2Ind))
 
     def Expand(self, beta, mobOccs, EnCoeffs, KRACoeffs):
 
@@ -353,7 +369,6 @@ class VectorClusterExpansion(object):
         maxinteractions = max(InteractCounts)
         return SiteSpecinteractList, maxinteractions
 
-
     def makeJitData(self):
         """
         Function to represent all the data structures in the form of numpy arrays so that they can be accelerated with
@@ -367,18 +382,27 @@ class VectorClusterExpansion(object):
         # Follow the for loop in the notes:
 
         # Part 1 - storing atomic information for cluster interactions
-        # 1. numSiteInteracts - an np array that contains the number of interactions each (site, species)
+        # 1.1 numSiteInteracts - an np array that contains the number of interactions each (site, species)
         # pair is a part of.
         # use numpy.full(shape, fill_value, dtype=None, order='C')
         numSiteSpecInteracts = np.full((self.Nsites, len(self.mobCountList)), -1, dtype=int)
         # numSiteSpecInteracts[siteIndex][specIndex] -> number of interactions the (site,spec) pair
 
-        # 2 Next, we need an array that stores how many sites there are in every interaction.
+        # 1.2 Next, we need an array that stores how many sites there are in every interaction.
         numSitesInInteracts = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount), -1, dtype=int)
 
-        # 3. Next, we need an array that stores the species that are there on the interaction sites
+        # 1.3 Next, we need an array that stores the species that are there on the interaction sites
         SpecOnInteractSites = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount, self.maxOrder), -1,
                                       dtype=int)
+
+        # Part 2 - storing vector basis information for cluster interactions
+        # 2.1 - create an array that stores the number of vectors in the vector basis of each interaction
+        numVecsInteract = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount), -1, dtype=int)
+
+        # 2.2 - create an array that stores the vectors corresponding to the interactions
+        # For each interaction, there can at the max be three spanning vectors.
+        VecsInteracts = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount, 3, 3), -1,
+                                dtype=float)
 
         for siteInd in range(self.Nsites):
             # convert to cluster site to index
@@ -393,11 +417,18 @@ class VectorClusterExpansion(object):
                     numSitesInInteracts[siteInd, spec, interactInd] = numSites
 
                     # for each interaction, store also the vector it contributes
+                    # interactInfoList[1] -> clustInd
+                    # len(self.Clus2Vclus[interactInfoList[1]]) -> number of vectors in the basis
+
+                    # First, store the number of vectors in the basis
+                    numVecsBasis = len(self.Clus2VClus[interactInfoList[1]])
+                    numVecsInteract[siteInd, spec, interactInd] = numVecsBasis
+
+                    # Next, store the vectors
+                    #for idx, vecStarIdx in range(numVecsBasis):
                     for interactSiteInd, (site, spec) in enumerate(interactInfoList[0]):
                         # For each interaction site, store what species it contains
                         SpecOnInteractSites[siteInd, spec, interactInd, interactSiteInd] = spec
-
-    # Part 2 - storing vector basis information for cluster interactions
 
 
 
