@@ -200,6 +200,16 @@ class VectorClusterExpansion(object):
                         if clust1 == clust2:
                             self.clust2vecClus[clust1].append((vecClusInd, clust2Ind))
 
+    def indexClustertoSpecClus(self):
+        """
+        For a given cluster, store which vector cluster it belongs to
+        """
+        self.clust2SpecClus = collections.defaultdict(list)
+        for clListInd, clList in enumerate(self.SpecClusters):
+            vecClusIndList = self.Clus2VClus[clListInd]
+            for clustInd, clust in clList:
+                self.clust2SpecClus[clust].append((clListInd, clustInd))
+
     def Expand(self, beta, mobOccs, EnCoeffs, KRACoeffs):
 
         """
@@ -363,7 +373,7 @@ class VectorClusterExpansion(object):
                             if site.ci == clSite.ci and sp == spec:
                                 Rtrans = clSite.R - site.R
                                 interaction = [(site + Rtrans, spec) for site, spec in cl.SiteSpecs]
-                                interactionList.append([interaction, clListInd, Rtrans])
+                                interactionList.append([interaction, cl, Rtrans])
                 SiteSpecinteractList[(clSite, sp)] = interactionList
                 InteractCounts.append(len(interactionList))
         maxinteractions = max(InteractCounts)
