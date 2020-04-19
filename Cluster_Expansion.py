@@ -365,14 +365,29 @@ class VectorClusterExpansion(object):
         # use numpy.full(shape, fill_value, dtype=None, order='C')
         numSiteSpecInteracts = np.full((self.Nsites, len(self.mobCountList)), -1, dtype=int)
         # numSiteSpecInteracts[siteIndex][specIndex] -> number of interactions the (site,spec) pair
-        # (siteIndex, specIndex) is a part of
 
+        # (siteIndex, specIndex) is a part of
+        InteractCounts = []  # this is to later find out the maximum number of interactions.
         for siteInd in range(self.Nsites):
             # convert to cluster site to index
             ci, R = self.sup.ciR(siteInd)
             clSite = cluster.ClusterSite(ci=ci, R=R)
             for spec in range(len(self.mobCountList)):
                 numSiteSpecInteracts[siteInd, spec] = len(self.SiteSpecInteractions[(clSite, spec)])
+                InteractCounts.append(len(self.SiteSpecInteractions[(clSite, spec)]))
+
+        maxInteract = max(InteractCounts)
+
+        # Next, we need an array that stores how many sites there are in every interaction.
+        numSitesInInteracts = np.full((self.Nsites, len(self.mobCountList), maxInteract), -1, dtype=int)
+        for siteInd in range(self.Nsites):
+            # convert to cluster site to index
+            ci, R = self.sup.ciR(siteInd)
+            clSite = cluster.ClusterSite(ci=ci, R=R)
+            for spec in range(len(self.mobCountList)):
+                for interactInd, interactInfoList in enumerate(numSiteSpecInteracts[siteInd, spec]):
+                    numSites = len(interactInfoList[0])
+                    numSitesInInteracts[siteInd, spec, interactInd] = numSites
 
 
 
