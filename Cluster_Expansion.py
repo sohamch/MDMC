@@ -206,7 +206,6 @@ class VectorClusterExpansion(object):
         """
         self.clust2SpecClus = collections.defaultdict(list)
         for clListInd, clList in enumerate(self.SpecClusters):
-            vecClusIndList = self.Clus2VClus[clListInd]
             for clustInd, clust in clList:
                 self.clust2SpecClus[clust].append((clListInd, clustInd))
 
