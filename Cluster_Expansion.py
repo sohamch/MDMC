@@ -326,7 +326,6 @@ class VectorClusterExpansion(object):
         """
         generate interactions for every site - for MC moves
         """
-        # TODO : test this function
         SiteSpecinteractList = {}
         for siteInd in range(self.Nsites):
             # get the cluster site
