@@ -273,6 +273,14 @@ class test_Vector_Cluster_Expansion(testKRA):
                 for tup in vecList:
                     self.assertEqual(clust, self.VclusExp.vecClus[tup[0]][tup[1]])
 
+    def testcluster2SpecClus(self):
+
+        for clListInd, clList in enumerate(self.VclusExp.SpecClusters):
+            for clustInd, clust in enumerate(clList):
+                tup = self.VclusExp.clust2SpecClus[clust]
+                self.assertEqual(tup[0], clListInd)
+                self.assertEqual(tup[1], clustInd)
+
     def test_MC_step(self):
         """
         Here, we have to test an MC step to make sure the expansion is working properly.

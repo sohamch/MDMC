@@ -79,6 +79,7 @@ class VectorClusterExpansion(object):
         self.vecClus, self.vecVec = self.genVecClustBasis(self.SpecClusters)
         self.indexVclus2Clus()
         self.indexClustertoVecClus()
+        self.indexClustertoSpecClus()
 
         # Generate the transitions-based data structures
         self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
@@ -204,10 +205,10 @@ class VectorClusterExpansion(object):
         """
         For a given cluster, store which vector cluster it belongs to
         """
-        self.clust2SpecClus = collections.defaultdict(list)
+        self.clust2SpecClus = {}
         for clListInd, clList in enumerate(self.SpecClusters):
-            for clustInd, clust in clList:
-                self.clust2SpecClus[clust].append((clListInd, clustInd))
+            for clustInd, clust in enumerate(clList):
+                self.clust2SpecClus[clust]=(clListInd, clustInd)
 
     def Expand(self, beta, mobOccs, EnCoeffs, KRACoeffs):
 
