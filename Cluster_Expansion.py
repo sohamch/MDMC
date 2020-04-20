@@ -404,6 +404,9 @@ class VectorClusterExpansion(object):
         # 1.3 Next, we need an array that stores the species that are there on the interaction sites
         SpecOnInteractSites = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount, self.maxOrder), -1,
                                       dtype=int)
+        # 1.4 We need an array that maps and interaction site to a super cell site
+        InteractSite2SupSite = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount, self.maxOrder), -1,
+                                      dtype=int)
 
         # Part 2 - storing vector basis information for cluster interactions
         # 2.1 - create an array that stores the number of vectors in the vector basis of each interaction
@@ -448,9 +451,16 @@ class VectorClusterExpansion(object):
                         # For each interaction site, store what species it contains
                         # will be used to check if the cluster is on or off
                         SpecOnInteractSites[siteInd, spec, interactInd, interactSiteInd] = sp
+                        InteractSite2SupSite[siteInd, spec, interactInd, interactSiteInd] =\
+                            self.sup.index(site.R, site.ci)[0]
 
-        return numSiteSpecInteracts, numSitesInInteracts, SpecOnInteractSites, numVecsInteract, VecsInteracts,\
-               EnListInteract
+        return numSiteSpecInteracts, numSitesInInteracts, SpecOnInteractSites, InteractSite2SupSite, \
+               numVecsInteract, VecsInteracts, EnListInteract
+
+    def makeTransJitData(self):
+        """
+        To make numpy arrays relevant to KRA expansions.
+        """
 
 
 
