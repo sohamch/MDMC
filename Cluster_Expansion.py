@@ -421,7 +421,7 @@ class VectorClusterExpansion(object):
         EnListInteract = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount), -1, dtype=float)
 
         for siteInd in range(self.Nsites):
-            # convert to cluster site to index
+            # convert to cluster site
             ci, R = self.sup.ciR(siteInd)
             clSite = cluster.ClusterSite(ci=ci, R=R)
             for spec in range(len(self.mobCountList)):
@@ -464,9 +464,17 @@ class VectorClusterExpansion(object):
 
         Here, we take the array self.KRAExpander.clusterSpeciesJumps and cast it as a numpy array
         """
-        # The dimensions will be Nsites x Nsites X Nspec X Nspec x MaxGroups X MaxInteract X MaxOrder
+        # The dimensions will be Nsites X Nspec x MaxGroups X MaxInteracts
+        # the initial sites and species are only the vacancies, so we can keep track of only the final sit and final
+        # species.
         # We need to find the last two quantities
-        # We also need to keep a track of the sites and
+        # We also need to keep a track of the sites and the species.
+
+
+
+class MCSamper(object):
+
+    def __init__(self, numSiteSpecInteracts, numSites_In_Interacts, SpecOnInteractSites, InteractSite2SupSite):
 
 
 
