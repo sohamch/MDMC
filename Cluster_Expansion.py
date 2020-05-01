@@ -459,9 +459,12 @@ class VectorClusterExpansion(object):
 
     def makeTransJitData(self):
         """
-        To make numpy arrays relevant to KRA expansions.
-        """
+        To make numpy arrays relevant to KRA expansions. We basically need to numpy-fy the getKRA method in the KRA
+        expander.
 
+        Here, we take the array self.KRAExpander.clusterSpeciesJumps and cast it as a numpy array
+        """
+        pass
 
 
 
