@@ -464,7 +464,9 @@ class VectorClusterExpansion(object):
 
         Here, we take the array self.KRAExpander.clusterSpeciesJumps and cast it as a numpy array
         """
-        pass
+        # The dimensions will be Nsites x Nsites X Nspec X Nspec x MaxGroups X MaxInteract X MaxOrder
+        # We need to find the last two quantities
+        # We also need to keep a track of the sites and
 
 
 
