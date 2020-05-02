@@ -476,6 +476,26 @@ class MCSamper(object):
 
     def __init__(self, numSiteSpecInteracts, numSites_In_Interacts, SpecOnInteractSites, InteractSite2SupSite):
 
+        self.numSiteSpecInteracts = numSiteSpecInteracts
+        self.numSites_In_Interacts = numSites_In_Interacts
+        self.SpecOnInteractSites = SpecOnInteractSites
+        self.InteractSite2SupSite = InteractSite2SupSite
+
+        # First, let's gather dimensions
+        self.Nsites, self.Nspecies, self.MaxInteracts, self.MaxOrder = InteractSite2SupSite.shape
+
+        # Then, we declare the arrays that store the on and off sites and initialize all of them to zero.
+        # We'll assume initially that we have no off-sites.
+        self.OffSiteCountsInteractns = np.zeros((self.Nsites, self.Nspecies, self.MaxInteracts), dtype=int)
+
+    def initialize(self, mobOcclist):
+        """
+        :param mobOcclist: A numpy array containing occupancies on each supercell site
+        """
+        for siteInd in range(self.Nsites):
+            for specInd in range(self.Nspecies):
+                #
+
 
 
 
