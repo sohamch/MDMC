@@ -486,7 +486,7 @@ class MCSamper(object):
 
         # Then, we declare the arrays that store the on and off sites and initialize all of them to zero.
         # We'll assume initially that we have no off-sites.
-        self.OffSiteCountsInteractns = np.zeros((self.Nsites, self.Nspecies, self.MaxInteracts), dtype=int)
+        self.OffSiteCounts = np.zeros((self.Nsites, self.Nspecies, self.MaxInteracts), dtype=int)
 
     def initialize(self, mobOcclist):
         """
@@ -494,7 +494,20 @@ class MCSamper(object):
         """
         for siteInd in range(self.Nsites):
             for specInd in range(self.Nspecies):
-                #
+                # go through the interactions
+                for interacInd in range(self.numSiteSpecInteracts[siteInd, specInd]):
+                    # go through the sites in the interactions
+                    for interactSiteInd in range(self.numSites_In_Interacts[siteInd, specInd, interacInd]):
+                        # get the supercell site and the species
+                        interactSupSite = self.InteractSite2SupSite[siteInd, specInd, interacInd, interactSiteInd]
+                        interactSpec = self.SpecOnInteractSites[siteInd, specInd, interacInd, interactSiteInd]
+                        # Check if the site is off
+                        if mobOcclist[interactSupSite] != interactSpec:
+                            # Increase the off count by one
+                            self.OffSiteCounts[siteInd, specInd, interacInd] += 1
+
+        # Now, we have to initialize all the transitions
+
 
 
 

@@ -132,7 +132,7 @@ class KRAExpand(object):
         # Now, check which clusters are on and calculate the KRA values
         DelEKRA = 0
         # How do we speed this up?
-        for interactIdx, (tup, clusterList) in zip(itertools.count(), SymClusterlists):
+        for interactIdx, (tups, clusterList) in zip(itertools.count(), SymClusterlists):
             for cluster in clusterList:
                 if all(mobOcc[spec, self.sup.index(site.R, site.ci)[0]] == 1 for spec, site in zip(tup, cluster.sites[2:])):
                     DelEKRA += KRACoeffs[interactIdx]
