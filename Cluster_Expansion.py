@@ -372,7 +372,7 @@ class VectorClusterExpansion(object):
                         for site, spec in cl.SiteSpecs:
                             if site.ci == clSite.ci and sp == spec:
                                 Rtrans = clSite.R - site.R
-                                interaction = [(site + Rtrans, spec) for site, spec in cl.SiteSpecs]
+                                interaction = tuple([(site + Rtrans, spec) for site, spec in cl.SiteSpecs])
                                 interactionList.append([interaction, cl, Rtrans])
                 SiteSpecinteractList[(clSite, sp)] = interactionList
                 InteractCounts.append(len(interactionList))
@@ -388,74 +388,31 @@ class VectorClusterExpansion(object):
         KRAexpander.clusterSpeciesJumps - these correspond to transitions - We'll proceed with this later on
         """
 
-        # First, let's think of numpy arrays we'll need to get everything we need to expand Wbar and bbar
-        # Follow the for loop in the notes:
+        # first, we assign unique integers to interactions
+        InteractionIndexDict = {}
+        Index2InteractionDict = {}
+        Interaction2Energy = {}
+        Interaction2Vectors = {}
+        siteSpecInteractIndexDict = collections.defaultdict(list)
+        count = 0 # to keep a steady count of interactions.
+        for key, interactInfoList in self.SiteSpecInteractions.items():
+            keySite = self.sup.index(key[0].R, key[0].ci)[0]
+            keySpec = key[1]
+            for interactInfo in interactInfoList:
+                interaction = interactInfo[0]
+                if interaction in InteractionIndexDict:
+                    siteSpecInteractIndexDict[(keySite, keySpec)].append(InteractionIndexDict[interaction])
+                    continue
+                else:
+                    InteractionIndexDict[interaction] = count
+                    Index2InteractionDict[count] = interaction
+                    siteSpecInteractIndexDict[(keySite, keySpec)].append(count)
+                    count += 1
 
-        # Part 1 - storing atomic information for cluster interactions
-        # 1.1 numSiteInteracts - an np array that contains the number of interactions each (site, species)
-        # pair is a part of.
-        # use numpy.full(shape, fill_value, dtype=None, order='C')
-        numSiteSpecInteracts = np.full((self.Nsites, len(self.mobCountList)), -1, dtype=int)
-        # numSiteSpecInteracts[siteIndex][specIndex] -> number of interactions the (site,spec) pair
 
-        # 1.2 Next, we need an array that stores how many sites there are in every interaction.
-        numSitesInInteracts = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount), -1, dtype=int)
 
-        # 1.3 Next, we need an array that stores the species that are there on the interaction sites
-        SpecOnInteractSites = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount, self.maxOrder), -1,
-                                      dtype=int)
-        # 1.4 We need an array that maps and interaction site to a super cell site
-        InteractSite2SupSite = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount, self.maxOrder), -1,
-                                      dtype=int)
 
-        # Part 2 - storing vector basis information for cluster interactions
-        # 2.1 - create an array that stores the number of vectors in the vector basis of each interaction
-        numVecsInteract = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount), -1, dtype=int)
 
-        # 2.2 - create an array that stores the vectors corresponding to the interactions
-        # For each interaction, there can at the max be three spanning vectors.
-        VecsInteracts = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount, 3, 3), -1, dtype=float)
-
-        # Part 3 - storing cluster symmetry index of each interaction so that energy contribution of the interaction
-        # can be looked up during MC moves
-        EnListInteract = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount), -1, dtype=float)
-
-        for siteInd in range(self.Nsites):
-            # convert to cluster site
-            ci, R = self.sup.ciR(siteInd)
-            clSite = cluster.ClusterSite(ci=ci, R=R)
-            for spec in range(len(self.mobCountList)):
-                # store number of interactions for this (site, species) pair
-                numSiteSpecInteracts[siteInd, spec] = len(self.SiteSpecInteractions[(clSite, spec)])
-                for interactInd, interactInfoList in enumerate(self.SiteSpecInteractions[(clSite, spec)]):
-                    # for each such interaction, store the number of sites in these interactions
-                    numSites = len(interactInfoList[0])
-                    numSitesInInteracts[siteInd, spec, interactInd] = numSites
-
-                    # for each interaction, store also the vector it contributes
-                    # interactInfoList[1] -> clustInd
-                    # len(self.Clus2Vclus[interactInfoList[1]]) -> number of vectors in the basis
-
-                    # First, store the number of vectors in the basis
-                    numVecsBasis = len(self.clust2vecClus[interactInfoList[1]])
-                    numVecsInteract[siteInd, spec, interactInd] = numVecsBasis
-
-                    # Next, store the vectors
-                    for idx, tup in zip(range(numVecsBasis), self.clust2vecClus[interactInfoList[1]]):
-                        VecsInteracts[siteInd, spec, interactInd, idx, :] = self.vecVec[tup[0]][tup[1]]
-
-                    # Next, store the cluster list to look up energies
-                    EnListInteract[siteInd, spec, interactInd] = self.clust2SpecClus[interactInfoList[1]]
-
-                    for interactSiteInd, (site, sp) in enumerate(interactInfoList[0]):
-                        # For each interaction site, store what species it contains
-                        # will be used to check if the cluster is on or off
-                        SpecOnInteractSites[siteInd, spec, interactInd, interactSiteInd] = sp
-                        InteractSite2SupSite[siteInd, spec, interactInd, interactSiteInd] =\
-                            self.sup.index(site.R, site.ci)[0]
-
-        return numSiteSpecInteracts, numSitesInInteracts, SpecOnInteractSites, InteractSite2SupSite, \
-               numVecsInteract, VecsInteracts, EnListInteract
 
     def makeTransJitData(self):
         """
