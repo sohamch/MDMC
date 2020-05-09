@@ -56,7 +56,7 @@ class VectorClusterExpansion(object):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
-        :param mobCountList - list of members of each species in the supercell.
+        :param mobCountList - list of number of each species in the supercell.
         :param vacSite - the site of the vacancy as a clusterSite object. This does not change during the simulation.
         :param maxorder - the maximum order of a cluster in our cluster expansion.
         In this type of simulations, we consider a solid with a single wyckoff set on which atoms are arranged.
@@ -76,6 +76,8 @@ class VectorClusterExpansion(object):
         self.ScalarBasis = self.createScalarBasis()
         self.SpecClusters = self.recalcClusters()
         self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
+        # add a small check here - maybe we'll remove this later
+
         self.vecClus, self.vecVec = self.genVecClustBasis(self.SpecClusters)
         self.indexVclus2Clus()
         self.indexClustertoVecClus()
@@ -392,22 +394,30 @@ class VectorClusterExpansion(object):
         InteractionIndexDict = {}
         InteractionRepClusDict = {}
         Index2InteractionDict = {}
-        siteSpecInteractIndexDict = collections.defaultdict(list)
-        count = 0 # to keep a steady count of interactions.
+        #siteSpecInteractIndexDict = collections.defaultdict(list)
+
+        # while we're at it, let's also store which siteSpec contains which interact
+        numInteractsSiteSpec = np.zeros((self.Nsites, len(self.mobCountList)), dtype=int)
+        SiteSpecInterArray = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount), -1, dtype=int)
+
+        count = 0  # to keep a steady count of interactions.
         for key, interactInfoList in self.SiteSpecInteractions.items():
-            keySite = self.sup.index(key[0].R, key[0].ci)[0]
+            keySite = self.sup.index(key[0].R, key[0].ci)[0]  # the "incell" function applies PBC to sites outside sup.
             keySpec = key[1]
-            for interactInfo in interactInfoList:
+            numInteractsSiteSpec[keySite, keySpec] = len(interactInfoList)
+            for interactInd, interactInfo in enumerate(interactInfoList):
                 interaction = interactInfo[0]
                 if interaction in InteractionIndexDict:
-                    siteSpecInteractIndexDict[(keySite, keySpec)].append(InteractionIndexDict[interaction])
+                    #siteSpecInteractIndexDict[(keySite, keySpec)].append(InteractionIndexDict[interaction])
+                    SiteSpecInterArray[keySite, keySpec, interactInd] = InteractionIndexDict[interaction]
                     continue
                 else:
                     # assign a new unique integer to this interaction
                     InteractionIndexDict[interaction] = count
                     InteractionRepClusDict[interaction] = interactInfo[1]
                     Index2InteractionDict[count] = interaction
-                    siteSpecInteractIndexDict[(keySite, keySpec)].append(count)
+                    SiteSpecInterArray[keySite, keySpec, interactInd] = count
+                    #siteSpecInteractIndexDict[(keySite, keySpec)].append(count)
                     count += 1
 
         # check each interaction has its own unique index
@@ -450,6 +460,9 @@ class VectorClusterExpansion(object):
             # store the vector
             for vecidx, tup in enumerate(vecList):
                 VecsInteracts[idx, vecidx][:] = self.vecVec[tup[0]][tup[1]]
+
+        # Now fill in the arrays
+        # for key, InteractList in
 
 
 
