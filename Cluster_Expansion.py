@@ -499,28 +499,49 @@ class VectorClusterExpansion(object):
         # store the index of each Transition state interaction in InteractionIndexDict
 
         count = 0
-        jumpInd = 0
-        for jumpInd, (Jumpkey, interactGroupList) in zip(itertools.count(), self.KRAexpander.clusterSpeciesJumps.items()):
+        for jumpInd, (Jumpkey, interactGroupList) in zip(itertools.count(),
+                                                         self.KRAexpander.clusterSpeciesJumps.items()):
 
             jumpFinSites[jumpInd] = Jumpkey[1]
             jumpFinSpec[jumpInd] = Jumpkey[2]
             numJumpInteractionGroups[jumpInd] = len(interactGroupList)
 
             specList = [vacSpecInd, Jumpkey[2]]  # the initial species is the jump, and specJ is stored as the key
-            for interactInd, interactGroup in enumerate(interactGroupList):
+            for interactGroupInd, interactGroup in enumerate(interactGroupList):
                 spectup, clusterList = interactGroup[0], interactGroup[1]
                 specList += [spec for spec in spectup]
                 # small failsafe
                 assert len(specList) == len(clusterList[0].sites)
-                for TSclust in clusterList:
-                    key = tuple([(self.sup.index(clsite.R, clsite.ci)[0], sp)
+                for interactInd, TSclust in clusterList:
+                    TSInteract = tuple([(self.sup.index(clsite.R, clsite.ci)[0], sp)
                                  for clsite, sp in zip(TSclust.sites, specList)])
+
+                    # get the ID of this interaction
+                    # sort with the supercell site indices as the keys as each site can appear only once in an
+                    # interaction
+                    TSInteract_sort = sorted(TSInteract, key=lambda x : x[0])
+
+                    # Now compare against the interactions we already have
+                    TSMainInd = -1
+                    TSMainIndCount = 0
+                    for MainInteract, MainInteractInd in InteractionIndexDict.items():
+                        MainInteract_sort = sorted(MainInteract, key=lambda x: x[0])
+                        if TSInteract_sort == MainInteract_sort:
+                            TSMainInd = MainInteractInd
+                            TSMainIndCount += 1
+
+                    # every TS clusters/interaction must correspond to exactly one main
+                    # interaction
+                    assert TSMainInd != -1
+                    assert TSMainIndCount == 1
+
+
                     # A small check to see that the TSClusters have the sites arranged properly
-                    assert key[0][0] == self.sup.index(self.vacSite.R, self.vacSite.ci)[0] == Jumpkey[0]
-                    assert key[1][0] == Jumpkey[1]
-                    if key in TransInteractIndex:
+                    assert TSInteract[0][0] == self.sup.index(self.vacSite.R, self.vacSite.ci)[0] == Jumpkey[0]
+                    assert TSInteract[1][0] == Jumpkey[1]
+                    if TSInteract in TransInteractIndex:
                         continue
-                    TransInteractIndex[key] = count
+                    TransInteractIndex[TSInteract] = count
                     count += 1
 
         # Store the transitions
