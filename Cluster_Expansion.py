@@ -436,9 +436,21 @@ class VectorClusterExpansion(object):
         # 2. Store energy data and vector data
         Interaction2En = np.full(numInteracts, -1, dtype=int)
         numVecsInteracts = np.full(numInteracts, -1, dtype=int)
-        VecsInteracts = np.full((numInteracts, 3, 3), -1, dtype=int)
+        VecsInteracts = np.zeros((numInteracts, 3, 3))
         for interaction, repClus in InteractionRepClusDict.items():
             idx = InteractionIndexDict[interaction]
+            # get the energy index here
+            Interaction2En[idx] = self.clust2SpecClus[repClus][0]
+
+            # get the vector basis data here
+            vecList = self.clust2vecClus[repClus]
+            # store the number of vectors in the basis
+            numVecsInteracts[idx] = len(vecList)
+
+            # store the vector
+            for vecidx, tup in enumerate(vecList):
+                VecsInteracts[idx, vecidx][:] = self.vecVec[tup[0]][tup[1]]
+
 
 
 
