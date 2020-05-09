@@ -390,6 +390,7 @@ class VectorClusterExpansion(object):
 
         # first, we assign unique integers to interactions
         InteractionIndexDict = {}
+        InteractionRepClusDict = {}
         Index2InteractionDict = {}
         siteSpecInteractIndexDict = collections.defaultdict(list)
         count = 0 # to keep a steady count of interactions.
@@ -404,6 +405,7 @@ class VectorClusterExpansion(object):
                 else:
                     # assign a new unique integer to this interaction
                     InteractionIndexDict[interaction] = count
+                    InteractionRepClusDict[interaction] = interactInfo[1]
                     Index2InteractionDict[count] = interaction
                     siteSpecInteractIndexDict[(keySite, keySpec)].append(count)
                     count += 1
@@ -411,8 +413,10 @@ class VectorClusterExpansion(object):
         # check each interaction has its own unique index
         assert len(InteractionIndexDict) == len(Index2InteractionDict)
 
-        # Now that we have integers assigned to all the interactions, let's start storing their data as numpy arrays
+        # Now that we have integers assigned to all the interactions, let's store their data as numpy arrays
         numInteracts = len(InteractionIndexDict)
+
+        # 1. Store chemical data
         # we'll need the number of sites in each interaction
         numSitesInteracts = np.zeros(numInteracts, dtype=int)
 
@@ -422,6 +426,19 @@ class VectorClusterExpansion(object):
         # and the species on the supercell sites in each interaction
         SpecOnInteractSites = np.full((numInteracts, self.maxOrder), -1, dtype=int)
 
-        for (key, value) in Index2InteractionDict.items():
-            numSitesInteracts[key] = len(value)
-            for
+        for (key, interaction) in Index2InteractionDict.items():
+            numSitesInteracts[key] = len(interaction)
+            for idx, (intSite, intSpec) in enumerate(interaction):
+                supSite = self.sup.index(intSite.R, intSite.ci)[0]  # get the supercell site index
+                SupSitesInteracts[idx] = supSite
+                SpecOnInteractSites[idx] = intSpec
+
+        # 2. Store energy data and vector data
+        Interaction2En = np.full(numInteracts, -1, dtype=int)
+        numVecsInteracts = np.full(numInteracts, -1, dtype=int)
+        VecsInteracts = np.full((numInteracts, 3, 3), -1, dtype=int)
+        for interaction, repClus in InteractionRepClusDict.items():
+            idx = InteractionIndexDict[interaction]
+
+
+
