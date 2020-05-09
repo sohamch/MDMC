@@ -469,15 +469,24 @@ class VectorClusterExpansion(object):
         JumpData = self.KRAexpander.clusterSpeciesJumps
 
         # First, we indexify the transition state (site, spec) clusters
-        # these clusters are identified by (site, spec) tuple, TSCluster object
-        # thing to recheck - the species assigned to TSCluster sites - do they exclude the initial and final ones? yes
+
+        # 1. Get the maximum of cluster groups for any jump
+        maxInteractGroups = max([len(interactGroupList)
+                                 for Jumpkey, interactGroupList in self.KRAexpander.clusterSpeciesJumps.items()])
+
+        # get the maximum number of sites in any given group
+
+        maxInteractGroups = max([len(interactGroup[1])
+                                 for Jumpkey, interactGroupList in self.KRAexpander.clusterSpeciesJumps.items()
+                                 for interactGroup in interactGroupList])
 
         vacSpecInd = len(self.mobCountList) - 1
         TransInteractIndex = {}
         count = 0
-        for key, interactGroups in self.KRAexpander.clusterSpeciesJumps:
-            specList = [vacSpecInd, key[-1]]  # the initial species is the jump, and specJ is stored as the key
-            for spectup, clusterList in interactGroups:
+        for Jumpkey, interactGroupList in self.KRAexpander.clusterSpeciesJumps.items():
+            specList = [vacSpecInd, Jumpkey[2]]  # the initial species is the jump, and specJ is stored as the key
+            for interactGroup in interactGroupList:
+                spectup, clusterList = interactGroup[0], interactGroup[1]
                 specList += [spec for spec in spectup]
                 # small failsafe
                 assert len(specList) == len(clusterList[0].sites)
@@ -487,6 +496,7 @@ class VectorClusterExpansion(object):
                         continue
                     TransInteractIndex[key] = count
                     count += 1
+
 
 
 
