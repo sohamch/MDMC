@@ -461,8 +461,7 @@ class VectorClusterExpansion(object):
             for vecidx, tup in enumerate(vecList):
                 VecsInteracts[idx, vecidx][:] = self.vecVec[tup[0]][tup[1]]
 
-    def makeJitTransData(self):
-
+        # Now, we deal with transition state data.
         # first, we indexify the transitions
         # See Line 43 of Transition.py - if a jump is not out of vacsite, it is not considered anyway
 
@@ -470,12 +469,11 @@ class VectorClusterExpansion(object):
 
         # First, we indexify the transition state (site, spec) clusters
 
-        # 1. Get the maximum of cluster groups for any jump
+        # 1. Get the maximum of cluster groups amongst all jumps
         maxInteractGroups = max([len(interactGroupList)
                                  for Jumpkey, interactGroupList in self.KRAexpander.clusterSpeciesJumps.items()])
 
-        # get the maximum number of sites in any given group
-
+        # get the maximum number of clusters in any given group
         maxInteractGroups = max([len(interactGroup[1])
                                  for Jumpkey, interactGroupList in self.KRAexpander.clusterSpeciesJumps.items()
                                  for interactGroup in interactGroupList])
@@ -491,7 +489,11 @@ class VectorClusterExpansion(object):
                 # small failsafe
                 assert len(specList) == len(clusterList[0].sites)
                 for TSclust in clusterList:
-                    key = ((self.sup.index(clsite.R, clsite.ci)[0], sp) for clsite, sp in zip(TSclust.sites, specList))
+                    key = tuple([(self.sup.index(clsite.R, clsite.ci)[0], sp)
+                                 for clsite, sp in zip(TSclust.sites, specList)])
+                    # A small check to see that the TSClusters have the sites arranged properly
+                    assert key[0][0] == self.sup.index(self.vacSite.R, self.vacSite.ci)[0] == Jumpkey[0]
+                    assert key[1][0] == Jumpkey[1]
                     if key in TransInteractIndex:
                         continue
                     TransInteractIndex[key] = count
