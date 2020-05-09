@@ -381,7 +381,7 @@ class VectorClusterExpansion(object):
         maxinteractions = max(InteractCounts)
         return SiteSpecinteractList, maxinteractions
 
-    def makeJitData(self):
+    def makeJitInteractionsData(self):
         """
         Function to represent all the data structures in the form of numpy arrays so that they can be accelerated with
         numba's jit compilations.
@@ -461,9 +461,7 @@ class VectorClusterExpansion(object):
             for vecidx, tup in enumerate(vecList):
                 VecsInteracts[idx, vecidx][:] = self.vecVec[tup[0]][tup[1]]
 
-        # Now fill in the arrays
-        # for key, InteractList in
-
+    def makeJitTransData(self): pass
 
 
 
