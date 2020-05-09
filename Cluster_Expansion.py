@@ -461,7 +461,14 @@ class VectorClusterExpansion(object):
             for vecidx, tup in enumerate(vecList):
                 VecsInteracts[idx, vecidx][:] = self.vecVec[tup[0]][tup[1]]
 
-    def makeJitTransData(self): pass
+    def makeJitTransData(self):
+
+        # first, we indexify the transitions
+        # See Line 43 of Transition.py - if a jump is not out of vacsite, it is not considered anyway
+
+        JumpData = self.clusterSpeciesJumps
+
+
 
 
 
