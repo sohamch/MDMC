@@ -470,7 +470,25 @@ class VectorClusterExpansion(object):
 
         # First, we indexify the transition state (site, spec) clusters
         # these clusters are identified by (site, spec) tuple, TSCluster object
-        # thing to recheck - the species assigned to TSCluster sites - do they exclude the initial and final ones?
+        # thing to recheck - the species assigned to TSCluster sites - do they exclude the initial and final ones? yes
+
+        vacSpecInd = len(self.mobCountList) - 1
+        TransInteractIndex = {}
+        count = 0
+        for key, interactGroups in self.KRAexpander.clusterSpeciesJumps:
+            specList = [vacSpecInd, key[-1]]  # the initial species is the jump, and specJ is stored as the key
+            for spectup, clusterList in interactGroups:
+                specList += [spec for spec in spectup]
+                # small failsafe
+                assert len(specList) == len(clusterList[0].sites)
+                for TSclust in clusterList:
+                    key = ((self.sup.index(clsite.R, clsite.ci)[0], sp) for clsite, sp in zip(TSclust.sites, specList))
+                    if key in TransInteractIndex:
+                        continue
+                    TransInteractIndex[key] = count
+                    count += 1
+
+
 
 
 
