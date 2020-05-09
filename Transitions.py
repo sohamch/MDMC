@@ -76,9 +76,6 @@ class KRAExpand(object):
     def defineTransSpecies(self):
         """
         Used to assign chemical species to the jump cluster expansions.
-
-        :param: mobOccs - this is the starting/initial state and is only used to get the number of species of each kind.
-
         We'll have separate expansions for every species that occupies the final site of a carrier jump,
         and every cluster for a given jump will have species assigned to it.
 
@@ -95,10 +92,19 @@ class KRAExpand(object):
             for clusterList in clusterSymLists:
                 cl0 = clusterList[0]
                 # Get the order of the cluster and assign species to the sites
+                # remember that we have removed vacancies from being considered in mobileSpecs
+                # Norder for TSClusters is 2 less than the actual site count, to exclude initial final sites from any
+                # "touching" so to speak.
                 Specs = itertools.product(mobileSpecs, repeat=cl0.Norder)
                 for tup in Specs:
                     # Check if the number of atoms crosses the total number of atoms of a species.
                     MobNumber = collections.Counter(tup)
+                    # increment the final site count by one
+                    try:
+                        MobNumber[AB[1]] += 1
+                    except KeyError:
+                        MobNumber[AB[1]] = 1
+
                     if any(self.mobCountList[i] < j for i, j in MobNumber.items()):
                         continue
                     AtomicClusterSymList.append([tup, clusterList])

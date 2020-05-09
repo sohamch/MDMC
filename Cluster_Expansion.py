@@ -466,7 +466,11 @@ class VectorClusterExpansion(object):
         # first, we indexify the transitions
         # See Line 43 of Transition.py - if a jump is not out of vacsite, it is not considered anyway
 
-        JumpData = self.clusterSpeciesJumps
+        JumpData = self.KRAexpander.clusterSpeciesJumps
+
+        # First, we indexify the transition state (site, spec) clusters
+        # these clusters are identified by (site, spec) tuple, TSCluster object
+        # thing to recheck - the species assigned to TSCluster sites - do they exclude the initial and final ones?
 
 
 
