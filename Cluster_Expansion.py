@@ -391,8 +391,6 @@ class VectorClusterExpansion(object):
         # first, we assign unique integers to interactions
         InteractionIndexDict = {}
         Index2InteractionDict = {}
-        Interaction2Energy = {}
-        Interaction2Vectors = {}
         siteSpecInteractIndexDict = collections.defaultdict(list)
         count = 0 # to keep a steady count of interactions.
         for key, interactInfoList in self.SiteSpecInteractions.items():
@@ -404,80 +402,26 @@ class VectorClusterExpansion(object):
                     siteSpecInteractIndexDict[(keySite, keySpec)].append(InteractionIndexDict[interaction])
                     continue
                 else:
+                    # assign a new unique integer to this interaction
                     InteractionIndexDict[interaction] = count
                     Index2InteractionDict[count] = interaction
                     siteSpecInteractIndexDict[(keySite, keySpec)].append(count)
                     count += 1
 
+        # check each interaction has its own unique index
+        assert len(InteractionIndexDict) == len(Index2InteractionDict)
 
+        # Now that we have integers assigned to all the interactions, let's start storing their data as numpy arrays
+        numInteracts = len(InteractionIndexDict)
+        # we'll need the number of sites in each interaction
+        numSitesInteracts = np.zeros(numInteracts, dtype=int)
 
+        # and the supercell sites in each interaction
+        SupSitesInteracts = np.full((numInteracts, self.maxOrder), -1, dtype=int)
 
+        # and the species on the supercell sites in each interaction
+        SpecOnInteractSites = np.full((numInteracts, self.maxOrder), -1, dtype=int)
 
-
-    def makeTransJitData(self):
-        """
-        To make numpy arrays relevant to KRA expansions. We basically need to numpy-fy the getKRA method in the KRA
-        expander.
-
-        Here, we take the array self.KRAExpander.clusterSpeciesJumps and cast it as a numpy array
-        """
-        # The dimensions will be Nsites X Nspec x MaxGroups X MaxInteracts
-        # the initial sites and species are only the vacancies, so we can keep track of only the final sit and final
-        # species.
-        # We need to find the last two quantities
-        # We also need to keep a track of the sites and the species.
-
-
-
-class MCSamper(object):
-
-    def __init__(self, numSiteSpecInteracts, numSites_In_Interacts, SpecOnInteractSites, InteractSite2SupSite):
-
-        self.numSiteSpecInteracts = numSiteSpecInteracts
-        self.numSites_In_Interacts = numSites_In_Interacts
-        self.SpecOnInteractSites = SpecOnInteractSites
-        self.InteractSite2SupSite = InteractSite2SupSite
-
-        # First, let's gather dimensions
-        self.Nsites, self.Nspecies, self.MaxInteracts, self.MaxOrder = InteractSite2SupSite.shape
-
-        # Then, we declare the arrays that store the on and off sites and initialize all of them to zero.
-        # We'll assume initially that we have no off-sites.
-        self.OffSiteCounts = np.zeros((self.Nsites, self.Nspecies, self.MaxInteracts), dtype=int)
-
-    def initialize(self, mobOcclist):
-        """
-        :param mobOcclist: A numpy array containing occupancies on each supercell site
-        """
-        for siteInd in range(self.Nsites):
-            for specInd in range(self.Nspecies):
-                # go through the interactions
-                for interacInd in range(self.numSiteSpecInteracts[siteInd, specInd]):
-                    # go through the sites in the interactions
-                    for interactSiteInd in range(self.numSites_In_Interacts[siteInd, specInd, interacInd]):
-                        # get the supercell site and the species
-                        interactSupSite = self.InteractSite2SupSite[siteInd, specInd, interacInd, interactSiteInd]
-                        interactSpec = self.SpecOnInteractSites[siteInd, specInd, interacInd, interactSiteInd]
-                        # Check if the site is off
-                        if mobOcclist[interactSupSite] != interactSpec:
-                            # Increase the off count by one
-                            self.OffSiteCounts[siteInd, specInd, interacInd] += 1
-
-        # Now, we have to initialize all the transitions
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        for (key, value) in Index2InteractionDict.items():
+            numSitesInteracts[key] = len(value)
+            for
