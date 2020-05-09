@@ -474,16 +474,40 @@ class VectorClusterExpansion(object):
                                  for Jumpkey, interactGroupList in self.KRAexpander.clusterSpeciesJumps.items()])
 
         # get the maximum number of clusters in any given group
-        maxInteractGroups = max([len(interactGroup[1])
-                                 for Jumpkey, interactGroupList in self.KRAexpander.clusterSpeciesJumps.items()
-                                 for interactGroup in interactGroupList])
+        maxInteractsInGroups = max([len(interactGroup[1])
+                                     for Jumpkey, interactGroupList in self.KRAexpander.clusterSpeciesJumps.items()
+                                     for interactGroup in interactGroupList])
 
         vacSpecInd = len(self.mobCountList) - 1
-        TransInteractIndex = {}
+        TransInteractIndex = {}  # Indexify the transition state interactions - we might not need this later on
+
+        # store initial and final sites in transitions
+        jumpFinSites = np.full(len(self.KRAexpander.clusterSpeciesJumps), -1, dtype=int)
+        jumpFinSpec = np.full(len(self.KRAexpander.clusterSpeciesJumps), -1, dtype=int)
+
+        # To store the number of TSInteraction groups for each transition
+        numJumpInteractionGroups = np.full(len(self.KRAexpander.clusterSpeciesJumps), -1, dtype=int)
+
+        # To store the number of clusters in each TSInteraction group for each transition
+        numJumpInteracts = np.full((len(self.KRAexpander.clusterSpeciesJumps), maxInteractGroups), -1,
+                                           dtype=int)
+
+        # To store the main interaction index of each TSInteraction (will be used to check on or off status)
+        JumpInteracts = np.full((len(self.KRAexpander.clusterSpeciesJumps), maxInteractGroups, maxInteractsInGroups),
+                                -1, dtype=int)
+
+        # store the index of each Transition state interaction in InteractionIndexDict
+
         count = 0
-        for Jumpkey, interactGroupList in self.KRAexpander.clusterSpeciesJumps.items():
+        jumpInd = 0
+        for jumpInd, (Jumpkey, interactGroupList) in zip(itertools.count(), self.KRAexpander.clusterSpeciesJumps.items()):
+
+            jumpFinSites[jumpInd] = Jumpkey[1]
+            jumpFinSpec[jumpInd] = Jumpkey[2]
+            numJumpInteractionGroups[jumpInd] = len(interactGroupList)
+
             specList = [vacSpecInd, Jumpkey[2]]  # the initial species is the jump, and specJ is stored as the key
-            for interactGroup in interactGroupList:
+            for interactInd, interactGroup in enumerate(interactGroupList):
                 spectup, clusterList = interactGroup[0], interactGroup[1]
                 specList += [spec for spec in spectup]
                 # small failsafe
@@ -498,6 +522,8 @@ class VectorClusterExpansion(object):
                         continue
                     TransInteractIndex[key] = count
                     count += 1
+
+        # Store the transitions
 
 
 
