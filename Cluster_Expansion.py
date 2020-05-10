@@ -553,10 +553,17 @@ class MCSampler(object):
                  VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec,
                  numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, vacSiteInd, Nspec, mobOcc):
 
-        # check if proper sites and species data are entered
-        Nsites, Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
+        self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts,\
+        self.VecsInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.jumpFinSites, self.jumpFinSpec,\
+        self.numJumpPointGroups, self.numTSInteractsInPtGroups, self.JumpInteracts, self.vacSiteInd = \
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,\
+        VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec,\
+        numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, vacSiteInd
 
-        if Nsites*Nspecs != len(mobOcc) * Nspec:
+        # check if proper sites and species data are entered
+        self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
+
+        if self.Nsites*self.Nspecs != len(mobOcc) * Nspec:
             raise ValueError("Inconsistent number of species and sites")
 
         self.mobOcc = mobOcc
@@ -575,6 +582,22 @@ class MCSampler(object):
         :param Nswaps: the number of site swaps needed to be done in a single MC sweep
         update the mobile occupance array and the OffSiteCounts for the MC sweeps
         """
+        # TODO : Need to implement biased sampling methods to select sites from TSinteractions with more prob.
+        count = 0
+        while count < Nswaps:
+            # first select two random sites to swap - for now, let's just select naively.
+            siteA = np.random.randint(0, self.Nsites)
+            siteB = np.random.randint(0, self.Nsites)
+            if siteA == siteB:
+                continue
+
+            # swap the occupancies
+            temp = self.mobOcc[siteA]
+            self.mobOcc[siteA] = self.mobOcc[siteB]
+            self.mobOcc[siteB] = temp
+
+            # Now, turn off and turn on interactions
+
 
 
 
