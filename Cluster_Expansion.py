@@ -489,7 +489,7 @@ class VectorClusterExpansion(object):
         numJumpInteractionGroups = np.full(len(self.KRAexpander.clusterSpeciesJumps), -1, dtype=int)
 
         # To store the number of clusters in each TSInteraction group for each transition
-        numJumpInteracts = np.full((len(self.KRAexpander.clusterSpeciesJumps), maxInteractGroups), -1,
+        numJumpInteractsInGroups = np.full((len(self.KRAexpander.clusterSpeciesJumps), maxInteractGroups), -1,
                                            dtype=int)
 
         # To store the main interaction index of each TSInteraction (will be used to check on or off status)
@@ -512,6 +512,8 @@ class VectorClusterExpansion(object):
                 specList += [spec for spec in spectup]
                 # small failsafe
                 assert len(specList) == len(clusterList[0].sites)
+                numJumpInteractsInGroups[jumpInd, jumpInd, interactGroupInd] = len(clusterList)
+
                 for interactInd, TSclust in clusterList:
                     TSInteract = tuple([(self.sup.index(clsite.R, clsite.ci)[0], sp)
                                  for clsite, sp in zip(TSclust.sites, specList)])
@@ -535,6 +537,8 @@ class VectorClusterExpansion(object):
                     assert TSMainInd != -1
                     assert TSMainIndCount == 1
 
+                    # Next, store this main interaction Index
+                    JumpInteracts[jumpInd, interactGroupInd, interactInd] = TSMainInd
 
                     # A small check to see that the TSClusters have the sites arranged properly
                     assert TSInteract[0][0] == self.sup.index(self.vacSite.R, self.vacSite.ci)[0] == Jumpkey[0]
@@ -543,8 +547,6 @@ class VectorClusterExpansion(object):
                         continue
                     TransInteractIndex[TSInteract] = count
                     count += 1
-
-        # Store the transitions
 
 
 
