@@ -540,9 +540,42 @@ class VectorClusterExpansion(object):
                     assert TSInteract[0][0] == self.sup.index(self.vacSite.R, self.vacSite.ci)[0] == Jumpkey[0]
                     assert TSInteract[1][0] == Jumpkey[1]
 
+        vacSiteInd = self.sup.index(self.vacSite.R, self.vacSite.ci)[0]
+
         return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,\
-               Interaction2En, numVecsInteracts, VecsInteracts,\
-               jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts
+               Interaction2En, numVecsInteracts, VecsInteracts, numInteractsSiteSpec,SiteSpecInterArray,\
+               jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, vacSiteInd
+
+
+class MCSampler(object):
+
+    def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
+                 VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec,
+                 numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, vacSiteInd, Nspec, mobOcc):
+
+        # check if proper sites and species data are entered
+        Nsites, Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
+
+        if Nsites*Nspecs != len(mobOcc) * Nspec:
+            raise ValueError("Inconsistent number of species and sites")
+
+        self.mobOcc = mobOcc
+        self.OffSiteCount = np.zeros(len(numSitesInteracts), dtype=int)
+        for interactIdx in range(len(numSitesInteracts)):
+            numSites = numSitesInteracts[interactIdx]
+            for intSiteind in range(numSites):
+                interSite = SupSitesInteracts[interactIdx, intSiteind]
+                interSpec = SpecOnInteractSites[interactIdx, intSiteind]
+                if mobOcc[interSite] != interSpec:
+                    self.OffSiteCount[interactIdx] += 1
+
+    def makeMCsweep(self, Nswaps):
+        """
+        This is the function that will do the MC sweeps
+        :param Nswaps: the number of site swaps needed to be done in a single MC sweep
+        update the mobile occupance array and the OffSiteCounts for the MC sweeps
+        """
+
 
 
 
