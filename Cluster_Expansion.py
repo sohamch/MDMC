@@ -576,28 +576,69 @@ class MCSampler(object):
                 if mobOcc[interSite] != interSpec:
                     self.OffSiteCount[interactIdx] += 1
 
-    def makeMCsweep(self, Nswaps):
+    def makeMCsweep(self, NswapTrials, beta, Energies):
         """
         This is the function that will do the MC sweeps
-        :param Nswaps: the number of site swaps needed to be done in a single MC sweep
+        :param NswapTrials: the number of site swaps needed to be done in a single MC sweep
+        :param beta : 1/(KB*T)
         update the mobile occupance array and the OffSiteCounts for the MC sweeps
         """
         # TODO : Need to implement biased sampling methods to select sites from TSinteractions with more prob.
+        mobOcc = self.mobOcc.copy()
+
+        OffSiteCountOld = self.OffSiteCount.copy()
+        OffSiteCountNew = self.OffSiteCount.copy()
+        
+        randarr = np.random.rand(NswapTrials)
+
         count = 0
-        while count < Nswaps:
+        while count < NswapTrials:
             # first select two random sites to swap - for now, let's just select naively.
             siteA = np.random.randint(0, self.Nsites)
             siteB = np.random.randint(0, self.Nsites)
             if siteA == siteB:
                 continue
 
-            # swap the occupancies
-            temp = self.mobOcc[siteA]
-            self.mobOcc[siteA] = self.mobOcc[siteB]
-            self.mobOcc[siteB] = temp
+            delE = 0.
+            # Next, switch required sites off
+            for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteA]]):
+                # check if an interaction is on
+                if OffSiteCountOld[self.SiteSpecInterArray[siteA, mobOcc[siteA], interIdx]] == 0:
+                    delE -= Energies[self.Interaction2En[self.SiteSpecInterArray[siteA, mobOcc[siteA], interIdx]]]                
+                OffSiteCountNew[self.SiteSpecInterArray[siteA, mobOcc[siteA], interIdx]] += 1
+                
+            for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteB]]):
+                if OffSiteCountOld[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]] == 0:
+                    delE -= Energies[self.Interaction2En[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]]]
+                OffSiteCountNew[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]] += 1
 
-            # Now, turn off and turn on interactions
+            # Next, switch required sites on
+            for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteB]]):
+                OffSiteCountNew[self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]] -= 1
+                if OffSiteCountNew[self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]] == 0:
+                    delE += Energies[self.Interaction2En[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]]]
 
+            for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteA]]):
+                OffSiteCountNew[self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]] -= 1
+                if OffSiteCountNew[self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]] == 0:
+                    delE += Energies[self.Interaction2En[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]]]
+
+            # do the selection test
+            if np.exp(-beta*delE) > randarr[count]:
+                # update the off site counts
+                OffSiteCountOld = OffSiteCountNew.copy()
+                # swap the sites to get to the next state
+                temp = mobOcc[siteA]
+                mobOcc[siteA] = mobOcc[siteB]
+                mobOcc[siteB] = temp
+            else:
+                # revert back the off site counts, because the state has not changed
+                OffSiteCountNew = OffSiteCountOld.copy()
+                    
+            count += 1
+
+        return mobOcc, OffSiteCountNew
+                
 
 
 
