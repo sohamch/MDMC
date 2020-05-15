@@ -559,7 +559,7 @@ class MCSampler(object):
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts,\
         self.VecsInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.jumpFinSites, self.jumpFinSpec,\
-        self.numJumpPointGroups, self.numTSInteractsInPtGroups, self.JumpInteracts, Jump2KRAEng, self.vacSiteInd = \
+        self.numJumpPointGroups, self.numTSInteractsInPtGroups, self.JumpInteracts, self.Jump2KRAEng, self.vacSiteInd = \
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,\
         VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec,\
         numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd
