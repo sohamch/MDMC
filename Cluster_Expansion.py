@@ -547,21 +547,22 @@ class VectorClusterExpansion(object):
 
         return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,\
                Interaction2En, numVecsInteracts, VecsInteracts, numInteractsSiteSpec,SiteSpecInterArray,\
-               jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, vacSiteInd
+               jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,\
+               vacSiteInd
 
 
 class MCSampler(object):
 
     def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
                  VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec,
-                 numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, vacSiteInd, Nspec, mobOcc):
+                 numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd, Nspec, mobOcc):
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts,\
         self.VecsInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.jumpFinSites, self.jumpFinSpec,\
-        self.numJumpPointGroups, self.numTSInteractsInPtGroups, self.JumpInteracts, self.vacSiteInd = \
+        self.numJumpPointGroups, self.numTSInteractsInPtGroups, self.JumpInteracts, Jump2KRAEng, self.vacSiteInd = \
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,\
         VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec,\
-        numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, vacSiteInd
+        numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd
 
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
