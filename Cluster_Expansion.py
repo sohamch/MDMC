@@ -381,7 +381,7 @@ class VectorClusterExpansion(object):
         maxinteractions = max(InteractCounts)
         return SiteSpecinteractList, maxinteractions
 
-    def makeJitInteractionsData(self):
+    def makeJitInteractionsData(self, Energies, KRAEnergies):
         """
         Function to represent all the data structures in the form of numpy arrays so that they can be accelerated with
         numba's jit compilations.
@@ -444,14 +444,14 @@ class VectorClusterExpansion(object):
                 SpecOnInteractSites[key, idx] = intSpec
 
         # 2. Store energy data and vector data
-        Interaction2En = np.full(numInteracts, -1, dtype=int)
+        Interaction2En = np.zeros(numInteracts)
         numVecsInteracts = np.full(numInteracts, -1, dtype=int)
         VecsInteracts = np.zeros((numInteracts, 3, 3))
         
         for interaction, repClus in InteractionRepClusDict.items():
             idx = InteractionIndexDict[interaction]
             # get the energy index here
-            Interaction2En[idx] = self.clust2SpecClus[repClus][0]
+            Interaction2En[idx] = Energies[self.clust2SpecClus[repClus][0]]
 
             # get the vector basis data here
             vecList = self.clust2vecClus[repClus]
@@ -495,6 +495,8 @@ class VectorClusterExpansion(object):
         JumpInteracts = np.full((len(self.KRAexpander.clusterSpeciesJumps), maxInteractGroups, maxInteractsInGroups),
                                 -1, dtype=int)
 
+        # To store the KRA energies for each transition state cluster
+        Jump2KRAEng = np.zeros((len(self.KRAexpander.clusterSpeciesJumps), maxInteractGroups, maxInteractsInGroups))
         for jumpInd, (Jumpkey, interactGroupList) in zip(itertools.count(),
                                                          self.KRAexpander.clusterSpeciesJumps.items()):
 
@@ -535,6 +537,7 @@ class VectorClusterExpansion(object):
 
                     # Next, store this main interaction Index
                     JumpInteracts[jumpInd, interactGroupInd, interactInd] = TSMainInd
+                    Jump2KRAEng[jumpInd, interactGroupInd, interactInd] = KRAEnergies[jumpInd][interactGroupInd]
 
                     # A small check to see that the TSClusters have the sites arranged properly
                     assert TSInteract[0][0] == self.sup.index(self.vacSite.R, self.vacSite.ci)[0] == Jumpkey[0]
