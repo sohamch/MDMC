@@ -548,8 +548,7 @@ class VectorClusterExpansion(object):
         return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,\
                Interaction2En, numVecsInteracts, VecsInteracts, numInteractsSiteSpec,SiteSpecInterArray,\
                jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,\
-               vacSiteInd
-
+               vacSiteInd, InteractionIndexDict, InteractionRepClusDict, Index2InteractionDict
 
 class MCSampler(object):
 
