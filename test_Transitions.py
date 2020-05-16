@@ -251,21 +251,36 @@ class test_Vector_Cluster_Expansion(testKRA):
                     stSpc, clust, count, clust2Tup[clust], dimBasis, c))
 
     def test_site_interactions(self):
-
         # test that every interaction is valid with the given Rtrans provided
         # The key site should be present only once
+        interaction2RepClust = {}
+        clust2Interact = collections.defaultdict(list)
+        self.assertEqual(len(self.VclusExp.SiteSpecInteractions), self.NSpec*len(self.superBCC.mobilepos))
         for (key, infoList) in self.VclusExp.SiteSpecInteractions.items():
             clSite = key[0]
             sp = key[1]
             # print(infoList[0][0])
             for interactionData in infoList:
                 interaction = interactionData[0]
+                RepClust = interactionData[1]
+                if not interaction in interaction2RepClust:
+                    interaction2RepClust[interaction] = {RepClust}
+                else:
+                    interaction2RepClust[interaction].add(RepClust)
+                clust2Interact[RepClust].append(interaction)
                 count = 0
                 for (site, spec) in interaction:
                     if site == clSite and sp == spec:
                         count += 1
 
                 self.assertEqual(count, 1)
+        self.assertEqual(len(clust2Interact), sum([len(clList) for clList in self.VclusExp.SpecClusters]),
+                         msg="found:{}".format(len(clust2Interact)))
+
+        for repClust, interactList in clust2Interact.items():
+            for interaction in interactList:
+                self.assertEqual(len(interaction2RepClust[interaction]), 1)
+                self.assertTrue(repClust in interaction2RepClust[interaction])
 
     def testcluster2vecClus(self):
 
