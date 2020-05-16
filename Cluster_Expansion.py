@@ -426,9 +426,9 @@ class VectorClusterExpansion(object):
                     InteractionIndexDict[interaction] = count
                     # also sort the sites by the supercell site indices - will help in identifying TSclusters as interactions
                     # later on
-                    InteractSup = [(self.sup.index(clsite.R, clsite.ci)[0], sp)
-                                             for (clsite, sp) in interaction]
-                    Interact_sort = sorted(InteractSup, key=lambda x: x[0])
+                    InteractSup = tuple([(self.sup.index(clsite.R, clsite.ci)[0], sp)
+                                             for (clsite, sp) in interaction])
+                    Interact_sort = tuple(sorted(InteractSup, key=lambda x: x[0]))
                     siteSortedInteractionIndexDict[Interact_sort] = count
 
 
@@ -546,7 +546,7 @@ class VectorClusterExpansion(object):
                     # get the ID of this interaction
                     # sort with the supercell site indices as the keys as each site can appear only once in an
                     # interaction
-                    TSInteract_sort = sorted(TSInteract, key=lambda x: x[0])
+                    TSInteract_sort = tuple(sorted(TSInteract, key=lambda x: x[0]))
                     TSMainInd = siteSortedInteractionIndexDict[TSInteract_sort]
 
                     JumpInteracts[jumpInd, interactGroupInd, interactInd] = TSMainInd
@@ -556,7 +556,7 @@ class VectorClusterExpansion(object):
                     # assert TSInteract[0][0] == self.sup.index(self.vacSite.R, self.vacSite.ci)[0] == Jumpkey[0]
                     # assert TSInteract[1][0] == Jumpkey[1]
 
-        print("Done with vector transition data : {}".format(time.time() - start))
+        print("Done with transition data : {}".format(time.time() - start))
         vacSiteInd = self.sup.index(self.vacSite.R, self.vacSite.ci)[0]
 
         return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,\

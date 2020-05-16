@@ -82,7 +82,7 @@ class MC_Arrays(unittest.TestCase):
             repClus = InteractionRepClusDict[interaction]
 
             # test the energy index
-            enIndex = self.VclusExp.clust2SpecClus[repClus]
+            enIndex = self.VclusExp.clust2SpecClus[repClus][0]
             self.assertEqual(Interaction2En[i], self.Energies[enIndex])
 
             # get the vector basis info for this cluster
@@ -92,7 +92,7 @@ class MC_Arrays(unittest.TestCase):
             # check that the correct vector have been stored, in the same order as in vecList (not necessary but short testing)
             for vecind in range(len(vecList)):
                 vec = self.VclusExp.vecVec[vecList[vecind][0]][vecList[vecind][1]]
-                self.assertTrue(np.allclose(vec), VecsInteracts[i, vecind, :])
+                self.assertTrue(np.allclose(vec, VecsInteracts[i, vecind, :]))
 
         # Next, test the interactions each (site, spec) is a part of
         self.assertEqual(numInteractsSiteSpec.shape[0], len(self.superBCC.mobilepos))
@@ -107,6 +107,6 @@ class MC_Arrays(unittest.TestCase):
                 for IdxOfInteract in range(numInteractStored):
                     interactMainIndex = SiteSpecInterArray[site, spec, IdxOfInteract]
                     self.assertEqual(Index2InteractionDict[interactMainIndex],
-                                     self.VclusExp.SiteSpecInteractions[(clsite, spec)][IdxOfInteract])
+                                     self.VclusExp.SiteSpecInteractions[(clsite, spec)][IdxOfInteract][0])
 
 
