@@ -394,7 +394,7 @@ class MCSampler(object):
 
     def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
                  VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec,
-                 numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd, Nspec, mobOcc):
+                 numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd, mobOcc):
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts,\
         self.VecsInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.jumpFinSites, self.jumpFinSpec,\
@@ -405,9 +405,6 @@ class MCSampler(object):
 
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
-
-        if self.Nsites*self.Nspecs != len(mobOcc) * Nspec:
-            raise ValueError("Inconsistent number of species and sites")
 
         self.mobOcc = mobOcc
         self.OffSiteCount = np.zeros(len(numSitesInteracts), dtype=int)
@@ -477,7 +474,6 @@ class MCSampler(object):
             else:
                 # revert back the off site counts, because the state has not changed
                 OffSiteCountNew = OffSiteCountOld.copy()
-                    
             count += 1
 
         return mobOcc, OffSiteCountNew
