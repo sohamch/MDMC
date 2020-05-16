@@ -430,8 +430,6 @@ class VectorClusterExpansion(object):
                                              for (clsite, sp) in interaction])
                     Interact_sort = tuple(sorted(InteractSup, key=lambda x: x[0]))
                     siteSortedInteractionIndexDict[Interact_sort] = count
-
-
                     InteractionRepClusDict[interaction] = interactInfo[1]
                     Index2InteractionDict[count] = interaction
                     SiteSpecInterArray[keySite, keySpec, interactInd] = count

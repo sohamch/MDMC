@@ -279,6 +279,7 @@ class test_Vector_Cluster_Expansion(testKRA):
         # test that every interaction is valid with the given Rtrans provided
         # The key site should be present only once
         interaction2RepClust = {}
+
         clust2Interact = collections.defaultdict(list)
         self.assertEqual(len(self.VclusExp.SiteSpecInteractions), self.NSpec*len(self.superBCC.mobilepos))
         for (key, infoList) in self.VclusExp.SiteSpecInteractions.items():
