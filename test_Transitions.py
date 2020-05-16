@@ -43,21 +43,30 @@ class testKRA(unittest.TestCase):
             siteA = cluster.ClusterSite(ci=ciA, R=RA)
             siteB = cluster.ClusterSite(ci=ciB, R=RB)
             self.assertEqual(siteA, self.vacsite)
+
+            # Get the point group of this transition
+            Glist = []
+            for g in self.crys.G:
+                siteANew = siteA.g(self.crys, g)
+                siteBNew = siteB.g(self.crys, g)
+                if siteA == siteANew and siteB == siteBNew:
+                    Glist.append(g)
+
             clusterListCount = collections.defaultdict(int)  # each cluster should only appear in one list
             for clist in clusterLists:
                 cl0 = clist[0]
                 for clust in clist:
                     clusterListCount[clust] += 1
                     count = 0
-                    countSym = 0
-                    for g in self.crys.G:
+                    for g in Glist:
                         clNew = cl0.g(self.crys, g)
                         if clNew == clust:
                             count += 1
-                            if siteA == siteA.g(self.crys, g) and siteB == siteB.g(self.crys, g):
-                                countSym += 1
+                            # Check that every group operation which maps the starting cluster to some cluster
+                            # in the list keeps the transition unchanged.
+                            self.assertEqual(siteA, siteA.g(self.crys, g))
+                            self.assertEqual(siteB, siteB.g(self.crys, g))
                     self.assertNotEqual(count, 0)
-                    self.assertNotEqual(countSym, 0)
             for clust, count in clusterListCount.items():
                 self.assertEqual(count, 1)
 

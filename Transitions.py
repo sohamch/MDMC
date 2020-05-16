@@ -57,7 +57,6 @@ class KRAExpand(object):
             for g in self.crys.G:
                 siteANew = siteA.g(self.crys, g)
                 siteBNew = siteB.g(self.crys, g)
-
                 if siteA == siteANew and siteB == siteBNew:
                     Glist.append(g)
 
@@ -85,7 +84,7 @@ class KRAExpand(object):
         Nmobile = len(self.mobCountList)
 
         mobileSpecs = tuple(range(Nmobile - 1))  # the last species is the vacancy, so we are not considering it.
-        #print("mobilespecs :{} \n".format(mobileSpecs))
+        # print("mobilespecs :{} \n".format(mobileSpecs))
         clusterJumpsSpecies = {}
         for AB, clusterSymLists in self.SymTransClusters.items():
             # For this transition, first assign species to the clusters
