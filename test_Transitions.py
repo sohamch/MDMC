@@ -151,6 +151,14 @@ class test_Vector_Cluster_Expansion(testKRA):
                                                                                self.crys.lattice, g.cartrot))
                 self.assertGreater(count, 0)
 
+    def testcluster2vecClus(self):
+
+        for clListInd, clList in enumerate(self.VclusExp.SpecClusters):
+            for clust in clList:
+                vecList = self.VclusExp.clust2vecClus[clust]
+                for tup in vecList:
+                    self.assertEqual(clust, self.VclusExp.vecClus[tup[0]][tup[1]])
+
     def test_indexing(self):
         for vclusListInd, clListInd in enumerate(self.VclusExp.Vclus2Clus):
             cl0 = self.VclusExp.vecClus[vclusListInd][0]
@@ -281,14 +289,6 @@ class test_Vector_Cluster_Expansion(testKRA):
             for interaction in interactList:
                 self.assertEqual(len(interaction2RepClust[interaction]), 1)
                 self.assertTrue(repClust in interaction2RepClust[interaction])
-
-    def testcluster2vecClus(self):
-
-        for clListInd, clList in enumerate(self.VclusExp.SpecClusters):
-            for clust in clList:
-                vecList = self.VclusExp.clust2vecClus[clust]
-                for tup in vecList:
-                    self.assertEqual(clust, self.VclusExp.vecClus[tup[0]][tup[1]])
 
     def testcluster2SpecClus(self):
 
