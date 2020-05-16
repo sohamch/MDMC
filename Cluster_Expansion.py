@@ -198,7 +198,6 @@ class VectorClusterExpansion(object):
         """
         SiteSpecinteractList = {}
         InteractCounts = []  # this is to later find out the maximum number of interactions.
-        interactionSupIndSet = set()
         for siteInd in range(self.Nsites):
             # get the cluster site
             ci, R = self.sup.ciR(siteInd)
@@ -218,6 +217,7 @@ class VectorClusterExpansion(object):
                                                         for site, spec in interactionSites])
                                 # this check is to account for periodic boundary conditions
                                 interactionList.append([interactSupInd, cl, Rtrans])
+                                # interactionList.append([interactionSites, cl, Rtrans])
 
                 SiteSpecinteractList[(clSite, sp)] = interactionList
                 InteractCounts.append(len(interactionList))
