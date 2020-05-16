@@ -73,7 +73,7 @@ class VectorClusterExpansion(object):
         self.mobList = list(range(len(mobCountList)))
         self.vacSite = vacSite  # This stays fixed throughout the simulation, so makes sense to store it.
         self.jumpnetwork = jumpnetwork
-        self.ScalarBasis = self.createScalarBasis()
+
         self.SpecClusters = self.recalcClusters()
         self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
         # add a small check here - maybe we'll remove this later
@@ -156,26 +156,6 @@ class VectorClusterExpansion(object):
 
         return vecClustList, vecVecList
 
-    def createScalarBasis(self):
-        """
-        Function to add in the species arrangements to the cluster basis functions.
-        """
-        clusterBasis = []
-        for clistInd, clist in enumerate(self.clusexp):
-            cl0 = list(clist)[0]  # get the representative cluster
-            # cluster.sites is a tuple, which maintains the order of the elements.
-            Nmobile = len(cl0.sites)
-            arrangemobs = itertools.product(self.mobList, repeat=Nmobile)  # arrange mobile sites on mobile species.
-            for tup in arrangemobs:
-                mobcount = collections.Counter(tup)
-                # Check if the number of atoms of a given species does not exceed the total number of atoms of that
-                # species in the solid.
-                if any(j > self.mobCountList[i] for i, j in mobcount.items()):
-                    continue
-                # Each cluster is associated with three vectors
-                clusterBasis.append((tup, clistInd))
-        return clusterBasis
-
     def indexVclus2Clus(self):
 
         self.Vclus2Clus = np.zeros(len(self.vecClus), dtype=int)
@@ -237,7 +217,7 @@ class VectorClusterExpansion(object):
                                 interactSupInd = tuple([(self.sup.index(site.R, site.ci)[0], spec)
                                                         for site, spec in interactionSites])
                                 # this check is to account for periodic boundary conditions
-                                interactionList.append([interactionSupInd, cl, Rtrans])
+                                interactionList.append([interactSupInd, cl, Rtrans])
 
                 SiteSpecinteractList[(clSite, sp)] = interactionList
                 InteractCounts.append(len(interactionList))
@@ -281,9 +261,7 @@ class VectorClusterExpansion(object):
                     InteractionIndexDict[interaction] = count
                     # also sort the sites by the supercell site indices - will help in identifying TSclusters as interactions
                     # later on
-                    InteractSup = tuple([(self.sup.index(clsite.R, clsite.ci)[0], sp)
-                                             for (clsite, sp) in interaction])
-                    Interact_sort = tuple(sorted(InteractSup, key=lambda x: x[0]))
+                    Interact_sort = tuple(sorted(interaction, key=lambda x: x[0]))
                     siteSortedInteractionIndexDict[Interact_sort] = count
                     InteractionRepClusDict[interaction] = interactInfo[1]
                     Index2InteractionDict[count] = interaction
@@ -311,8 +289,7 @@ class VectorClusterExpansion(object):
         for (key, interaction) in Index2InteractionDict.items():
             numSitesInteracts[key] = len(interaction)
             for idx, (intSite, intSpec) in enumerate(interaction):
-                supSite = self.sup.index(intSite.R, intSite.ci)[0]  # get the supercell site index
-                SupSitesInteracts[key, idx] = supSite
+                SupSitesInteracts[key, idx] = intSite
                 SpecOnInteractSites[key, idx] = intSpec
 
         print("Done with chemical data for interactions : {}".format(time.time() - start))
