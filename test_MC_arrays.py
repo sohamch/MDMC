@@ -67,3 +67,15 @@ class MC_Arrays(unittest.TestCase):
 
         # Now, we need to test the vector basis information for the clusters
         for i in range(len(numSitesInteracts)):
+            # get the interaction
+            interaction = Index2InteractionDict[i]
+            # Now, get the representative cluster
+            repClus = InteractionRepClusDict[interaction]
+            # get the vector basis info for this cluster
+            vecList = self.VclusExp.clust2vecClus[repClus]
+            # check the number of vectors
+            self.assertEqual(numVecsInteracts[i], len(vecList))
+            # check that the correct vector have been stored, in the same order as in vecList (not necessary but short testing)
+            for vecind in range(len(vecList)):
+                vec = self.VclusExp.vecVec[vecList[vecind][0]][vecList[vecind][1]]
+                self.assertTrue(np.allclose(vec), VecsInteracts[i, vecind, :])

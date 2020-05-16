@@ -460,7 +460,7 @@ class VectorClusterExpansion(object):
 
             # store the vector
             for vecidx, tup in enumerate(vecList):
-                VecsInteracts[idx, vecidx][:] = self.vecVec[tup[0]][tup[1]]
+                VecsInteracts[idx, vecidx, :] = self.vecVec[tup[0]][tup[1]]
 
         # 3. Now, we deal with transition state data.
         # first, we indexify the transitions
