@@ -512,7 +512,7 @@ class VectorClusterExpansion(object):
                 assert len(specList) == len(clusterList[0].sites)
                 numTSInteractsInPtGroups[jumpInd, interactGroupInd] = len(clusterList)
 
-                for interactInd, TSclust in clusterList:
+                for interactInd, TSclust in enumerate(clusterList):
                     TSInteract = tuple([(self.sup.index(clsite.R, clsite.ci)[0], sp)
                                  for clsite, sp in zip(TSclust.sites, specList)])
 
