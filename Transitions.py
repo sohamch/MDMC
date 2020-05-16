@@ -36,7 +36,7 @@ class KRAExpand(object):
 
         for clList in self.TSClusters:
             for clust in clList:
-                # get supercell indices of the jumps.
+                # get supercell indices of the jump sites.
                 siteA = clust.sites[0]
                 siteB = clust.sites[1]
 
@@ -84,7 +84,8 @@ class KRAExpand(object):
 
         Nmobile = len(self.mobCountList)
 
-        mobileSpecs = tuple(range(Nmobile-1))  # the last species is the vacancy, so we are not considering it.
+        mobileSpecs = tuple(range(Nmobile - 1))  # the last species is the vacancy, so we are not considering it.
+        #print("mobilespecs :{} \n".format(mobileSpecs))
         clusterJumpsSpecies = {}
         for AB, clusterSymLists in self.SymTransClusters.items():
             # For this transition, first assign species to the clusters
@@ -94,26 +95,24 @@ class KRAExpand(object):
                 # Get the order of the cluster and assign species to the sites
                 # remember that we have removed vacancies from being considered in mobileSpecs
                 # Norder for TSClusters is 2 less than the actual site count, to exclude initial final sites from any
-                # "touching" so to speak.
+                # "touching" so to speak - specI is always vacancy, we'll assign specJ later on
                 Specs = itertools.product(mobileSpecs, repeat=cl0.Norder)
-                for tup in Specs:
-                    # Check if the number of atoms crosses the total number of atoms of a species.
-                    MobNumber = collections.Counter(tup)
-                    # increment the final site count by one
-                    try:
-                        MobNumber[AB[1]] += 1
-                    except KeyError:
-                        MobNumber[AB[1]] = 1
-
-                    if any(self.mobCountList[i] < j for i, j in MobNumber.items()):
-                        continue
-                    AtomicClusterSymList.append([tup, clusterList])
+                for specJ in range(Nmobile - 1):
+                    ABspecJ = (AB[0], AB[1], specJ)
+                    for tup in Specs:
+                        # Check if the number of atoms crosses the total number of atoms of a species.
+                        MobNumber = collections.Counter(tup)
+                        if specJ in MobNumber:
+                            MobNumber[specJ] += 1
+                        else:
+                            MobNumber[specJ] = 1
+                        # print(len(self.mobCountList), MobNumber)
+                        if any(self.mobCountList[i] < j for i, j in MobNumber.items()):
+                            continue
+                        AtomicClusterSymList.append([tup, clusterList])
+                    clusterJumpsSpecies[ABspecJ] = AtomicClusterSymList
             # use itertools.product like in normal cluster expansion.
             # Then, assign species to the final site of the jumps.
-            for specJ in range(Nmobile-1):
-                ABspecJ = (AB[0], AB[1], specJ)
-                clusterJumpsSpecies[ABspecJ] = AtomicClusterSymList
-
         return clusterJumpsSpecies
 
     def GetKRA(self, transition, mobOcc, KRACoeffs):
