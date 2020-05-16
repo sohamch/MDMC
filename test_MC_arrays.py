@@ -68,8 +68,8 @@ class Test_MC_Arrays(unittest.TestCase):
         self.assertEqual(len(SupSitesInteracts), len(numSitesInteracts))
         self.assertEqual(len(SpecOnInteractSites), len(numSitesInteracts))
         for i in range(len(numSitesInteracts)):
-            siteSpecSet = set(((SupSitesInteracts[i, j], SpecOnInteractSites[i, j])
-                               for j in range(numSitesInteracts[i])))
+            siteSpecSet = set([(SupSitesInteracts[i, j], SpecOnInteractSites[i, j])
+                               for j in range(numSitesInteracts[i])])
             interaction = Index2InteractionDict[i]
             interactionSet = set(interaction)
             self.assertEqual(siteSpecSet, interactionSet)
@@ -123,7 +123,19 @@ class Test_MC_Arrays(unittest.TestCase):
             NptGrp = len(TSptGrps)
             self.assertEqual(numJumpPointGroups[jumpInd], NptGrp)
 
-            # Check that in for each point group, the correct number of interactions are stored.
-            # for TsPtGpInd, (spectup, TSinteractList) in zip(itertools.count(),)
+            # Check that in for each point group, the correct interactions are stored.
+            for TsPtGpInd, (spectup, TSinteractList) in zip(itertools.count(), TSptGrps):
+                self.assertEqual(numTSInteractsInPtGroups[jumpInd, TsPtGpInd], len(TSinteractList))
+                specList = [self.NSpec - 1, FinSpec] + [spec for spec in spectup]
+                for interactInd, TSClust in enumerate(TSinteractList):
+                    interact = tuple([(self.VclusExp.sup.index(site.R, site.ci)[0], spec)
+                                      for site, spec in zip(TSClust.sites, specList)])
+                    interactStored = Index2InteractionDict[JumpInteracts[jumpInd, TsPtGpInd, interactInd]]
+
+                    self.assertEqual(set(interact), set(interactStored))
+                    self.assertEqual(Jump2KRAEng[jumpInd, TsPtGpInd, interactInd], self.KRAEnergies[jumpInd][TsPtGpInd])
+
+
+
 
 
