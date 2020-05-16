@@ -65,12 +65,17 @@ class MC_Arrays(unittest.TestCase):
             interactionSet = set(((self.VclusExp.sup.index(site.R, site.ci)[0], spec) for site, spec in interaction))
             self.assertEqual(siteSpecSet, interactionSet)
 
-        # Now, we need to test the vector basis information for the clusters
+        # Now, test the vector basis and energy information for the clusters
         for i in range(len(numSitesInteracts)):
             # get the interaction
             interaction = Index2InteractionDict[i]
             # Now, get the representative cluster
             repClus = InteractionRepClusDict[interaction]
+
+            # test the energy index
+            enIndex = self.VclusExp.clust2SpecClus[repClus]
+            self.assertEqual(Interaction2En[i], enIndex)
+
             # get the vector basis info for this cluster
             vecList = self.VclusExp.clust2vecClus[repClus]
             # check the number of vectors
@@ -79,3 +84,5 @@ class MC_Arrays(unittest.TestCase):
             for vecind in range(len(vecList)):
                 vec = self.VclusExp.vecVec[vecList[vecind][0]][vecList[vecind][1]]
                 self.assertTrue(np.allclose(vec), VecsInteracts[i, vecind, :])
+
+        # Next, test the number of interactions each (site, spec) is a part of
