@@ -113,14 +113,18 @@ class testKRA(unittest.TestCase):
                 for cl in clList:
                     # check if this cluster is On
                     prod = 1
+                    countVacSite = 0
+                    countFinSite = 0
                     for siteInd, site in enumerate(cl.sites):
                         siteIdx = self.superBCC.index(site.R, site.ci)[0]
                         if siteInd == 0:
                             # vacancy site is always occupied by vacancy
-                            self.assertEqual(siteIdx, self.vacsite)
+                            countVacSite += 1
+                            self.assertEqual(siteIdx, self.vacsiteInd)
                             self.assertEqual(self.mobOccs[-1, siteInd], 1)
                         elif siteInd == 1:
                             # SpecJ
+                            countFinSite += 1
                             specJ = transition[2]
                             # check if this site is occupied
                             self.assertEqual(self.superBCC.index(site.R, site.ci)[0], transition[1])
@@ -129,13 +133,16 @@ class testKRA(unittest.TestCase):
                         elif self.mobOccs[tup[siteInd - 2], siteIdx] == 0:
                             prod = 0
 
+                    self.assertEqual(countFinSite, 1)
+                    self.assertEqual(countVacSite, 1)
+
                     if prod == 1:
                         valOn[Idx] += KRACoeffs[Idx]
 
             KRAen = np.sum(valOn)
             KRAcalc = self.KRAexpander.GetKRA(transition, self.mobOccs, KRACoeffs)
             self.assertTrue(np.allclose(KRAen, KRAcalc), msg="{}, {}".format(KRAen, KRAcalc))
-            print("Envalues : {}, {}".format(KRAcalc, KRAen))
+            # print("Envalues : {}, {}".format(KRAcalc, KRAen))
 
 
 class test_Vector_Cluster_Expansion(testKRA):
