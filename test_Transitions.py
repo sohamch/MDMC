@@ -93,6 +93,7 @@ class testKRA(unittest.TestCase):
             for species, clusterList in SpeciesclusterLists:
                 cl0 = clusterList[0]
                 self.assertEqual(cl0.Norder, len(species))
+                self.assertEqual(cl0.Norder+2, len(cl0.sites))
                 clusterCounts[cl0] += 1
 
             for cl0, count in clusterCounts.items():
