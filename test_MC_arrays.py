@@ -85,4 +85,19 @@ class MC_Arrays(unittest.TestCase):
                 vec = self.VclusExp.vecVec[vecList[vecind][0]][vecList[vecind][1]]
                 self.assertTrue(np.allclose(vec), VecsInteracts[i, vecind, :])
 
-        # Next, test the number of interactions each (site, spec) is a part of
+        # Next, test the interactions each (site, spec) is a part of
+        self.assertEqual(numInteractsSiteSpec.shape[0], len(self.superBCC.mobilepos))
+        self.assertEqual(numInteractsSiteSpec.shape[1], self.NSpec)
+        for site in range(len(self.superBCC.mobilepos)):
+            for spec in range(self.NSpec):
+                numInteractStored = numInteractsSiteSpec[site, spec]
+                # get the actual count
+                ci, R = self.VclusExp.sup.ciR(site)
+                clsite = cluster.ClusterSite(ci=ci, R=R)
+                self.assertEqual(len(self.VclusExp.SiteSpecInteractions[(clsite, spec)]), numInteractStored)
+                for IdxOfInteract in range(numInteractStored):
+                    interactMainIndex = SiteSpecInterArray[site, spec, IdxOfInteract]
+                    self.assertEqual(Index2InteractionDict[interactMainIndex],
+                                     self.VclusExp.SiteSpecInteractions[(clsite, spec)][IdxOfInteract])
+
+

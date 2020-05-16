@@ -510,7 +510,7 @@ class VectorClusterExpansion(object):
                 specList += [spec for spec in spectup]
                 # small failsafe
                 assert len(specList) == len(clusterList[0].sites)
-                numTSInteractsInPtGroups[jumpInd, jumpInd, interactGroupInd] = len(clusterList)
+                numTSInteractsInPtGroups[jumpInd, interactGroupInd] = len(clusterList)
 
                 for interactInd, TSclust in clusterList:
                     TSInteract = tuple([(self.sup.index(clsite.R, clsite.ci)[0], sp)
