@@ -34,15 +34,24 @@ class MC_Arrays(unittest.TestCase):
 
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
         self.KRAEnergies = [np.random.rand(len(val)) for (key, val) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
+        print("Done setting up")
 
     def test_arrays(self):
 
+        start = time.time()
+
+        # return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, \
+        #        Interaction2En, numVecsInteracts, VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, \
+        #        jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, \
+        #        vacSiteInd, InteractionIndexDict, InteractionRepClusDict, Index2InteractionDict
+
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, \
         VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec, \
-        numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, vacSiteInd, InteractionIndexDict,\
+        numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd, InteractionIndexDict,\
         InteractionRepClusDict, Index2InteractionDict =\
             self.VclusExp.makeJitInteractionsData(self.Energies, self.KRAEnergies)
 
+        print("Done creating arrays : {}".format(time.time() - start))
         # Now, we first test the interaction arrays - the ones to be used in the MC sweeps
 
         # numSitesInteracts - the number of sites in an interaction
@@ -74,7 +83,7 @@ class MC_Arrays(unittest.TestCase):
 
             # test the energy index
             enIndex = self.VclusExp.clust2SpecClus[repClus]
-            self.assertEqual(Interaction2En[i], enIndex)
+            self.assertEqual(Interaction2En[i], self.Energies[enIndex])
 
             # get the vector basis info for this cluster
             vecList = self.VclusExp.clust2vecClus[repClus]

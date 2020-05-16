@@ -399,6 +399,7 @@ class VectorClusterExpansion(object):
         """
 
         # first, we assign unique integers to interactions
+        start = time.time()
         InteractionIndexDict = {}
         InteractionRepClusDict = {}
         Index2InteractionDict = {}
@@ -430,11 +431,12 @@ class VectorClusterExpansion(object):
 
         # check each interaction has its own unique index
         assert len(InteractionIndexDict) == len(Index2InteractionDict)
-
+        print("Done Indexing interactions : {}".format(time.time() - start))
         # Now that we have integers assigned to all the interactions, let's store their data as numpy arrays
         numInteracts = len(InteractionIndexDict)
 
         # 1. Store chemical data
+        start = time.time()
         # we'll need the number of sites in each interaction
         numSitesInteracts = np.zeros(numInteracts, dtype=int)
 
@@ -451,11 +453,13 @@ class VectorClusterExpansion(object):
                 SupSitesInteracts[key, idx] = supSite
                 SpecOnInteractSites[key, idx] = intSpec
 
+        print("Done with chemical data for interactions : {}".format(time.time() - start))
+
         # 2. Store energy data and vector data
+        start = time.time()
         Interaction2En = np.zeros(numInteracts)
         numVecsInteracts = np.full(numInteracts, -1, dtype=int)
         VecsInteracts = np.zeros((numInteracts, 3, 3))
-        
         for interaction, repClus in InteractionRepClusDict.items():
             idx = InteractionIndexDict[interaction]
             # get the energy index here
@@ -465,12 +469,13 @@ class VectorClusterExpansion(object):
             vecList = self.clust2vecClus[repClus]
             # store the number of vectors in the basis
             numVecsInteracts[idx] = len(vecList)
-
             # store the vector
             for vecidx, tup in enumerate(vecList):
                 VecsInteracts[idx, vecidx, :] = self.vecVec[tup[0]][tup[1]]
+        print("Done with vector and energy data for interactions : {}".format(time.time() - start))
 
         # 3. Now, we deal with transition state data.
+        start = time.time()
         # first, we indexify the transitions
         # See Line 43 of Transition.py - if a jump is not out of vacsite, it is not considered anyway
 
@@ -505,6 +510,7 @@ class VectorClusterExpansion(object):
 
         # To store the KRA energies for each transition state cluster
         Jump2KRAEng = np.zeros((len(self.KRAexpander.clusterSpeciesJumps), maxInteractGroups, maxInteractsInGroups))
+        print("Processing {} jumps".format(len(self.KRAexpander.clusterSpeciesJumps)))
         for jumpInd, (Jumpkey, interactGroupList) in zip(itertools.count(),
                                                          self.KRAexpander.clusterSpeciesJumps.items()):
 
@@ -512,12 +518,16 @@ class VectorClusterExpansion(object):
             jumpFinSpec[jumpInd] = Jumpkey[2]
             numJumpPointGroups[jumpInd] = len(interactGroupList)
 
-            specList = [vacSpecInd, Jumpkey[2]]  # the initial species is the vacancy, and specJ is stored as the key
             for interactGroupInd, interactGroup in enumerate(interactGroupList):
+                specList = [vacSpecInd, Jumpkey[2]]  # the initial species is the vacancy, and specJ is stored as the key
                 spectup, clusterList = interactGroup[0], interactGroup[1]
-                specList += [spec for spec in spectup]
+                for spec in spectup:
+                    specList.append(spec)
                 # small failsafe
-                assert len(specList) == len(clusterList[0].sites)
+                # if not len(specList) == len(clusterList[0].sites):
+                #     print(specList)
+                #     print(clusterList[0].sites)
+                # assert len(specList) == len(clusterList[0].sites)
                 numTSInteractsInPtGroups[jumpInd, interactGroupInd] = len(clusterList)
 
                 for interactInd, TSclust in enumerate(clusterList):
@@ -527,7 +537,7 @@ class VectorClusterExpansion(object):
                     # get the ID of this interaction
                     # sort with the supercell site indices as the keys as each site can appear only once in an
                     # interaction
-                    TSInteract_sort = sorted(TSInteract, key=lambda x : x[0])
+                    TSInteract_sort = sorted(TSInteract, key=lambda x: x[0])
 
                     # Now compare against the interactions we already have
                     TSMainInd = -1
@@ -547,20 +557,21 @@ class VectorClusterExpansion(object):
 
                     # every TS clusters/interaction must correspond to exactly one main
                     # interaction
-                    assert TSMainInd != -1
+                    # assert TSMainInd != -1
                     # if TSMainIndCount > 1:
                     #     print(mainInteractIndList)
                     #     print(mainInteractList)
-                    assert TSMainIndCount == 1
+                    # assert TSMainIndCount == 1
 
                     # Next, store this main interaction Index
                     JumpInteracts[jumpInd, interactGroupInd, interactInd] = TSMainInd
                     Jump2KRAEng[jumpInd, interactGroupInd, interactInd] = KRAEnergies[jumpInd][interactGroupInd]
 
                     # A small check to see that the TSClusters have the sites arranged properly
-                    assert TSInteract[0][0] == self.sup.index(self.vacSite.R, self.vacSite.ci)[0] == Jumpkey[0]
-                    assert TSInteract[1][0] == Jumpkey[1]
+                    # assert TSInteract[0][0] == self.sup.index(self.vacSite.R, self.vacSite.ci)[0] == Jumpkey[0]
+                    # assert TSInteract[1][0] == Jumpkey[1]
 
+        print("Done with vector transition data : {}".format(time.time() - start))
         vacSiteInd = self.sup.index(self.vacSite.R, self.vacSite.ci)[0]
 
         return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,\
