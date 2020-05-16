@@ -32,13 +32,38 @@ class MC_Arrays(unittest.TestCase):
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.jnetBCC,
                                                                  self.mobCountList, self.vacsite, self.MaxOrder)
 
+        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
+        self.KRAEnergies = [np.random.rand(len(val)) for (key, val) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
+
     def test_arrays(self):
-
-        Energies = np.random.rand(len(self.VclusExp.SpecClusters))
-
-        KRAEnergies
 
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, \
         VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec, \
-        numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, vacSiteInd =\
-            self.VclusExp.makeJitInteractionsData()
+        numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, vacSiteInd, InteractionIndexDict,\
+        InteractionRepClusDict, Index2InteractionDict =\
+            self.VclusExp.makeJitInteractionsData(self.Energies, self.KRAEnergies)
+
+        # Now, we first test the interaction arrays - the ones to be used in the MC sweeps
+
+        # numSitesInteracts - the number of sites in an interaction
+        for i in range(len(numSitesInteracts)):
+            siteCountInArray = numSitesInteracts[i]
+            # get the interaction
+            interaction = Index2InteractionDict[i]
+            # get the stored index for this interaction
+            i_stored = InteractionIndexDict[interaction]
+            self.assertEqual(i, i_stored)
+            self.assertEqual(len(interaction), siteCountInArray)
+
+        # Now, check the supercell sites and species stored for these interactions
+        self.assertEqual(len(SupSitesInteracts), len(numSitesInteracts))
+        self.assertEqual(len(SpecOnInteractSites), len(numSitesInteracts))
+        for i in range(len(numSitesInteracts)):
+            siteSpecSet = set(((SupSitesInteracts[i, j], SpecOnInteractSites[i, j])
+                               for j in range(numSitesInteracts[i])))
+            interaction = Index2InteractionDict[i]
+            interactionSet = set(((self.VclusExp.sup.index(site.R, site.ci)[0], spec) for site, spec in interaction))
+            self.assertEqual(siteSpecSet, interactionSet)
+
+        # Now, we need to test the vector basis information for the clusters
+        for i in range(len(numSitesInteracts)):
