@@ -360,6 +360,7 @@ class VectorClusterExpansion(object):
         """
         SiteSpecinteractList = {}
         InteractCounts = []  # this is to later find out the maximum number of interactions.
+        interactionSupIndSet = set()
         for siteInd in range(self.Nsites):
             # get the cluster site
             ci, R = self.sup.ciR(siteInd)
@@ -375,7 +376,14 @@ class VectorClusterExpansion(object):
                             if site.ci == clSite.ci and sp == spec:
                                 Rtrans = clSite.R - site.R
                                 interaction = tuple([(site + Rtrans, spec) for site, spec in cl.SiteSpecs])
+                                interactSupInd = tuple([(self.sup.index(site.R, site.ci)[0], spec)
+                                                        for site, spec in interaction])
+                                # this check is to account for periodic boundary conditions
+                                if interactSupInd in interactionSupIndSet:
+                                    continue
+                                interactionSupIndSet.add(interactSupInd)
                                 interactionList.append([interaction, cl, Rtrans])
+
                 SiteSpecinteractList[(clSite, sp)] = interactionList
                 InteractCounts.append(len(interactionList))
         maxinteractions = max(InteractCounts)
@@ -504,7 +512,7 @@ class VectorClusterExpansion(object):
             jumpFinSpec[jumpInd] = Jumpkey[2]
             numJumpPointGroups[jumpInd] = len(interactGroupList)
 
-            specList = [vacSpecInd, Jumpkey[2]]  # the initial species is the jump, and specJ is stored as the key
+            specList = [vacSpecInd, Jumpkey[2]]  # the initial species is the vacancy, and specJ is stored as the key
             for interactGroupInd, interactGroup in enumerate(interactGroupList):
                 spectup, clusterList = interactGroup[0], interactGroup[1]
                 specList += [spec for spec in spectup]
@@ -524,15 +532,25 @@ class VectorClusterExpansion(object):
                     # Now compare against the interactions we already have
                     TSMainInd = -1
                     TSMainIndCount = 0
+                    # mainInteractIndList = []
+                    # mainInteractList = []
                     for MainInteract, MainInteractInd in InteractionIndexDict.items():
-                        MainInteract_sort = sorted(MainInteract, key=lambda x: x[0])
+                        # print(MainInteract)
+                        MainInteractSup = tuple([(self.sup.index(clsite.R, clsite.ci)[0], sp)
+                                            for (clsite, sp) in MainInteract])
+                        MainInteract_sort = sorted(MainInteractSup, key=lambda x: x[0])
                         if TSInteract_sort == MainInteract_sort:
                             TSMainInd = MainInteractInd
                             TSMainIndCount += 1
+                            # mainInteractIndList.append(MainInteractInd)
+                            # mainInteractList.append(MainInteractSup)
 
                     # every TS clusters/interaction must correspond to exactly one main
                     # interaction
                     assert TSMainInd != -1
+                    # if TSMainIndCount > 1:
+                    #     print(mainInteractIndList)
+                    #     print(mainInteractList)
                     assert TSMainIndCount == 1
 
                     # Next, store this main interaction Index
