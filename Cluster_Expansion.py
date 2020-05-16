@@ -401,6 +401,7 @@ class VectorClusterExpansion(object):
         # first, we assign unique integers to interactions
         start = time.time()
         InteractionIndexDict = {}
+        siteSortedInteractionIndexDict = {}
         InteractionRepClusDict = {}
         Index2InteractionDict = {}
         # siteSpecInteractIndexDict = collections.defaultdict(list)
@@ -423,6 +424,14 @@ class VectorClusterExpansion(object):
                 else:
                     # assign a new unique integer to this interaction
                     InteractionIndexDict[interaction] = count
+                    # also sort the sites by the supercell site indices - will help in identifying TSclusters as interactions
+                    # later on
+                    InteractSup = [(self.sup.index(clsite.R, clsite.ci)[0], sp)
+                                             for (clsite, sp) in interaction]
+                    Interact_sort = sorted(InteractSup, key=lambda x: x[0])
+                    siteSortedInteractionIndexDict[Interact_sort] = count
+
+
                     InteractionRepClusDict[interaction] = interactInfo[1]
                     Index2InteractionDict[count] = interaction
                     SiteSpecInterArray[keySite, keySpec, interactInd] = count
@@ -538,32 +547,8 @@ class VectorClusterExpansion(object):
                     # sort with the supercell site indices as the keys as each site can appear only once in an
                     # interaction
                     TSInteract_sort = sorted(TSInteract, key=lambda x: x[0])
+                    TSMainInd = siteSortedInteractionIndexDict[TSInteract_sort]
 
-                    # Now compare against the interactions we already have
-                    TSMainInd = -1
-                    TSMainIndCount = 0
-                    # mainInteractIndList = []
-                    # mainInteractList = []
-                    for MainInteract, MainInteractInd in InteractionIndexDict.items():
-                        # print(MainInteract)
-                        MainInteractSup = tuple([(self.sup.index(clsite.R, clsite.ci)[0], sp)
-                                            for (clsite, sp) in MainInteract])
-                        MainInteract_sort = sorted(MainInteractSup, key=lambda x: x[0])
-                        if TSInteract_sort == MainInteract_sort:
-                            TSMainInd = MainInteractInd
-                            TSMainIndCount += 1
-                            # mainInteractIndList.append(MainInteractInd)
-                            # mainInteractList.append(MainInteractSup)
-
-                    # every TS clusters/interaction must correspond to exactly one main
-                    # interaction
-                    # assert TSMainInd != -1
-                    # if TSMainIndCount > 1:
-                    #     print(mainInteractIndList)
-                    #     print(mainInteractList)
-                    # assert TSMainIndCount == 1
-
-                    # Next, store this main interaction Index
                     JumpInteracts[jumpInd, interactGroupInd, interactInd] = TSMainInd
                     Jump2KRAEng[jumpInd, interactGroupInd, interactInd] = KRAEnergies[jumpInd][interactGroupInd]
 
