@@ -7,7 +7,7 @@ import Cluster_Expansion
 import unittest
 import time
 
-class MC_Arrays(unittest.TestCase):
+class Test_MC_Arrays(unittest.TestCase):
 
     def setUp(self):
         self.NSpec = 3
@@ -71,7 +71,7 @@ class MC_Arrays(unittest.TestCase):
             siteSpecSet = set(((SupSitesInteracts[i, j], SpecOnInteractSites[i, j])
                                for j in range(numSitesInteracts[i])))
             interaction = Index2InteractionDict[i]
-            interactionSet = set(((self.VclusExp.sup.index(site.R, site.ci)[0], spec) for site, spec in interaction))
+            interactionSet = set(interaction)
             self.assertEqual(siteSpecSet, interactionSet)
 
         # Now, test the vector basis and energy information for the clusters
@@ -108,5 +108,22 @@ class MC_Arrays(unittest.TestCase):
                     interactMainIndex = SiteSpecInterArray[site, spec, IdxOfInteract]
                     self.assertEqual(Index2InteractionDict[interactMainIndex],
                                      self.VclusExp.SiteSpecInteractions[(clsite, spec)][IdxOfInteract][0])
+
+        # Now, we start testing the jump arrays
+        # jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng
+
+        for jumpInd, (jumpkey, TSptGrps) in zip(itertools.count(), self.VclusExp.KRAexpander.clusterSpeciesJumps.items()):
+            FinSite = jumpkey[1]
+            FinSpec = jumpkey[2]
+            # Check that the correct initial and final states have been stored
+            self.assertEqual(jumpFinSites[jumpInd], FinSite)
+            self.assertEqual(jumpFinSpec[jumpInd], FinSpec)
+
+            # Check that the correct number of point groups are stored
+            NptGrp = len(TSptGrps)
+            self.assertEqual(numJumpPointGroups[jumpInd], NptGrp)
+
+            # Check that in for each point group, the correct number of interactions are stored.
+            # for TsPtGpInd, (spectup, TSinteractList) in zip(itertools.count(),)
 
 
