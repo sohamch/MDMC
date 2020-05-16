@@ -83,12 +83,12 @@ class testKRA(unittest.TestCase):
             counter[(key[0], key[1])] += 1
 
         for key, item in counter.items():
-            self.assertEqual(item, 4)
+            self.assertEqual(item, self.NSpec-1)
 
         # Now check that all possible atomic arrangements have been accounted for
         for key, SpeciesclusterLists in clusterSpeciesJumps.items():
             # check that the initial site is the vacancy site
-            self.assertEqual(key[0], self.VclusExp.sup.index(self.vacsite.R, self.vacsite.c1)[0])
+            self.assertEqual(key[0], self.VclusExp.sup.index(self.vacsite.R, self.vacsite.ci)[0])
             clusterCounts = collections.defaultdict(int)
             for species, clusterList in SpeciesclusterLists:
                 cl0 = clusterList[0]
@@ -96,7 +96,7 @@ class testKRA(unittest.TestCase):
                 clusterCounts[cl0] += 1
 
             for cl0, count in clusterCounts.items():
-                numTrue = 4**cl0.Norder
+                numTrue = (self.NSpec-1)**cl0.Norder
                 self.assertEqual(numTrue, count, msg="{}, {}, {}".format(numTrue, count, cl0.Norder))
 
     def test_KRA(self):
