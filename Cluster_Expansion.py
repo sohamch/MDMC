@@ -298,6 +298,7 @@ class VectorClusterExpansion(object):
         Interaction2En = np.zeros(numInteracts, dtype=float)
         numVecsInteracts = np.full(numInteracts, -1, dtype=int)
         VecsInteracts = np.zeros((numInteracts, 3, 3))
+        VecGroupInteracts = np.full((numInteracts, 3), -1, dtype=int)
         for interaction, repClus in InteractionRepClusDict.items():
             idx = InteractionIndexDict[interaction]
             # get the energy index here
@@ -310,6 +311,7 @@ class VectorClusterExpansion(object):
             # store the vector
             for vecidx, tup in enumerate(vecList):
                 VecsInteracts[idx, vecidx, :] = self.vecVec[tup[0]][tup[1]]
+                VecGroupInteracts[idx, vecidx] = self.vecVec[tup[0]][tup[1]]
         print("Done with vector and energy data for interactions : {}".format(time.time() - start))
 
         # 3. Now, we deal with transition state data.
@@ -494,20 +496,25 @@ class MCSamplerClass(object):
 
         return mobOcc, OffSiteCountNew
 
-    def Expand(self, state, jumpFinSiteIndices, OSCount, lenVecClus):
+    def Expand(self, state, ijList, dxList, OSCount, lenVecClus, beta):
 
         OffSiteCount = OSCount.copy()
 
+        del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
+        delxDotdelLamb = np.zeros((lenVecClus, lenVecClus))
+
+        ratelist = np.zeros(ijList.shape[0])
+
+        siteA, specA = self.vacSiteInd, self.Nspecs - 1
         # go through all the transitions
-        for jumpInd in range(jumpFinSiteIndices.shape[0]):
-            # First, work on getting the KRA energy for the jump
+        for jumpInd in range(ijList.shape[0]):
+            del_lamb = np.zeros((lenVecClus, 3))
 
-            # First check that this transition is possible out of the given state
-            siteA, specA = self.vacSiteInd, self.Nspecs - 1
-            siteB, specB = jumpFinSiteIndices[jumpInd], state[jumpFinSiteIndices[jumpInd]]
-
+            # Get the transition index
+            siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
             transInd = self.FinSiteFinSpecJumpInd[siteB, specB]
 
+            # First, work on getting the KRA energy for the jump
             delEKRA = 0.0
             # We need to go through every point group for this jump
             for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
@@ -547,7 +554,11 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
 
-            # Energy change computed : now expand
+            # Energy change computed, now expand
+            ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
+            del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
+
+            delxDotdelLamb[:, jumpInd] = np.tensordot(del_lamb, dxList[jumpInd], axes=(1, 0))
                 
 
 
