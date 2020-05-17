@@ -490,6 +490,20 @@ class MCSamplerClass(object):
 
         return mobOcc, OffSiteCountNew
 
+    def Expand(self, OffSiteCount):
+
+        # go through all the transitions
+        for transInd in range(self.jumpFinSites.shape[0]):
+            # First, work on getting the KRA energy for the jump
+            delEKRA = 0.0
+            # We need to go through every point group for this jump
+            for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
+                for interactInd in range(self.numTSInteractsInPtGroups[transInd, tsPtGpInd]):
+                    # Check if this interaction is on
+                    interactMainInd = self.JumpInteracts[transInd, tsPtGpInd, interactInd]
+                    if OffSiteCount[interactMainInd] == 0:
+                        delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
+
                 
 
 
