@@ -390,6 +390,7 @@ class VectorClusterExpansion(object):
                jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,\
                vacSiteInd, InteractionIndexDict, InteractionRepClusDict, Index2InteractionDict, repClustCounter
 
+
 class MCSamplerClass(object):
 
     def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
@@ -467,19 +468,22 @@ class MCSamplerClass(object):
             # do the selection test
             if np.exp(-beta*delE) > randarr[count]:
                 # update the off site counts
-                OffSiteCountOld = OffSiteCountNew.copy()
                 # swap the sites to get to the next state
                 temp = mobOcc[siteA]
                 mobOcc[siteA] = mobOcc[siteB]
                 mobOcc[siteB] = temp
+                OffSiteCountOld = OffSiteCountNew.copy()
             else:
                 # revert back the off site counts, because the state has not changed
                 OffSiteCountNew = OffSiteCountOld.copy()
             count += 1
+
+            # this is for unit testing where only one MC step is tested - will be removed in JIT version
             if test_single:
                 return siteA, siteB, delE, mobOcc, randarr[0]
 
         return mobOcc, OffSiteCountNew
+
                 
 
 
