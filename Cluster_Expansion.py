@@ -335,6 +335,8 @@ class VectorClusterExpansion(object):
         jumpFinSites = np.full(len(self.KRAexpander.clusterSpeciesJumps), -1, dtype=int)
         jumpFinSpec = np.full(len(self.KRAexpander.clusterSpeciesJumps), -1, dtype=int)
 
+        FinSiteFinSpecJumpInd = np.full((self.Nsites, len(self.mobCountList)), -1, dtype=int)
+
         # To store the number of TSInteraction groups for each transition
         numJumpPointGroups = np.full(len(self.KRAexpander.clusterSpeciesJumps), -1, dtype=int)
 
@@ -354,6 +356,7 @@ class VectorClusterExpansion(object):
 
             jumpFinSites[jumpInd] = Jumpkey[1]
             jumpFinSpec[jumpInd] = Jumpkey[2]
+            FinSiteFinSpecJumpInd[Jumpkey[1], Jumpkey[2]] = jumpInd
             numJumpPointGroups[jumpInd] = len(interactGroupList)
 
             for interactGroupInd, interactGroup in enumerate(interactGroupList):
@@ -386,8 +389,8 @@ class VectorClusterExpansion(object):
 
         return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,\
                Interaction2En, numVecsInteracts, VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray,\
-               jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,\
-               vacSiteInd, InteractionIndexDict, InteractionRepClusDict, Index2InteractionDict, repClustCounter
+               jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts,\
+               Jump2KRAEng, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, Index2InteractionDict, repClustCounter
 
 
 class MCSamplerClass(object):
@@ -490,11 +493,19 @@ class MCSamplerClass(object):
 
         return mobOcc, OffSiteCountNew
 
-    def Expand(self, OffSiteCount):
+    def Expand(self, state, OSCount, lenVecClus):
+
+        OffSiteCount = OSCount.copy()
 
         # go through all the transitions
         for transInd in range(self.jumpFinSites.shape[0]):
             # First, work on getting the KRA energy for the jump
+
+            # First check that this transition is possible out of the given state
+            siteA, specA = self.vacSiteInd, self.Nspecs - 1
+            siteB, specB = self.jumpFinSites[transInd], self.jumpFinSpec[transInd]
+            if not state[siteB] == specB:
+                continue
             delEKRA = 0.0
             # We need to go through every point group for this jump
             for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
@@ -504,6 +515,37 @@ class MCSamplerClass(object):
                     if OffSiteCount[interactMainInd] == 0:
                         delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
 
+            # next, calculate the energy change due to site swapping
+
+            delE = 0.0
+            # Switch required sites off
+            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
+                # check if an interaction is on
+                interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
+                if OffSiteCount[interMainInd] == 0:
+                    delE -= self.Interaction2En[interMainInd]
+                OffSiteCount[interMainInd] += 1
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
+                interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
+                if OffSiteCount[interMainInd] == 0:
+                    delE -= self.Interaction2En[interMainInd]
+                OffSiteCount[interMainInd] += 1
+
+            # Next, switch required sites on
+            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
+                interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
+                OffSiteCount[interMainInd] -= 1
+                if OffSiteCount[interMainInd] == 0:
+                    delE += self.Interaction2En[interMainInd]
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
+                interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
+                OffSiteCount[interMainInd] -= 1
+                if OffSiteCount[interMainInd] == 0:
+                    delE += self.Interaction2En[interMainInd]
+
+            # Energy change computed : now expand
                 
 
 
