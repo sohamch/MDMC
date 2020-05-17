@@ -82,7 +82,7 @@ class VectorClusterExpansion(object):
         self.indexClustertoVecClus()
         self.indexClustertoSpecClus()
 
-        # Generate the transitions-based data structures
+        # Generate the transitions-based data structures - moved to KRAexpander
         # self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
 
         # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
@@ -494,19 +494,17 @@ class MCSamplerClass(object):
 
         return mobOcc, OffSiteCountNew
 
-    def Expand(self, state, OSCount, lenVecClus):
+    def Expand(self, state, jumpFinSiteIndices, OSCount, lenVecClus):
 
         OffSiteCount = OSCount.copy()
 
         # go through all the transitions
-        for jumpInd in range(self.jumpFinSites.shape[0]):
+        for jumpInd in range(jumpFinSiteIndices.shape[0]):
             # First, work on getting the KRA energy for the jump
 
             # First check that this transition is possible out of the given state
             siteA, specA = self.vacSiteInd, self.Nspecs - 1
-
-            # Check which jump is pre
-            siteB, specB = self.jumpFinSites[jumpInd], state[self.jumpFinSites[jumpInd]]
+            siteB, specB = jumpFinSiteIndices[jumpInd], state[jumpFinSiteIndices[jumpInd]]
 
             transInd = self.FinSiteFinSpecJumpInd[siteB, specB]
 

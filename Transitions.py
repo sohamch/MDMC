@@ -32,8 +32,9 @@ class KRAExpand(object):
         self.clusterSpeciesJumps = self.defineTransSpecies()
 
     def IndexJumps(self):
-        self.FinSiteJumps = np.zeros(sum([len(jmpList) for jmpList in self.jumpnetwork]))
-        for jumpInd, jump in enumerate([jmp for jmpList in self.jumpnetwork for jmp in jmpList]):
+        jumpFinSite = []
+        jumpdx = []
+        for jump in [jmp for jmpList in self.jumpnetwork for jmp in jmpList]:
 
             siteA = cluster.ClusterSite(ci=(self.chem, jump[0][0]), R=np.zeros(3, dtype=int))
             if siteA != self.vacSite:
@@ -52,7 +53,13 @@ class KRAExpand(object):
             indA = self.sup.index(siteA.R, siteA.ci)[0]
             assert indA == self.sup.index(self.vacSite.R, self.vacSite.ci)[0]
             indB = self.sup.index(siteB.R, siteB.ci)[0]
-            self.FinSiteJumps[jumpInd] = indB
+
+            jumpFinSite.append(indB)
+            jumpdx.append(jump[1])
+
+        # cast into numpy arrays - to be used in KRA expansions
+        self.ijList = np.array(jumpFinSite, dtype=int)
+        self.dxList = np.array(jumpdx, dtype=float)
 
     def GroupTransClusters(self):
         TransClustersAll = collections.defaultdict(list)
