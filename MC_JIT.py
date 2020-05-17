@@ -35,7 +35,7 @@ class MCSamplerClass(object):
 
     def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
                  VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec,
-                 numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd, mobOcc):
+                 numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd, mobOcc, OffSiteCount):
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts, \
         self.VecsInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.jumpFinSites, self.jumpFinSpec, \
@@ -47,8 +47,8 @@ class MCSamplerClass(object):
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
         self.mobOcc = mobOcc
-        self.OffSiteCount = np.zeros(len(numSitesInteracts), dtype=int)
-        for interactIdx in range(len(numSitesInteracts)):
+        self.OffSiteCount = OffSiteCount
+        for interactIdx in range(numSitesInteracts.shape[0]):
             numSites = numSitesInteracts[interactIdx]
             for intSiteind in range(numSites):
                 interSite = SupSitesInteracts[interactIdx, intSiteind]
