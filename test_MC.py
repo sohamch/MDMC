@@ -168,3 +168,8 @@ class Test_MC(Test_MC_Arrays):
                     offsiteCount += 1
             self.assertEqual(MCSampler.OffSiteCount[interactionInd], offsiteCount)
 
+        # Now, we test a single MC step
+        siteA, siteB, delE, newstate = MCSampler.makeMCsweep(1, 1.0, test_single=True)
+
+
+

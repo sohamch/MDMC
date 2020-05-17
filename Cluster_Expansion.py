@@ -405,7 +405,6 @@ class MCSamplerClass(object):
 
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
-
         self.mobOcc = mobOcc
         self.OffSiteCount = np.zeros(len(numSitesInteracts), dtype=int)
         for interactIdx in range(len(numSitesInteracts)):
@@ -416,7 +415,7 @@ class MCSamplerClass(object):
                 if mobOcc[interSite] != interSpec:
                     self.OffSiteCount[interactIdx] += 1
 
-    def makeMCsweep(self, NswapTrials, beta, Energies):
+    def makeMCsweep(self, NswapTrials, beta, test_single=False):
         """
         This is the function that will do the MC sweeps
         :param NswapTrials: the number of site swaps needed to be done in a single MC sweep
@@ -428,15 +427,17 @@ class MCSamplerClass(object):
 
         OffSiteCountOld = self.OffSiteCount.copy()
         OffSiteCountNew = self.OffSiteCount.copy()
-        
-        randarr = np.random.rand(NswapTrials)
 
+        if test_single:
+            NswapTrials = 1
         count = 0
+        randarr = np.random.rand(NswapTrials)
         while count < NswapTrials:
             # first select two random sites to swap - for now, let's just select naively.
             siteA = np.random.randint(0, self.Nsites)
             siteB = np.random.randint(0, self.Nsites)
-            if siteA == siteB:
+
+            if siteA == siteB or siteA == self.vacSiteInd or siteB == self.vacSiteInd:
                 continue
 
             delE = 0.
@@ -444,24 +445,24 @@ class MCSamplerClass(object):
             for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteA]]):
                 # check if an interaction is on
                 if OffSiteCountOld[self.SiteSpecInterArray[siteA, mobOcc[siteA], interIdx]] == 0:
-                    delE -= Energies[self.Interaction2En[self.SiteSpecInterArray[siteA, mobOcc[siteA], interIdx]]]                
+                    delE -= self.Interaction2En[self.SiteSpecInterArray[siteA, mobOcc[siteA], interIdx]]
                 OffSiteCountNew[self.SiteSpecInterArray[siteA, mobOcc[siteA], interIdx]] += 1
                 
             for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteB]]):
                 if OffSiteCountOld[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]] == 0:
-                    delE -= Energies[self.Interaction2En[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]]]
+                    delE -= self.Interaction2En[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]]
                 OffSiteCountNew[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]] += 1
 
             # Next, switch required sites on
             for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteB]]):
                 OffSiteCountNew[self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]] -= 1
                 if OffSiteCountNew[self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]] == 0:
-                    delE += Energies[self.Interaction2En[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]]]
+                    delE += self.Interaction2En[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]]
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteA]]):
                 OffSiteCountNew[self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]] -= 1
                 if OffSiteCountNew[self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]] == 0:
-                    delE += Energies[self.Interaction2En[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]]]
+                    delE += self.Interaction2En[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]]
 
             # do the selection test
             if np.exp(-beta*delE) > randarr[count]:
@@ -475,6 +476,9 @@ class MCSamplerClass(object):
                 # revert back the off site counts, because the state has not changed
                 OffSiteCountNew = OffSiteCountOld.copy()
             count += 1
+
+        if test_single:
+            return siteA, siteB, delE, mobOcc
 
         return mobOcc, OffSiteCountNew
                 
