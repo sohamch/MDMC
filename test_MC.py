@@ -1,6 +1,5 @@
 from onsager import crystal, supercell, cluster
 import numpy as np
-import collections
 import itertools
 import Transitions
 import Cluster_Expansion
