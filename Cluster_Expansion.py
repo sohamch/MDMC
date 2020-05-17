@@ -239,6 +239,7 @@ class VectorClusterExpansion(object):
         siteSortedInteractionIndexDict = {}
         InteractionRepClusDict = {}
         Index2InteractionDict = {}
+        repClustCounter = collections.defaultdict(int)
         # siteSpecInteractIndexDict = collections.defaultdict(list)
 
         # while we're at it, let's also store which siteSpec contains which interact
@@ -259,6 +260,7 @@ class VectorClusterExpansion(object):
                 else:
                     # assign a new unique integer to this interaction
                     InteractionIndexDict[interaction] = count
+                    repClustCounter[interactInfo[1]] += 1
                     # also sort the sites by the supercell site indices - will help in identifying TSclusters as interactions
                     # later on
                     Interact_sort = tuple(sorted(interaction, key=lambda x: x[0]))
@@ -269,8 +271,6 @@ class VectorClusterExpansion(object):
                     #siteSpecInteractIndexDict[(keySite, keySpec)].append(count)
                     count += 1
 
-        # check each interaction has its own unique index
-        assert len(InteractionIndexDict) == len(Index2InteractionDict)
         print("Done Indexing interactions : {}".format(time.time() - start))
         # Now that we have integers assigned to all the interactions, let's store their data as numpy arrays
         numInteracts = len(InteractionIndexDict)
@@ -388,7 +388,7 @@ class VectorClusterExpansion(object):
         return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,\
                Interaction2En, numVecsInteracts, VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray,\
                jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,\
-               vacSiteInd, InteractionIndexDict, InteractionRepClusDict, Index2InteractionDict
+               vacSiteInd, InteractionIndexDict, InteractionRepClusDict, Index2InteractionDict, repClustCounter
 
 class MCSamplerClass(object):
 

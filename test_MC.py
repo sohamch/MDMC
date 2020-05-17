@@ -39,21 +39,18 @@ class Test_MC_Arrays(unittest.TestCase):
     def test_arrays(self):
 
         start = time.time()
-
-        # return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, \
-        #        Interaction2En, numVecsInteracts, VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, \
-        #        jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, \
-        #        vacSiteInd, InteractionIndexDict, InteractionRepClusDict, Index2InteractionDict
-
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, \
         VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec, \
         numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd, InteractionIndexDict,\
-        InteractionRepClusDict, Index2InteractionDict =\
+        InteractionRepClusDict, Index2InteractionDict, repClustCounter =\
             self.VclusExp.makeJitInteractionsData(self.Energies, self.KRAEnergies)
 
+        # Check that each cluster has been translated as many times as there are sites in the supercell
+        # Only then we have constructed every possible interaction
         print("Done creating arrays : {}".format(time.time() - start))
         # Now, we first test the interaction arrays - the ones to be used in the MC sweeps
-
+        for repClust, count in repClustCounter.items():
+            self.assertEqual(count, len(self.VclusExp.sup.mobilepos))
         # numSitesInteracts - the number of sites in an interaction
         for i in range(len(numSitesInteracts)):
             siteCountInArray = numSitesInteracts[i]
@@ -150,7 +147,7 @@ class Test_MC(Test_MC_Arrays):
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, \
         VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec, \
         numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd, InteractionIndexDict, \
-        InteractionRepClusDict, Index2InteractionDict = \
+        InteractionRepClusDict, Index2InteractionDict, repClustCounter = \
             self.VclusExp.makeJitInteractionsData(self.Energies, self.KRAEnergies)
 
         # Initiate the MC sampler
