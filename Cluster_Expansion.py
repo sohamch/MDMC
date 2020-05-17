@@ -311,7 +311,7 @@ class VectorClusterExpansion(object):
             # store the vector
             for vecidx, tup in enumerate(vecList):
                 VecsInteracts[idx, vecidx, :] = self.vecVec[tup[0]][tup[1]]
-                VecGroupInteracts[idx, vecidx] = self.vecVec[tup[0]][tup[1]]
+                VecGroupInteracts[idx, vecidx] = tup[0]
         print("Done with vector and energy data for interactions : {}".format(time.time() - start))
 
         # 3. Now, we deal with transition state data.
