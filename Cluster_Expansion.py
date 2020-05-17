@@ -415,6 +415,9 @@ class MCSamplerClass(object):
                 if mobOcc[interSite] != interSpec:
                     self.OffSiteCount[interactIdx] += 1
 
+        # Reformat the array so that the swaps are always between atoms of different species
+
+
     def makeMCsweep(self, NswapTrials, beta, test_single=False):
         """
         This is the function that will do the MC sweeps
@@ -424,12 +427,8 @@ class MCSamplerClass(object):
         """
         # TODO : Need to implement biased sampling methods to select sites from TSinteractions with more prob.
         mobOcc = self.mobOcc.copy()
-
         OffSiteCountOld = self.OffSiteCount.copy()
         OffSiteCountNew = self.OffSiteCount.copy()
-
-        if test_single:
-            NswapTrials = 1
         count = 0
         randarr = np.random.rand(NswapTrials)
         while count < NswapTrials:
@@ -441,6 +440,7 @@ class MCSamplerClass(object):
             if mobOcc[siteA] == mobOcc[siteB] or siteA == self.vacSiteInd or siteB == self.vacSiteInd:
                 continue
             delE = 0.
+
             # Next, switch required sites off
             for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteA]]):
                 # check if an interaction is on
@@ -456,13 +456,13 @@ class MCSamplerClass(object):
             # Next, switch required sites on
             for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteB]]):
                 OffSiteCountNew[self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]] -= 1
-                if OffSiteCountOld[self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]] == 0:
-                    delE += self.Interaction2En[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]]
+                if OffSiteCountNew[self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]] == 0:
+                    delE += self.Interaction2En[self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]]
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteA]]):
                 OffSiteCountNew[self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]] -= 1
-                if OffSiteCountOld[self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]] == 0:
-                    delE += self.Interaction2En[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]]
+                if OffSiteCountNew[self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]] == 0:
+                    delE += self.Interaction2En[self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]]
 
             # do the selection test
             if np.exp(-beta*delE) > randarr[count]:
@@ -476,9 +476,8 @@ class MCSamplerClass(object):
                 # revert back the off site counts, because the state has not changed
                 OffSiteCountNew = OffSiteCountOld.copy()
             count += 1
-
-        if test_single:
-            return siteA, siteB, delE, mobOcc, randarr[0]
+            if test_single:
+                return siteA, siteB, delE, mobOcc, randarr[0]
 
         return mobOcc, OffSiteCountNew
                 

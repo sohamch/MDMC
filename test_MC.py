@@ -166,11 +166,9 @@ class Test_MC(Test_MC_Arrays):
             self.assertEqual(MCSampler.OffSiteCount[interactionInd], offsiteCount)
 
         # Now, we test some single MC steps
-
+        start = time.time()
         siteA, siteB, delE, newstate, rand = MCSampler.makeMCsweep(1, 1.0, test_single=True)
-
-        while siteA == siteB or siteA == MCSampler.vacSiteInd or siteB == MCSampler.vacSiteInd:
-            siteA, siteB, delE, newstate, rand = MCSampler.makeMCsweep(1, 1.0, test_single=True)
+        print("Single swap time : {}".format(time.time() - start))
 
         print(siteA, siteB)
         # evaluate the energy change manually
@@ -184,11 +182,11 @@ class Test_MC(Test_MC_Arrays):
         # get the off site counts for the interactions in the new state
         NewOffSiteCount = np.zeros_like(MCSampler.OffSiteCount)
         for (interaction, interactionInd) in InteractionIndexDict.items():
-            offsiteCount = 0
+            # offsiteCount = 0
             for (site, spec) in interaction:
                 if stateNew[site] != spec:
-                    offsiteCount += 1
-            NewOffSiteCount[interactionInd] = offsiteCount
+                    NewOffSiteCount[interactionInd] += 1
+            # NewOffSiteCount[interactionInd] = offsiteCount
 
         # calculate Intial energy
         InitEn = 0.
@@ -204,15 +202,12 @@ class Test_MC(Test_MC_Arrays):
 
         self.assertTrue(np.allclose(delE, FinEn - InitEn), msg="{}, {}".format(delE, FinEn - InitEn))
 
-        # if np.exp(-delE) > rand:
-        #     self.assertTrue(np.array_equal(stateNew, newstate))
-        #     print("move was accepted")
-        # else:
-        #     self.assertTrue(np.array_equal(initState, newstate))
-        #     print("move was not accepted")
-        #
-        # print(delE, rand, np.exp(-delE))
-        print(delE, FinEn - InitEn, InitEn, FinEn)
+        if np.exp(-delE) > rand:
+            self.assertTrue(np.array_equal(stateNew, newstate))
+            print("move was accepted")
+        else:
+            self.assertTrue(np.array_equal(initState, newstate))
+            print("move was not accepted")
 
 
 

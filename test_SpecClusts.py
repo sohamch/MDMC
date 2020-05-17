@@ -181,100 +181,6 @@ class test_Vector_Cluster_Expansion(testKRA):
             cl0 = self.VclusExp.vecClus[vclusListInd][0]
             self.assertEqual(cl0, self.VclusExp.SpecClusters[clListInd][0])
 
-    def test_activeClusters(self):
-        """
-         We do three tests here:
-         (1) Every cluster is present as many times as it contains either vacancy (c,i) or final site's (c,i)
-         (2) The transition vectors are the correct ones.
-         (3) The clusters collected under the final sites, do not also contain vacSite when translated
-        """
-        clusterTransOff = self.VclusExp.clustersOff
-        clusterTransOn = self.VclusExp.clustersOn
-
-        # First, we test clusters that need to be turned off
-        for stSpc, clustTupList in clusterTransOff.items():
-            clusterCounts = collections.defaultdict(int)
-            clust2Tup = collections.defaultdict(list)
-            for clusterTup in clustTupList:
-                transSites = clusterTup[2]
-                siteList, specList = [tup[0] for tup in transSites], [tup[1] for tup in transSites]
-                clust = Cluster_Expansion.ClusterSpecies(specList, siteList)
-                # Check that we get back the correct representative cluster
-                vecListInd, clustInd = clusterTup[0], clusterTup[1]
-                self.assertEqual(self.VclusExp.vecClus[vecListInd][clustInd], clust,
-                                 msg="{} \n {}".format(self.VclusExp.vecClus[vecListInd][clustInd], clust))
-                clusterCounts[clust] += 1
-                clust2Tup[clust].append(clusterTup)
-
-            # Next, we check that a cluster is repeated as many times as it contains the species in the key
-            # in a translated image of the site in the key, multiplied by the dimensionality of its vector basis.
-            for clust, count in clusterCounts.items():
-                c = 0
-                for site, spec in clust.SiteSpecs:
-                    if site.ci == stSpc[0].ci and spec == stSpc[1]:
-                        Rtrans = stSpc[0].R - site.R
-                        # What is the point of the check below - to prevent double counting
-                        # re-verify this part again - how does this work?
-                        if (self.VclusExp.vacSite, self.VclusExp.vacSpec) in [(site + Rtrans, spec)
-                                                                              for site, spec in clust.SiteSpecs]:
-                            if stSpc[0] != self.vacsite:
-                                continue
-                        c += 1
-                # Now multiply the dimensionality of the vector basis
-
-                dimBasis = 0
-                for clustList in self.VclusExp.vecClus:
-                    for cl in clustList:
-                        if cl == clust:
-                            dimBasis += 1
-
-                self.assertEqual(c*dimBasis, count, msg="\nsite, species : {}\ncluster:{}\ncount:{}\n{}\ndimBasis:"
-                                                        "{}\nc:{}".format(
-                    stSpc, clust, count, clust2Tup[clust], dimBasis, c))
-
-        # Next, we test the clusters that need to be turned on
-        for stSpc, clustTupList in clusterTransOn.items():
-            # clusterCounts = collections.defaultdict(int)
-            # clust2Tup = collections.defaultdict(list)
-            # for clusterTup in clustTupList:
-            #     clusterCounts[clusterTup[2]] += 1
-            #     clust2Tup[clusterTup[2]].append(clusterTup)
-            clusterCounts = collections.defaultdict(int)
-            clust2Tup = collections.defaultdict(list)
-            for clusterTup in clustTupList:
-                transSites = clusterTup[2]
-                siteList, specList = [tup[0] for tup in transSites], [tup[1] for tup in transSites]
-                clust = Cluster_Expansion.ClusterSpecies(specList, siteList)
-                # creating a cluster object out of the sites will bring the centroid unit cell back to the origin.
-                # Check that we get back the correct representative cluster
-                vecListInd, clustInd = clusterTup[0], clusterTup[1]
-                self.assertEqual(self.VclusExp.vecClus[vecListInd][clustInd], clust,
-                                 msg="{} \n {}".format(self.VclusExp.vecClus[vecListInd][clustInd], clust))
-                clusterCounts[clust] += 1
-                clust2Tup[clust].append(clusterTup)
-
-            for clust, count in clusterCounts.items():
-                c = 0
-                for site, spec in clust.SiteSpecs:
-                    if site.ci == stSpc[0].ci and spec == stSpc[1]:
-                        Rtrans = stSpc[0].R - site.R
-                        if (self.VclusExp.vacSite, self.VclusExp.vacSpec) in [(site + Rtrans, spec)
-                                                                              for site, spec in clust.SiteSpecs]:
-                            if stSpc[0] != self.vacsite:
-                                continue
-                        c += 1
-                # Now multiply the dimensionality of the vector basis
-
-                dimBasis = 0
-                for clustList in self.VclusExp.vecClus:
-                    for cl in clustList:
-                        if cl == clust:
-                            dimBasis += 1
-
-                self.assertEqual(c * dimBasis, count, msg="\nsite, species : {}\ncluster:{}\ncount:{}\n{}\ndimBasis:"
-                                                          "{}\nc:{}".format(
-                    stSpc, clust, count, clust2Tup[clust], dimBasis, c))
-
     def test_site_interactions(self):
         # test that every interaction is valid with the given Rtrans provided
         # The key site should be present only once
@@ -320,27 +226,6 @@ class test_Vector_Cluster_Expansion(testKRA):
                 tup = self.VclusExp.clust2SpecClus[clust]
                 self.assertEqual(tup[0], clListInd)
                 self.assertEqual(tup[1], clustInd)
-
-    def test_MC_step(self):
-        """
-        Here, we have to test an MC step to make sure the expansion is working properly.
-        """
-        # 1. set up energy coefficients
-        EnCoeffs = np.random.rand(len(self.VclusExp.SpecClusters))
-
-        # 2. set up KRA coefficients
-        # Need to do this for each transition
-        KRA_Coeff_List = {}
-        for transition, clusterLists in self.VclusExp.KRAexpander.clusterSpeciesJumps.items():
-            KRACoeffs = np.random.rand(len(clusterLists))
-            KRA_Coeff_List[transition] = KRACoeffs
-
-        beta = 1.0
-        # Now perform an expansion with the random occupancy array we have defined
-        # Expand(self, beta, mobOccs, EnCoeffs, KRACoeffs)
-        start = time.time()
-        Wbar, bbar = self.VclusExp.Expand(beta, self.mobOccs, EnCoeffs, KRA_Coeff_List)
-        print(time.time() - start)
 
         
 
