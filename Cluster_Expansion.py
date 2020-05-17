@@ -295,7 +295,7 @@ class VectorClusterExpansion(object):
 
         # 2. Store energy data and vector data
         start = time.time()
-        Interaction2En = np.zeros(numInteracts)
+        Interaction2En = np.zeros(numInteracts, dtype=float)
         numVecsInteracts = np.full(numInteracts, -1, dtype=int)
         VecsInteracts = np.zeros((numInteracts, 3, 3))
         for interaction, repClus in InteractionRepClusDict.items():
