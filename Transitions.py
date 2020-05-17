@@ -24,11 +24,35 @@ class KRAExpand(object):
         self.vacSite = vacSite  # We'll be concerned with only those jumps where this is site A in A->B jumps.
                                 # The reverse jumps are not jumps out of this state, we need not worry about them.
         self.mobCountList = mobCountList
-
+        # Index the jump network into an array
+        self.IndexJumps()
         # First, we reform the jumpnetwork
         self.TSClusters = cluster.makeTSclusters(sup.crys, chem, jumpnetwork, clusexp)
         self.SymTransClusters = self.GroupTransClusters()
         self.clusterSpeciesJumps = self.defineTransSpecies()
+
+    def IndexJumps(self):
+        self.FinSiteJumps = np.zeros(sum([len(jmpList) for jmpList in self.jumpnetwork]))
+        for jumpInd, jump in enumerate([jmp for jmpList in self.jumpnetwork for jmp in jmpList]):
+
+            siteA = cluster.ClusterSite(ci=(self.chem, jump[0][0]), R=np.zeros(3, dtype=int))
+            if siteA != self.vacSite:
+                # if the initial site of the vacancy is not the vacSite, it is not a jump out of this state.
+                # Ignore it - removes reverse jumps from multi-site, single-Wyckoff lattices.
+                continue
+
+            Rj, (c, cj) = self.crys.cart2pos(jump[1] -
+                                             np.dot(self.crys.lattice, self.crys.basis[self.chem][jump[0][1]]) +
+                                             np.dot(self.crys.lattice, self.crys.basis[self.chem][jump[0][0]]))
+            # check we have the correct site
+            if not cj == jump[0][1]:
+                raise ValueError("improper coordinate transformation, did not get same final jump site")
+            siteB = cluster.ClusterSite(ci=(self.chem, jump[0][1]), R=Rj)
+
+            indA = self.sup.index(siteA.R, siteA.ci)[0]
+            assert indA == self.sup.index(self.vacSite.R, self.vacSite.ci)[0]
+            indB = self.sup.index(siteB.R, siteB.ci)[0]
+            self.FinSiteJumps[jumpInd] = indB
 
     def GroupTransClusters(self):
         TransClustersAll = collections.defaultdict(list)

@@ -396,14 +396,15 @@ class VectorClusterExpansion(object):
 class MCSamplerClass(object):
 
     def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
-                 VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec,
+                 VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd,
                  numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd, mobOcc):
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts,\
         self.VecsInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.jumpFinSites, self.jumpFinSpec,\
-        self.numJumpPointGroups, self.numTSInteractsInPtGroups, self.JumpInteracts, self.Jump2KRAEng, self.vacSiteInd = \
+        self.FinSiteFinSpecJumpInd, self.numJumpPointGroups, self.numTSInteractsInPtGroups, self.JumpInteracts,\
+        self.Jump2KRAEng, self.vacSiteInd = \
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,\
-        VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec,\
+        VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd,\
         numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd
 
         # check if proper sites and species data are entered
@@ -498,14 +499,17 @@ class MCSamplerClass(object):
         OffSiteCount = OSCount.copy()
 
         # go through all the transitions
-        for transInd in range(self.jumpFinSites.shape[0]):
+        for jumpInd in range(self.jumpFinSites.shape[0]):
             # First, work on getting the KRA energy for the jump
 
             # First check that this transition is possible out of the given state
             siteA, specA = self.vacSiteInd, self.Nspecs - 1
-            siteB, specB = self.jumpFinSites[transInd], self.jumpFinSpec[transInd]
-            if not state[siteB] == specB:
-                continue
+
+            # Check which jump is pre
+            siteB, specB = self.jumpFinSites[jumpInd], state[self.jumpFinSites[jumpInd]]
+
+            transInd = self.FinSiteFinSpecJumpInd[siteB, specB]
+
             delEKRA = 0.0
             # We need to go through every point group for this jump
             for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
