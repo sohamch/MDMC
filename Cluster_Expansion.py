@@ -437,9 +437,9 @@ class MCSamplerClass(object):
             siteA = np.random.randint(0, self.Nsites)
             siteB = np.random.randint(0, self.Nsites)
 
-            if siteA == siteB or siteA == self.vacSiteInd or siteB == self.vacSiteInd:
+            # make sure we are swapping different atoms because otherwise we are in the same state
+            if mobOcc[siteA] == mobOcc[siteB] or siteA == self.vacSiteInd or siteB == self.vacSiteInd:
                 continue
-
             delE = 0.
             # Next, switch required sites off
             for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteA]]):
@@ -456,12 +456,12 @@ class MCSamplerClass(object):
             # Next, switch required sites on
             for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteB]]):
                 OffSiteCountNew[self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]] -= 1
-                if OffSiteCountNew[self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]] == 0:
+                if OffSiteCountOld[self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]] == 0:
                     delE += self.Interaction2En[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]]
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteA]]):
                 OffSiteCountNew[self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]] -= 1
-                if OffSiteCountNew[self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]] == 0:
+                if OffSiteCountOld[self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]] == 0:
                     delE += self.Interaction2En[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]]
 
             # do the selection test
@@ -478,7 +478,7 @@ class MCSamplerClass(object):
             count += 1
 
         if test_single:
-            return siteA, siteB, delE, mobOcc
+            return siteA, siteB, delE, mobOcc, randarr[0]
 
         return mobOcc, OffSiteCountNew
                 
