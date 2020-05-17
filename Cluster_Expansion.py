@@ -390,7 +390,7 @@ class VectorClusterExpansion(object):
                jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,\
                vacSiteInd, InteractionIndexDict, InteractionRepClusDict, Index2InteractionDict
 
-class MCSampler(object):
+class MCSamplerClass(object):
 
     def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
                  VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec,

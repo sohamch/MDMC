@@ -135,7 +135,36 @@ class Test_MC_Arrays(unittest.TestCase):
                     self.assertEqual(set(interact), set(interactStored))
                     self.assertEqual(Jump2KRAEng[jumpInd, TsPtGpInd, interactInd], self.KRAEnergies[jumpInd][TsPtGpInd])
 
+class Test_MC(Test_MC_Arrays):
 
+    def test_MC_steps(self):
+        # First, create a random state
+        initState = np.zeros(len(self.VclusExp.sup.mobilepos), dtype=int)
+        # Now assign random species (excluding the vacancy)
+        for i in range(len(self.VclusExp.sup.mobilepos)):
+            initState[i] = np.random.randint(0, self.NSpec-1)
 
+        # Now put in the vacancy at the vacancy site
+        initState[self.vacsiteInd] = self.NSpec - 1
 
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, \
+        VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec, \
+        numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd, InteractionIndexDict, \
+        InteractionRepClusDict, Index2InteractionDict = \
+            self.VclusExp.makeJitInteractionsData(self.Energies, self.KRAEnergies)
+
+        # Initiate the MC sampler
+        MCSampler = Cluster_Expansion.MCSamplerClass(
+            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
+            VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec,
+            numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd, initState
+        )
+
+        # First check that the initial OffsiteCount is computed correctly
+        for (interaction, interactionInd) in InteractionIndexDict.items():
+            offsiteCount = 0
+            for (site, spec) in interaction:
+                if initState[site] != spec:
+                    offsiteCount += 1
+            self.assertEqual(MCSampler.OffSiteCount[interactionInd], offsiteCount)
 
