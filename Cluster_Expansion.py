@@ -532,12 +532,17 @@ class MCSamplerClass(object):
                 interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
+                    # take away the vectors for this interaction
+                    for i in range(self.numVecsInteracts[interMainInd]):
+                        del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
                 OffSiteCount[interMainInd] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
                 interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
+                    for i in range(self.numVecsInteracts[interMainInd]):
+                        del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
                 OffSiteCount[interMainInd] += 1
 
             # Next, switch required sites on
@@ -546,18 +551,29 @@ class MCSamplerClass(object):
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
+                    # add the vectors for this interaction
+                    for i in range(self.numVecsInteracts[interMainInd]):
+                        del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
                 interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
+                    # add the vectors for this interaction
+                    for i in range(self.numVecsInteracts[interMainInd]):
+                        del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
 
             # Energy change computed, now expand
             ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
             del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
 
             delxDotdelLamb[:, jumpInd] = np.tensordot(del_lamb, dxList[jumpInd], axes=(1, 0))
+
+        Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 2))
+        Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
+
+        return Wbar, Bbar
                 
 
 
