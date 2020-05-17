@@ -144,7 +144,7 @@ class Test_MC(Test_MC_Arrays):
         initState[self.vacsiteInd] = self.NSpec - 1
 
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, \
-        VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec, \
+        VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd,\
         numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd, InteractionIndexDict, \
         InteractionRepClusDict, Index2InteractionDict, repClustCounter = \
             self.VclusExp.makeJitInteractionsData(self.Energies, self.KRAEnergies)
