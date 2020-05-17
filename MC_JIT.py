@@ -87,14 +87,14 @@ class MCSamplerClass(object):
                 offscount= OffSiteCountOld[interMainInd]
                 if offscount == 0:
                     delE -= self.Interaction2En[interMainInd]
-                OffSiteCountNew[self.SiteSpecInterArray[siteA, mobOcc[siteA], interIdx]] += 1
+                OffSiteCountNew[interMainInd] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteB]]):
                 interMainInd = self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]
                 offscount = OffSiteCountOld[interMainInd]
                 if offscount == 0:
                     delE -= self.Interaction2En[interMainInd]
-                OffSiteCountNew[self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]] += 1
+                OffSiteCountNew[interMainInd] += 1
 
             # Next, switch required sites on
             for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteB]]):
