@@ -439,6 +439,7 @@ class MCSamplerClass(object):
             # make sure we are swapping different atoms because otherwise we are in the same state
             if mobOcc[siteA] == mobOcc[siteB] or siteA == self.vacSiteInd or siteB == self.vacSiteInd:
                 continue
+
             delE = 0.
 
             # Next, switch required sites off

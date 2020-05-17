@@ -13,15 +13,15 @@ MonteCarloSamplerSpec = [
     ("SpecOnInteractSites", int64[:, :]),
     ("Interaction2En", float64[:]),
     ("numVecsInteracts", int64[:]),
-    ("VecsInteracts", float64[:]),
+    ("VecsInteracts", float64[:, :, :]),
     ("jumpFinSites", int64[:]),
     ("jumpFinSpec", int64[:]),
     ("numJumpPointGroups", int64[:]),
     ("numTSInteractsInPtGroups", int64[:, :]),
-    ("JumpInteracts", int64[:, :]),
-    ("Jump2KRAEng", float64[:, :]),
-    ("mobOcc", int64[:, :]),
-    ("mobOccNew", int64[:, :]),
+    ("JumpInteracts", int64[:, :, :]),
+    ("Jump2KRAEng", float64[:, :, :]),
+    ("mobOcc", int64[:]),
+    ("mobOccNew", int64[:]),
     ("vacSiteInd", int64),
     ("Nsites", int64),
     ("Nspecs", int64),
@@ -79,6 +79,7 @@ class MCSamplerClass(object):
             # make sure we are swapping different atoms because otherwise we are in the same state
             if mobOcc[siteA] == mobOcc[siteB] or siteA == self.vacSiteInd or siteB == self.vacSiteInd:
                 continue
+
             delE = 0.
             # Next, switch required sites off
             for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteA]]):
