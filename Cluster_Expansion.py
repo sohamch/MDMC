@@ -446,39 +446,39 @@ class MCSamplerClass(object):
                 continue
 
             delE = 0.
-            # count = 0
+            count = 0
             # Next, switch required sites off
-            # for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteA]]):
-            #     # check if an interaction is on
-            #     interMainInd = self.SiteSpecInterArray[siteA, mobOcc[siteA], interIdx]
-            #     offscount= OffSiteCountOld[interMainInd]
-            #     if offscount == 0:
-            #         delE -= self.Interaction2En[interMainInd]
-            #     OffSiteCountNew[interMainInd] += 1
-            #     count += 1
-            #
-            # for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteB]]):
-            #     interMainInd = self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]
-            #     offscount = OffSiteCountOld[interMainInd]
-            #     if offscount == 0:
-            #         delE -= self.Interaction2En[interMainInd]
-            #     OffSiteCountNew[interMainInd] += 1
-            #     count += 1
-            #
-            # # Next, switch required sites on
-            # for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteB]]):
-            #     interMainInd = self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]
-            #     OffSiteCountNew[interMainInd] -= 1
-            #     if OffSiteCountNew[interMainInd] == 0:
-            #         delE += self.Interaction2En[interMainInd]
-            #     count += 1
-            #
-            # for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteA]]):
-            #     interMainInd = self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]
-            #     OffSiteCountNew[interMainInd] -= 1
-            #     if OffSiteCountNew[interMainInd] == 0:
-            #         delE += self.Interaction2En[interMainInd]
-            #     count += 1
+            for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteA]]):
+                # check if an interaction is on
+                interMainInd = self.SiteSpecInterArray[siteA, mobOcc[siteA], interIdx]
+                offscount= OffSiteCountOld[interMainInd]
+                if offscount == 0:
+                    delE -= self.Interaction2En[interMainInd]
+                OffSiteCountNew[interMainInd] += 1
+                count += 1
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteB]]):
+                interMainInd = self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]
+                offscount = OffSiteCountOld[interMainInd]
+                if offscount == 0:
+                    delE -= self.Interaction2En[interMainInd]
+                OffSiteCountNew[interMainInd] += 1
+                count += 1
+
+            # Next, switch required sites on
+            for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteB]]):
+                interMainInd = self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]
+                OffSiteCountNew[interMainInd] -= 1
+                if OffSiteCountNew[interMainInd] == 0:
+                    delE += self.Interaction2En[interMainInd]
+                count += 1
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteA]]):
+                interMainInd = self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]
+                OffSiteCountNew[interMainInd] -= 1
+                if OffSiteCountNew[interMainInd] == 0:
+                    delE += self.Interaction2En[interMainInd]
+                count += 1
 
             # do the selection test
             if np.exp(-beta*delE) > randarr[swapcount]:
