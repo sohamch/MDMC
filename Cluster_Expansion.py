@@ -310,7 +310,7 @@ class VectorClusterExpansion(object):
             numVecsInteracts[idx] = len(vecList)
             # store the vector
             for vecidx, tup in enumerate(vecList):
-                VecsInteracts[idx, vecidx, :] = self.vecVec[tup[0]][tup[1]]
+                VecsInteracts[idx, vecidx, :] = self.vecVec[tup[0]][tup[1]].copy()
                 VecGroupInteracts[idx, vecidx] = tup[0]
         print("Done with vector and energy data for interactions : {}".format(time.time() - start))
 
@@ -390,7 +390,7 @@ class VectorClusterExpansion(object):
         vacSiteInd = self.sup.index(self.vacSite.R, self.vacSite.ci)[0]
 
         return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,\
-               Interaction2En, numVecsInteracts, VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray,\
+               Interaction2En, numVecsInteracts, VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,\
                jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts,\
                Jump2KRAEng, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, Index2InteractionDict, repClustCounter
 
@@ -500,7 +500,7 @@ class MCSamplerClass(object):
         OffSiteCount = OSCount.copy()
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
-        delxDotdelLamb = np.zeros((lenVecClus, lenVecClus))
+        delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
 
         ratelist = np.zeros(ijList.shape[0])
 
@@ -570,8 +570,10 @@ class MCSamplerClass(object):
 
             delxDotdelLamb[:, jumpInd] = np.tensordot(del_lamb, dxList[jumpInd], axes=(1, 0))
 
-        Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 2))
-        Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
+        ax2 = np.array((0, 2))
+        ax3 = np.array((0, 1))
+        Wbar = np.tensordot(ratelist, del_lamb_mat, axes=ax2)
+        Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=ax3)
 
         return Wbar, Bbar
                 
