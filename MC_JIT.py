@@ -140,6 +140,7 @@ class MCSamplerClass(object):
         ratelist = np.zeros(ijList.shape[0])
 
         Wbar = np.zeros((lenVecClus, lenVecClus))
+        Bbar = np.zeros(lenVecClus)
 
         siteA, specA = self.vacSiteInd, self.Nspecs - 1
         # go through all the transitions
@@ -204,21 +205,20 @@ class MCSamplerClass(object):
             # Energy change computed, now expand
             ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
             del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
-            # ax1 = np.array((1, 0))
-            # delxDotdelLamb[:, jumpInd] = np.tensordot(del_lamb, dxList[jumpInd], axes=ax1)
+
+            # delxDotdelLamb[:, jumpInd] = np.tensordot(del_lamb, dxList[jumpInd], axes=(1, 0))
             # let's do the tensordot by hand (work on finding numba support for this)
             for i in range(lenVecClus):
                 # replace innder loop with outer product
                 delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], dxList[jumpInd, :])
-                # for j in range(3):
-                #     delxDotdelLamb[i, jumpInd] += del_lamb[i, j] * dxList[jumpInd, j]
 
+        # Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 2))
+        for i in range(lenVecClus):
+            for j in range(lenVecClus):
+                Wbar[i, j] += np.dot(del_lamb_mat[i, j, :], ratelist)
 
-
-
-        ax2 = np.array((0, 2))
-        ax3 = np.array((0, 1))
-        Wbar = np.tensordot(ratelist, del_lamb_mat, axes=ax2)
-        Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=ax3)
+        # Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
+        for i in range(lenVecClus):
+            Bbar[i] = np.dot(ratelist, delxDotdelLamb[i, :])
 
         return Wbar, Bbar
