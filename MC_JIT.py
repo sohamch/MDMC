@@ -139,6 +139,8 @@ class MCSamplerClass(object):
 
         ratelist = np.zeros(ijList.shape[0])
 
+        Wbar = np.zeros((lenVecClus, lenVecClus))
+
         siteA, specA = self.vacSiteInd, self.Nspecs - 1
         # go through all the transitions
         for jumpInd in range(ijList.shape[0]):
