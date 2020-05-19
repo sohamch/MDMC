@@ -423,7 +423,7 @@ class MCSamplerClass(object):
 
         # TODO : Reformat the array so that the swaps are always between atoms of different species
 
-    def makeMCsweep(self, NswapTrials, beta, test_single=False):
+    def makeMCsweep(self, SwapTrials, beta, randarr, Nswaptrials, test_single=False):
         """
         This is the function that will do the MC sweeps
         :param NswapTrials: the number of site swaps needed to be done in a single MC sweep
@@ -434,16 +434,12 @@ class MCSamplerClass(object):
         mobOcc = self.mobOcc.copy()
         OffSiteCountOld = self.OffSiteCount.copy()
         OffSiteCountNew = self.OffSiteCount.copy()
-        swapcount = 0
-        randarr = np.random.rand(NswapTrials)
-        while swapcount < NswapTrials:
-            # first select two random sites to swap - for now, let's just select naively.
-            siteA = np.random.randint(0, self.Nsites)
-            siteB = np.random.randint(0, self.Nsites)
+        trialCount = 0
 
-            # make sure we are swapping different atoms because otherwise we are in the same state
-            if mobOcc[siteA] == mobOcc[siteB] or siteA == self.vacSiteInd or siteB == self.vacSiteInd:
-                continue
+        for swapcount in range(Nswaptrials):
+            # first select two random sites to swap - for now, let's just select naively.
+            siteA = SwapTrials[swapcount, 0]
+            siteB = SwapTrials[swapcount, 1]
 
             delE = 0.
             count = 0
@@ -491,11 +487,12 @@ class MCSamplerClass(object):
             else:
                 # revert back the off site counts, because the state has not changed
                 OffSiteCountNew = OffSiteCountOld.copy()
-            swapcount += 1
 
             # this is for unit testing where only one MC step is tested - will be removed in JIT version
-            if test_single:
-                return siteA, siteB, delE, mobOcc, randarr[0]
+            # if test_single:
+            #     return siteA, siteB, delE, mobOcc, randarr[0]
+        print("trials: {}".format(trialCount))
+        print("swaps: {}".format(swapcount))
         return mobOcc, OffSiteCountNew
 
     def Expand(self, state, ijList, dxList, OSCount, lenVecClus, beta):
