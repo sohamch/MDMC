@@ -62,7 +62,7 @@ class MCSamplerClass(object):
 
         # Reformat the array so that the swaps are always between atoms of different species
 
-    def makeMCsweep(self, mobOcc, SwapTrials, beta, randarr, Nswaptrials, test_single=False):
+    def makeMCsweep(self, mobOcc, SwapTrials, beta, randarr, Nswaptrials):
         """
         This is the function that will do the MC sweeps
         :param NswapTrials: the number of site swaps needed to be done in a single MC sweep
