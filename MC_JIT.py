@@ -62,37 +62,33 @@ class MCSamplerClass(object):
 
         # Reformat the array so that the swaps are always between atoms of different species
 
-    def makeMCsweep(self, NswapTrials, beta):
+    def makeMCsweep(self, mobOcc, SwapTrials, beta, randarr, Nswaptrials, test_single=False):
         """
         This is the function that will do the MC sweeps
         :param NswapTrials: the number of site swaps needed to be done in a single MC sweep
         :param beta : 1/(KB*T)
         update the mobile occupance array and the OffSiteCounts for the MC sweeps
         """
-
-        mobOcc = self.mobOcc.copy()
+        # TODO : Need to implement biased sampling methods to select sites from TSinteractions with more prob.
         OffSiteCountOld = self.OffSiteCount.copy()
         OffSiteCountNew = self.OffSiteCount.copy()
-        count = 0
-        randarr = np.random.rand(NswapTrials)
-        while count < NswapTrials:
+        trialCount = 0
+
+        for swapcount in range(Nswaptrials):
             # first select two random sites to swap - for now, let's just select naively.
-            siteA = np.random.randint(0, self.Nsites)
-            siteB = np.random.randint(0, self.Nsites)
-
-            # make sure we are swapping different atoms because otherwise we are in the same state
-            if mobOcc[siteA] == mobOcc[siteB] or siteA == self.vacSiteInd or siteB == self.vacSiteInd:
-                continue
-
+            siteA = SwapTrials[swapcount, 0]
+            siteB = SwapTrials[swapcount, 1]
             delE = 0.
+            count = 0
             # Next, switch required sites off
             for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteA]]):
                 # check if an interaction is on
                 interMainInd = self.SiteSpecInterArray[siteA, mobOcc[siteA], interIdx]
-                offscount= OffSiteCountOld[interMainInd]
+                offscount = OffSiteCountOld[interMainInd]
                 if offscount == 0:
                     delE -= self.Interaction2En[interMainInd]
                 OffSiteCountNew[interMainInd] += 1
+                count += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteB]]):
                 interMainInd = self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]
@@ -100,6 +96,7 @@ class MCSamplerClass(object):
                 if offscount == 0:
                     delE -= self.Interaction2En[interMainInd]
                 OffSiteCountNew[interMainInd] += 1
+                count += 1
 
             # Next, switch required sites on
             for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteB]]):
@@ -107,15 +104,17 @@ class MCSamplerClass(object):
                 OffSiteCountNew[interMainInd] -= 1
                 if OffSiteCountNew[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
+                count += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteA]]):
                 interMainInd = self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]
                 OffSiteCountNew[interMainInd] -= 1
                 if OffSiteCountNew[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
+                count += 1
 
             # do the selection test
-            if np.exp(-beta * delE) > randarr[count]:
+            if np.exp(-beta*delE) > randarr[swapcount]:
                 # update the off site counts
                 # swap the sites to get to the next state
                 temp = mobOcc[siteA]
@@ -125,9 +124,12 @@ class MCSamplerClass(object):
             else:
                 # revert back the off site counts, because the state has not changed
                 OffSiteCountNew = OffSiteCountOld.copy()
-            count += 1
 
             # this is for unit testing where only one MC step is tested - will be removed in JIT version
+            # if test_single:
+            #     return siteA, siteB, delE, mobOcc, randarr[0]
+        # print("trials: {}".format(trialCount))
+        # print("swaps: {}".format(swapcount))
         return mobOcc, OffSiteCountNew
 
     def Expand(self, state, ijList, dxList, OSCount, lenVecClus, beta):
