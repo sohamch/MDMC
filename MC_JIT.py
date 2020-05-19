@@ -72,14 +72,12 @@ class MCSamplerClass(object):
         # TODO : Need to implement biased sampling methods to select sites from TSinteractions with more prob.
         OffSiteCountOld = OffSiteCount.copy()
         OffSiteCountNew = OffSiteCount.copy()
-        trialCount = 0
-
+        count = 0
         for swapcount in range(Nswaptrials):
             # first select two random sites to swap - for now, let's just select naively.
             siteA = SwapTrials[swapcount, 0]
             siteB = SwapTrials[swapcount, 1]
             delE = 0.
-            count = 0
             # Next, switch required sites off
             for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteA]]):
                 # check if an interaction is on
@@ -129,7 +127,7 @@ class MCSamplerClass(object):
             # if test_single:
             #     return siteA, siteB, delE, mobOcc, randarr[0]
         # print("trials: {}".format(trialCount))
-        # print("swaps: {}".format(swapcount))
+        # print("total iterations: {}".format(count))
         return mobOcc, OffSiteCountNew
 
     def Expand(self, state, ijList, dxList, OSCount, lenVecClus, beta):
