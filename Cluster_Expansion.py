@@ -423,7 +423,7 @@ class MCSamplerClass(object):
 
         # TODO : Reformat the array so that the swaps are always between atoms of different species
 
-    def makeMCsweep(self, mobOcc, SwapTrials, beta, randarr, Nswaptrials, test_single=False):
+    def makeMCsweep(self, mobOcc, OffSiteCount, SwapTrials, beta, randarr, Nswaptrials, test_single=False):
         """
         This is the function that will do the MC sweeps
         :param NswapTrials: the number of site swaps needed to be done in a single MC sweep
@@ -431,8 +431,8 @@ class MCSamplerClass(object):
         update the mobile occupance array and the OffSiteCounts for the MC sweeps
         """
         # TODO : Need to implement biased sampling methods to select sites from TSinteractions with more prob.
-        OffSiteCountOld = self.OffSiteCount.copy()
-        OffSiteCountNew = self.OffSiteCount.copy()
+        OffSiteCountOld = OffSiteCount.copy()
+        OffSiteCountNew = OffSiteCount.copy()
         trialCount = 0
 
         for swapcount in range(Nswaptrials):
