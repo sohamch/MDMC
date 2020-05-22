@@ -356,12 +356,7 @@ class MCSamplerClass(object):
                     self.OffSiteCount[interactIdx] += 1
 
     def makeMCsweep(self, mobOcc, OffSiteCountOld, OffSiteCountNew, SwapTrials, beta, randarr, Nswaptrials, test_single=False):
-        """
-        This is the function that will do the MC sweeps
-        :param NswapTrials: the number of site swaps needed to be done in a single MC sweep
-        :param beta : 1/(KB*T)
-        update the mobile occupance array and the OffSiteCounts for the MC sweeps
-        """
+
         # TODO : Need to implement biased sampling methods to select sites from TSinteractions with more prob.
         # OffSiteCountOld = OffSiteCount.copy()
         # OffSiteCountNew = OffSiteCount.copy()
