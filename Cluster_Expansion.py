@@ -51,7 +51,7 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, jumpnetwork, mobCountList, vacSite, maxorder):
+    def __init__(self, sup, clusexp, jumpnetwork, mobCountList, vacSite, maxorder, maxorderTrans):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
@@ -86,7 +86,7 @@ class VectorClusterExpansion(object):
         # self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
 
         # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
-        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, clusexp, mobCountList, vacSite)
+        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, clusexp, mobCountList, vacSite)
 
     def recalcClusters(self):
         """
@@ -314,99 +314,32 @@ class VectorClusterExpansion(object):
                 VecGroupInteracts[idx, vecidx] = tup[0]
         print("Done with vector and energy data for interactions : {}".format(time.time() - start))
 
-        # 3. Now, we deal with transition state data.
-        start = time.time()
-        # first, we indexify the transitions
-        # See Line 43 of Transition.py - if a jump is not out of vacsite, it is not considered anyway
-
-        # First, we indexify the transition state (site, spec) clusters
-
-        # 3.1 Get the maximum of cluster groups amongst all jumps
-        maxInteractGroups = max([len(interactGroupList)
-                                 for Jumpkey, interactGroupList in self.KRAexpander.clusterSpeciesJumps.items()])
-
-        # 3.2 get the maximum number of clusters in any given group
-        maxInteractsInGroups = max([len(interactGroup[1])
-                                     for Jumpkey, interactGroupList in self.KRAexpander.clusterSpeciesJumps.items()
-                                     for interactGroup in interactGroupList])
-
-        vacSpecInd = len(self.mobCountList) - 1
-
-        # 3.3 create arrays to
-        # store initial and final sites in transitions
-        jumpFinSites = np.full(len(self.KRAexpander.clusterSpeciesJumps), -1, dtype=int)
-        jumpFinSpec = np.full(len(self.KRAexpander.clusterSpeciesJumps), -1, dtype=int)
-
-        FinSiteFinSpecJumpInd = np.full((self.Nsites, len(self.mobCountList)), -1, dtype=int)
-
-        # To store the number of TSInteraction groups for each transition
-        numJumpPointGroups = np.full(len(self.KRAexpander.clusterSpeciesJumps), -1, dtype=int)
-
-        # To store the number of clusters in each TSInteraction group for each transition
-        numTSInteractsInPtGroups = np.full((len(self.KRAexpander.clusterSpeciesJumps), maxInteractGroups), -1,
-                                           dtype=int)
-
-        # To store the main interaction index of each TSInteraction (will be used to check on or off status)
-        JumpInteracts = np.full((len(self.KRAexpander.clusterSpeciesJumps), maxInteractGroups, maxInteractsInGroups),
-                                -1, dtype=int)
-
-        # To store the KRA energies for each transition state cluster
-        Jump2KRAEng = np.zeros((len(self.KRAexpander.clusterSpeciesJumps), maxInteractGroups, maxInteractsInGroups))
-        print("Processing {} jumps".format(len(self.KRAexpander.clusterSpeciesJumps)))
-        for jumpInd, (Jumpkey, interactGroupList) in zip(itertools.count(),
-                                                         self.KRAexpander.clusterSpeciesJumps.items()):
-
-            jumpFinSites[jumpInd] = Jumpkey[1]
-            jumpFinSpec[jumpInd] = Jumpkey[2]
-            FinSiteFinSpecJumpInd[Jumpkey[1], Jumpkey[2]] = jumpInd
-            numJumpPointGroups[jumpInd] = len(interactGroupList)
-
-            for interactGroupInd, interactGroup in enumerate(interactGroupList):
-                specList = [vacSpecInd, Jumpkey[2]]  # the initial species is the vacancy, and specJ is stored as the key
-                spectup, clusterList = interactGroup[0], interactGroup[1]
-                for spec in spectup:
-                    specList.append(spec)
-
-                numTSInteractsInPtGroups[jumpInd, interactGroupInd] = len(clusterList)
-
-                for interactInd, TSclust in enumerate(clusterList):
-                    TSInteract = tuple([(self.sup.index(clsite.R, clsite.ci)[0], sp)
-                                 for clsite, sp in zip(TSclust.sites, specList)])
-
-                    # get the ID of this interaction
-                    # sort with the supercell site indices as the keys as each site can appear only once in an
-                    # interaction
-                    TSInteract_sort = tuple(sorted(TSInteract, key=lambda x: x[0]))
-                    TSMainInd = siteSortedInteractionIndexDict[TSInteract_sort]
-
-                    JumpInteracts[jumpInd, interactGroupInd, interactInd] = TSMainInd
-                    Jump2KRAEng[jumpInd, interactGroupInd, interactInd] = KRAEnergies[jumpInd][interactGroupInd]
-
-                    # A small check to see that the TSClusters have the sites arranged properly
-                    # assert TSInteract[0][0] == self.sup.index(self.vacSite.R, self.vacSite.ci)[0] == Jumpkey[0]
-                    # assert TSInteract[1][0] == Jumpkey[1]
-
-        print("Done with transition data : {}".format(time.time() - start))
         vacSiteInd = self.sup.index(self.vacSite.R, self.vacSite.ci)[0]
 
-        return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,\
-               Interaction2En, numVecsInteracts, VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,\
-               jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts,\
-               Jump2KRAEng, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, Index2InteractionDict, repClustCounter
+        return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts,\
+               VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict,\
+               Index2InteractionDict, repClustCounter
 
 class MCSamplerClass(object):
 
     def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
-                 VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec,
-                 FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd, mobOcc):
+                 VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
+                 TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
+                 FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
+                 vacSiteInd, mobOcc):
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts,\
-        self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.jumpFinSites,\
-        self.jumpFinSpec, self.FinSiteFinSpecJumpInd, self.numJumpPointGroups, self.numTSInteractsInPtGroups, self.JumpInteracts,\
-        self.Jump2KRAEng, self.vacSiteInd = \
+        self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.vacSiteInd = \
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,\
-        VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd,\
-        numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd
+        VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd
+
+        self.TSInteractSites, self.TSInteractSpecs = TSInteractSites, TSInteractSpecs
+
+        self.jumpFinSites, self.jumpFinSpec, self.FinSiteFinSpecJumpInd, self.numJumpPointGroups, self.numTSInteractsInPtGroups,\
+        self.JumpInteracts, self.Jump2KRAEng =\
+            jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups,\
+            JumpInteracts, Jump2KRAEng
+
 
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
