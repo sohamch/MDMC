@@ -224,7 +224,7 @@ class VectorClusterExpansion(object):
         maxinteractions = max(InteractCounts)
         return SiteSpecinteractList, maxinteractions
 
-    def makeJitInteractionsData(self, Energies, KRAEnergies):
+    def makeJitInteractionsData(self, Energies):
         """
         Function to represent all the data structures in the form of numpy arrays so that they can be accelerated with
         numba's jit compilations.

@@ -150,17 +150,22 @@ class Test_MC(Test_MC_Arrays):
         # Now put in the vacancy at the vacancy site
         initState[self.vacsiteInd] = self.NSpec - 1
 
-        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, \
-        VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd,\
-        numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd, InteractionIndexDict, \
-        InteractionRepClusDict, Index2InteractionDict, repClustCounter = \
-            self.VclusExp.makeJitInteractionsData(self.Energies, self.KRAEnergies)
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
+        VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
+        Index2InteractionDict, repClustCounter =\
+            self.VclusExp.makeJitInteractionsData(self.Energies)
+
+        TsInteractIndexDict, Index2TSinteractDict, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec, \
+        FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng =\
+            self.VclusExp.KRAexpander.makeTransJitData(self.KRAEnergies)
 
         # Initiate the MC sampler
         MCSampler = Cluster_Expansion.MCSamplerClass(
             numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
-            VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec,
-            numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd, initState
+            VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
+            TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
+            FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
+            vacSiteInd, initState
         )
 
         # First check that the initial OffsiteCount is computed correctly
