@@ -247,14 +247,17 @@ class KRAExpand(object):
                     Jump2KRAEng[jumpInd, interactGroupInd, interactInd] = KRAEnergies[jumpInd][interactGroupInd]
 
         # 4 Next, make arrays that store the sites and species in each TS interaction.
-        TSInteractSites = np.full(len(TsInteractIndexDict), -1, dtype=int)
-        TSInteractSpecs = np.full(len(TsInteractIndexDict), -1, dtype=int)
+        TSInteractSites = np.full((len(TsInteractIndexDict), self.maxOrderTrans), -1, dtype=int)
+        TSInteractSpecs = np.full((len(TsInteractIndexDict), self.maxOrderTrans), -1, dtype=int)
+        numSitesTSInteracts = np.full(len(TsInteractIndexDict), -1, dtype=int)
 
         for index, TSInteract in Index2TSinteractDict.items():
-            for site, spec in TSInteract:
-                TSInteractSites[index] = site
-                TSInteractSpecs[index] = spec
+            numSitesTSInteracts[index] = len(TSInteract)
+            for siteIdx, (site, spec) in zip(itertools.count(), TSInteract):
+                TSInteractSites[index, siteIdx] = site
+                TSInteractSpecs[index, siteIdx] = spec
 
-        return TsInteractIndexDict, Index2TSinteractDict, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,\
-               FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng
+        return TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites, TSInteractSpecs,\
+               jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups,\
+               JumpInteracts, Jump2KRAEng
 

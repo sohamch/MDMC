@@ -325,7 +325,7 @@ class MCSamplerClass(object):
 
     def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
                  VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
-                 TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
+                 numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
                  FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
                  vacSiteInd, mobOcc):
 
@@ -334,7 +334,8 @@ class MCSamplerClass(object):
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,\
         VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd
 
-        self.TSInteractSites, self.TSInteractSpecs = TSInteractSites, TSInteractSpecs
+        self.numSitesTSInteracts, self.TSInteractSites, self.TSInteractSpecs =\
+            numSitesTSInteracts, TSInteractSites, TSInteractSpecs
 
         self.jumpFinSites, self.jumpFinSpec, self.FinSiteFinSpecJumpInd, self.numJumpPointGroups, self.numTSInteractsInPtGroups,\
         self.JumpInteracts, self.Jump2KRAEng =\
@@ -355,7 +356,8 @@ class MCSamplerClass(object):
                 if mobOcc[interSite] != interSpec:
                     self.OffSiteCount[interactIdx] += 1
 
-    def makeMCsweep(self, mobOcc, OffSiteCountOld, OffSiteCountNew, SwapTrials, beta, randarr, Nswaptrials, test_single=False):
+    def makeMCsweep(self, mobOcc, OffSiteCountOld, OffSiteCountNew, TransOffSiteCountNew,
+                    SwapTrials, beta, randarr, Nswaptrials, test_single=False):
 
         # TODO : Need to implement biased sampling methods to select sites from TSinteractions with more prob.
         # OffSiteCountOld = OffSiteCount.copy()
@@ -416,7 +418,16 @@ class MCSamplerClass(object):
             # if test_single:
             #     return siteA, siteB, delE, mobOcc, randarr[0]
         # print("trials: {}".format(trialCount))
-        return mobOcc, OffSiteCountNew, count
+
+        # Once a new state is found, update transition state offsite counts
+        for TsInteractIdx in range(len(self.TSInteractSites)):
+            for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
+                interSite = self.TSInteractSites[TsInteractIdx, Siteind]
+                interSpec = self.TSInteractSpecs[TsInteractIdx, Siteind]
+                if mobOcc[interSite] != interSpec:
+                    TransOffSiteCountNew[TsInteractIdx] += 1
+
+        return mobOcc, OffSiteCountNew, TransOffSiteCountNew, count
 
     def Expand(self, state, ijList, dxList, OSCount, lenVecClus, beta):
 

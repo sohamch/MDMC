@@ -155,8 +155,9 @@ class Test_MC(Test_MC_Arrays):
         Index2InteractionDict, repClustCounter =\
             self.VclusExp.makeJitInteractionsData(self.Energies)
 
-        TsInteractIndexDict, Index2TSinteractDict, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec, \
-        FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng =\
+        TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites, TSInteractSpecs, \
+        jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, \
+        JumpInteracts, Jump2KRAEng =\
             self.VclusExp.KRAexpander.makeTransJitData(self.KRAEnergies)
 
         # Initiate the MC sampler
