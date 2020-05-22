@@ -51,7 +51,7 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, jumpnetwork, mobCountList, vacSite, maxorder, maxorderTrans):
+    def __init__(self, sup, clusexp, Tclusexp, jumpnetwork, mobCountList, vacSite, maxorder, maxorderTrans):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
@@ -66,6 +66,7 @@ class VectorClusterExpansion(object):
         self.crys = self.sup.crys
         # vacInd will always be the initial state in the transitions that we consider.
         self.clusexp = clusexp
+        self.Tclusexp = Tclusexp
         self.maxOrder = maxorder
         self.mobCountList = mobCountList
         self.vacSpec = len(mobCountList) - 1
@@ -86,7 +87,7 @@ class VectorClusterExpansion(object):
         # self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
 
         # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
-        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, clusexp, mobCountList, vacSite)
+        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, Tclusexp, mobCountList, vacSite)
 
     def recalcClusters(self):
         """

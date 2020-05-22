@@ -9,8 +9,9 @@ import time
 class Test_MC_Arrays(unittest.TestCase):
 
     def setUp(self):
-        self.NSpec = 3
-        self.MaxOrder = 3
+        self.NSpec = 5
+        self.MaxOrder = 2
+        self.MaxOrderTrans = 4
         self.crys = crystal.Crystal.BCC(0.2836, chemistry="A")
         self.jnetBCC = self.crys.jumpnetwork(0, 0.26)
         self.superlatt = 8 * np.eye(3, dtype=int)
@@ -25,11 +26,13 @@ class Test_MC_Arrays(unittest.TestCase):
             self.mobOccs[spec][site] = 1
         self.mobOccs[-1, self.vacsiteInd] = 1
         self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
-        self.clusexp = cluster.makeclusters(self.crys, 0.29, self.MaxOrder)
-        self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.clusexp, self.mobCountList,
+        self.clusexp = cluster.makeclusters(self.crys, 0.284*2, self.MaxOrder)
+        self.Tclusexp = cluster.makeclusters(self.crys, 0.29, self.MaxOrderTrans)
+        self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.Tclusexp, self.Tclusexp, self.mobCountList,
                                                  self.vacsite)
-        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.jnetBCC,
-                                                                 self.mobCountList, self.vacsite, self.MaxOrder)
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.Tclusexp, self.jnetBCC,
+                                                                 self.mobCountList, self.vacsite, self.MaxOrder,
+                                                                 self.MaxOrderTrans)
 
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
         self.KRAEnergies = [np.random.rand(len(val)) for (key, val) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
@@ -38,11 +41,10 @@ class Test_MC_Arrays(unittest.TestCase):
     def test_arrays(self):
 
         start = time.time()
-        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, \
-        VecsInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec, \
-        numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd, InteractionIndexDict,\
-        InteractionRepClusDict, Index2InteractionDict, repClustCounter =\
-            self.VclusExp.makeJitInteractionsData(self.Energies, self.KRAEnergies)
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
+        VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
+        Index2InteractionDict, repClustCounter\
+            = self.VclusExp.makeJitInteractionsData(self.Energies, self.KRAEnergies)
 
         # Check that each cluster has been translated as many times as there are sites in the supercell
         # Only then we have constructed every possible interaction
@@ -105,8 +107,13 @@ class Test_MC_Arrays(unittest.TestCase):
                     self.assertEqual(Index2InteractionDict[interactMainIndex],
                                      self.VclusExp.SiteSpecInteractions[(clsite, spec)][IdxOfInteract][0])
 
+    def testTransArrays(self):
         # Now, we start testing the jump arrays
         # jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng
+
+        TsInteractIndexDict, Index2TSinteractDict, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec, \
+        FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng =\
+            self.VclusExp.KRAexpander.makeTransJitData(self.KRAEnergies)
 
         for jumpInd, (jumpkey, TSptGrps) in zip(itertools.count(), self.VclusExp.KRAexpander.clusterSpeciesJumps.items()):
             FinSite = jumpkey[1]
@@ -126,7 +133,7 @@ class Test_MC_Arrays(unittest.TestCase):
                 for interactInd, TSClust in enumerate(TSinteractList):
                     interact = tuple([(self.VclusExp.sup.index(site.R, site.ci)[0], spec)
                                       for site, spec in zip(TSClust.sites, specList)])
-                    interactStored = Index2InteractionDict[JumpInteracts[jumpInd, TsPtGpInd, interactInd]]
+                    interactStored = Index2TSinteractDict[JumpInteracts[jumpInd, TsPtGpInd, interactInd]]
 
                     self.assertEqual(set(interact), set(interactStored))
                     self.assertEqual(Jump2KRAEng[jumpInd, TsPtGpInd, interactInd], self.KRAEnergies[jumpInd][TsPtGpInd])
