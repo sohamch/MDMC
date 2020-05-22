@@ -340,7 +340,6 @@ class MCSamplerClass(object):
             jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups,\
             JumpInteracts, Jump2KRAEng
 
-
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
         self.mobOcc = mobOcc
