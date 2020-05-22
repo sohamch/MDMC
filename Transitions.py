@@ -174,3 +174,7 @@ class KRAExpand(object):
         return DelEKRA
         # Next, we need the contributions of the initial and final states.
         # Have to check which clusters are on and which are off
+
+    # Next, build numpy arrays for jitting
+    def makeTransJitData(self):
+        pass
