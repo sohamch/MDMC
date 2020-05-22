@@ -62,7 +62,7 @@ class MCSamplerClass(object):
 
         # Reformat the array so that the swaps are always between atoms of different species
 
-    def makeMCsweep(self, mobOcc, OffSiteCount, SwapTrials, beta, randarr, Nswaptrials):
+    def makeMCsweep(self, mobOcc, OffSiteCountOld, OffSiteCountNew, SwapTrials, beta, randarr, Nswaptrials):
         """
         This is the function that will do the MC sweeps
         :param NswapTrials: the number of site swaps needed to be done in a single MC sweep
@@ -70,26 +70,29 @@ class MCSamplerClass(object):
         update the mobile occupance array and the OffSiteCounts for the MC sweeps
         """
         # TODO : Need to implement biased sampling methods to select sites from TSinteractions with more prob.
-        OffSiteCountOld = OffSiteCount.copy()
-        OffSiteCountNew = OffSiteCount.copy()
+        # OffSiteCountOld = OffSiteCount.copy()
+        # OffSiteCountNew = OffSiteCount.copy()
+        # trialCount = 0
         count = 0
         for swapcount in range(Nswaptrials):
             # first select two random sites to swap - for now, let's just select naively.
             siteA = SwapTrials[swapcount, 0]
             siteB = SwapTrials[swapcount, 1]
+            specA = mobOcc[siteA]
+            specB = mobOcc[siteB]
             delE = 0.
             # Next, switch required sites off
-            for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteA]]):
+            for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
                 # check if an interaction is on
-                interMainInd = self.SiteSpecInterArray[siteA, mobOcc[siteA], interIdx]
+                interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
                 offscount = OffSiteCountOld[interMainInd]
                 if offscount == 0:
                     delE -= self.Interaction2En[interMainInd]
                 OffSiteCountNew[interMainInd] += 1
                 count += 1
 
-            for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteB]]):
-                interMainInd = self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]
+            for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
+                interMainInd = self.SiteSpecInterArray[siteB, specB, interIdx]
                 offscount = OffSiteCountOld[interMainInd]
                 if offscount == 0:
                     delE -= self.Interaction2En[interMainInd]
@@ -97,15 +100,15 @@ class MCSamplerClass(object):
                 count += 1
 
             # Next, switch required sites on
-            for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteB]]):
-                interMainInd = self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]
+            for interIdx in range(self.numInteractsSiteSpec[siteA, specB]):
+                interMainInd = self.SiteSpecInterArray[siteA, specB, interIdx]
                 OffSiteCountNew[interMainInd] -= 1
                 if OffSiteCountNew[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
                 count += 1
 
-            for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteA]]):
-                interMainInd = self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]
+            for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
+                interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
                 OffSiteCountNew[interMainInd] -= 1
                 if OffSiteCountNew[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
@@ -123,12 +126,7 @@ class MCSamplerClass(object):
                 # revert back the off site counts, because the state has not changed
                 OffSiteCountNew = OffSiteCountOld.copy()
 
-            # this is for unit testing where only one MC step is tested - will be removed in JIT version
-            # if test_single:
-            #     return siteA, siteB, delE, mobOcc, randarr[0]
-        # print("trials: {}".format(trialCount))
-        # print("total iterations: {}".format(count))
-        return mobOcc, OffSiteCountNew
+        return mobOcc, OffSiteCountNew, count
 
     def Expand(self, state, ijList, dxList, OSCount, lenVecClus, beta):
 
