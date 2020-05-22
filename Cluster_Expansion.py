@@ -344,6 +344,8 @@ class MCSamplerClass(object):
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
         self.mobOcc = mobOcc
+
+        # generate offsite counts for state interactions
         self.OffSiteCount = np.zeros(len(numSitesInteracts), dtype=int)
         for interactIdx in range(len(numSitesInteracts)):
             numSites = numSitesInteracts[interactIdx]
@@ -352,8 +354,6 @@ class MCSamplerClass(object):
                 interSpec = SpecOnInteractSites[interactIdx, intSiteind]
                 if mobOcc[interSite] != interSpec:
                     self.OffSiteCount[interactIdx] += 1
-
-        # TODO : Reformat the array so that the swaps are always between atoms of different species
 
     def makeMCsweep(self, mobOcc, OffSiteCountOld, OffSiteCountNew, SwapTrials, beta, randarr, Nswaptrials, test_single=False):
         """
