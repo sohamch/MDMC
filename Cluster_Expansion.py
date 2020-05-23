@@ -427,7 +427,7 @@ class MCSamplerClass(object):
                 if mobOcc[interSite] != interSpec:
                     TransOffSiteCountNew[TsInteractIdx] += 1
 
-        return mobOcc, OffSiteCountNew, TransOffSiteCountNew, count
+        return mobOcc, OffSiteCountNew, count
 
     def Expand(self, state, ijList, dxList, OSCount, lenVecClus, beta):
 
