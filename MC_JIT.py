@@ -36,9 +36,10 @@ MonteCarloSamplerSpec = [
 class MCSamplerClass(object):
 
     def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
-                 VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec,
-                 FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd,
-                 mobOcc, OffSiteCount):
+                 VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
+                 numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
+                 FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
+                 vacSiteInd, mobOcc):
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts, \
         self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.jumpFinSites,\
@@ -51,7 +52,7 @@ class MCSamplerClass(object):
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
         self.mobOcc = mobOcc
-        self.OffSiteCount = OffSiteCount
+        self.OffSiteCount = np.zeros(len(numSitesInteracts), dtype=int)
         for interactIdx in range(numSitesInteracts.shape[0]):
             numSites = numSitesInteracts[interactIdx]
             for intSiteind in range(numSites):
@@ -62,71 +63,102 @@ class MCSamplerClass(object):
 
         # Reformat the array so that the swaps are always between atoms of different species
 
-    def makeMCsweep(self, mobOcc, OffSiteCountOld, OffSiteCountNew, SwapTrials, beta, randarr, Nswaptrials):
-        """
-        This is the function that will do the MC sweeps
-        :param NswapTrials: the number of site swaps needed to be done in a single MC sweep
-        :param beta : 1/(KB*T)
-        update the mobile occupance array and the OffSiteCounts for the MC sweeps
-        """
+    def makeMCsweep(self, mobOcc, OffSiteCountOld, OffSiteCountNew, TransOffSiteCountNew,
+                    SwapTrials, beta, randarr, Nswaptrials, test_single=False):
+
         # TODO : Need to implement biased sampling methods to select sites from TSinteractions with more prob.
-        # OffSiteCountOld = OffSiteCount.copy()
-        # OffSiteCountNew = OffSiteCount.copy()
-        # trialCount = 0
-        count = 0
+        trialCount = 0
+        # count = 0
         for swapcount in range(Nswaptrials):
             # first select two random sites to swap - for now, let's just select naively.
             siteA = SwapTrials[swapcount, 0]
             siteB = SwapTrials[swapcount, 1]
-            specA = mobOcc[siteA]
-            specB = mobOcc[siteB]
             delE = 0.
             # Next, switch required sites off
-            for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
+            for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteA]]):
                 # check if an interaction is on
-                interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
+                interMainInd = self.SiteSpecInterArray[siteA, mobOcc[siteA], interIdx]
                 offscount = OffSiteCountOld[interMainInd]
                 if offscount == 0:
                     delE -= self.Interaction2En[interMainInd]
                 OffSiteCountNew[interMainInd] += 1
-                count += 1
 
-            for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
-                interMainInd = self.SiteSpecInterArray[siteB, specB, interIdx]
+            for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteB]]):
+                interMainInd = self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]
                 offscount = OffSiteCountOld[interMainInd]
                 if offscount == 0:
                     delE -= self.Interaction2En[interMainInd]
                 OffSiteCountNew[interMainInd] += 1
-                count += 1
 
             # Next, switch required sites on
-            for interIdx in range(self.numInteractsSiteSpec[siteA, specB]):
-                interMainInd = self.SiteSpecInterArray[siteA, specB, interIdx]
+            for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteB]]):
+                interMainInd = self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]
                 OffSiteCountNew[interMainInd] -= 1
                 if OffSiteCountNew[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
-                count += 1
 
-            for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
-                interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
+            for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteA]]):
+                interMainInd = self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]
                 OffSiteCountNew[interMainInd] -= 1
                 if OffSiteCountNew[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
-                count += 1
 
             # do the selection test
-            if np.exp(-beta*delE) > randarr[swapcount]:
+            if np.exp(-beta * delE) > randarr[swapcount]:
                 # update the off site counts
                 # swap the sites to get to the next state
                 temp = mobOcc[siteA]
                 mobOcc[siteA] = mobOcc[siteB]
                 mobOcc[siteB] = temp
-                OffSiteCountOld = OffSiteCountNew.copy()
+                # OffSiteCountOld = OffSiteCountNew.copy()
+                # Not everything changes. Only copy over the parts that do
+                # OffSiteCountOld = OffSiteCountNew.copy()
+                for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteA]]):
+                    interMainInd = self.SiteSpecInterArray[siteA, mobOcc[siteA], interIdx]
+                    OffSiteCountOld[interMainInd] = OffSiteCountNew[interMainInd]
+
+                for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteB]]):
+                    interMainInd = self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]
+                    OffSiteCountOld[interMainInd] = OffSiteCountNew[interMainInd]
+
+                for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteB]]):
+                    interMainInd = self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]
+                    OffSiteCountOld[interMainInd] = OffSiteCountNew[interMainInd]
+
+                for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteA]]):
+                    interMainInd = self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]
+                    OffSiteCountOld[interMainInd] = OffSiteCountNew[interMainInd]
             else:
                 # revert back the off site counts, because the state has not changed
-                OffSiteCountNew = OffSiteCountOld.copy()
+                # OffSiteCountNew = OffSiteCountOld.copy()
+                for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteA]]):
+                    interMainInd = self.SiteSpecInterArray[siteA, mobOcc[siteA], interIdx]
+                    OffSiteCountNew[interMainInd] = OffSiteCountOld[interMainInd]
 
-        return mobOcc, OffSiteCountNew, count
+                for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteB]]):
+                    interMainInd = self.SiteSpecInterArray[siteB, mobOcc[siteB], interIdx]
+                    OffSiteCountNew[interMainInd] = OffSiteCountOld[interMainInd]
+
+                for interIdx in range(self.numInteractsSiteSpec[siteA, mobOcc[siteB]]):
+                    interMainInd = self.SiteSpecInterArray[siteA, mobOcc[siteB], interIdx]
+                    OffSiteCountNew[interMainInd] = OffSiteCountOld[interMainInd]
+
+                for interIdx in range(self.numInteractsSiteSpec[siteB, mobOcc[siteA]]):
+                    interMainInd = self.SiteSpecInterArray[siteB, mobOcc[siteA], interIdx]
+                    OffSiteCountNew[interMainInd] = OffSiteCountOld[interMainInd]
+
+            # this is for unit testing where only one MC step is tested - will be removed in JIT version
+            # if test_single:
+            #     return siteA, siteB, delE, mobOcc, randarr[0]
+        # print("trials: {}".format(trialCount))
+
+        # Once a new state is found, update transition state offsite counts
+        for TsInteractIdx in range(len(self.TSInteractSites)):
+            for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
+                interSite = self.TSInteractSites[TsInteractIdx, Siteind]
+                interSpec = self.TSInteractSpecs[TsInteractIdx, Siteind]
+                if mobOcc[interSite] != interSpec:
+                    TransOffSiteCountNew[TsInteractIdx] += 1
 
     def Expand(self, state, ijList, dxList, OSCount, lenVecClus, beta):
 
