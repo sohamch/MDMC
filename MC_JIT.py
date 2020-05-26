@@ -63,12 +63,12 @@ class MCSamplerClass(object):
 
         # Reformat the array so that the swaps are always between atoms of different species
 
-    def makeMCsweep(self, mobOcc, OffSiteCountOld, OffSiteCountNew, TransOffSiteCountNew,
+    def makeMCsweep(self, mobOcc, OffSiteCountOld, OffSiteCountNew, TransOffSiteCount,
                     SwapTrials, beta, randarr, Nswaptrials, test_single=False):
 
         # TODO : Need to implement biased sampling methods to select sites from TSinteractions with more prob.
-        trialCount = 0
-        # count = 0
+        # OffSiteCountOld = OffSiteCount.copy()
+        # OffSiteCountNew = OffSiteCount.copy()
         for swapcount in range(Nswaptrials):
             # first select two random sites to swap - for now, let's just select naively.
             siteA = SwapTrials[swapcount, 0]
@@ -102,9 +102,9 @@ class MCSamplerClass(object):
                 OffSiteCountNew[interMainInd] -= 1
                 if OffSiteCountNew[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
-
+                    
             # do the selection test
-            if np.exp(-beta * delE) > randarr[swapcount]:
+            if np.exp(-beta*delE) > randarr[swapcount]:
                 # update the off site counts
                 # swap the sites to get to the next state
                 temp = mobOcc[siteA]
@@ -154,15 +154,12 @@ class MCSamplerClass(object):
 
         # Once a new state is found, update transition state offsite counts
         for TsInteractIdx in range(len(self.TSInteractSites)):
+            TransOffSiteCount[TsInteractIdx] = 0
             for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
-                interSite = self.TSInteractSites[TsInteractIdx, Siteind]
-                interSpec = self.TSInteractSpecs[TsInteractIdx, Siteind]
-                if mobOcc[interSite] != interSpec:
-                    TransOffSiteCountNew[TsInteractIdx] += 1
+                if mobOcc[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
+                    TransOffSiteCount[TsInteractIdx] += 1
 
-    def Expand(self, state, ijList, dxList, OSCount, lenVecClus, beta):
-
-        OffSiteCount = OSCount.copy()
+    def Expand(self, state, ijList, dxList, TsOffSiteCount, lenVecClus, beta):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
