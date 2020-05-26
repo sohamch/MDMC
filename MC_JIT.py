@@ -41,7 +41,7 @@ class MCSamplerClass(object):
                  VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
                  numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
                  FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-                 vacSiteInd, mobOcc):
+                 vacSiteInd, mobOcc, OffSiteCount):
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts, \
         self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.vacSiteInd = \
@@ -59,7 +59,7 @@ class MCSamplerClass(object):
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
         self.mobOcc = mobOcc
-        self.OffSiteCount = np.zeros(len(numSitesInteracts), dtype=int)
+        self.OffSiteCount = OffSiteCount.copy()
         for interactIdx in range(numSitesInteracts.shape[0]):
             numSites = numSitesInteracts[interactIdx]
             for intSiteind in range(numSites):
@@ -174,6 +174,9 @@ class MCSamplerClass(object):
         ratelist = np.zeros(ijList.shape[0])
 
         siteA, specA = self.vacSiteInd, self.Nspecs - 1
+
+        Wbar = np.zeros((lenVecClus, lenVecClus))
+        Bbar = np.zeros(lenVecClus)
         # go through all the transitions
         for jumpInd in range(ijList.shape[0]):
             del_lamb = np.zeros((lenVecClus, 3))
@@ -237,7 +240,11 @@ class MCSamplerClass(object):
             ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
             del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
 
-            delxDotdelLamb[:, jumpInd] = np.tensordot(del_lamb, dxList[jumpInd], axes=(1, 0))
+            # delxDotdelLamb[:, jumpInd] = np.tensordot(del_lamb, dxList[jumpInd], axes=(1, 0))
+            # let's do the tensordot by hand (work on finding numba support for this)
+            for i in range(lenVecClus):
+                # replace innder loop with outer product
+                delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], dxList[jumpInd, :])
 
             # Next, restore OffSiteCounts to original values for next jump, as well as
             # for use in the next MC sweep.
@@ -254,9 +261,13 @@ class MCSamplerClass(object):
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
                 OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
 
-        ax2 = np.array((0, 2))
-        ax3 = np.array((0, 1))
-        Wbar = np.tensordot(ratelist, del_lamb_mat, axes=ax2)
-        Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=ax3)
+        # Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 2))
+        for i in range(lenVecClus):
+            for j in range(lenVecClus):
+                Wbar[i, j] += np.dot(del_lamb_mat[i, j, :], ratelist)
+
+        # Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
+        for i in range(lenVecClus):
+            Bbar[i] = np.dot(ratelist, delxDotdelLamb[i, :])
 
         return Wbar, Bbar
