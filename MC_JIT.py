@@ -9,6 +9,7 @@ MonteCarloSamplerSpec = [
     ("numInteractsSiteSpec", int64[:, :]),
     ("SiteSpecInterArray", int64[:, :, :]),
     ("numSitesInteracts", int64[:]),
+    ("numSitesTSInteracts", int64[:]),
     ("SupSitesInteracts", int64[:, :]),
     ("TSInteractSites", int64[:, :]),
     ("TSInteractSpecs", int64[:, :]),
