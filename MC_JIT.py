@@ -159,7 +159,7 @@ class MCSamplerClass(object):
                 if mobOcc[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
                     TransOffSiteCount[TsInteractIdx] += 1
 
-    def Expand(self, state, ijList, dxList, TsOffSiteCount, lenVecClus, beta):
+    def Expand(self, state, ijList, dxList, TsOffSiteCount, OffSiteCount, lenVecClus, beta):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
@@ -208,7 +208,6 @@ class MCSamplerClass(object):
                     delE -= self.Interaction2En[interMainInd]
                     for i in range(self.numVecsInteracts[interMainInd]):
                         del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
-                OffSiteCount[interMainInd] += 1
 
             # Next, switch required sites on
             for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
@@ -238,6 +237,21 @@ class MCSamplerClass(object):
             for i in range(lenVecClus):
                 # replace innder loop with outer product
                 delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], dxList[jumpInd, :])
+
+            # Next, restore OffSiteCounts to original values for next jump, as well as
+            # for use in the next MC sweep.
+            # During switch-off operations, offsite counts were increased by one.
+            # So decrease them back by one
+            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
+                OffSiteCount[self.SiteSpecInterArray[siteA, state[siteA], interIdx]] -= 1
+
+            # During switch-on operations, offsite counts were decreased by one.
+            # So increase them back by one
+            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
+                OffSiteCount[self.SiteSpecInterArray[siteA, state[siteB], interIdx]] += 1
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
+                OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
 
         # Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 2))
         for i in range(lenVecClus):
