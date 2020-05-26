@@ -455,9 +455,7 @@ class MCSamplerClass(object):
                 if mobOcc[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
                     TransOffSiteCountNew[TsInteractIdx] += 1
 
-    def Expand(self, state, ijList, dxList, OSCount, lenVecClus, beta):
-
-        OffSiteCount = OSCount.copy()
+    def Expand(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, lenVecClus, beta):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
@@ -480,7 +478,7 @@ class MCSamplerClass(object):
                 for interactInd in range(self.numTSInteractsInPtGroups[transInd, tsPtGpInd]):
                     # Check if this interaction is on
                     interactMainInd = self.JumpInteracts[transInd, tsPtGpInd, interactInd]
-                    if OffSiteCount[interactMainInd] == 0:
+                    if TSOffSiteCount[interactMainInd] == 0:
                         delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
 
             # next, calculate the energy change due to site swapping
