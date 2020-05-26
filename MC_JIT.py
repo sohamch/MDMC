@@ -159,15 +159,12 @@ class MCSamplerClass(object):
                 if mobOcc[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
                     TransOffSiteCount[TsInteractIdx] += 1
 
-    def Expand(self, state, ijList, dxList, TsOffSiteCount, OffSiteCount, lenVecClus, beta):
+    def Expand(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, lenVecClus, beta):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
 
         ratelist = np.zeros(ijList.shape[0])
-
-        Wbar = np.zeros((lenVecClus, lenVecClus))
-        Bbar = np.zeros(lenVecClus)
 
         siteA, specA = self.vacSiteInd, self.Nspecs - 1
         # go through all the transitions
@@ -181,13 +178,11 @@ class MCSamplerClass(object):
             # First, work on getting the KRA energy for the jump
             delEKRA = 0.0
             # We need to go through every point group for this jump
-
-            # Modify this part to use transition state cluster data
             for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
                 for interactInd in range(self.numTSInteractsInPtGroups[transInd, tsPtGpInd]):
                     # Check if this interaction is on
                     interactMainInd = self.JumpInteracts[transInd, tsPtGpInd, interactInd]
-                    if OffSiteCount[interactMainInd] == 0:
+                    if TSOffSiteCount[interactMainInd] == 0:
                         delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
 
             # next, calculate the energy change due to site swapping
@@ -210,6 +205,7 @@ class MCSamplerClass(object):
                     delE -= self.Interaction2En[interMainInd]
                     for i in range(self.numVecsInteracts[interMainInd]):
                         del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
+                OffSiteCount[interMainInd] += 1
 
             # Next, switch required sites on
             for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
@@ -234,11 +230,7 @@ class MCSamplerClass(object):
             ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
             del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
 
-            # delxDotdelLamb[:, jumpInd] = np.tensordot(del_lamb, dxList[jumpInd], axes=(1, 0))
-            # let's do the tensordot by hand (work on finding numba support for this)
-            for i in range(lenVecClus):
-                # replace innder loop with outer product
-                delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], dxList[jumpInd, :])
+            delxDotdelLamb[:, jumpInd] = np.tensordot(del_lamb, dxList[jumpInd], axes=(1, 0))
 
             # Next, restore OffSiteCounts to original values for next jump, as well as
             # for use in the next MC sweep.
@@ -255,13 +247,9 @@ class MCSamplerClass(object):
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
                 OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
 
-        # Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 2))
-        for i in range(lenVecClus):
-            for j in range(lenVecClus):
-                Wbar[i, j] += np.dot(del_lamb_mat[i, j, :], ratelist)
-
-        # Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
-        for i in range(lenVecClus):
-            Bbar[i] = np.dot(ratelist, delxDotdelLamb[i, :])
+        ax2 = np.array((0, 2))
+        ax3 = np.array((0, 1))
+        Wbar = np.tensordot(ratelist, del_lamb_mat, axes=ax2)
+        Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=ax3)
 
         return Wbar, Bbar

@@ -528,6 +528,21 @@ class MCSamplerClass(object):
 
             delxDotdelLamb[:, jumpInd] = np.tensordot(del_lamb, dxList[jumpInd], axes=(1, 0))
 
+            # Next, restore OffSiteCounts to original values for next jump, as well as
+            # for use in the next MC sweep.
+            # During switch-off operations, offsite counts were increased by one.
+            # So decrease them back by one
+            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
+                OffSiteCount[self.SiteSpecInterArray[siteA, state[siteA], interIdx]] -= 1
+
+            # During switch-on operations, offsite counts were decreased by one.
+            # So increase them back by one
+            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
+                OffSiteCount[self.SiteSpecInterArray[siteA, state[siteB], interIdx]] += 1
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
+                OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
+
         ax2 = np.array((0, 2))
         ax3 = np.array((0, 1))
         Wbar = np.tensordot(ratelist, del_lamb_mat, axes=ax2)
