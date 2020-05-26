@@ -450,10 +450,9 @@ class MCSamplerClass(object):
 
         # Once a new state is found, update transition state offsite counts
         for TsInteractIdx in range(len(self.TSInteractSites)):
+            TransOffSiteCountNew[TsInteractIdx] = 0
             for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
-                interSite = self.TSInteractSites[TsInteractIdx, Siteind]
-                interSpec = self.TSInteractSpecs[TsInteractIdx, Siteind]
-                if mobOcc[interSite] != interSpec:
+                if mobOcc[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
                     TransOffSiteCountNew[TsInteractIdx] += 1
 
     def Expand(self, state, ijList, dxList, OSCount, lenVecClus, beta):
