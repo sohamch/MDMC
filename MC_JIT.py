@@ -181,6 +181,8 @@ class MCSamplerClass(object):
             # First, work on getting the KRA energy for the jump
             delEKRA = 0.0
             # We need to go through every point group for this jump
+
+            # Modify this part to use transition state cluster data
             for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
                 for interactInd in range(self.numTSInteractsInPtGroups[transInd, tsPtGpInd]):
                     # Check if this interaction is on
