@@ -42,12 +42,17 @@ class MCSamplerClass(object):
                  vacSiteInd, mobOcc):
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts, \
-        self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.jumpFinSites,\
-        self.jumpFinSpec, self.FinSiteFinSpecJumpInd, self.numJumpPointGroups, self.numTSInteractsInPtGroups, self.JumpInteracts,\
-        self.Jump2KRAEng, self.vacSiteInd = \
+        self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.vacSiteInd = \
             numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, \
-            VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd,\
-            numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, vacSiteInd
+            VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd
+
+        self.numSitesTSInteracts, self.TSInteractSites, self.TSInteractSpecs = \
+            numSitesTSInteracts, TSInteractSites, TSInteractSpecs
+
+        self.jumpFinSites, self.jumpFinSpec, self.FinSiteFinSpecJumpInd, self.numJumpPointGroups, self.numTSInteractsInPtGroups, \
+        self.JumpInteracts, self.Jump2KRAEng = \
+            jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, \
+            JumpInteracts, Jump2KRAEng
 
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
