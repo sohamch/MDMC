@@ -120,6 +120,7 @@ class MCSamplerClass(object):
                 # OffSiteCount is already updated to that of the new state.
 
                 # If a new state is found, update transition state offsite counts
+                # Todo: Make this more efficient - only need to update few interactions - not a lot.
                 for TsInteractIdx in range(len(self.TSInteractSites)):
                     TransOffSiteCount[TsInteractIdx] = 0
                     for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
