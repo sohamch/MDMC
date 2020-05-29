@@ -150,6 +150,8 @@ class Test_MC(Test_MC_Arrays):
         # Now put in the vacancy at the vacancy site
         initState[self.vacsiteInd] = self.NSpec - 1
 
+        initCopy = initState.copy()
+
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
         VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
         Index2InteractionDict, repClustCounter =\
@@ -164,7 +166,7 @@ class Test_MC(Test_MC_Arrays):
         MCSampler = Cluster_Expansion.MCSamplerClass(
             numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
             VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
-            TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
+            numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
             FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
             vacSiteInd, initState
         )
@@ -184,20 +186,43 @@ class Test_MC(Test_MC_Arrays):
                 InitEn += Interaction2En[i]
 
         # Do MC single metropolis step that updates the state
-        ofsc = MCSampler.OffSiteCount.copy()
-        # Now calculate the final energies
+        offsc = MCSampler.OffSiteCount.copy()
+        TransOffSiteCountNew = np.zeros(len(TSInteractSites), dtype=int)
+        Nsites = len(self.VclusExp.sup.mobilepos)
+        Nswaptrials = 1  # We are only testing a single step here
+        swaptrials = np.zeros((Nswaptrials, 2), dtype=int)
+
+        count = 0
+        while count < Nswaptrials:
+            # first select two random sites to swap - for now, let's just select naively.
+            siteA = np.random.randint(0, Nsites)
+            siteB = np.random.randint(0, Nsites)
+
+            # make sure we are swapping different atoms because otherwise we are in the same state
+            if initState[siteA] == initState[siteB] or siteA == vacSiteInd or siteB == vacSiteInd:
+                continue
+
+            swaptrials[count, 0] = siteA
+            swaptrials[count, 1] = siteB
+            count += 1
+        randarr = np.log(np.random.rand(Nswaptrials))
+
+        MCSampler.makeMCsweep(initState, offsc, TransOffSiteCountNew, swaptrials, 1.0, randarr, Nswaptrials)
+
+        # Now calculate the final energy based on the new offsite counts
         FinEn = 0.
-        for i in range(len(ofsc)):
-            if ofsc[i] == 0:
+        for i in range(len(offsc)):
+            if offsc[i] == 0:
                 FinEn += Interaction2En[i]
 
-        self.assertTrue(np.allclose(delE, FinEn - InitEn), msg="{}, {}".format(delE, FinEn - InitEn))
+        self.assertTrue(np.allclose(MCSampler.delE, FinEn - InitEn), msg="{}, {}".format(MCSampler.delE, FinEn - InitEn))
 
-        if np.exp(-delE) > rand:
-            self.assertTrue(np.array_equal(stateNew, newstate))
+        if np.exp(-MCSampler.delE) > randarr[0]:
+            self.assertEqual(initState[siteA], initCopy[siteB])
+            self.assertEqual(initState[siteB], initCopy[siteA])
             print("move was accepted")
         else:
-            self.assertTrue(np.array_equal(initState, newstate))
+            self.assertTrue(np.array_equal(initState, initCopy))
             print("move was not accepted")
 
 
