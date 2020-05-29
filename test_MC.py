@@ -6,6 +6,11 @@ import Cluster_Expansion
 import MC_JIT
 import unittest
 import time
+import warnings
+
+warnings.filterwarnings('error', category=RuntimeWarning)
+
+np.seterr(all='raise')
 
 class Test_MC_Arrays(unittest.TestCase):
 
@@ -150,8 +155,8 @@ class Test_MC(Test_MC_Arrays):
 
         # Now put in the vacancy at the vacancy site
         initState[self.vacsiteInd] = self.NSpec - 1
-
         initCopy = initState.copy()
+        initJit = initState.copy()
 
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
         VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
@@ -206,11 +211,30 @@ class Test_MC(Test_MC_Arrays):
             swaptrials[count, 0] = siteA
             swaptrials[count, 1] = siteB
             count += 1
-        randarr = np.log(np.random.rand(Nswaptrials))
+        randarr = np.random.rand(Nswaptrials)
+        randarr = np.log(randarr)
 
         MCSampler.makeMCsweep(initState, offsc, TransOffSiteCountNew, swaptrials, 1.0, randarr, Nswaptrials)
 
-        # Now, first check
+        # Check that offsitecounts are updated correctly
+        for interactIdx in range(numSitesInteracts.shape[0]):
+            numSites = numSitesInteracts[interactIdx]
+            offcount = 0
+            for intSiteind in range(numSites):
+                interSite = SupSitesInteracts[interactIdx, intSiteind]
+                interSpec = SpecOnInteractSites[interactIdx, intSiteind]
+                if initState[interSite] != interSpec:
+                    offcount += 1
+            self.assertTrue(offsc[interactIdx] == offcount)
+
+
+        for TsInteractIdx in range(len(TransOffSiteCountNew)):
+            offcount = 0
+            for Siteind in range(numSitesTSInteracts[TsInteractIdx]):
+                if initState[TSInteractSites[TsInteractIdx, Siteind]] != TSInteractSpecs[TsInteractIdx, Siteind]:
+                    offcount += 1
+            self.assertEqual(TransOffSiteCountNew[TsInteractIdx], offcount)
+
         offsc2 = MCSampler.OffSiteCount.copy()
         for intInd in range(numInteractsSiteSpec[siteA, initCopy[siteA]]):
             offsc2[SiteSpecInterArray[siteA, initCopy[siteA], intInd]] += 1
@@ -230,10 +254,9 @@ class Test_MC(Test_MC_Arrays):
             if offsc2[i] == 0:
                 FinEn += Interaction2En[i]
 
-        initJit = initCopy.copy()
-
-        OffSiteCount = np.zeros_like(MCSampler.OffSiteCount)
+        OffSiteCount = np.zeros_like(MCSampler.OffSiteCount, dtype=int)
         TSOffSiteCount2 = TransOffSiteCountNew.copy()
+
         MCSampler_Jit = MC_JIT.MCSamplerClass(
             numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
             VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
@@ -241,17 +264,9 @@ class Test_MC(Test_MC_Arrays):
             FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
             vacSiteInd, initJit, OffSiteCount
         )
+
         offscjit = MCSampler_Jit.OffSiteCount.copy()
         MCSampler_Jit.makeMCsweep(initJit, offscjit, TSOffSiteCount2, swaptrials, 1.0, randarr, Nswaptrials)
-
-        # Check that TS offsite counts are updated correctly.
-        for TsInteractIdx in range(len(TransOffSiteCountNew)):
-            offcount = 0
-            for Siteind in range(numSitesTSInteracts[TsInteractIdx]):
-                if initState[TSInteractSites[TsInteractIdx, Siteind]] != TSInteractSpecs[TsInteractIdx, Siteind]:
-                    offcount += 1
-
-            self.assertEqual(TransOffSiteCountNew[TsInteractIdx], offcount)
 
         # Check that the same results are found
         self.assertTrue(np.array_equal(initJit, initState))
@@ -262,7 +277,6 @@ class Test_MC(Test_MC_Arrays):
         if np.exp(-MCSampler.delE) > np.exp(randarr[0]):
             self.assertEqual(initState[siteA], initCopy[siteB])
             self.assertEqual(initState[siteB], initCopy[siteA])
-
             print("move was accepted")
         else:
             self.assertTrue(np.array_equal(initState, initCopy))

@@ -4,7 +4,7 @@ from numba import int64, float64
 
 # Paste all the function definitions here as comments
 
-
+np.seterr(all='raise')
 MonteCarloSamplerSpec = [
     ("numInteractsSiteSpec", int64[:, :]),
     ("SiteSpecInterArray", int64[:, :, :]),
@@ -113,7 +113,7 @@ class MCSamplerClass(object):
                     delE += self.Interaction2En[interMainInd]
                     
             # do the selection test
-            if np.exp(-beta*delE) > randarr[swapcount]:
+            if -beta*delE > randarr[swapcount]:
                 # swap the sites to get to the next state
                 mobOcc[siteA] = specB
                 mobOcc[siteB] = specA
