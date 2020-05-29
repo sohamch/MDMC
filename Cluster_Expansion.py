@@ -476,7 +476,7 @@ class MCSamplerClass(object):
                     delE -= self.Interaction2En[interMainInd]
                     for i in range(self.numVecsInteracts[interMainInd]):
                         del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
-                OffSiteCount[interMainInd] += 1
+                # OffSiteCount[interMainInd] += 1
 
             # Next, switch required sites on
             for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
