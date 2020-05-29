@@ -3,15 +3,16 @@ import numpy as np
 import itertools
 import Transitions
 import Cluster_Expansion
+import MC_JIT
 import unittest
 import time
 
 class Test_MC_Arrays(unittest.TestCase):
 
     def setUp(self):
-        self.NSpec = 5
-        self.MaxOrder = 2
-        self.MaxOrderTrans = 4
+        self.NSpec = 4
+        self.MaxOrder = 3
+        self.MaxOrderTrans = 3
         self.crys = crystal.Crystal.BCC(0.2836, chemistry="A")
         self.jnetBCC = self.crys.jumpnetwork(0, 0.26)
         self.superlatt = 8 * np.eye(3, dtype=int)
@@ -26,7 +27,7 @@ class Test_MC_Arrays(unittest.TestCase):
             self.mobOccs[spec][site] = 1
         self.mobOccs[-1, self.vacsiteInd] = 1
         self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
-        self.clusexp = cluster.makeclusters(self.crys, 0.284*2, self.MaxOrder)
+        self.clusexp = cluster.makeclusters(self.crys, 0.284, self.MaxOrder)
         self.Tclusexp = cluster.makeclusters(self.crys, 0.29, self.MaxOrderTrans)
         self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.Tclusexp, self.Tclusexp, self.mobCountList,
                                                  self.vacsite)
@@ -140,7 +141,7 @@ class Test_MC_Arrays(unittest.TestCase):
 
 class Test_MC(Test_MC_Arrays):
 
-    def test_MC_steps(self):
+    def test_MC_step(self):
         # First, create a random state
         initState = np.zeros(len(self.VclusExp.sup.mobilepos), dtype=int)
         # Now assign random species (excluding the vacancy)
@@ -209,21 +210,65 @@ class Test_MC(Test_MC_Arrays):
 
         MCSampler.makeMCsweep(initState, offsc, TransOffSiteCountNew, swaptrials, 1.0, randarr, Nswaptrials)
 
+        # Now, first check
+        offsc2 = MCSampler.OffSiteCount.copy()
+        for intInd in range(numInteractsSiteSpec[siteA, initCopy[siteA]]):
+            offsc2[SiteSpecInterArray[siteA, initCopy[siteA], intInd]] += 1
+
+        for intInd in range(numInteractsSiteSpec[siteB, initCopy[siteB]]):
+            offsc2[SiteSpecInterArray[siteB, initCopy[siteB], intInd]] += 1
+
+        for intInd in range(numInteractsSiteSpec[siteA, initCopy[siteB]]):
+            offsc2[SiteSpecInterArray[siteA, initCopy[siteB], intInd]] -= 1
+
+        for intInd in range(numInteractsSiteSpec[siteB, initCopy[siteA]]):
+            offsc2[SiteSpecInterArray[siteB, initCopy[siteA], intInd]] -= 1
+
         # Now calculate the final energy based on the new offsite counts
         FinEn = 0.
-        for i in range(len(offsc)):
-            if offsc[i] == 0:
+        for i in range(len(offsc2)):
+            if offsc2[i] == 0:
                 FinEn += Interaction2En[i]
 
-        self.assertTrue(np.allclose(MCSampler.delE, FinEn - InitEn), msg="{}, {}".format(MCSampler.delE, FinEn - InitEn))
+        initJit = initCopy.copy()
 
-        if -MCSampler.delE > randarr[0]:
+        OffSiteCount = np.zeros_like(MCSampler.OffSiteCount)
+        TSOffSiteCount2 = TransOffSiteCountNew.copy()
+        MCSampler_Jit = MC_JIT.MCSamplerClass(
+            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
+            VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
+            numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
+            FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
+            vacSiteInd, initJit, OffSiteCount
+        )
+        offscjit = MCSampler_Jit.OffSiteCount.copy()
+        MCSampler_Jit.makeMCsweep(initJit, offscjit, TSOffSiteCount2, swaptrials, 1.0, randarr, Nswaptrials)
+
+        # Check that TS offsite counts are updated correctly.
+        for TsInteractIdx in range(len(TransOffSiteCountNew)):
+            offcount = 0
+            for Siteind in range(numSitesTSInteracts[TsInteractIdx]):
+                if initState[TSInteractSites[TsInteractIdx, Siteind]] != TSInteractSpecs[TsInteractIdx, Siteind]:
+                    offcount += 1
+
+            self.assertEqual(TransOffSiteCountNew[TsInteractIdx], offcount)
+
+        # Check that the same results are found
+        self.assertTrue(np.array_equal(initJit, initState))
+        self.assertTrue(np.array_equal(offscjit, offsc))
+        self.assertTrue(np.array_equal(TransOffSiteCountNew, TSOffSiteCount2))
+
+        # test that energy calculation and site swaps are done correctly.
+        if np.exp(-MCSampler.delE) > np.exp(randarr[0]):
             self.assertEqual(initState[siteA], initCopy[siteB])
             self.assertEqual(initState[siteB], initCopy[siteA])
+
             print("move was accepted")
         else:
             self.assertTrue(np.array_equal(initState, initCopy))
             print("move was not accepted")
+
+        self.assertTrue(np.allclose(MCSampler.delE, FinEn - InitEn), msg="{}, {}".format(MCSampler.delE, FinEn - InitEn))
 
 
 

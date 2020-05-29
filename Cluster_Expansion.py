@@ -398,6 +398,7 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
 
+            self.delE = delE  # for testing purposes
             # do the selection test
             if -beta * delE > randarr[swapcount]:
                 # swap the sites to get to the next state
@@ -422,8 +423,6 @@ class MCSamplerClass(object):
                 for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
                     # interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
                     OffSiteCount[self.SiteSpecInterArray[siteB, specA, interIdx]] += 1
-
-            self.delE = delE  # for testing purposes
 
         # make the offsite for the transition states
         for TsInteractIdx in range(len(self.TSInteractSites)):
