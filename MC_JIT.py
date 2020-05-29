@@ -119,14 +119,6 @@ class MCSamplerClass(object):
                 mobOcc[siteB] = specA
                 # OffSiteCount is already updated to that of the new state.
 
-                # If a new state is found, update transition state offsite counts
-                # Todo: Make this more efficient - only need to update few interactions - not a lot.
-                for TsInteractIdx in range(len(self.TSInteractSites)):
-                    TransOffSiteCount[TsInteractIdx] = 0
-                    for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
-                        if mobOcc[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
-                            TransOffSiteCount[TsInteractIdx] += 1
-
             else:
                 # revert back the off site counts, because the state has not changed
                 for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
@@ -144,6 +136,13 @@ class MCSamplerClass(object):
                 for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
                     # interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
                     OffSiteCount[self.SiteSpecInterArray[siteB, specA, interIdx]] += 1
+
+        # make the offsite for the transition states
+        for TsInteractIdx in range(len(self.TSInteractSites)):
+            TransOffSiteCount[TsInteractIdx] = 0
+            for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
+                if mobOcc[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
+                    TransOffSiteCount[TsInteractIdx] += 1
 
     def Expand(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, lenVecClus, beta):
 
