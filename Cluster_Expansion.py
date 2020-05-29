@@ -399,7 +399,7 @@ class MCSamplerClass(object):
                     delE += self.Interaction2En[interMainInd]
 
             # do the selection test
-            if np.exp(-beta * delE) > randarr[swapcount]:
+            if -beta * delE > randarr[swapcount]:
                 # swap the sites to get to the next state
                 mobOcc[siteA] = specB
                 mobOcc[siteB] = specA

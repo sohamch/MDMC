@@ -217,7 +217,7 @@ class Test_MC(Test_MC_Arrays):
 
         self.assertTrue(np.allclose(MCSampler.delE, FinEn - InitEn), msg="{}, {}".format(MCSampler.delE, FinEn - InitEn))
 
-        if np.exp(-MCSampler.delE) > randarr[0]:
+        if -MCSampler.delE > randarr[0]:
             self.assertEqual(initState[siteA], initCopy[siteB])
             self.assertEqual(initState[siteB], initCopy[siteA])
             print("move was accepted")
