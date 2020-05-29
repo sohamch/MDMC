@@ -177,39 +177,18 @@ class Test_MC(Test_MC_Arrays):
                     offsiteCount += 1
             self.assertEqual(MCSampler.OffSiteCount[interactionInd], offsiteCount)
 
-        # Now, we test some single MC steps
-        start = time.time()
-        siteA, siteB, delE, newstate, rand = MCSampler.makeMCsweep(1, 1.0, test_single=True)
-        print("Single swap time : {}".format(time.time() - start))
-
-        print(siteA, siteB)
-        # evaluate the energy change manually
-        # switch occupancies of the two sites
-        stateNew = initState.copy()
-        temp = stateNew[siteA]
-        stateNew[siteA] = stateNew[siteB]
-        stateNew[siteB] = temp
-
-        # Now get the intial energies from all the interactions that are "on" in the initial state
-        # get the off site counts for the interactions in the new state
-        NewOffSiteCount = np.zeros_like(MCSampler.OffSiteCount)
-        for (interaction, interactionInd) in InteractionIndexDict.items():
-            # offsiteCount = 0
-            for (site, spec) in interaction:
-                if stateNew[site] != spec:
-                    NewOffSiteCount[interactionInd] += 1
-            # NewOffSiteCount[interactionInd] = offsiteCount
-
-        # calculate Intial energy
+        # calculate Initial energy
         InitEn = 0.
         for i in range(len(MCSampler.OffSiteCount)):
             if MCSampler.OffSiteCount[i] == 0:
                 InitEn += Interaction2En[i]
 
+        # Do MC single metropolis step that updates the state
+        ofsc = MCSampler.OffSiteCount.copy()
         # Now calculate the final energies
         FinEn = 0.
-        for i in range(len(NewOffSiteCount)):
-            if NewOffSiteCount[i] == 0:
+        for i in range(len(ofsc)):
+            if ofsc[i] == 0:
                 FinEn += Interaction2En[i]
 
         self.assertTrue(np.allclose(delE, FinEn - InitEn), msg="{}, {}".format(delE, FinEn - InitEn))

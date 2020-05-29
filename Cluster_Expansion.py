@@ -423,6 +423,8 @@ class MCSamplerClass(object):
                     # interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
                     OffSiteCount[self.SiteSpecInterArray[siteB, specA, interIdx]] += 1
 
+            self.delE = delE  # for testing purposes
+
         # make the offsite for the transition states
         for TsInteractIdx in range(len(self.TSInteractSites)):
             TransOffSiteCount[TsInteractIdx] = 0
