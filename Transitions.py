@@ -153,9 +153,8 @@ class KRAExpand(object):
         """
         Given a transition and a state, get the KRA activation value for that jump in that state.
         During testing, we'll assume that fitting KRA coefficients has already been done.
-        :param transition: the transition in the form of ((I,J), dx) - supercell indices
+        :param transition: the transition in the form of (I,J, specJ) - supercell indices
         :param mobOcc: the state as an array of occupancy vectors.
-        :param specJ: the species that exchanges with the vacancies.
         :param KRACoeffs: the KRA coefficients for that type of jump, arranged appropriately for each cluster.
         :return: The Calculated KRA activation energy.
         """
