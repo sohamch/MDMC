@@ -403,7 +403,7 @@ class Test_MC(Test_MC_Arrays):
                 interMainInd = SiteSpecInterArray[siteB, state[siteB], interIdx]
                 if offscjit[interMainInd] == 0:
                     delE -= Interaction2En[interMainInd]
-                # offscjit[interMainInd] += 1
+                offscjit[interMainInd] += 1
 
             # Next, switch required sites on
             for interIdx in range(numInteractsSiteSpec[siteA, state[siteB]]):
@@ -425,70 +425,79 @@ class Test_MC(Test_MC_Arrays):
         Bbar_test = np.zeros_like(Bbar, dtype=float)
 
         # Now construct the test arrays
-        # for vs1 in range(len(self.VclusExp.vecVec)):
-        #     for vs2 in range(len(self.VclusExp.vecVec)):
-        #         # Go through all the jumps
-        #         for TInd in range(len(ijList)):
-        #             # For every jump, reset the offsite count
-        #             offscjit = MCSampler_Jit.OffSiteCount.copy()
-        #             TSOffCount = TransOffSiteCount.copy()
-        #             delE = 0.0
-        #             delEKRA = 0.0
-        #             vec1 = np.zeros(3, dtype=float)
-        #             vec2 = np.zeros(3, dtype=float)
-        #
-        #             siteB = ijList[TInd]
-        #             siteA = MCSampler_Jit.vacSiteInd
-        #             # Check that the initial site is always the vacancy
-        #             specA = state[siteA]  # the vacancy
-        #             self.assertEqual(specA, self.NSpec - 1)
-        #             self.assertEqual(siteA, self.vacsiteInd)
-        #             specB = state[siteB]
-        #             # get the index of this transition
-        #             self.assertEqual(specB, SpecTransArray[TInd])
-        #             self.assertEqual(siteB, SiteTransArray[TInd])
-        #
-        #             jumpInd = FinSiteFinSpecJumpInd[siteB, specB]
-        #             # get the KRA energy for this jump in this state
-        #             for ptgrpInd in range(numJumpPointGroups[jumpInd]):
-        #                 for ptGpInteractInd in range(numTSInteractsInPtGroups[jumpInd, ptgrpInd]):
-        #                     # See if the interaction is on
-        #                     offcount = TSOffCount[JumpInteracts[jumpInd, ptgrpInd, ptGpInteractInd]]
-        #                     if offcount == 0:
-        #                         delEKRA += Jump2KRAEng[jumpInd, ptgrpInd, ptGpInteractInd]
-        #
-        #             self.assertTrue(np.allclose(delEKRA, delEKRAarray[TInd]), msg="{} {}".format(delEKRA, delEKRAarray[TInd]))
-        #
-        #             # Now do the site swaps and calculate the energy
-        #             for interIdx in range(numInteractsSiteSpec[siteA, state[siteA]]):
-        #                 # check if an interaction is on
-        #                 interMainInd = SiteSpecInterArray[siteA, state[siteA], interIdx]
-        #                 if offscjit[interMainInd] == 0:
-        #                     delE -= Interaction2En[interMainInd]
-        #                     # take away the vectors for this interaction
-        #                 offscjit[interMainInd] += 1
-        #
-        #             for interIdx in range(numInteractsSiteSpec[siteB, state[siteB]]):
-        #                 interMainInd = SiteSpecInterArray[siteB, state[siteB], interIdx]
-        #                 if offscjit[interMainInd] == 0:
-        #                     delE -= Interaction2En[interMainInd]
-        #                 offscjit[interMainInd] += 1
-        #
-        #             # Next, switch required sites on
-        #             for interIdx in range(numInteractsSiteSpec[siteA, state[siteB]]):
-        #                 interMainInd = SiteSpecInterArray[siteA, state[siteB], interIdx]
-        #                 offscjit[interMainInd] -= 1
-        #                 if offscjit[interMainInd] == 0:
-        #                     delE += Interaction2En[interMainInd]
-        #                     # add the vectors for this interaction
-        #
-        #             for interIdx in range(numInteractsSiteSpec[siteB, state[siteA]]):
-        #                 interMainInd = SiteSpecInterArray[siteB, state[siteA], interIdx]
-        #                 offscjit[interMainInd] -= 1
-        #                 if offscjit[interMainInd] == 0:
-        #                     delE += Interaction2En[interMainInd]
-        #
-        #             self.assertTrue(np.allclose(delE, delEarray[TInd]), msg="{} {} {}".format(TInd, delE, delEarray[TInd]))
+        for vs1 in range(len(self.VclusExp.vecVec)):
+            for vs2 in range(len(self.VclusExp.vecVec)):
+                # Go through all the jumps
+                for TInd in range(len(ijList)):
+                    # For every jump, reset the offsite count
+                    offscjit = MCSampler_Jit.OffSiteCount.copy()
+                    TSOffCount = TransOffSiteCount.copy()
+
+                    delEKRA = 0.0
+                    # vec1 = np.zeros(3, dtype=float)
+                    # vec2 = np.zeros(3, dtype=float)
+
+                    siteB = ijList[TInd]
+                    siteA = MCSampler_Jit.vacSiteInd
+                    # Check that the initial site is always the vacancy
+                    specA = state[siteA]  # the vacancy
+                    self.assertEqual(specA, self.NSpec - 1)
+                    self.assertEqual(siteA, self.vacsiteInd)
+                    specB = state[siteB]
+                    # get the index of this transition
+                    self.assertEqual(specB, SpecTransArray[TInd])
+                    self.assertEqual(siteB, SiteTransArray[TInd])
+
+                    jumpInd = FinSiteFinSpecJumpInd[siteB, specB]
+                    # get the KRA energy for this jump in this state
+                    for ptgrpInd in range(numJumpPointGroups[jumpInd]):
+                        for ptGpInteractInd in range(numTSInteractsInPtGroups[jumpInd, ptgrpInd]):
+                            # See if the interaction is on
+                            offcount = TSOffCount[JumpInteracts[jumpInd, ptgrpInd, ptGpInteractInd]]
+                            if offcount == 0:
+                                delEKRA += Jump2KRAEng[jumpInd, ptgrpInd, ptGpInteractInd]
+
+                    self.assertTrue(np.allclose(delEKRA, delEKRAarray[TInd]), msg="{} {}".format(delEKRA, delEKRAarray[TInd]))
+
+                    # Now do the site swaps and calculate the energy
+                    #     for interIdx in range(numInteractsSiteSpec[siteA, state[siteA]]):
+                    #         # check if an interaction is on
+                    #         interMainInd = SiteSpecInterArray[siteA, state[siteA], interIdx]
+                    #         if offscjit[interMainInd] == 0:
+                    #             delE -= Interaction2En[interMainInd]
+                    #             # take away the vectors for this interaction
+                    #         offscjit[interMainInd] += 1
+                    delE = 0.0
+                    for interIdx in range(numInteractsSiteSpec[siteA, state[siteA]]):
+                        # check if an interaction is on
+                        interMainInd = SiteSpecInterArray[siteA, state[siteA], interIdx]
+                        if offscjit[interMainInd] == 0:
+                            delE -= Interaction2En[interMainInd]
+                            # take away the vectors for this interaction
+                        offscjit[interMainInd] += 1
+
+                    for interIdx in range(numInteractsSiteSpec[siteB, state[siteB]]):
+                        interMainInd = SiteSpecInterArray[siteB, state[siteB], interIdx]
+                        if offscjit[interMainInd] == 0:
+                            delE -= Interaction2En[interMainInd]
+                        offscjit[interMainInd] += 1
+
+                    # Next, switch required sites on
+                    for interIdx in range(numInteractsSiteSpec[siteA, state[siteB]]):
+                        interMainInd = SiteSpecInterArray[siteA, state[siteB], interIdx]
+                        offscjit[interMainInd] -= 1
+                        if offscjit[interMainInd] == 0:
+                            delE += Interaction2En[interMainInd]
+                            # add the vectors for this interaction
+
+                    for interIdx in range(numInteractsSiteSpec[siteB, state[siteA]]):
+                        interMainInd = SiteSpecInterArray[siteB, state[siteA], interIdx]
+                        offscjit[interMainInd] -= 1
+                        if offscjit[interMainInd] == 0:
+                            delE += Interaction2En[interMainInd]
+
+                    self.assertTrue(np.allclose(delE, delEarray[TInd]),
+                                    msg="{} {} {} {} {}".format(vs1, vs2, TInd, delE, delEarray[TInd]))
 
                     # for interactnun in range(numInteractsSiteSpec[siteA, specA]):
                     #     interactInd = SiteSpecInterArray[siteA, specA, interactnun]

@@ -159,7 +159,7 @@ class MCSamplerClass(object):
         # go through all the transition
 
         for jumpInd in range(ijList.shape[0]):
-            del_lamb = np.zeros((lenVecClus, 3))
+            del_lamb = np.zeros((lenVecClus, 3), dtype=float64)
 
             # Get the transition index
             siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
@@ -200,7 +200,7 @@ class MCSamplerClass(object):
                     delE -= self.Interaction2En[interMainInd]
                     # for i in range(self.numVecsInteracts[interMainInd]):
                     #     del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
-                # OffSiteCount[interMainInd] += 1
+                OffSiteCount[interMainInd] += 1
 
             # Next, switch required sites on
             for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
@@ -238,6 +238,9 @@ class MCSamplerClass(object):
             # So decrease them back by one
             for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
                 OffSiteCount[self.SiteSpecInterArray[siteA, state[siteA], interIdx]] -= 1
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
+                OffSiteCount[self.SiteSpecInterArray[siteB, state[siteB], interIdx]] -= 1
 
             # During switch-on operations, offsite counts were decreased by one.
             # So increase them back by one
