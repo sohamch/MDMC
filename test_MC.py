@@ -348,10 +348,17 @@ class Test_MC(Test_MC_Arrays):
         SiteTransArray = np.zeros(ijList.shape[0], dtype=int)
         SpecTransArray = np.zeros(ijList.shape[0], dtype=int)
 
-        Wbar, Bbar = MCSampler_Jit.Expand(state, ijList, dxList, offscjit, TransOffSiteCount, lenVecClus, 1.0,
-                                          delEKRAarray, delEarray, SiteTransArray, SpecTransArray)
+        Wbar = np.zeros((lenVecClus, lenVecClus), dtype=float)
+        Bbar = np.zeros(lenVecClus, dtype=float)
+
+        ratelist, del_lamb_mat = MCSampler_Jit.Expand(state, ijList, dxList, offscjit, TransOffSiteCount,
+                                                                  lenVecClus, 1.0, delEKRAarray, delEarray, SiteTransArray,
+                                                                  SpecTransArray, Wbar, Bbar)
 
         # Check that the offsitecounts have been correctly reverted and state is unchanged.
+
+        # self.assertFalse(np.allclose(Wbar, np.zeros_like(Wbar)))
+
         self.assertTrue(np.array_equal(MCSampler_Jit.OffSiteCount, offscjit))
         self.assertTrue(np.array_equal(state, initState))
 
@@ -361,7 +368,7 @@ class Test_MC(Test_MC_Arrays):
 
         print("Starting TS tests")
         Wbar_test = np.zeros_like(Wbar, dtype=float)
-        Bbar_test = np.zeros_like(Bbar, dtype=float)
+        # Bbar_test = np.zeros_like(Bbar, dtype=float)
 
         # Now construct the test arrays
         for vs1 in range(len(self.VclusExp.vecVec)):
@@ -400,36 +407,6 @@ class Test_MC(Test_MC_Arrays):
 
                     # Now do the site swaps and calculate the energy
                     delE = 0.0
-                    # for interIdx in range(numInteractsSiteSpec[siteA, state[siteA]]):
-                    #     # check if an interaction is on
-                    #     interMainInd = SiteSpecInterArray[siteA, state[siteA], interIdx]
-                    #     if offscjit[interMainInd] == 0:
-                    #         delE -= Interaction2En[interMainInd]
-                    #         # take away the vectors for this interaction
-                    #     offscjit[interMainInd] += 1
-                    #
-                    # for interIdx in range(numInteractsSiteSpec[siteB, state[siteB]]):
-                    #     interMainInd = SiteSpecInterArray[siteB, state[siteB], interIdx]
-                    #     if offscjit[interMainInd] == 0:
-                    #         delE -= Interaction2En[interMainInd]
-                    #     offscjit[interMainInd] += 1
-                    #
-                    # # Next, switch required sites on
-                    # for interIdx in range(numInteractsSiteSpec[siteA, state[siteB]]):
-                    #     interMainInd = SiteSpecInterArray[siteA, state[siteB], interIdx]
-                    #     offscjit[interMainInd] -= 1
-                    #     if offscjit[interMainInd] == 0:
-                    #         delE += Interaction2En[interMainInd]
-                    #         # add the vectors for this interaction
-                    #
-                    # for interIdx in range(numInteractsSiteSpec[siteB, state[siteA]]):
-                    #     interMainInd = SiteSpecInterArray[siteB, state[siteA], interIdx]
-                    #     offscjit[interMainInd] -= 1
-                    #     if offscjit[interMainInd] == 0:
-                    #         delE += Interaction2En[interMainInd]
-                    #
-                    # self.assertTrue(np.allclose(delE, delEarray[TInd]),
-                    #                 msg="{} {} {} {} {}".format(vs1, vs2, TInd, delE, delEarray[TInd]))
 
                     for interactnun in range(numInteractsSiteSpec[siteA, specA]):
                         interactInd = SiteSpecInterArray[siteA, specA, interactnun]
@@ -444,11 +421,9 @@ class Test_MC(Test_MC_Arrays):
                             delE -= Interaction2En[interactInd]
                             for tupInd, tup in enumerate(vecList):
                                 if tup[0] == vs1:
-                                    self.assertEqual(VecGroupInteracts[interactInd, tupInd], vs1)
                                     vec1 -= VecsInteracts[interactInd, tupInd, :]
                             for tupInd, tup in enumerate(vecList):
                                 if tup[0] == vs2:
-                                    self.assertEqual(VecGroupInteracts[interactInd, tupInd], vs2)
                                     vec2 -= VecsInteracts[interactInd, tupInd, :]
                         offscjit[interactInd] += 1
 
@@ -465,11 +440,9 @@ class Test_MC(Test_MC_Arrays):
                             delE -= Interaction2En[interactInd]
                             for tupInd, tup in enumerate(vecList):
                                 if tup[0] == vs1:
-                                    self.assertEqual(VecGroupInteracts[interactInd, tupInd], vs1)
                                     vec1 -= VecsInteracts[interactInd, tupInd, :]
                             for tupInd, tup in enumerate(vecList):
                                 if tup[0] == vs2:
-                                    self.assertEqual(VecGroupInteracts[interactInd, tupInd], vs2)
                                     vec2 -= VecsInteracts[interactInd, tupInd, :]
                         offscjit[interactInd] += 1
 
@@ -492,11 +465,9 @@ class Test_MC(Test_MC_Arrays):
                             vecList = self.VclusExp.clust2vecClus[repClus]
                             for tupInd, tup in enumerate(vecList):
                                 if tup[0] == vs1:
-                                    self.assertEqual(VecGroupInteracts[interactInd, tupInd], vs1)
                                     vec1 += VecsInteracts[interactInd, tupInd, :]
                             for tupInd, tup in enumerate(vecList):
                                 if tup[0] == vs2:
-                                    self.assertEqual(VecGroupInteracts[interactInd, tupInd], vs2)
                                     vec2 += VecsInteracts[interactInd, tupInd, :]
 
                     for interactnun in range(numInteractsSiteSpec[siteB, specA]):
@@ -527,12 +498,16 @@ class Test_MC(Test_MC_Arrays):
                     rate = np.exp(-(0.5 * delE + delEKRA))
                     # get the dot product
                     dot = np.dot(vec1, vec2)
+                    self.assertTrue(np.allclose(rate, ratelist[TInd]))
+                    self.assertTrue(np.allclose(dot, del_lamb_mat[vs1, vs2, TInd]))
                     Wbar_test[vs1, vs2] += rate*dot
 
                 # if np.allclose(Wbar_test[vs1, vs2], 0):
-                #     print(vs1, vs2)
+
                 # self.assertTrue(np.allclose(Wbar[vs1, vs2], Wbar_test[vs1, vs2]), msg="{}, {}\n {}, {}"
                 #                     .format(vs1, vs2, Wbar[vs1, vs2], Wbar_test[vs1, vs2]))
+                print(vs1, vs2)
+        self.assertTrue(np.allclose(Wbar, Wbar_test))
 
 
 
