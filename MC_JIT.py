@@ -144,8 +144,11 @@ class MCSamplerClass(object):
                 if mobOcc[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
                     TransOffSiteCount[TsInteractIdx] += 1
 
-    def Expand(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, lenVecClus, beta, delEKRAarray, delEarray,
-               SiteTransArray, SpecTransArray, WBar, BBar):
+    # For testing, use this signature.
+    # def Expand(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, lenVecClus, beta, delEKRAarray, delEarray,
+    #            SiteTransArray, SpecTransArray, WBar, BBar):
+
+    def Expand(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, lenVecClus, beta):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
@@ -162,8 +165,8 @@ class MCSamplerClass(object):
             siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
             transInd = self.FinSiteFinSpecJumpInd[siteB, specB]
 
-            SiteTransArray[jumpInd] = siteB
-            SpecTransArray[jumpInd] = specB
+            # SiteTransArray[jumpInd] = siteB
+            # SpecTransArray[jumpInd] = specB
 
             # First, work on getting the KRA energy for the jump
             delEKRA = 0.0
@@ -175,7 +178,7 @@ class MCSamplerClass(object):
                     if TSOffSiteCount[interactMainInd] == 0:
                         delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
 
-            delEKRAarray[jumpInd] = delEKRA
+            # delEKRAarray[jumpInd] = delEKRA
 
             # next, calculate the energy change due to site swapping
 
@@ -218,7 +221,7 @@ class MCSamplerClass(object):
                     for i in range(self.numVecsInteracts[interMainInd]):
                         del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
 
-            delEarray[jumpInd] = delE
+            # delEarray[jumpInd] = delE
             # Energy change computed, now expand
             ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
             del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
@@ -247,21 +250,19 @@ class MCSamplerClass(object):
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
                 OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
 
-        Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 2))
-
-        if np.allclose(Wbar, np.zeros_like(Wbar)):
-            raise ValueError("Wbar found to be all zeros")
-
+        # Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 2))
+        WBar = np.zeros((lenVecClus, lenVecClus))
         for i in range(lenVecClus):
             for j in range(lenVecClus):
                 WBar[i, j] += np.dot(del_lamb_mat[i, j, :], ratelist)
 
-        assert np.allclose(Wbar, WBar)
+        # assert np.allclose(Wbar, WBar)
 
-        Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
+        # Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
+        BBar = np.zeros(lenVecClus)
         for i in range(lenVecClus):
             BBar[i] = np.dot(ratelist, delxDotdelLamb[i, :])
 
-        assert np.allclose(Bbar, BBar)
+        # assert np.allclose(Bbar, BBar)
 
-        return ratelist, del_lamb_mat
+        return WBar, BBar

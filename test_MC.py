@@ -341,19 +341,8 @@ class Test_MC(Test_MC_Arrays):
         lenVecClus = len(self.VclusExp.vecClus)
 
         # Now, do the expansion
-
-        delEarray = np.zeros(ijList.shape[0], dtype=float)
-        delEKRAarray = np.zeros(ijList.shape[0], dtype=float)
-
-        SiteTransArray = np.zeros(ijList.shape[0], dtype=int)
-        SpecTransArray = np.zeros(ijList.shape[0], dtype=int)
-
-        Wbar = np.zeros((lenVecClus, lenVecClus), dtype=float)
-        Bbar = np.zeros(lenVecClus, dtype=float)
-
-        ratelist, del_lamb_mat = MCSampler_Jit.Expand(state, ijList, dxList, offscjit, TransOffSiteCount,
-                                                                  lenVecClus, 1.0, delEKRAarray, delEarray, SiteTransArray,
-                                                                  SpecTransArray, Wbar, Bbar)
+        Wbar, Bbar = MCSampler_Jit.Expand(state, ijList, dxList, offscjit, TransOffSiteCount,
+                                                                  lenVecClus, 1.0)
 
         # Check that the offsitecounts have been correctly reverted and state is unchanged.
 
@@ -391,8 +380,8 @@ class Test_MC(Test_MC_Arrays):
                     self.assertEqual(siteA, self.vacsiteInd)
                     specB = state[siteB]
                     # get the index of this transition
-                    self.assertEqual(specB, SpecTransArray[TInd])
-                    self.assertEqual(siteB, SiteTransArray[TInd])
+                    # self.assertEqual(specB, SpecTransArray[TInd])
+                    # self.assertEqual(siteB, SiteTransArray[TInd])
 
                     jumpInd = FinSiteFinSpecJumpInd[siteB, specB]
                     # get the KRA energy for this jump in this state
@@ -403,7 +392,7 @@ class Test_MC(Test_MC_Arrays):
                             if offcount == 0:
                                 delEKRA += Jump2KRAEng[jumpInd, ptgrpInd, ptGpInteractInd]
 
-                    self.assertTrue(np.allclose(delEKRA, delEKRAarray[TInd]), msg="{} {}".format(delEKRA, delEKRAarray[TInd]))
+                    # self.assertTrue(np.allclose(delEKRA, delEKRAarray[TInd]), msg="{} {}".format(delEKRA, delEKRAarray[TInd]))
 
                     # Now do the site swaps and calculate the energy
                     delE = 0.0
@@ -493,13 +482,13 @@ class Test_MC(Test_MC_Arrays):
                                     self.assertEqual(VecGroupInteracts[interactInd, tupInd], vs2)
                                     vec2 += VecsInteracts[interactInd, tupInd, :]
                     # get the rate
-                    self.assertTrue(np.allclose(delE, delEarray[TInd]),
-                                    msg="{} {} {} {} {}".format(vs1, vs2, TInd, delE, delEarray[TInd]))
+                    # self.assertTrue(np.allclose(delE, delEarray[TInd]),
+                    #                 msg="{} {} {} {} {}".format(vs1, vs2, TInd, delE, delEarray[TInd]))
                     rate = np.exp(-(0.5 * delE + delEKRA))
                     # get the dot product
                     dot = np.dot(vec1, vec2)
-                    self.assertTrue(np.allclose(rate, ratelist[TInd]))
-                    self.assertTrue(np.allclose(dot, del_lamb_mat[vs1, vs2, TInd]))
+                    # self.assertTrue(np.allclose(rate, ratelist[TInd]))
+                    # self.assertTrue(np.allclose(dot, del_lamb_mat[vs1, vs2, TInd]))
                     Wbar_test[vs1, vs2] += rate*dot
 
                 # if np.allclose(Wbar_test[vs1, vs2], 0):
