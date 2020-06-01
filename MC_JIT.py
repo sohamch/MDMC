@@ -144,7 +144,8 @@ class MCSamplerClass(object):
                 if mobOcc[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
                     TransOffSiteCount[TsInteractIdx] += 1
 
-    def Expand(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, lenVecClus, beta):
+    def Expand(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, lenVecClus, beta, delEKRAarray, delEarray,
+               SiteTransArray, SpecTransArray):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
@@ -155,13 +156,17 @@ class MCSamplerClass(object):
 
         Wbar = np.zeros((lenVecClus, lenVecClus))
         Bbar = np.zeros(lenVecClus)
-        # go through all the transitions
+        # go through all the transition
+
         for jumpInd in range(ijList.shape[0]):
             del_lamb = np.zeros((lenVecClus, 3))
 
             # Get the transition index
             siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
             transInd = self.FinSiteFinSpecJumpInd[siteB, specB]
+
+            SiteTransArray[jumpInd] = siteB
+            SpecTransArray[jumpInd] = specB
 
             # First, work on getting the KRA energy for the jump
             delEKRA = 0.0
@@ -173,6 +178,8 @@ class MCSamplerClass(object):
                     if TSOffSiteCount[interactMainInd] == 0:
                         delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
 
+            delEKRAarray[jumpInd] = delEKRA
+
             # next, calculate the energy change due to site swapping
 
             delE = 0.0
@@ -183,16 +190,16 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
                     # take away the vectors for this interaction
-                    for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
+                    # for i in range(self.numVecsInteracts[interMainInd]):
+                    #     del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
                 OffSiteCount[interMainInd] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
                 interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
-                    for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
+                    # for i in range(self.numVecsInteracts[interMainInd]):
+                    #     del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
                 # OffSiteCount[interMainInd] += 1
 
             # Next, switch required sites on
@@ -202,8 +209,8 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
                     # add the vectors for this interaction
-                    for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
+                    # for i in range(self.numVecsInteracts[interMainInd]):
+                    #     del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
                 interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
@@ -211,9 +218,10 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
                     # add the vectors for this interaction
-                    for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
+                    # for i in range(self.numVecsInteracts[interMainInd]):
+                    #     del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
 
+            delEarray[jumpInd] = delE
             # Energy change computed, now expand
             ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
             del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
