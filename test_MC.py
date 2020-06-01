@@ -50,7 +50,7 @@ class Test_MC_Arrays(unittest.TestCase):
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
         VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
         Index2InteractionDict, repClustCounter\
-            = self.VclusExp.makeJitInteractionsData(self.Energies, self.KRAEnergies)
+            = self.VclusExp.makeJitInteractionsData(self.Energies)
 
         # Check that each cluster has been translated as many times as there are sites in the supercell
         # Only then we have constructed every possible interaction
@@ -214,6 +214,7 @@ class Test_MC(Test_MC_Arrays):
         randarr = np.random.rand(Nswaptrials)
         randarr = np.log(randarr)
 
+        # Do MC sweep
         MCSampler.makeMCsweep(initState, offsc, TransOffSiteCountNew, swaptrials, 1.0, randarr, Nswaptrials)
 
         # Check that offsitecounts are updated correctly
@@ -283,6 +284,150 @@ class Test_MC(Test_MC_Arrays):
             print("move was not accepted")
 
         self.assertTrue(np.allclose(MCSampler.delE, FinEn - InitEn), msg="{}, {}".format(MCSampler.delE, FinEn - InitEn))
+
+    def test_expansion(self):
+        """
+        To test if Wbar and Bbar are computed correctly
+        """
+        # Compute them with the dicts and match with what comes out from the code.
+        # Wbar_test = np.zeros()
+
+        initState = np.zeros(len(self.VclusExp.sup.mobilepos), dtype=int)
+        # Now assign random species (excluding the vacancy)
+        for i in range(len(self.VclusExp.sup.mobilepos)):
+            initState[i] = np.random.randint(0, self.NSpec - 1)
+
+        # Now put in the vacancy at the vacancy site
+        initState[self.vacsiteInd] = self.NSpec - 1
+        state = initState.copy()
+
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
+        VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
+        Index2InteractionDict, repClustCounter = \
+            self.VclusExp.makeJitInteractionsData(self.Energies)
+
+        TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites, TSInteractSpecs, \
+        jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, \
+        JumpInteracts, Jump2KRAEng = \
+            self.VclusExp.KRAexpander.makeTransJitData(self.KRAEnergies)
+
+        OffSiteCount = np.zeros_like(numSitesInteracts, dtype=int)
+
+        # initiate MC Sampler
+        MCSampler_Jit = MC_JIT.MCSamplerClass(
+            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
+            VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
+            numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
+            FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
+            vacSiteInd, state, OffSiteCount
+        )
+
+        TransOffSiteCount = np.zeros(len(TSInteractSites), dtype=int)
+        offscjit = MCSampler_Jit.OffSiteCount.copy()
+        # Build TS offsites
+        for TsInteractIdx in range(len(TransOffSiteCount)):
+            for Siteind in range(numSitesTSInteracts[TsInteractIdx]):
+                if initState[TSInteractSites[TsInteractIdx, Siteind]] != TSInteractSpecs[TsInteractIdx, Siteind]:
+                    TransOffSiteCount[TsInteractIdx] += 1
+
+        ijList, dxList = self.VclusExp.KRAexpander.ijList.copy(), self.VclusExp.KRAexpander.dxList.copy()
+        lenVecClus = len(self.VclusExp.vecClus)
+
+        # Now, do the expansion
+        Wbar, Bbar = MCSampler_Jit.Expand(state, ijList, dxList, offscjit, TransOffSiteCount, lenVecClus, 1.0)
+
+        # Check that the offsitecounts have been correctly reverted and state is unchanged.
+        self.assertTrue(np.array_equal(MCSampler_Jit.OffSiteCount, offscjit))
+        self.assertTrue(np.array_equal(state, initState))
+
+        Wbar_test = np.zeros_like(Wbar, dtype=float)
+        Bbar_test = np.zeros_like(Bbar, dtype=float)
+
+        # Now construct the test arrays
+        for vs1 in range(len(self.VclusExp.vecVec)):
+            for vs2 in range(len(self.VclusExp.vecVec)):
+                # Go through all the jumps
+                for siteB in ijList:
+                    siteA = self.vacsiteInd
+                    # Check that the initial site is always the vacancy
+                    specA = state[siteA]  # the vacancy
+                    self.assertEqual(specA, self.NSpec - 1)
+                    self.assertEqual(siteA, self.vacsiteInd)
+                    specB = state[siteB]
+                    # get the index of this transition
+                    jumpInd = FinSiteFinSpecJumpInd[siteB, specB]
+                    delEKRA = 0.0
+                    # get the KRA energy for this jump in this state
+                    for ptgrpInd in range(numJumpPointGroups[jumpInd]):
+                        for ptGpInteractInd in range(numTSInteractsInPtGroups[jumpInd, ptgrpInd]):
+                            # See if the interaction is on
+                            offcount = TransOffSiteCount[JumpInteracts[jumpInd, ptgrpInd, ptGpInteractInd]]
+                            if offcount == 0:
+                                delEKRA += Jump2KRAEng[jumpInd, ptgrpInd, ptGpInteractInd]
+
+                    # Now do the site swaps and calculate the energy
+                    delE = 0.0
+                    vec1 = np.zeros(3, dtype=float)
+                    vec2 = np.zeros(3, dtype=float)
+                    for interactInd in SiteSpecInterArray[siteA, specA]:
+                        if offscjit[interactInd] == 0:
+                            delE -= Interaction2En[interactInd]
+                            ## see if this interaction belongs to the vector group vs1
+                            repClus = InteractionRepClusDict[Index2InteractionDict[interactInd]]
+                            vecList = self.VclusExp.clust2vecClus[repClus]
+                            if vs1 in [tup[0] for tup in vecList]:
+                                vec1 -= VecsInteracts[siteA, specA, interactInd]
+                            if vs2 in [tup[0] for tup in vecList]:
+                                vec2 -= VecsInteracts[siteA, specA, interactInd]
+                        offscjit[interactInd] += 1
+
+                    for interactInd in SiteSpecInterArray[siteB, specB]:
+                        if offscjit[interactInd] == 0:
+                            delE -= Interaction2En[interactInd]
+                            repClus = InteractionRepClusDict[Index2InteractionDict[interactInd]]
+                            vecList = self.VclusExp.clust2vecClus[repClus]
+                            if vs1 in [tup[0] for tup in vecList]:
+                                vec1 -= VecsInteracts[siteA, specA, interactInd]
+                            if vs2 in [tup[0] for tup in vecList]:
+                                vec2 -= VecsInteracts[siteA, specA, interactInd]
+                        offscjit[interactInd] += 1
+
+                    for interactInd in SiteSpecInterArray[siteA, specB]:
+                        offscjit[interactInd] -= 1
+                        if offscjit[interactInd] == 0:
+                            delE += Interaction2En[interactInd]
+                            repClus = InteractionRepClusDict[Index2InteractionDict[interactInd]]
+                            vecList = self.VclusExp.clust2vecClus[repClus]
+                            if vs1 in [tup[0] for tup in vecList]:
+                                vec1 += VecsInteracts[siteA, specA, interactInd]
+                            if vs2 in [tup[0] for tup in vecList]:
+                                vec2 += VecsInteracts[siteA, specA, interactInd]
+
+                    for interactInd in SiteSpecInterArray[siteB, specA]:
+                        offscjit[interactInd] -= 1
+                        if offscjit[interactInd] == 0:
+                            delE += Interaction2En[interactInd]
+                            repClus = InteractionRepClusDict[Index2InteractionDict[interactInd]]
+                            vecList = self.VclusExp.clust2vecClus[repClus]
+                            if vs1 in [tup[0] for tup in vecList]:
+                                vec1 += VecsInteracts[siteA, specA, interactInd]
+                            if vs2 in [tup[0] for tup in vecList]:
+                                vec2 += VecsInteracts[siteA, specA, interactInd]
+                    # get the rate
+                    rate = np.exp(-(delE + delEKRA))
+                    # get the dot product
+                    dot = np.dot(vec1, vec2)
+                    Wbar_test[vs1, vs2] += rate*dot
+        self.assertTrue(np.allclose(Wbar, Wbar_test))
+
+
+
+
+
+
+
+
+
 
 
 
