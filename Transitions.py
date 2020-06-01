@@ -214,7 +214,6 @@ class KRAExpand(object):
 
         # 3.5 To store the KRA energies for each transition state cluster
         Jump2KRAEng = np.zeros((len(self.clusterSpeciesJumps), maxInteractGroups, maxInteractsInGroups))
-
         # Fill up the arrays
         count = 0  # to keep track of the integer assigned to each TS interaction.
         for jumpInd, (Jumpkey, interactGroupList) in zip(itertools.count(),
