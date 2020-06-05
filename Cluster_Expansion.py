@@ -123,7 +123,8 @@ class VectorClusterExpansion(object):
 
         vecClustList = []
         vecVecList = []
-        for clList in specClusters:
+        clus2LenVecClus = np.zeros(len(specClusters), dtype=int)
+        for clListInd, clList in enumerate(specClusters):
             cl0 = clList[0]
             glist0 = []
             for g in self.crys.G:
@@ -134,10 +135,11 @@ class VectorClusterExpansion(object):
             vals, vecs = np.linalg.eig(G0)
             vecs = np.real(vecs)
             vlist = [vecs[:, i]/np.linalg.norm(vecs[:, i]) for i in range(3) if np.isclose(vals[i], 1.0)]
+            clus2LenVecClus[clListInd] = len(vlist)
 
-            if len(vlist) == 0:  # For systems with inversion symmetry
-                vecClustList.append(clList)
-                vecVecList.append([np.zeros(3) for i in range(len(clList))])
+            if clus2LenVecClus[clListInd] == 0:  # If the vector basis is empty, don't consider the cluster
+                # vecClustList.append(clList)
+                # vecVecList.append([np.zeros(3) for i in range(len(clList))])
                 continue
 
             for v in vlist:

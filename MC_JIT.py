@@ -34,7 +34,7 @@ MonteCarloSamplerSpec = [
 ]
 
 
-# @jitclass(MonteCarloSamplerSpec)
+@jitclass(MonteCarloSamplerSpec)
 class MCSamplerClass(object):
 
     def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
