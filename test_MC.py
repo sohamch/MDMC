@@ -498,9 +498,7 @@ class Test_MC(Test_MC_Arrays):
                 # print(vs1, vs2)
 
         # Test the velocity expansion by reconstructing and verifying the R3 velocity vector
-        vel_exp = np.zeros(3)
-        vel_rec = np.zeros(3)
-        # First we explicitly construct the velocity vector for this state
+        # Explicitly construct the velocity vector for this state
         for TInd in range(len(ijList)):
             # For every jump, reset the offsite count
             offscjit = MCSampler_Jit.OffSiteCount.copy()
