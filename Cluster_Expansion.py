@@ -164,11 +164,8 @@ class VectorClusterExpansion(object):
         self.Clus2VClus = collections.defaultdict(list)
         for cLlistInd, clList in enumerate(self.SpecClusters):
             if self.clus2LenVecClus[cLlistInd] == 0:  # If the vector basis is empty, don't consider the cluster
-                # vecClustList.append(clList)
-                # vecVecList.append([np.zeros(3) for i in range(len(clList))])
                 continue
             cl0 = clList[0]
-            vecClusts = []
             for vClusListInd, vClusList in enumerate(self.vecClus):
                 clVec0 = vClusList[0]
                 if clVec0 == cl0:
@@ -181,6 +178,8 @@ class VectorClusterExpansion(object):
         """
         self.clust2vecClus = collections.defaultdict(list)
         for clListInd, clList in enumerate(self.SpecClusters):
+            if self.clus2LenVecClus[clListInd] == 0:  # If the vector basis is empty, don't consider the cluster
+                continue
             vecClusIndList = self.Clus2VClus[clListInd]
             for clust1 in clList:
                 for vecClusInd in vecClusIndList:
@@ -195,7 +194,7 @@ class VectorClusterExpansion(object):
         self.clust2SpecClus = {}
         for clListInd, clList in enumerate(self.SpecClusters):
             for clustInd, clust in enumerate(clList):
-                self.clust2SpecClus[clust]=(clListInd, clustInd)
+                self.clust2SpecClus[clust] = (clListInd, clustInd)
 
     def generateSiteSpecInteracts(self):
         """
@@ -309,8 +308,10 @@ class VectorClusterExpansion(object):
             idx = InteractionIndexDict[interaction]
             # get the energy index here
             Interaction2En[idx] = Energies[self.clust2SpecClus[repClus][0]]
-
             # get the vector basis data here
+            # if vector basis is empty, keep no of elements to -1.
+            if self.clus2LenVecClus[self.clust2SpecClus[repClus][0]] == 0:
+                continue
             vecList = self.clust2vecClus[repClus]
             # store the number of vectors in the basis
             numVecsInteracts[idx] = len(vecList)

@@ -218,6 +218,8 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
                     # add the vectors for this interaction
+                    # for interactions with zero vector basis, numVecsInteracts[interMainInd] = -1 and the
+                    # loop doesn't run
                     for i in range(self.numVecsInteracts[interMainInd]):
                         del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
 
