@@ -78,7 +78,7 @@ class VectorClusterExpansion(object):
         self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
         # add a small check here - maybe we'll remove this later
 
-        self.vecClus, self.vecVec = self.genVecClustBasis(self.SpecClusters)
+        self.vecClus, self.vecVec, self.clus2LenVecClus = self.genVecClustBasis(self.SpecClusters)
         self.indexVclus2Clus()
         self.indexClustertoVecClus()
         self.indexClustertoSpecClus()
@@ -156,21 +156,24 @@ class VectorClusterExpansion(object):
                 vecClustList.append(newClustList)
                 vecVecList.append(newVecList)
 
-        return vecClustList, vecVecList
+        return vecClustList, vecVecList, clus2LenVecClus
 
     def indexVclus2Clus(self):
 
         self.Vclus2Clus = np.zeros(len(self.vecClus), dtype=int)
-        self.Clus2VClus = []
+        self.Clus2VClus = collections.defaultdict(list)
         for cLlistInd, clList in enumerate(self.SpecClusters):
+            if self.clus2LenVecClus[cLlistInd] == 0:  # If the vector basis is empty, don't consider the cluster
+                # vecClustList.append(clList)
+                # vecVecList.append([np.zeros(3) for i in range(len(clList))])
+                continue
             cl0 = clList[0]
             vecClusts = []
             for vClusListInd, vClusList in enumerate(self.vecClus):
                 clVec0 = vClusList[0]
                 if clVec0 == cl0:
                     self.Vclus2Clus[vClusListInd] = cLlistInd
-                    vecClusts.append(vClusListInd)
-            self.Clus2VClus.append(vecClusts)
+                    self.Clus2VClus[cLlistInd].append(vClusListInd)
 
     def indexClustertoVecClus(self):
         """
