@@ -164,6 +164,7 @@ class VectorClusterExpansion(object):
         self.Clus2VClus = collections.defaultdict(list)
         for cLlistInd, clList in enumerate(self.SpecClusters):
             if self.clus2LenVecClus[cLlistInd] == 0:  # If the vector basis is empty, don't consider the cluster
+                self.Clus2VClus[cLlistInd] = []
                 continue
             cl0 = clList[0]
             for vClusListInd, vClusList in enumerate(self.vecClus):

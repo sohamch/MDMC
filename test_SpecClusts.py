@@ -180,6 +180,8 @@ class test_Vector_Cluster_Expansion(testKRA):
         for clListInd, clList in enumerate(self.VclusExp.SpecClusters):
             for clust in clList:
                 vecList = self.VclusExp.clust2vecClus[clust]
+                if self.VclusExp.clus2LenVecClus[clListInd] == 0:
+                    self.assertEqual(len(vecList), 0)
                 for tup in vecList:
                     self.assertEqual(clust, self.VclusExp.vecClus[tup[0]][tup[1]])
 
