@@ -87,7 +87,6 @@ class MCSamplerClass(object):
             for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
                 # check if an interaction is on
                 interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
-                # offscount = OffSiteCount[interMainInd]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
                 OffSiteCount[interMainInd] += 1
