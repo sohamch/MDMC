@@ -224,6 +224,9 @@ class MCSamplerClass(object):
 
             # delEarray[jumpInd] = delE
             # Energy change computed, now expand
+            # if 0.5 * delE + delEKRA < 0:
+            #     print(delE, delEKRA)
+            #     raise ValueError("negative activation barrier")
             ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
             del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
 
