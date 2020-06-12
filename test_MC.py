@@ -77,6 +77,7 @@ class Test_MC_Arrays(unittest.TestCase):
             interaction = Index2InteractionDict[i]
             interactionSet = set(interaction)
             self.assertEqual(siteSpecSet, interactionSet)
+        print("checked interactions")
 
         # Now, test the vector basis and energy information for the clusters
         for i in range(len(numSitesInteracts)):
