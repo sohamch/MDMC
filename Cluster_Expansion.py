@@ -74,14 +74,21 @@ class VectorClusterExpansion(object):
         self.vacSite = vacSite  # This stays fixed throughout the simulation, so makes sense to store it.
         self.jumpnetwork = jumpnetwork
 
+        start = time.time()
         self.SpecClusters = self.recalcClusters()
+        print("Generated clusters with species: {:.4f}".format(time.time()-start))
+        start = time.time()
         self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
         # add a small check here - maybe we'll remove this later
-
+        print("Generated Interaction data {:.4f}".format(time.time() - start))
+        start = time.time()
         self.vecClus, self.vecVec, self.clus2LenVecClus = self.genVecClustBasis(self.SpecClusters)
+        print("Generated vector basis data {:.4f}".format(time.time() - start))
+        start = time.time()
         self.indexVclus2Clus()
         self.indexClustertoVecClus()
         self.indexClustertoSpecClus()
+        print("Generated Indexing data {:.4f}".format(time.time() - start))
 
         # Generate the transitions-based data structures - moved to KRAexpander
         # self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
@@ -201,32 +208,26 @@ class VectorClusterExpansion(object):
         """
         generate interactions for every site - for MC moves
         """
-        SiteSpecinteractList = {}
-        InteractCounts = []  # this is to later find out the maximum number of interactions.
+        SiteSpecinteractList = collections.defaultdict(list)
         for siteInd in range(self.Nsites):
             # get the cluster site
             ci, R = self.sup.ciR(siteInd)
             clSite = cluster.ClusterSite(ci=ci, R=R)
-            # assign species to this
-            for sp in range(len(self.mobCountList)):
-                # For each (clSite, sp) pair, we need an interaction list
-                interactionList = []
-                # Now, go through all the clusters
-                for clListInd, clList in enumerate(self.SpecClusters):
-                    for cl in clList:
-                        for site, spec in cl.SiteSpecs:
-                            if site.ci == clSite.ci and sp == spec:
-                                Rtrans = clSite.R - site.R
-                                interactionSites = tuple([(site + Rtrans, spec) for site, spec in cl.SiteSpecs])
-                                interactSupInd = tuple([(self.sup.index(site.R, site.ci)[0], spec)
-                                                        for site, spec in interactionSites])
-                                # this check is to account for periodic boundary conditions
-                                interactionList.append([interactSupInd, cl, Rtrans])
-                                # interactionList.append([interactionSites, cl, Rtrans])
+            # Now, go through all the clusters
+            for clListInd, clList in enumerate(self.SpecClusters):
+                for cl in clList:
+                    for site, spec in cl.SiteSpecs:
+                        if site.ci == ci:
+                            Rtrans = R - site.R
+                            interactionSites = tuple([(site + Rtrans, spec) for site, spec in cl.SiteSpecs])
+                            interactSupInd = tuple([(self.sup.index(site.R, site.ci)[0], spec)
+                                                    for site, spec in interactionSites])
+                            # this check is to account for periodic boundary conditions
+                            SiteSpecinteractList[(clSite, spec)].append([interactSupInd, cl, Rtrans])
+                            # interactionList.append([interactionSites, cl, Rtrans])
 
-                SiteSpecinteractList[(clSite, sp)] = interactionList
-                InteractCounts.append(len(interactionList))
-        maxinteractions = max(InteractCounts)
+        maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
+
         return SiteSpecinteractList, maxinteractions
 
     def makeJitInteractionsData(self, Energies):
