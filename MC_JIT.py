@@ -270,3 +270,76 @@ class MCSamplerClass(object):
         # assert np.allclose(Bbar, BBar)
 
         return WBar, BBar
+
+    def GetNewRandState(self, mobOcc, OffSiteCount, TransOffSiteCount,
+                    SwapTrials, beta, randarr, Nswaptrials):
+
+        # TODO : Need to implement biased sampling methods to select sites from TSinteractions with more prob.
+        for swapcount in range(Nswaptrials):
+            # first select two random sites to swap - for now, let's just select naively.
+            siteA = SwapTrials[swapcount, 0]
+            siteB = SwapTrials[swapcount, 1]
+
+            specA = mobOcc[siteA]
+            specB = mobOcc[siteB]
+
+            delE = 0.
+            # Next, switch required sites off
+            for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
+                # check if an interaction is on
+                interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
+                if OffSiteCount[interMainInd] == 0:
+                    delE -= self.Interaction2En[interMainInd]
+                OffSiteCount[interMainInd] += 1
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
+                interMainInd = self.SiteSpecInterArray[siteB, specB, interIdx]
+                # offscount = OffSiteCount[interMainInd]
+                if OffSiteCount[interMainInd] == 0:
+                    delE -= self.Interaction2En[interMainInd]
+                OffSiteCount[interMainInd] += 1
+
+            # Next, switch required sites on
+            for interIdx in range(self.numInteractsSiteSpec[siteA, specB]):
+                interMainInd = self.SiteSpecInterArray[siteA, specB, interIdx]
+                OffSiteCount[interMainInd] -= 1
+                if OffSiteCount[interMainInd] == 0:
+                    delE += self.Interaction2En[interMainInd]
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
+                interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
+                OffSiteCount[interMainInd] -= 1
+                if OffSiteCount[interMainInd] == 0:
+                    delE += self.Interaction2En[interMainInd]
+
+            # do the selection test
+            if -beta * delE > randarr[swapcount]:
+                # swap the sites to get to the next state
+                mobOcc[siteA] = specB
+                mobOcc[siteB] = specA
+                # OffSiteCount is already updated to that of the new state.
+
+            else:
+                # revert back the off site counts, because the state has not changed
+                for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
+                    # interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
+                    OffSiteCount[self.SiteSpecInterArray[siteA, specA, interIdx]] -= 1
+
+                for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
+                    # interMainInd = self.SiteSpecInterArray[siteB, specB, interIdx]
+                    OffSiteCount[self.SiteSpecInterArray[siteB, specB, interIdx]] -= 1
+
+                for interIdx in range(self.numInteractsSiteSpec[siteA, specB]):
+                    # interMainInd = self.SiteSpecInterArray[siteA, specB, interIdx]
+                    OffSiteCount[self.SiteSpecInterArray[siteA, specB, interIdx]] += 1
+
+                for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
+                    # interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
+                    OffSiteCount[self.SiteSpecInterArray[siteB, specA, interIdx]] += 1
+
+        # make the offsite for the transition states
+        for TsInteractIdx in range(len(self.TSInteractSites)):
+            TransOffSiteCount[TsInteractIdx] = 0
+            for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
+                if mobOcc[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
+                    TransOffSiteCount[TsInteractIdx] += 1

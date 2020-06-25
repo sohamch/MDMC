@@ -209,25 +209,25 @@ class VectorClusterExpansion(object):
         generate interactions for every site - for MC moves
         """
         SiteSpecinteractList = collections.defaultdict(list)
+        count = 0
+        maxinteractions = 0
         for siteInd in range(self.Nsites):
             # get the cluster site
             ci, R = self.sup.ciR(siteInd)
             clSite = cluster.ClusterSite(ci=ci, R=R)
             # Now, go through all the clusters
-            for clListInd, clList in enumerate(self.SpecClusters):
-                for cl in clList:
-                    for site, spec in cl.SiteSpecs:
-                        if site.ci == ci:
-                            Rtrans = R - site.R
-                            interactionSites = tuple([(site + Rtrans, spec) for site, spec in cl.SiteSpecs])
-                            interactSupInd = tuple([(self.sup.index(site.R, site.ci)[0], spec)
-                                                    for site, spec in interactionSites])
-                            # this check is to account for periodic boundary conditions
-                            SiteSpecinteractList[(clSite, spec)].append([interactSupInd, cl, Rtrans])
-                            # interactionList.append([interactionSites, cl, Rtrans])
+            for cl in [cl for clist in self.SpecClusters for cl in clist]:
+                for site, spec in cl.SiteSpecs:
+                    count += 1
+                    # if site.ci == ci: In our case we have only one chemistry.
+                    Rtrans = R - site.R
+                    interactSupInd = tuple([(self.sup.index(site.R+Rtrans, site.ci)[0], spec)
+                                            for site, spec in cl.SiteSpecs])
+                    # # this check is to account for periodic boundary conditions
+                    SiteSpecinteractList[(clSite, spec)].append([interactSupInd, cl, Rtrans])
 
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
-
+        print("total loop iterations : {}".format(count))
         return SiteSpecinteractList, maxinteractions
 
     def makeJitInteractionsData(self, Energies):
