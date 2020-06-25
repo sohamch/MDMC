@@ -271,7 +271,7 @@ class MCSamplerClass(object):
 
         return WBar, BBar
 
-    def GetNewRandState(self, mobOcc, OffSiteCount, TransOffSiteCount, Energy, SwapTrials, Nswaptrials):
+    def GetNewRandState(self, mobOcc, OffSiteCount, Energy, SwapTrials, Nswaptrials):
 
         En = Energy
         for swapcount in range(Nswaptrials):
@@ -317,5 +317,5 @@ class MCSamplerClass(object):
             mobOcc[siteB] = specA
             # add the energy to get the energy of the next state
             En += delE
-        # return the new state
-        return mobOcc, En
+
+        return En
