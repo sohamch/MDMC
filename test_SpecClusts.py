@@ -104,7 +104,7 @@ class testKRA(unittest.TestCase):
                 clusterCounts[cl0] += 1
 
             for cl0, count in clusterCounts.items():
-                numTrue = (self.NSpec-1)**cl0.Norder
+                numTrue = (self.NSpec-1)**cl0.Norder  # except the vacancy, any other species can be assigned to the sites.
                 self.assertEqual(numTrue, count, msg="{}, {}, {}".format(numTrue, count, cl0.Norder))
 
     def test_KRA(self):
