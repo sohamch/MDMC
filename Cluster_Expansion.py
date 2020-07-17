@@ -98,11 +98,7 @@ class VectorClusterExpansion(object):
 
     def recalcClusters(self):
         """
-        Intended to take in a site based cluster expansion and recalculate the clusters
-        by populating the site with species.
-
-        In all our simulations, we'll keep the vacancy fixed at a particular site, so we will not consider
-        any cluster where the vacancy has been assigned to any other site.
+        Intended to take in a site based cluster expansion and recalculate the clusters with species in them
         """
         allClusts = set()
         symClusterList = []
