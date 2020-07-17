@@ -155,6 +155,61 @@ class testKRA(unittest.TestCase):
 
 class test_Vector_Cluster_Expansion(testKRA):
 
+    def test_spec_assign(self):
+
+        # let's test if the number of symmetric site clusters generated is the same
+        sitetuples = set([])
+        for clusterList in self.VclusExp.SpecClusters:
+            for clust in clusterList:
+                Rtrans = sum([site.R for site in clust.siteList]) // len(clust.siteList)
+                sites_shift = tuple([site-Rtrans for site in clust.siteList])
+                sitetuples.add(sites_shift)
+
+        sitesFromClusexp = set([])
+        for clSet in self.clusexp:
+            for cl in list(clSet):
+                for g in self.VclusExp.crys.G:
+                    newsitelist = tuple([site.g(self.VclusExp.crys, g) for site in cl.sites])
+                    Rtrans = sum([site.R for site in newsitelist])//len(newsitelist)
+                    sitesFromClusexp.add(tuple([site - Rtrans for site in newsitelist]))
+
+        total_reps = len(sitesFromClusexp)
+
+        self.assertEqual(total_reps, len(sitetuples), msg="{}, {}".format(total_reps, len(sitetuples)))
+
+        # This test is specifically for a BCC, 3-spec, 3-order, 2nn cluster expansion
+        oneCounts = 0
+        twocounts = 0
+        threecounts = 0
+        for siteList in sitesFromClusexp:
+            ln=len(siteList)
+            if ln == 1:
+                oneCounts += 1
+            elif ln == 2:
+                twocounts += 1
+            elif ln == 3:
+                threecounts += 1
+
+        self.assertEqual((oneCounts, twocounts, threecounts), (1, 14, 24))
+
+        # Go through all the site clusters:
+        total_spec_clusts = 0
+        for clSites in sitesFromClusexp:
+            ordr = len(clSites)
+            # for singletons, any species assignment is acceptable
+            if ordr == 1:
+                total_spec_clusts += self.NSpec
+                continue
+            # Now, for two and three body clusters:
+            # we can have max one vacancy at a site, and any other site can have any other occupancy.
+            # or we can have no vacancy at all in which case it's just (Nspec - 1)**ordr
+            # Also, Since we are in BCC lattices, we can symmetrically permute two sites in every two or three body cluster
+            total_spec_clusts += (ordr * (self.NSpec - 1)**(ordr - 1) + (self.NSpec-1)**ordr)//2
+        #
+        total_code = sum([len(lst) for lst in self.VclusExp.SpecClusters])
+        #
+        self.assertEqual(total_code, total_spec_clusts, msg="{}, {}".format(total_code, total_spec_clusts))
+
     def test_genvecs(self):
         """
         Here, we test if we have generated the vector cluster basis (site-based only) properly
