@@ -42,7 +42,7 @@ class MCSamplerClass(object):
                  VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
                  numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
                  FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-                 vacSiteInd, mobOcc, OffSiteCount):
+                 vacSiteInd):
 
         self.numSitesInteracts, self.InteractToRepClus,self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En,\
         self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray,\
@@ -60,15 +60,6 @@ class MCSamplerClass(object):
 
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
-        self.mobOcc = mobOcc
-        self.OffSiteCount = OffSiteCount.copy()
-        for interactIdx in range(numSitesInteracts.shape[0]):
-            numSites = numSitesInteracts[interactIdx]
-            for intSiteind in range(numSites):
-                interSite = SupSitesInteracts[interactIdx, intSiteind]
-                interSpec = SpecOnInteractSites[interactIdx, intSiteind]
-                if mobOcc[interSite] != interSpec:
-                    self.OffSiteCount[interactIdx] += 1
 
         # Reformat the array so that the swaps are always between atoms of different species
 
