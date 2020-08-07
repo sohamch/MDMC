@@ -253,7 +253,7 @@ class VectorClusterExpansion(object):
         numInteractsSiteSpec = np.zeros((self.Nsites, len(self.mobCountList)), dtype=int)
         SiteSpecInterArray = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount), -1, dtype=int)
 
-        count = 0  # to keep a steady count of interactions.
+        count = 0  # to assign indices to interactions.
         for key, interactInfoList in self.SiteSpecInteractions.items():
             keySite = self.sup.index(key[0].R, key[0].ci)[0]  # the "incell" function applies PBC to sites outside sup.
             keySpec = key[1]
