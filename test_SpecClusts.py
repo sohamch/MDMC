@@ -284,7 +284,7 @@ class test_Vector_Cluster_Expansion(testKRA):
                 self.assertTrue(repClust in interaction2RepClust[interaction])
 
     def test_trans_count(self):
-        # test that every all translations of all representative clusters are considered
+        # test that all translations of all representative clusters are considered
         allSpCl = [SpCl for SpClList in self.VclusExp.SpecClusters for SpCl in SpClList]
         for (key, infoList) in self.VclusExp.SiteSpecInteractions.items():
             clSite = key[0]
