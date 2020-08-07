@@ -323,9 +323,9 @@ class VectorClusterExpansion(object):
 
         vacSiteInd = self.sup.index(self.vacSite.R, self.vacSite.ci)[0]
 
-        return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts,\
-               VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict,\
-               Index2InteractionDict, repClustCounter
+        return numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,\
+               VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict,\
+               InteractionRepClusDict, Index2InteractionDict, repClustCounter
 
 class MCSamplerClass(object):
 
