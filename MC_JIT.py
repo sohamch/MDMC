@@ -9,6 +9,7 @@ MonteCarloSamplerSpec = [
     ("numInteractsSiteSpec", int64[:, :]),
     ("SiteSpecInterArray", int64[:, :, :]),
     ("numSitesInteracts", int64[:]),
+    ("InteractToRepClus", int64[:]),
     ("numSitesTSInteracts", int64[:]),
     ("SupSitesInteracts", int64[:, :]),
     ("TSInteractSites", int64[:, :]),
@@ -37,15 +38,16 @@ MonteCarloSamplerSpec = [
 @jitclass(MonteCarloSamplerSpec)
 class MCSamplerClass(object):
 
-    def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
+    def __init__(self, numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
                  VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
                  numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
                  FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
                  vacSiteInd, mobOcc, OffSiteCount):
 
-        self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts, \
-        self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.vacSiteInd = \
-            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, \
+        self.numSitesInteracts, self.InteractToRepClus,self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En,\
+        self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray,\
+        self.vacSiteInd =\
+            numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, \
             VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd
 
         self.numSitesTSInteracts, self.TSInteractSites, self.TSInteractSpecs = \
