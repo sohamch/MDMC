@@ -208,13 +208,19 @@ class VectorClusterExpansion(object):
         """
         generate interactions for every site - for MC moves
         """
+
+        self.cl2clInd = {}
+
+        for clInd, cl in enumerate([cl for clist in self.SpecClusters for cl in clist]):
+            self.cl2clInd[cl] = clInd
+
         SiteSpecinteractList = collections.defaultdict(list)
         for siteInd in range(self.Nsites):
             # get the cluster site
             ci, R = self.sup.ciR(siteInd)
             clSite = cluster.ClusterSite(ci=ci, R=R)
             # Now, go through all the clusters
-            for clInd, cl in enumerate([cl for clist in self.SpecClusters for cl in clist]):
+            for (cl, clInd) in self.cl2clInd.items():
                 for site, spec in cl.SiteSpecs:
                     if site.ci == ci: # In our case we have only one chemistry.
                         Rtrans = R - site.R
@@ -262,8 +268,8 @@ class VectorClusterExpansion(object):
                     InteractionIndexDict[interaction] = count
                     repClustCounter[interactInfo[1]] += 1
                     InteractionRepClusDict[interaction] = interactInfo[1]
-                    Index2repClusIndDict[interaction] = interactInfo[2]
                     Index2InteractionDict[count] = interaction
+                    Index2repClusIndDict[count] = interactInfo[2]
                     SiteSpecInterArray[keySite, keySpec, interactInd] = count
                     count += 1
 
@@ -275,6 +281,7 @@ class VectorClusterExpansion(object):
         start = time.time()
         # we'll need the number of sites in each interaction
         numSitesInteracts = np.zeros(numInteracts, dtype=int)
+        InteractToRepClus = np.zeros(numInteracts, dtype=int)
 
         # and the supercell sites in each interaction
         SupSitesInteracts = np.full((numInteracts, self.maxOrder), -1, dtype=int)
@@ -284,6 +291,7 @@ class VectorClusterExpansion(object):
 
         for (key, interaction) in Index2InteractionDict.items():
             numSitesInteracts[key] = len(interaction)
+            InteractToRepClus[key] = Index2repClusIndDict[key]
             for idx, (intSite, intSpec) in enumerate(interaction):
                 SupSitesInteracts[key, idx] = intSite
                 SpecOnInteractSites[key, idx] = intSpec
