@@ -63,7 +63,7 @@ class MCSamplerClass(object):
 
         # Reformat the array so that the swaps are always between atoms of different species
 
-    def makeMCsweep(self, mobOcc, OffSiteCount, TransOffSiteCount,
+    def makeMCsweep(self, mobOcc, OffSiteCount, repClustOnCount, TransOffSiteCount,
                     SwapTrials, beta, randarr, Nswaptrials):
 
         # TODO : Need to implement biased sampling methods to select sites from TSinteractions with more prob.
@@ -82,6 +82,9 @@ class MCSamplerClass(object):
                 interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
+                    # This interaction was on but will get switched off, so
+                    # it's representative cluster will have one less "on" interaction.
+                    repClustOnCount[self.InteractToRepClus[interMainInd]] -= 1
                 OffSiteCount[interMainInd] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
@@ -89,6 +92,7 @@ class MCSamplerClass(object):
                 # offscount = OffSiteCount[interMainInd]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
+                    repClustOnCount[self.InteractToRepClus[interMainInd]] -= 1
                 OffSiteCount[interMainInd] += 1
 
             # Next, switch required sites on
@@ -97,12 +101,14 @@ class MCSamplerClass(object):
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
+                    repClustOnCount[self.InteractToRepClus[interMainInd]] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
                 interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
+                    repClustOnCount[self.InteractToRepClus[interMainInd]] += 1
                     
             # do the selection test
             if -beta*delE > randarr[swapcount]:
@@ -116,17 +122,23 @@ class MCSamplerClass(object):
                 for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
                     # interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
                     OffSiteCount[self.SiteSpecInterArray[siteA, specA, interIdx]] -= 1
+                    if OffSiteCount[self.SiteSpecInterArray[siteA, specA, interIdx]] == 0:
+                        repClustOnCount[self.InteractToRepClus[interIdx]] += 1
 
                 for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
                     # interMainInd = self.SiteSpecInterArray[siteB, specB, interIdx]
                     OffSiteCount[self.SiteSpecInterArray[siteB, specB, interIdx]] -= 1
+                    if OffSiteCount[self.SiteSpecInterArray[siteB, specB, interIdx]] == 0:
+                        repClustOnCount[self.InteractToRepClus[interIdx]] += 1
 
                 for interIdx in range(self.numInteractsSiteSpec[siteA, specB]):
-                    # interMainInd = self.SiteSpecInterArray[siteA, specB, interIdx]
+                    if OffSiteCount[self.SiteSpecInterArray[siteA, specB, interIdx]] == 0:
+                        repClustOnCount[self.InteractToRepClus[interIdx]] -= 1
                     OffSiteCount[self.SiteSpecInterArray[siteA, specB, interIdx]] += 1
 
                 for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
-                    # interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
+                    if OffSiteCount[self.SiteSpecInterArray[siteB, specA, interIdx]] == 0:
+                        repClustOnCount[self.InteractToRepClus[interIdx]] -= 1
                     OffSiteCount[self.SiteSpecInterArray[siteB, specA, interIdx]] += 1
 
         # make the offsite for the transition states
