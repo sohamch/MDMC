@@ -214,14 +214,14 @@ class VectorClusterExpansion(object):
             ci, R = self.sup.ciR(siteInd)
             clSite = cluster.ClusterSite(ci=ci, R=R)
             # Now, go through all the clusters
-            for cl in [cl for clist in self.SpecClusters for cl in clist]:
+            for clInd, cl in enumerate([cl for clist in self.SpecClusters for cl in clist]):
                 for site, spec in cl.SiteSpecs:
                     if site.ci == ci: # In our case we have only one chemistry.
                         Rtrans = R - site.R
                         interactSupInd = tuple([(self.sup.index(site.R+Rtrans, site.ci)[0], spec)
                                                 for site, spec in cl.SiteSpecs])
                         # # this check is to account for periodic boundary conditions
-                        SiteSpecinteractList[(clSite, spec)].append([interactSupInd, cl, Rtrans])
+                        SiteSpecinteractList[(clSite, spec)].append([interactSupInd, cl, clInd, Rtrans])
 
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
         return SiteSpecinteractList, maxinteractions
@@ -238,11 +238,10 @@ class VectorClusterExpansion(object):
         # first, we assign unique integers to interactions
         start = time.time()
         InteractionIndexDict = {}
-        siteSortedInteractionIndexDict = {}
         InteractionRepClusDict = {}
         Index2InteractionDict = {}
+        Index2repClusIndDict = {}
         repClustCounter = collections.defaultdict(int)
-        # siteSpecInteractIndexDict = collections.defaultdict(list)
 
         # while we're at it, let's also store which siteSpec contains which interact
         numInteractsSiteSpec = np.zeros((self.Nsites, len(self.mobCountList)), dtype=int)
@@ -256,21 +255,16 @@ class VectorClusterExpansion(object):
             for interactInd, interactInfo in enumerate(interactInfoList):
                 interaction = interactInfo[0]
                 if interaction in InteractionIndexDict:
-                    #siteSpecInteractIndexDict[(keySite, keySpec)].append(InteractionIndexDict[interaction])
                     SiteSpecInterArray[keySite, keySpec, interactInd] = InteractionIndexDict[interaction]
                     continue
                 else:
                     # assign a new unique integer to this interaction
                     InteractionIndexDict[interaction] = count
                     repClustCounter[interactInfo[1]] += 1
-                    # also sort the sites by the supercell site indices - will help in identifying TSclusters as interactions
-                    # later on
-                    Interact_sort = tuple(sorted(interaction, key=lambda x: x[0]))
-                    siteSortedInteractionIndexDict[Interact_sort] = count
                     InteractionRepClusDict[interaction] = interactInfo[1]
+                    Index2repClusIndDict[interaction] = interactInfo[2]
                     Index2InteractionDict[count] = interaction
                     SiteSpecInterArray[keySite, keySpec, interactInd] = count
-                    #siteSpecInteractIndexDict[(keySite, keySpec)].append(count)
                     count += 1
 
         print("Done Indexing interactions : {}".format(time.time() - start))
