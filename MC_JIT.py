@@ -134,24 +134,24 @@ class MCSamplerClass(object):
                     interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
                     OffSiteCount[interMainInd] -= 1
                     if OffSiteCount[interMainInd] == 0:
-                        repClustOnCount[interMainInd] += 1
+                        repClustOnCount[self.InteractToRepClus[interMainInd]] += 1
 
                 for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
                     interMainInd = self.SiteSpecInterArray[siteB, specB, interIdx]
                     OffSiteCount[interMainInd] -= 1
                     if OffSiteCount[interMainInd] == 0:
-                        repClustOnCount[interMainInd] += 1
+                        repClustOnCount[self.InteractToRepClus[interMainInd]] += 1
 
                 for interIdx in range(self.numInteractsSiteSpec[siteA, specB]):
                     interMainInd = self.SiteSpecInterArray[siteA, specB, interIdx]
                     if OffSiteCount[interMainInd] == 0:
-                        repClustOnCount[interMainInd] -= 1
+                        repClustOnCount[self.InteractToRepClus[interMainInd]] -= 1
                     OffSiteCount[interMainInd] += 1
 
                 for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
                     interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
                     if OffSiteCount[interMainInd] == 0:
-                        repClustOnCount[interMainInd] -= 1
+                        repClustOnCount[self.InteractToRepClus[interMainInd]] -= 1
                     OffSiteCount[interMainInd] += 1
 
         # make the offsite for the transition states

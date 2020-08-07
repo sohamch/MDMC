@@ -216,6 +216,7 @@ class Test_MC(Test_MC_Arrays):
             swaptrials[count, 1] = siteB
             count += 1
         randarr = np.random.rand(Nswaptrials)
+
         randarr = np.log(randarr)
 
         # Do MC sweep
@@ -293,7 +294,7 @@ class Test_MC(Test_MC_Arrays):
         if np.exp(-MCSampler.delE) > np.exp(randarr[0]):
             self.assertEqual(initState[siteA], initCopy[siteB])
             self.assertEqual(initState[siteB], initCopy[siteA])
-            print("move was accepted")
+            print("move was accepted {} {}".format(np.exp(-MCSampler.delE), np.exp(randarr[0])))
         else:
             self.assertTrue(np.array_equal(initState, initCopy))
             print("move was not accepted")
