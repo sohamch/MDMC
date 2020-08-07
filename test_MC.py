@@ -292,12 +292,12 @@ class Test_MC(Test_MC_Arrays):
 
         # test that energy calculation and site swaps are done correctly.
         if np.exp(-MCSampler.delE) > np.exp(randarr[0]):
-            self.assertEqual(initState[siteA], initCopy[siteB])
-            self.assertEqual(initState[siteB], initCopy[siteA])
+            self.assertEqual(initJit[siteA], initCopy[siteB])
+            self.assertEqual(initJit[siteB], initCopy[siteA])
             print("move was accepted {} {}".format(np.exp(-MCSampler.delE), np.exp(randarr[0])))
         else:
-            self.assertTrue(np.array_equal(initState, initCopy))
-            print("move was not accepted")
+            self.assertTrue(np.array_equal(initJit, initCopy))
+            print("move was not accepted {} {}".format(np.exp(-MCSampler.delE), np.exp(randarr[0])))
 
         self.assertTrue(np.allclose(MCSampler.delE, FinEn - InitEn), msg="{}, {}".format(MCSampler.delE, FinEn - InitEn))
 
@@ -311,7 +311,7 @@ class Test_MC(Test_MC_Arrays):
         initState[self.vacsiteInd] = self.NSpec - 1
         initCopy = initState.copy()
 
-        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
+        numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
         VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
         Index2InteractionDict, repClustCounter = \
             self.VclusExp.makeJitInteractionsData(self.Energies)
@@ -324,12 +324,11 @@ class Test_MC(Test_MC_Arrays):
         OffSiteCount = np.zeros_like(numSitesInteracts, dtype=int)
 
         MCSampler_Jit = MC_JIT.MCSamplerClass(
-            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
+            numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
             VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
             numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
             FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-            vacSiteInd, initState, OffSiteCount
-        )
+            vacSiteInd)
 
         # test random state generation
         state = initCopy.copy()
