@@ -28,6 +28,7 @@ MonteCarloSamplerSpec = [
     ("vacSiteInd", int64),
     ("Nsites", int64),
     ("Nspecs", int64),
+    ("totRepClus", int64),
     ("OffSiteCount", int64[:]),
     ("FinSiteFinSpecJumpInd", int64[:, :]),
     ("VecGroupInteracts", int64[:, :])
@@ -58,10 +59,22 @@ class MCSamplerClass(object):
             jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, \
             JumpInteracts, Jump2KRAEng
 
+        l = np.max(self.InteractToRepClus)
+        self.totRepClus = l+1
+
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
 
         # Reformat the array so that the swaps are always between atoms of different species
+
+    def makeRepClusOnCounter(self, offsc):
+        repclusOncounter = np.zeros_like(self.totRepClus, dtype=int64)
+        for interactInd in range(offsc.shape[0]):
+            repClusInd = self.InteractToRepClus[interactInd]
+            if offsc[interactInd] == 0:
+                repclusOncounter[repClusInd] += 1
+
+        return repclusOncounter
 
     def makeMCsweep(self, mobOcc, OffSiteCount, repClustOnCount, TransOffSiteCount,
                     SwapTrials, beta, randarr, Nswaptrials):
