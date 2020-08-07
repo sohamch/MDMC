@@ -47,15 +47,18 @@ class Test_MC_Arrays(unittest.TestCase):
     def test_arrays(self):
 
         start = time.time()
-        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
-        VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
-        Index2InteractionDict, repClustCounter\
+        numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,\
+        VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict,\
+        InteractionRepClusDict, Index2InteractionDict, repClustCounter\
             = self.VclusExp.makeJitInteractionsData(self.Energies)
 
         # Check that each cluster has been translated as many times as there are sites in the supercell
         # Only then we have constructed every possible interaction
         print("Done creating arrays : {}".format(time.time() - start))
         # Now, we first test the interaction arrays - the ones to be used in the MC sweeps
+
+        # check that every representative clusters has been translated as many times
+        # as there are site unit cells in the super cell.
         for repClust, count in repClustCounter.items():
             self.assertEqual(count, len(self.VclusExp.sup.mobilepos))
         # numSitesInteracts - the number of sites in an interaction
@@ -159,7 +162,7 @@ class Test_MC(Test_MC_Arrays):
         initCopy = initState.copy()
         initJit = initState.copy()
 
-        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
+        numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
         VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
         Index2InteractionDict, repClustCounter =\
             self.VclusExp.makeJitInteractionsData(self.Energies)
@@ -260,20 +263,31 @@ class Test_MC(Test_MC_Arrays):
         TSOffSiteCount2 = TransOffSiteCountNew.copy()
 
         MCSampler_Jit = MC_JIT.MCSamplerClass(
-            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
+            numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
             VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
             numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
             FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-            vacSiteInd, initJit, OffSiteCount
-        )
+            vacSiteInd)
 
-        offscjit = MCSampler_Jit.OffSiteCount.copy()
-        MCSampler_Jit.makeMCsweep(initJit, offscjit, TSOffSiteCount2, swaptrials, 1.0, randarr, Nswaptrials)
+        self.assertEqual(MCSampler_Jit.totRepClus, len(self.VclusExp.cl2clInd))
+
+        # make the offsite counts and repClustOn counts
+        offscjit = MCSampler.OffSiteCount.copy()
+
+        # get the array counting how many representative clusters are on from offscjit
+        repClustCounter = MCSampler_Jit.makeRepClusOnCounter(offscjit)
+
+        MCSampler_Jit.makeMCsweep(initJit, offscjit, repClustCounter, TSOffSiteCount2, swaptrials, 1.0, randarr, Nswaptrials)
 
         # Check that the same results are found
         self.assertTrue(np.array_equal(initJit, initState))
         self.assertTrue(np.array_equal(offscjit, offsc))
         self.assertTrue(np.array_equal(TransOffSiteCountNew, TSOffSiteCount2))
+
+        # get the updated repClustCounter
+        repClustCounter2 = MCSampler_Jit.makeRepClusOnCounter(offscjit)
+
+        self.assertTrue(np.array_equal(repClustCounter, repClustCounter2))
 
         # test that energy calculation and site swaps are done correctly.
         if np.exp(-MCSampler.delE) > np.exp(randarr[0]):

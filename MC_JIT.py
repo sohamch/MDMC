@@ -68,18 +68,16 @@ class MCSamplerClass(object):
         # Reformat the array so that the swaps are always between atoms of different species
 
     def makeRepClusOnCounter(self, offsc):
-        repclusOncounter = np.zeros_like(self.totRepClus, dtype=int64)
+        repclusOncounter = np.zeros(self.totRepClus, dtype=int64)
         for interactInd in range(offsc.shape[0]):
             repClusInd = self.InteractToRepClus[interactInd]
             if offsc[interactInd] == 0:
                 repclusOncounter[repClusInd] += 1
-
         return repclusOncounter
 
     def makeMCsweep(self, mobOcc, OffSiteCount, repClustOnCount, TransOffSiteCount,
                     SwapTrials, beta, randarr, Nswaptrials):
 
-        # TODO : Need to implement biased sampling methods to select sites from TSinteractions with more prob.
         for swapcount in range(Nswaptrials):
             # first select two random sites to swap - for now, let's just select naively.
             siteA = SwapTrials[swapcount, 0]
@@ -133,26 +131,28 @@ class MCSamplerClass(object):
             else:
                 # revert back the off site counts, because the state has not changed
                 for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
-                    # interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
-                    OffSiteCount[self.SiteSpecInterArray[siteA, specA, interIdx]] -= 1
-                    if OffSiteCount[self.SiteSpecInterArray[siteA, specA, interIdx]] == 0:
-                        repClustOnCount[self.InteractToRepClus[interIdx]] += 1
+                    interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
+                    OffSiteCount[interMainInd] -= 1
+                    if OffSiteCount[interMainInd] == 0:
+                        repClustOnCount[interMainInd] += 1
 
                 for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
-                    # interMainInd = self.SiteSpecInterArray[siteB, specB, interIdx]
-                    OffSiteCount[self.SiteSpecInterArray[siteB, specB, interIdx]] -= 1
-                    if OffSiteCount[self.SiteSpecInterArray[siteB, specB, interIdx]] == 0:
-                        repClustOnCount[self.InteractToRepClus[interIdx]] += 1
+                    interMainInd = self.SiteSpecInterArray[siteB, specB, interIdx]
+                    OffSiteCount[interMainInd] -= 1
+                    if OffSiteCount[interMainInd] == 0:
+                        repClustOnCount[interMainInd] += 1
 
                 for interIdx in range(self.numInteractsSiteSpec[siteA, specB]):
-                    if OffSiteCount[self.SiteSpecInterArray[siteA, specB, interIdx]] == 0:
-                        repClustOnCount[self.InteractToRepClus[interIdx]] -= 1
-                    OffSiteCount[self.SiteSpecInterArray[siteA, specB, interIdx]] += 1
+                    interMainInd = self.SiteSpecInterArray[siteA, specB, interIdx]
+                    if OffSiteCount[interMainInd] == 0:
+                        repClustOnCount[interMainInd] -= 1
+                    OffSiteCount[interMainInd] += 1
 
                 for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
-                    if OffSiteCount[self.SiteSpecInterArray[siteB, specA, interIdx]] == 0:
-                        repClustOnCount[self.InteractToRepClus[interIdx]] -= 1
-                    OffSiteCount[self.SiteSpecInterArray[siteB, specA, interIdx]] += 1
+                    interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
+                    if OffSiteCount[interMainInd] == 0:
+                        repClustOnCount[interMainInd] -= 1
+                    OffSiteCount[interMainInd] += 1
 
         # make the offsite for the transition states
         for TsInteractIdx in range(len(self.TSInteractSites)):
