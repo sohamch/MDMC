@@ -336,6 +336,21 @@ class Test_MC(Test_MC_Arrays):
         # get the offsite counts
         offsc = MCSampler_Jit.makeOffSiteCount(initJit)
         TSoffsc = MCSampler_Jit.GetTSOffSite(initJit)
+        repClustOnCount = MCSampler_Jit.makeRepClusOnCounter(offsc)
+        Nsites = self.VclusExp.Nsites
+
+        statesTrans, repClustOnCountsTrans,  rateList = MCSampler_Jit.getExitData(initJit, ijlist, offsc,
+                                                                                  repClustOnCount, TSoffsc,
+                                                                                  1.0, Nsites)
+
+        # Now we test the repClustOn counter for each exit state
+        for i in range(statesTrans.shape[0]):
+            state = statesTrans[i, :]
+            offsc2 = MCSampler_Jit.makeOffSiteCount(state)
+            repClustOnCount2 = MCSampler_Jit.makeRepClusOnCounter(offsc2)
+
+            self.assertTrue(np.array_equal(repClustOnCount2, repClustOnCountsTrans[i, :]))
+
 
 
     def test_random_state(self):

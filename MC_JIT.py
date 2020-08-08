@@ -426,7 +426,7 @@ class MCSamplerClass(object):
 
             ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
 
-            repClustOnCountTrans[jumpInd, :] = repClustOnCount
+            repClustOnCountTrans[jumpInd, :] = repClustOnCount.copy()
 
             # Next, restore OffSiteCounts to original values for next jump, as well as
             # for use in the next MC sweep.
@@ -436,26 +436,24 @@ class MCSamplerClass(object):
                 interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
-                    repClustOnCount += 1
+                    repClustOnCount[self.InteractToRepClus[interMainInd]] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
                 interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
-                    repClustOnCount += 1
+                    repClustOnCount[self.InteractToRepClus[interMainInd]] += 1
 
-            # During switch-on operations, offsite counts were decreased by one.
-            # So increase them back by one
             for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
                 interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
                 if OffSiteCount[interMainInd] == 0:
-                    repClustOnCount -= 1
-                OffSiteCount[interMainInd] -= 1
+                    repClustOnCount[self.InteractToRepClus[interMainInd]] -= 1
+                OffSiteCount[interMainInd] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
                 interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
                 if OffSiteCount[interMainInd] == 0:
-                    repClustOnCount -= 1
-                OffSiteCount[interMainInd] -= 1
+                    repClustOnCount[self.InteractToRepClus[interMainInd]] -= 1
+                OffSiteCount[interMainInd] += 1
 
         return statesTrans, repClustOnCountTrans, ratelist
