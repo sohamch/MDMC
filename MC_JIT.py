@@ -75,6 +75,22 @@ class MCSamplerClass(object):
                 repclusOncounter[repClusInd] += 1
         return repclusOncounter
 
+    def makeOffSiteCount(self, state):
+        OffSiteCount = np.zeros(self.numSitesInteracts.shape[0], dtype=int64)
+        for interactIdx in range(self.numSitesInteracts.shape[0]):
+            for intSiteind in range(self.numSitesInteracts[interactIdx]):
+                if state[self.SupSitesInteracts[interactIdx, intSiteind]] != self.SpecOnInteractSites[interactIdx, intSiteind]:
+                    OffSiteCount[interactIdx] += 1
+        return OffSiteCount
+
+    def GetTSOffSite(self, state):
+        TransOffSiteCount = np.zeros(self.numSitesTSInteracts.shape[0], dtype=int64)
+        for TsInteractIdx in range(self.numSitesTSInteracts.shape[0]):
+            for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
+                if state[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
+                    TransOffSiteCount[TsInteractIdx] += 1
+        return TransOffSiteCount
+
     def makeMCsweep(self, mobOcc, OffSiteCount, repClustOnCount, TransOffSiteCount,
                     SwapTrials, beta, randarr, Nswaptrials):
 
@@ -289,7 +305,7 @@ class MCSamplerClass(object):
 
         return WBar, BBar
 
-    def GetNewRandState(self, mobOcc, OffSiteCount, Energy, SwapTrials, Nswaptrials):
+    def GetNewRandState(self, mobOcc, OffSiteCount, repClustOnCount, Energy, SwapTrials, Nswaptrials):
 
         En = Energy
         for swapcount in range(Nswaptrials):
@@ -307,6 +323,7 @@ class MCSamplerClass(object):
                 interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
+                    repClustOnCount[self.InteractToRepClus[interMainInd]] -= 1
                 OffSiteCount[interMainInd] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
@@ -314,6 +331,7 @@ class MCSamplerClass(object):
                 # offscount = OffSiteCount[interMainInd]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
+                    repClustOnCount[self.InteractToRepClus[interMainInd]] -= 1
                 OffSiteCount[interMainInd] += 1
 
             # Next, switch required sites on
@@ -322,12 +340,14 @@ class MCSamplerClass(object):
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
+                    repClustOnCount[self.InteractToRepClus[interMainInd]] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
                 interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
+                    repClustOnCount[self.InteractToRepClus[interMainInd]] += 1
 
             # do the selection test
             # swap the sites to get to the next state
@@ -338,9 +358,10 @@ class MCSamplerClass(object):
 
         return En
 
-    def getExitData(self, state, ijList, OffSiteCount, TSOffSiteCount, beta, Nsites):
+    def getExitData(self, state, ijList, OffSiteCount, repClustOnCount, TSOffSiteCount, beta, Nsites):
 
         statesTrans = np.zeros((ijList.shape[0], Nsites), dtype=int64)
+        repClustOnCountTrans = np.zeros((ijList.shape[0], len(repClustOnCount)), dtype=int64)
         ratelist = np.zeros(ijList.shape[0])
 
         siteA, specA = self.vacSiteInd, self.Nspecs - 1
@@ -378,12 +399,14 @@ class MCSamplerClass(object):
                 interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
+                    repClustOnCount[self.InteractToRepClus[interMainInd]] -= 1
                 OffSiteCount[interMainInd] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
                 interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
+                    repClustOnCount[self.InteractToRepClus[interMainInd]] -= 1
                 OffSiteCount[interMainInd] += 1
 
             # Next, switch required sites on
@@ -392,31 +415,47 @@ class MCSamplerClass(object):
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
+                    repClustOnCount[self.InteractToRepClus[interMainInd]] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
                 interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
+                    repClustOnCount[self.InteractToRepClus[interMainInd]] += 1
 
             ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
+
+            repClustOnCountTrans[jumpInd, :] = repClustOnCount
 
             # Next, restore OffSiteCounts to original values for next jump, as well as
             # for use in the next MC sweep.
             # During switch-off operations, offsite counts were increased by one.
             # So decrease them back by one
             for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
-                OffSiteCount[self.SiteSpecInterArray[siteA, state[siteA], interIdx]] -= 1
+                interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
+                OffSiteCount[interMainInd] -= 1
+                if OffSiteCount[interMainInd] == 0:
+                    repClustOnCount += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
-                OffSiteCount[self.SiteSpecInterArray[siteB, state[siteB], interIdx]] -= 1
+                interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
+                OffSiteCount[interMainInd] -= 1
+                if OffSiteCount[interMainInd] == 0:
+                    repClustOnCount += 1
 
             # During switch-on operations, offsite counts were decreased by one.
             # So increase them back by one
             for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
-                OffSiteCount[self.SiteSpecInterArray[siteA, state[siteB], interIdx]] += 1
+                interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
+                if OffSiteCount[interMainInd] == 0:
+                    repClustOnCount -= 1
+                OffSiteCount[interMainInd] -= 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
-                OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
+                interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
+                if OffSiteCount[interMainInd] == 0:
+                    repClustOnCount -= 1
+                OffSiteCount[interMainInd] -= 1
 
-        return statesTrans, ratelist
+        return statesTrans, repClustOnCountTrans, ratelist
