@@ -367,7 +367,6 @@ class Test_MC(Test_MC_Arrays):
 
         self.assertTrue(np.allclose(FinEn, En_new))
 
-
     def test_expansion(self):
         """
         To test if Wbar and Bbar are computed correctly
@@ -384,7 +383,7 @@ class Test_MC(Test_MC_Arrays):
         initState[self.vacsiteInd] = self.NSpec - 1
         state = initState.copy()
 
-        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
+        numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
         VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
         Index2InteractionDict, repClustCounter = \
             self.VclusExp.makeJitInteractionsData(self.Energies)
@@ -398,12 +397,11 @@ class Test_MC(Test_MC_Arrays):
 
         # initiate MC Sampler
         MCSampler_Jit = MC_JIT.MCSamplerClass(
-            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
+            numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
             VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
             numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
             FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-            vacSiteInd, state, OffSiteCount
-        )
+            vacSiteInd)
 
         for (interaction, interactionInd) in InteractionIndexDict.items():
             offsiteCount = 0
@@ -602,6 +600,7 @@ class Test_MC(Test_MC_Arrays):
                 # print(vs1, vs2)
 
         self.assertTrue(np.allclose(Bbar, Bbar_test))
+
 
 
 
