@@ -301,6 +301,43 @@ class Test_MC(Test_MC_Arrays):
 
         self.assertTrue(np.allclose(MCSampler.delE, FinEn - InitEn), msg="{}, {}".format(MCSampler.delE, FinEn - InitEn))
 
+    def test_exit_states(self):
+        # First, create a random state
+        initState = np.zeros(len(self.VclusExp.sup.mobilepos), dtype=int)
+        # Now assign random species (excluding the vacancy)
+        for i in range(len(self.VclusExp.sup.mobilepos)):
+            initState[i] = np.random.randint(0, self.NSpec - 1)
+
+        # Now put in the vacancy at the vacancy site
+        initState[self.vacsiteInd] = self.NSpec - 1
+        initCopy = initState.copy()
+        initJit = initState.copy()
+
+        numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
+        VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
+        Index2InteractionDict, repClustCounter = \
+            self.VclusExp.makeJitInteractionsData(self.Energies)
+
+        TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites, TSInteractSpecs, \
+        jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, \
+        JumpInteracts, Jump2KRAEng = \
+            self.VclusExp.KRAexpander.makeTransJitData(self.KRAEnergies)
+
+        MCSampler_Jit = MC_JIT.MCSamplerClass(
+            numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
+            VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
+            numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
+            FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
+            vacSiteInd)
+
+        ijlist = self.VclusExp.KRAexpander.ijList
+        dxList = self.VclusExp.KRAexpander.dxList
+
+        # get the offsite counts
+        offsc = MCSampler_Jit.makeOffSiteCount(initJit)
+        TSoffsc = MCSampler_Jit.GetTSOffSite(initJit)
+
+
     def test_random_state(self):
         initState = np.zeros(len(self.VclusExp.sup.mobilepos), dtype=int)
         # Now assign random species (excluding the vacancy)
