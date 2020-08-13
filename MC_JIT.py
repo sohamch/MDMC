@@ -305,22 +305,18 @@ class MCSamplerClass(object):
 
         return WBar, BBar
 
-
-    def ExpandChange(self, state, ijList, OffSiteCount, TSOffSiteCount, ClusterCoeffs, lenVecClus, beta):
-
+    def ExpandChange(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, ClusterCoeffs, lenVecClus, beta):
         Amat = np.zeros((lenVecClus, 3))
         siteA, specA = self.vacSiteInd, self.Nspecs - 1
-        # go through all the transition
+        vel = np.zeros(3)
 
+        # go through all the transitions
         for jumpInd in range(ijList.shape[0]):
             del_lamb = np.zeros((lenVecClus, 3))
 
             # Get the transition index
             siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
             transInd = self.FinSiteFinSpecJumpInd[siteB, specB]
-
-            # SiteTransArray[jumpInd] = siteB
-            # SpecTransArray[jumpInd] = specB
 
             # First, work on getting the KRA energy for the jump
             delEKRA = 0.0
@@ -332,10 +328,7 @@ class MCSamplerClass(object):
                     if TSOffSiteCount[interactMainInd] == 0:
                         delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
 
-            # delEKRAarray[jumpInd] = delEKRA
-
             # next, calculate the energy change due to site swapping
-
             delE = 0.0
             # Switch required sites off
             for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
@@ -378,7 +371,9 @@ class MCSamplerClass(object):
                         del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
 
             rate = np.exp(-(0.5 * delE + delEKRA) * beta)
-            Wmat += rate*del_lamb.T
+            Amat += rate*del_lamb
+
+            vel += rate*dxList[jumpInd]
 
             # Next, restore OffSiteCounts to original values for next jump, as well as
             # for use in the next MC sweep.
@@ -398,7 +393,9 @@ class MCSamplerClass(object):
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
                 OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
 
-        return Wmat
+        residual = vel + np.dot(Amat.T, ClusterCoeffs)
+
+        return Amat, residual, vel
 
     def GetNewRandState(self, mobOcc, OffSiteCount, repClustOnCount, Energy, SwapTrials, Nswaptrials):
 
