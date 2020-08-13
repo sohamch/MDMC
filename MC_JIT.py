@@ -305,6 +305,101 @@ class MCSamplerClass(object):
 
         return WBar, BBar
 
+
+    def ExpandChange(self, state, ijList, OffSiteCount, TSOffSiteCount, lenVecClus, beta):
+
+        Wmat = np.zeros((3, lenVecClus))
+        siteA, specA = self.vacSiteInd, self.Nspecs - 1
+        # go through all the transition
+
+        for jumpInd in range(ijList.shape[0]):
+            del_lamb = np.zeros((lenVecClus, 3))
+
+            # Get the transition index
+            siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
+            transInd = self.FinSiteFinSpecJumpInd[siteB, specB]
+
+            # SiteTransArray[jumpInd] = siteB
+            # SpecTransArray[jumpInd] = specB
+
+            # First, work on getting the KRA energy for the jump
+            delEKRA = 0.0
+            # We need to go through every point group for this jump
+            for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
+                for interactInd in range(self.numTSInteractsInPtGroups[transInd, tsPtGpInd]):
+                    # Check if this interaction is on
+                    interactMainInd = self.JumpInteracts[transInd, tsPtGpInd, interactInd]
+                    if TSOffSiteCount[interactMainInd] == 0:
+                        delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
+
+            # delEKRAarray[jumpInd] = delEKRA
+
+            # next, calculate the energy change due to site swapping
+
+            delE = 0.0
+            # Switch required sites off
+            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
+                # check if an interaction is on
+                interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
+                if OffSiteCount[interMainInd] == 0:
+                    delE -= self.Interaction2En[interMainInd]
+                    # take away the vectors for this interaction
+                    for i in range(self.numVecsInteracts[interMainInd]):
+                        del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
+                OffSiteCount[interMainInd] += 1
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
+                interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
+                if OffSiteCount[interMainInd] == 0:
+                    delE -= self.Interaction2En[interMainInd]
+                    for i in range(self.numVecsInteracts[interMainInd]):
+                        del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
+                OffSiteCount[interMainInd] += 1
+
+            # Next, switch required sites on
+            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
+                interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
+                OffSiteCount[interMainInd] -= 1
+                if OffSiteCount[interMainInd] == 0:
+                    delE += self.Interaction2En[interMainInd]
+                    # add the vectors for this interaction
+                    for i in range(self.numVecsInteracts[interMainInd]):
+                        del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
+                interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
+                OffSiteCount[interMainInd] -= 1
+                if OffSiteCount[interMainInd] == 0:
+                    delE += self.Interaction2En[interMainInd]
+                    # add the vectors for this interaction
+                    # for interactions with zero vector basis, numVecsInteracts[interMainInd] = -1 and the
+                    # loop doesn't run
+                    for i in range(self.numVecsInteracts[interMainInd]):
+                        del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
+
+            rate = np.exp(-(0.5 * delE + delEKRA) * beta)
+            Wmat += rate*del_lamb.T
+
+            # Next, restore OffSiteCounts to original values for next jump, as well as
+            # for use in the next MC sweep.
+            # During switch-off operations, offsite counts were increased by one.
+            # So decrease them back by one
+            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
+                OffSiteCount[self.SiteSpecInterArray[siteA, state[siteA], interIdx]] -= 1
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
+                OffSiteCount[self.SiteSpecInterArray[siteB, state[siteB], interIdx]] -= 1
+
+            # During switch-on operations, offsite counts were decreased by one.
+            # So increase them back by one
+            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
+                OffSiteCount[self.SiteSpecInterArray[siteA, state[siteB], interIdx]] += 1
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
+                OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
+
+        return Wmat
+
     def GetNewRandState(self, mobOcc, OffSiteCount, repClustOnCount, Energy, SwapTrials, Nswaptrials):
 
         En = Energy

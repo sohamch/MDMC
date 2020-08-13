@@ -97,13 +97,14 @@ class Test_MC_Arrays(unittest.TestCase):
             self.assertEqual(Interaction2En[i], self.Energies[enIndex])
 
             # # get the vector basis info for this cluster
-            # vecList = self.VclusExp.clust2vecClus[repClus]
             # # check the number of vectors
-            # self.assertEqual(numVecsInteracts[i], len(vecList))
-            # # check that the correct vector have been stored, in the same order as in vecList (not necessary but short testing)
-            # for vecind in range(len(vecList)):
-            #     vec = self.VclusExp.vecVec[vecList[vecind][0]][vecList[vecind][1]]
-            #     self.assertTrue(np.allclose(vec, VecsInteracts[i, vecind, :]))
+            if numVecsInteracts[i] > 0:
+                vecList = self.VclusExp.clust2vecClus[repClus]
+                self.assertEqual(numVecsInteracts[i], len(vecList))
+                # # check that the correct vector have been stored, in the same order as in vecList (not necessary but short testing)
+                for vecind in range(len(vecList)):
+                    vec = self.VclusExp.vecVec[vecList[vecind][0]][vecList[vecind][1]]
+                    self.assertTrue(np.allclose(vec, VecsInteracts[i, vecind, :]))
 
         # Next, test the interactions each (site, spec) is a part of
         self.assertEqual(numInteractsSiteSpec.shape[0], len(self.superBCC.mobilepos))
