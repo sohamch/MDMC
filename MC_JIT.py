@@ -306,9 +306,9 @@ class MCSamplerClass(object):
         return WBar, BBar
 
 
-    def ExpandChange(self, state, ijList, OffSiteCount, TSOffSiteCount, lenVecClus, beta):
+    def ExpandChange(self, state, ijList, OffSiteCount, TSOffSiteCount, ClusterCoeffs, lenVecClus, beta):
 
-        Wmat = np.zeros((3, lenVecClus))
+        Amat = np.zeros((lenVecClus, 3))
         siteA, specA = self.vacSiteInd, self.Nspecs - 1
         # go through all the transition
 
