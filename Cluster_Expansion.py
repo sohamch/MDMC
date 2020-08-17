@@ -208,26 +208,20 @@ class VectorClusterExpansion(object):
         """
         generate interactions for every site - for MC moves
         """
-
-        self.cl2clInd = {}
-
-        for clInd, cl in enumerate([cl for clist in self.SpecClusters for cl in clist]):
-            self.cl2clInd[cl] = clInd
-
         SiteSpecinteractList = collections.defaultdict(list)
         for siteInd in range(self.Nsites):
             # get the cluster site
             ci, R = self.sup.ciR(siteInd)
             clSite = cluster.ClusterSite(ci=ci, R=R)
             # Now, go through all the clusters
-            for (cl, clInd) in self.cl2clInd.items():
+            for cl in [cl for clist in self.SpecClusters for cl in clist]:
                 for site, spec in cl.SiteSpecs:
                     if site.ci == ci: # In our case we have only one chemistry.
                         Rtrans = R - site.R
                         interactSupInd = tuple([(self.sup.index(site.R+Rtrans, site.ci)[0], spec)
                                                 for site, spec in cl.SiteSpecs])
                         # # this check is to account for periodic boundary conditions
-                        SiteSpecinteractList[(clSite, spec)].append([interactSupInd, cl, clInd, Rtrans])
+                        SiteSpecinteractList[(clSite, spec)].append([interactSupInd, cl, Rtrans])
 
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
         return SiteSpecinteractList, maxinteractions
@@ -244,16 +238,17 @@ class VectorClusterExpansion(object):
         # first, we assign unique integers to interactions
         start = time.time()
         InteractionIndexDict = {}
+        siteSortedInteractionIndexDict = {}
         InteractionRepClusDict = {}
         Index2InteractionDict = {}
-        Index2repClusIndDict = {}
         repClustCounter = collections.defaultdict(int)
+        # siteSpecInteractIndexDict = collections.defaultdict(list)
 
         # while we're at it, let's also store which siteSpec contains which interact
         numInteractsSiteSpec = np.zeros((self.Nsites, len(self.mobCountList)), dtype=int)
         SiteSpecInterArray = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount), -1, dtype=int)
 
-        count = 0  # to assign indices to interactions.
+        count = 0  # to keep a steady count of interactions.
         for key, interactInfoList in self.SiteSpecInteractions.items():
             keySite = self.sup.index(key[0].R, key[0].ci)[0]  # the "incell" function applies PBC to sites outside sup.
             keySpec = key[1]
@@ -261,16 +256,21 @@ class VectorClusterExpansion(object):
             for interactInd, interactInfo in enumerate(interactInfoList):
                 interaction = interactInfo[0]
                 if interaction in InteractionIndexDict:
+                    #siteSpecInteractIndexDict[(keySite, keySpec)].append(InteractionIndexDict[interaction])
                     SiteSpecInterArray[keySite, keySpec, interactInd] = InteractionIndexDict[interaction]
                     continue
                 else:
                     # assign a new unique integer to this interaction
                     InteractionIndexDict[interaction] = count
                     repClustCounter[interactInfo[1]] += 1
+                    # also sort the sites by the supercell site indices - will help in identifying TSclusters as interactions
+                    # later on
+                    Interact_sort = tuple(sorted(interaction, key=lambda x: x[0]))
+                    siteSortedInteractionIndexDict[Interact_sort] = count
                     InteractionRepClusDict[interaction] = interactInfo[1]
                     Index2InteractionDict[count] = interaction
-                    Index2repClusIndDict[count] = interactInfo[2]
                     SiteSpecInterArray[keySite, keySpec, interactInd] = count
+                    #siteSpecInteractIndexDict[(keySite, keySpec)].append(count)
                     count += 1
 
         print("Done Indexing interactions : {}".format(time.time() - start))
@@ -281,7 +281,6 @@ class VectorClusterExpansion(object):
         start = time.time()
         # we'll need the number of sites in each interaction
         numSitesInteracts = np.zeros(numInteracts, dtype=int)
-        InteractToRepClus = np.zeros(numInteracts, dtype=int)
 
         # and the supercell sites in each interaction
         SupSitesInteracts = np.full((numInteracts, self.maxOrder), -1, dtype=int)
@@ -291,7 +290,6 @@ class VectorClusterExpansion(object):
 
         for (key, interaction) in Index2InteractionDict.items():
             numSitesInteracts[key] = len(interaction)
-            InteractToRepClus[key] = Index2repClusIndDict[key]
             for idx, (intSite, intSpec) in enumerate(interaction):
                 SupSitesInteracts[key, idx] = intSite
                 SpecOnInteractSites[key, idx] = intSpec
@@ -323,9 +321,9 @@ class VectorClusterExpansion(object):
 
         vacSiteInd = self.sup.index(self.vacSite.R, self.vacSite.ci)[0]
 
-        return numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,\
-               VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict,\
-               InteractionRepClusDict, Index2InteractionDict, repClustCounter
+        return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts,\
+               VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict,\
+               Index2InteractionDict, repClustCounter
 
 class MCSamplerClass(object):
 
