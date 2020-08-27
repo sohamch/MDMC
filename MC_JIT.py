@@ -320,7 +320,7 @@ class MCSamplerClass(object):
 
         return En
 
-    def getExitData(self, state, ijList, OffSiteCount, TSOffSiteCount, beta, Nsites):
+    def getExitData(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, beta, Nsites):
 
         statesTrans = np.zeros((ijList.shape[0], Nsites), dtype=int64)
         ratelist = np.zeros(ijList.shape[0])
