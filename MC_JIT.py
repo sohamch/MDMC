@@ -324,6 +324,7 @@ class MCSamplerClass(object):
 
         statesTrans = np.zeros((ijList.shape[0], Nsites), dtype=int64)
         ratelist = np.zeros(ijList.shape[0])
+        Specdisps = np.zeros((ijList.shape[0], self.Nspecs, 3))  # To store the displacement of each species during every jump
 
         siteA, specA = self.vacSiteInd, self.Nspecs - 1
         # go through all the transition
