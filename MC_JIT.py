@@ -383,6 +383,7 @@ class MCSamplerClass(object):
                     delE += self.Interaction2En[interMainInd]
 
             ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
+            Specdisps[jumpInd, specB, :] = -dxList[jumpInd, :]
 
             # Next, restore OffSiteCounts to original values for next jump, as well as
             # for use in the next MC sweep.
@@ -402,4 +403,4 @@ class MCSamplerClass(object):
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
                 OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
 
-        return statesTrans, ratelist
+        return statesTrans, ratelist, Specdisps
