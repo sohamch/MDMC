@@ -47,7 +47,7 @@ class Test_MC_Arrays(unittest.TestCase):
     def test_arrays(self):
 
         start = time.time()
-        numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,\
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,\
         VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict,\
         InteractionRepClusDict, Index2InteractionDict, repClustCounter\
             = self.VclusExp.makeJitInteractionsData(self.Energies)
@@ -95,6 +95,7 @@ class Test_MC_Arrays(unittest.TestCase):
 
             # if the vector basis is empty, continue
             if self.VclusExp.clus2LenVecClus[self.VclusExp.clust2SpecClus[repClus][0]] == 0:
+                self.assertEqual(numVecsInteracts[i], -1)
                 continue
             # get the vector basis info for this cluster
             vecList = self.VclusExp.clust2vecClus[repClus]
