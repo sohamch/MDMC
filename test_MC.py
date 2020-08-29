@@ -166,7 +166,7 @@ class Test_MC(Test_MC_Arrays):
         initCopy = initState.copy()
         initJit = initState.copy()
 
-        numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
         VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
         Index2InteractionDict, repClustCounter =\
             self.VclusExp.makeJitInteractionsData(self.Energies)
@@ -265,34 +265,26 @@ class Test_MC(Test_MC_Arrays):
                 FinEn += Interaction2En[i]
 
         OffSiteCount = np.zeros_like(MCSampler.OffSiteCount, dtype=int)
-        TSOffSiteCount2 = TransOffSiteCountNew.copy()
+        TSOffSiteCount2 = np.zeros_like(TransOffSiteCountNew)
 
         MCSampler_Jit = MC_JIT.MCSamplerClass(
-            numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
+            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
             VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
             numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
             FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-            vacSiteInd)
+            vacSiteInd, initJit, OffSiteCount)
 
-        self.assertEqual(MCSampler_Jit.totRepClus, len(self.VclusExp.cl2clInd))
-
-        # make the offsite counts and repClustOn counts
-        offscjit = MCSampler.OffSiteCount.copy()
+        # make the offsite counts
+        offscjit = MCSampler_Jit.OffSiteCount.copy()
 
         # get the array counting how many representative clusters are on from offscjit
-        repClustCounter = MCSampler_Jit.makeRepClusOnCounter(offscjit)
 
-        MCSampler_Jit.makeMCsweep(initJit, offscjit, repClustCounter, TSOffSiteCount2, swaptrials, 1.0, randarr, Nswaptrials)
+        MCSampler_Jit.makeMCsweep(initJit, offscjit, TSOffSiteCount2, swaptrials, 1.0, randarr, Nswaptrials)
 
         # Check that the same results are found
         self.assertTrue(np.array_equal(initJit, initState))
         self.assertTrue(np.array_equal(offscjit, offsc))
         self.assertTrue(np.array_equal(TransOffSiteCountNew, TSOffSiteCount2))
-
-        # get the updated repClustCounter
-        repClustCounter2 = MCSampler_Jit.makeRepClusOnCounter(offscjit)
-
-        self.assertTrue(np.array_equal(repClustCounter, repClustCounter2))
 
         # test that energy calculation and site swaps are done correctly.
         if np.exp(-MCSampler.delE) > np.exp(randarr[0]):
@@ -317,29 +309,59 @@ class Test_MC(Test_MC_Arrays):
         initCopy = initState.copy()
         initJit = initState.copy()
 
-        numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
         VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
         Index2InteractionDict, repClustCounter = \
             self.VclusExp.makeJitInteractionsData(self.Energies)
+
+        self.assertEqual(vacSiteInd, self.vacsiteInd)
 
         TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites, TSInteractSpecs, \
         jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, \
         JumpInteracts, Jump2KRAEng = \
             self.VclusExp.KRAexpander.makeTransJitData(self.KRAEnergies)
 
+        OffSiteCount = np.zeros_like(numSitesInteracts, dtype=int)
         MCSampler_Jit = MC_JIT.MCSamplerClass(
-            numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
+            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
             VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
             numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
             FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-            vacSiteInd)
+            vacSiteInd, initState, OffSiteCount)
 
-        ijlist = self.VclusExp.KRAexpander.ijList
+        ijList = self.VclusExp.KRAexpander.ijList
         dxList = self.VclusExp.KRAexpander.dxList
 
         # get the offsite counts
-        offsc = MCSampler_Jit.makeOffSiteCount(initJit)
-        TSoffsc = MCSampler_Jit.GetTSOffSite(initJit)
+        state = initCopy.copy()
+        offsc = MCSampler_Jit.OffSiteCount.copy()
+        Nsites = self.VclusExp.Nsites
+
+        # make the TS offsite counts
+        TSoffsc = np.zeros(len(MCSampler_Jit.TSInteractSites))
+        for TsInteractIdx in range(len(MCSampler_Jit.TSInteractSites)):
+            TSoffsc[TsInteractIdx] = 0
+            for Siteind in range(MCSampler_Jit.numSitesTSInteracts[TsInteractIdx]):
+                if state[MCSampler_Jit.TSInteractSites[TsInteractIdx, Siteind]] != MCSampler_Jit.TSInteractSpecs[TsInteractIdx, Siteind]:
+                    TSoffsc[TsInteractIdx] += 1
+
+        # Next, get the exit data
+        statesTrans, ratelist, Specdisps = MCSampler_Jit.getExitData(state, ijList, dxList, offsc, TSoffsc, 1.0, Nsites)
+
+        self.assertEqual(len(statesTrans), ijList.shape[0])
+
+        # check that the species have been exchanged properly
+        for jInd in range(ijList.shape[0]):
+            stateFin = statesTrans[jInd, :]
+            finSite = ijList[jInd]
+            # Check that in the final state the correct species have been swapped
+            self.assertEqual(stateFin[finSite], state[vacSiteInd])
+            self.assertEqual(stateFin[vacSiteInd], state[finSite])
+
+            specB = state[finSite]  # the species that has moved
+            dx = Specdisps[jInd, specB, :]
+            self.assertTrue(np.allclose(dx, -dxList[jInd]))
+
 
 
     def test_random_state(self):
@@ -365,11 +387,11 @@ class Test_MC(Test_MC_Arrays):
         OffSiteCount = np.zeros_like(numSitesInteracts, dtype=int)
 
         MCSampler_Jit = MC_JIT.MCSamplerClass(
-            numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
+            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
             VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
             numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
             FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-            vacSiteInd)
+            vacSiteInd, initState, OffSiteCount)
 
         # test random state generation
         state = initCopy.copy()
