@@ -89,22 +89,21 @@ class Test_MC_Arrays(unittest.TestCase):
             # Now, get the representative cluster
             repClus = InteractionRepClusDict[interaction]
 
-            clInd = self.VclusExp.cl2clInd[repClus]
-            self.assertEqual(InteractToRepClus[i], clInd)
-
             # test the energy index
             enIndex = self.VclusExp.clust2SpecClus[repClus][0]
             self.assertEqual(Interaction2En[i], self.Energies[enIndex])
 
-            # # get the vector basis info for this cluster
-            # # check the number of vectors
-            if numVecsInteracts[i] > 0:
-                vecList = self.VclusExp.clust2vecClus[repClus]
-                self.assertEqual(numVecsInteracts[i], len(vecList))
-                # # check that the correct vector have been stored, in the same order as in vecList (not necessary but short testing)
-                for vecind in range(len(vecList)):
-                    vec = self.VclusExp.vecVec[vecList[vecind][0]][vecList[vecind][1]]
-                    self.assertTrue(np.allclose(vec, VecsInteracts[i, vecind, :]))
+            # if the vector basis is empty, continue
+            if self.VclusExp.clus2LenVecClus[self.VclusExp.clust2SpecClus[repClus][0]] == 0:
+                continue
+            # get the vector basis info for this cluster
+            vecList = self.VclusExp.clust2vecClus[repClus]
+            # check the number of vectors
+            self.assertEqual(numVecsInteracts[i], len(vecList))
+            # check that the correct vector have been stored, in the same order as in vecList (not necessary but short testing)
+            for vecind in range(len(vecList)):
+                vec = self.VclusExp.vecVec[vecList[vecind][0]][vecList[vecind][1]]
+                self.assertTrue(np.allclose(vec, VecsInteracts[i, vecind, :]))
 
         # Next, test the interactions each (site, spec) is a part of
         self.assertEqual(numInteractsSiteSpec.shape[0], len(self.superBCC.mobilepos))
@@ -340,21 +339,6 @@ class Test_MC(Test_MC_Arrays):
         # get the offsite counts
         offsc = MCSampler_Jit.makeOffSiteCount(initJit)
         TSoffsc = MCSampler_Jit.GetTSOffSite(initJit)
-        repClustOnCount = MCSampler_Jit.makeRepClusOnCounter(offsc)
-        Nsites = self.VclusExp.Nsites
-
-        statesTrans, repClustOnCountsTrans,  rateList = MCSampler_Jit.getExitData(initJit, ijlist, offsc,
-                                                                                  repClustOnCount, TSoffsc,
-                                                                                  1.0, Nsites)
-
-        # Now we test the repClustOn counter for each exit state
-        for i in range(statesTrans.shape[0]):
-            state = statesTrans[i, :]
-            offsc2 = MCSampler_Jit.makeOffSiteCount(state)
-            repClustOnCount2 = MCSampler_Jit.makeRepClusOnCounter(offsc2)
-
-            self.assertTrue(np.array_equal(repClustOnCount2, repClustOnCountsTrans[i, :]))
-
 
 
     def test_random_state(self):
