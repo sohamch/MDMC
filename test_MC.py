@@ -374,7 +374,7 @@ class Test_MC(Test_MC_Arrays):
         initState[self.vacsiteInd] = self.NSpec - 1
         initCopy = initState.copy()
 
-        numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
         VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
         Index2InteractionDict, repClustCounter = \
             self.VclusExp.makeJitInteractionsData(self.Energies)
@@ -446,7 +446,7 @@ class Test_MC(Test_MC_Arrays):
         initState[self.vacsiteInd] = self.NSpec - 1
         state = initState.copy()
 
-        numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
         VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
         Index2InteractionDict, repClustCounter = \
             self.VclusExp.makeJitInteractionsData(self.Energies)
@@ -460,11 +460,11 @@ class Test_MC(Test_MC_Arrays):
 
         # initiate MC Sampler
         MCSampler_Jit = MC_JIT.MCSamplerClass(
-            numSitesInteracts, InteractToRepClus, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
+            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
             VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
             numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
             FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-            vacSiteInd)
+            vacSiteInd, initState, OffSiteCount)
 
         for (interaction, interactionInd) in InteractionIndexDict.items():
             offsiteCount = 0
