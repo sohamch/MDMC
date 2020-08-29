@@ -336,8 +336,6 @@ class MCSamplerClass(object):
 
             # copy the state
             statesTrans[jumpInd, :] = state
-            # for siteInd in range(Nsites):
-            #     statesTrans[jumpInd, siteInd] = state[siteInd]
 
             # swap occupancies after jump
             statesTrans[jumpInd, siteB] = state[siteA]

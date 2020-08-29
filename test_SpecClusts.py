@@ -150,7 +150,6 @@ class testKRA(unittest.TestCase):
             KRAen = np.sum(valOn)
             KRAcalc = self.KRAexpander.GetKRA(transition, self.mobOccs, KRACoeffs)
             self.assertTrue(np.allclose(KRAen, KRAcalc), msg="{}, {}".format(KRAen, KRAcalc))
-            # print("Envalues : {}, {}".format(KRAcalc, KRAen))
 
 
 class test_Vector_Cluster_Expansion(testKRA):
