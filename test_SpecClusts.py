@@ -260,7 +260,7 @@ class test_Vector_Cluster_Expansion(testKRA):
                 interaction = interactionData[0]
                 interactCounter[interaction] += 1
                 RepClust = interactionData[1]
-                # self.assertEqual(self.VclusExp.cl2clInd[RepClust], RepClustInd)
+
                 if not interaction in interaction2RepClust:
                     interaction2RepClust[interaction] = {RepClust}
                 else:
