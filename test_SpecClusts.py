@@ -63,6 +63,7 @@ class testKRA(unittest.TestCase):
             for clist in clusterLists:
                 cl0 = clist[0]
                 for clust in clist:
+                    self.assertTrue(clust.Norder > 0)
                     clusterListCount[clust] += 1
                     count = 0
                     for g in Glist:
