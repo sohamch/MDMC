@@ -193,32 +193,28 @@ class Test_MC_Arrays(unittest.TestCase):
         # Now, we start testing the jump arrays
         # jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng
 
-        TsInteractIndexDict, Index2TSinteractDict, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec, \
-        FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng =\
-            self.VclusExp.KRAexpander.makeTransJitData(self.KRAEnergies)
-
         for jumpInd, (jumpkey, TSptGrps) in zip(itertools.count(), self.VclusExp.KRAexpander.clusterSpeciesJumps.items()):
             FinSite = jumpkey[1]
             FinSpec = jumpkey[2]
             # Check that the correct initial and final states have been stored
-            self.assertEqual(jumpFinSites[jumpInd], FinSite)
-            self.assertEqual(jumpFinSpec[jumpInd], FinSpec)
+            self.assertEqual(self.jumpFinSites[jumpInd], FinSite)
+            self.assertEqual(self.jumpFinSpec[jumpInd], FinSpec)
 
             # Check that the correct number of point groups are stored
             NptGrp = len(TSptGrps)
-            self.assertEqual(numJumpPointGroups[jumpInd], NptGrp)
+            self.assertEqual(self.numJumpPointGroups[jumpInd], NptGrp)
 
             # Check that in for each point group, the correct interactions are stored.
             for TsPtGpInd, (spectup, TSinteractList) in zip(itertools.count(), TSptGrps):
-                self.assertEqual(numTSInteractsInPtGroups[jumpInd, TsPtGpInd], len(TSinteractList))
+                self.assertEqual(self.numTSInteractsInPtGroups[jumpInd, TsPtGpInd], len(TSinteractList))
                 specList = [self.NSpec - 1, FinSpec] + [spec for spec in spectup]
                 for interactInd, TSClust in enumerate(TSinteractList):
                     interact = tuple([(self.VclusExp.sup.index(site.R, site.ci)[0], spec)
                                       for site, spec in zip(TSClust.sites, specList)])
-                    interactStored = Index2TSinteractDict[JumpInteracts[jumpInd, TsPtGpInd, interactInd]]
+                    interactStored = self.Index2TSinteractDict[self.JumpInteracts[jumpInd, TsPtGpInd, interactInd]]
 
                     self.assertEqual(set(interact), set(interactStored))
-                    self.assertEqual(Jump2KRAEng[jumpInd, TsPtGpInd, interactInd], self.KRAEnergies[jumpInd][TsPtGpInd])
+                    self.assertEqual(self.Jump2KRAEng[jumpInd, TsPtGpInd, interactInd], self.KRAEnergies[jumpInd][TsPtGpInd])
 
 class Test_MC(Test_MC_Arrays):
 
