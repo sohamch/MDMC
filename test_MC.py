@@ -192,6 +192,7 @@ class Test_MC_Arrays(unittest.TestCase):
     def testTransArrays(self):
         # Now, we start testing the jump arrays
         # jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng
+        # TODO : Re write after figuring out detailed balance
 
         for jumpInd, (jumpkey, TSptGrps) in zip(itertools.count(), self.VclusExp.KRAexpander.clusterSpeciesJumps.items()):
             FinSite = jumpkey[1]
