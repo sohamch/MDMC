@@ -387,35 +387,11 @@ class Test_MC(Test_MC_Arrays):
             dx = Specdisps[jInd, specB, :]
             self.assertTrue(np.allclose(dx, -dxList[jInd]))
 
-
     def test_random_state(self):
-        initState = np.zeros(len(self.VclusExp.sup.mobilepos), dtype=int)
-        # Now assign random species (excluding the vacancy)
-        for i in range(len(self.VclusExp.sup.mobilepos)):
-            initState[i] = np.random.randint(0, self.NSpec - 1)
-
-        # Now put in the vacancy at the vacancy site
-        initState[self.vacsiteInd] = self.NSpec - 1
+        initState = self.initState
         initCopy = initState.copy()
 
-        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
-        VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
-        Index2InteractionDict, repClustCounter = \
-            self.VclusExp.makeJitInteractionsData(self.Energies)
-
-        TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites, TSInteractSpecs, \
-        jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, \
-        JumpInteracts, Jump2KRAEng = \
-            self.VclusExp.KRAexpander.makeTransJitData(self.KRAEnergies)
-
-        OffSiteCount = np.zeros_like(numSitesInteracts, dtype=int)
-
-        MCSampler_Jit = MC_JIT.MCSamplerClass(
-            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
-            VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
-            numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
-            FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-            vacSiteInd, initState, OffSiteCount)
+        MCSampler_Jit = self.MCSampler_Jit
 
         # test random state generation
         state = initCopy.copy()
@@ -433,7 +409,7 @@ class Test_MC(Test_MC_Arrays):
             siteB = np.random.randint(0, Nsites)
 
             # make sure we are swapping different atoms because otherwise we are in the same state
-            if state[siteA] == state[siteB] or siteA == vacSiteInd or siteB == vacSiteInd:
+            if state[siteA] == state[siteB] or siteA == self.vacSiteInd or siteB == self.vacSiteInd:
                 continue
 
             swaptrials[count, 0] = siteA
@@ -443,14 +419,14 @@ class Test_MC(Test_MC_Arrays):
         InitEn = 0.
         for i in range(len(offsc)):
             if offsc[i] == 0:
-                InitEn += Interaction2En[i]
+                InitEn += self.Interaction2En[i]
 
         En_new = MCSampler_Jit.GetNewRandState(state, offsc, InitEn, swaptrials, Nswaptrials)
 
         FinEn = 0.
         for i in range(len(offsc)):
             if offsc[i] == 0:
-                FinEn += Interaction2En[i]
+                FinEn += self.Interaction2En[i]
 
         self.assertTrue(np.allclose(FinEn, En_new))
 
