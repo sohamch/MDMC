@@ -404,14 +404,20 @@ class MCSamplerClass(object):
         return statesTrans, ratelist, Specdisps
 
 
-@jitclass(MonteCarloSamplerSpec)
+KMC_additional_spec = [
+    ("siteIndtoR", int64[:, :]),
+    ("RtoSiteInd", int64[:, :, :]),
+]
+
+
+@jitclass(MonteCarloSamplerSpec+KMC_additional_spec)
 class KMC_JIT(object):
 
     def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
                  VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
                  numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
                  FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-                 vacSiteInd):
+                 vacSiteInd, siteIndtoR, RtoSiteInd):
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts, \
         self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.vacSiteInd = \
@@ -426,7 +432,9 @@ class KMC_JIT(object):
             jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, \
             JumpInteracts, Jump2KRAEng
 
-        # check if proper sites and species data are entered
+        self.RtoSiteInd = RtoSiteInd
+        self.siteIndtoR = siteIndtoR
+
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
 
 
