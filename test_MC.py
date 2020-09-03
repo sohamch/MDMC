@@ -44,6 +44,37 @@ class Test_MC_Arrays(unittest.TestCase):
         self.KRAEnergies = [np.random.rand(len(val)) for (key, val) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
         print("Done setting up")
 
+        self.MakeJITs()
+
+    def MakeJITs(self):
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
+        VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
+        Index2InteractionDict, repClustCounter = \
+            self.VclusExp.makeJitInteractionsData(self.Energies)
+
+        TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites, TSInteractSpecs, \
+        jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, \
+        JumpInteracts, Jump2KRAEng = \
+            self.VclusExp.KRAexpander.makeTransJitData(self.KRAEnergies)
+
+        Nsites = self.VclusExp.Nsites
+        N_units = self.VclusExp.sup.superlatt[0, 0]
+        siteIndtoR = np.zeros((Nsites, 3), dtype=int)
+        RtoSiteInd = np.zeros((N_units, N_units, N_units), dtype=int)
+
+        for siteInd in range(Nsites):
+            R = self.VclusExp.sup.ciR(siteInd)[1]
+            siteIndtoR[siteInd, :] = R
+            RtoSiteInd[R[0], R[1], R[2]] = siteInd
+
+        self.KMC_Jit = MC_JIT.KMC_JIT(numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
+                                 VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
+                                 numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
+                                 FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
+                                 siteIndtoR, RtoSiteInd, N_units)
+
+
+
     def test_arrays(self):
 
         start = time.time()
@@ -738,6 +769,8 @@ class Test_KMC(Test_MC_Arrays):
             self.assertEqual(siteT2, siteTrans, msg="\n{} {} \n{} \n{} \n{}".format(siteT2, siteTrans, R2, R2_incell, RTrans2))
             self.assertEqual(state[site], stateTrans[siteTrans])
             self.assertEqual(state[site], stateTrans[siteT2])
+
+
 
 
 
