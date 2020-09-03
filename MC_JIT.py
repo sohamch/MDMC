@@ -402,3 +402,31 @@ class MCSamplerClass(object):
                 OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
 
         return statesTrans, ratelist, Specdisps
+
+
+@jitclass(MonteCarloSamplerSpec)
+class KMC_JIT(object):
+
+    def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
+                 VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
+                 numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
+                 FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
+                 vacSiteInd):
+
+        self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts, \
+        self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.vacSiteInd = \
+            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, \
+            VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd
+
+        self.numSitesTSInteracts, self.TSInteractSites, self.TSInteractSpecs = \
+            numSitesTSInteracts, TSInteractSites, TSInteractSpecs
+
+        self.jumpFinSites, self.jumpFinSpec, self.FinSiteFinSpecJumpInd, self.numJumpPointGroups, self.numTSInteractsInPtGroups, \
+        self.JumpInteracts, self.Jump2KRAEng = \
+            jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, \
+            JumpInteracts, Jump2KRAEng
+
+        # check if proper sites and species data are entered
+        self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
+
+
