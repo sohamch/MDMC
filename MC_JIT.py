@@ -407,6 +407,7 @@ class MCSamplerClass(object):
 KMC_additional_spec = [
     ("siteIndtoR", int64[:, :]),
     ("RtoSiteInd", int64[:, :, :]),
+    ("N_unit", int64),
 ]
 
 
@@ -417,12 +418,12 @@ class KMC_JIT(object):
                  VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
                  numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
                  FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-                 vacSiteInd, siteIndtoR, RtoSiteInd, N_unit):
+                 siteIndtoR, RtoSiteInd, N_unit):
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts, \
-        self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.vacSiteInd = \
+        self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray = \
             numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, \
-            VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd
+            VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray
 
         self.numSitesTSInteracts, self.TSInteractSites, self.TSInteractSpecs = \
             numSitesTSInteracts, TSInteractSites, TSInteractSpecs
@@ -498,4 +499,82 @@ class KMC_JIT(object):
             delEKRA[jumpInd] = delE
 
         return delEKRA
+
+    def getEnergyChangeJumps(self, state, OffSiteCount, siteA, jmpFinSiteListTrans):
+
+        delEArray = np.zeros(jmpFinSiteListTrans.shape[0], dtype=float64)
+
+        for jmpInd in range(jmpFinSiteListTrans.shape[0]):
+            siteB = jmpFinSiteListTrans[jmpInd]
+            delE = 0.0
+            # Switch required sites off
+            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
+                # check if an interaction is on
+                interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
+                if OffSiteCount[interMainInd] == 0:
+                    delE -= self.Interaction2En[interMainInd]
+                OffSiteCount[interMainInd] += 1
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
+                interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
+                if OffSiteCount[interMainInd] == 0:
+                    delE -= self.Interaction2En[interMainInd]
+                OffSiteCount[interMainInd] += 1
+
+            # Next, switch required sites on
+            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
+                interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
+                OffSiteCount[interMainInd] -= 1
+                if OffSiteCount[interMainInd] == 0:
+                    delE += self.Interaction2En[interMainInd]
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
+                interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
+                OffSiteCount[interMainInd] -= 1
+                if OffSiteCount[interMainInd] == 0:
+                    delE += self.Interaction2En[interMainInd]
+
+            delEArray[jmpInd] = delE
+
+            # Now revert offsitecounts for next jump
+            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
+                OffSiteCount[self.SiteSpecInterArray[siteA, state[siteA], interIdx]] -= 1
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
+                OffSiteCount[self.SiteSpecInterArray[siteB, state[siteB], interIdx]] -= 1
+
+            # During switch-on operations, offsite counts were decreased by one.
+            # So increase them back by one
+            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
+                OffSiteCount[self.SiteSpecInterArray[siteA, state[siteB], interIdx]] += 1
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
+                OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
+
+        return delEArray
+
+    def updateState(self, state, OffSiteCount, siteA, siteB):
+
+        # update offsitecounts
+        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
+            interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
+            OffSiteCount[interMainInd] += 1
+
+        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
+            interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
+            OffSiteCount[interMainInd] += 1
+
+        # Next, switch required sites on
+        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
+            interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
+            OffSiteCount[interMainInd] -= 1
+
+        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
+            interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
+            OffSiteCount[interMainInd] -= 1
+
+        # swap sites
+        temp = state[siteA]
+        state[siteA] = state[siteB]
+        state[siteB] = temp
 

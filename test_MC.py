@@ -665,6 +665,81 @@ class Test_MC(Test_MC_Arrays):
         self.assertTrue(np.allclose(Bbar, Bbar_test))
 
 
+class Test_KMC(Test_MC_Arrays):
+
+    def test_translation(self):
+
+        initState = np.zeros(len(self.VclusExp.sup.mobilepos), dtype=int)
+        # Now assign random species (excluding the vacancy)
+        for i in range(len(self.VclusExp.sup.mobilepos)):
+            initState[i] = np.random.randint(0, self.NSpec - 1)
+
+        # Now put in the vacancy at the vacancy site
+        initState[self.vacsiteInd] = self.NSpec - 1
+        state = initState.copy()
+
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
+        VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
+        Index2InteractionDict, repClustCounter = \
+            self.VclusExp.makeJitInteractionsData(self.Energies)
+
+        TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites, TSInteractSpecs, \
+        jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, \
+        JumpInteracts, Jump2KRAEng = \
+            self.VclusExp.KRAexpander.makeTransJitData(self.KRAEnergies)
+
+        # Now make the RtoSiteInd and SiteIndtoR arrays
+        Nsites = self.VclusExp.Nsites
+        N_units = self.VclusExp.sup.superlatt[0, 0]
+        siteIndtoR = np.zeros((Nsites, 3), dtype=int)
+        RtoSiteInd = np.zeros((N_units, N_units, N_units), dtype=int)
+
+        for siteInd in range(Nsites):
+            R = self.VclusExp.sup.ciR(siteInd)[1]
+            siteIndtoR[siteInd, :] = R
+            RtoSiteInd[R[0], R[1], R[2]] = siteInd
+
+        # Now, generate the KMC JIT object
+
+        KMC_Jit = MC_JIT.KMC_JIT(numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
+                 VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
+                 numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
+                 FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
+                 siteIndtoR, RtoSiteInd, N_units)
+
+        # Now produce a translated state
+        # take two random site Indices
+        siteA = np.random.randint(0, Nsites)
+        siteB = np.random.randint(0, Nsites)
+
+        print(siteA, siteB)
+
+        stateTrans = KMC_Jit.TranslateState(state, siteB, siteA)
+
+        Rf = self.VclusExp.sup.ciR(siteB)[1]
+        Ri = self.VclusExp.sup.ciR(siteA)[1]
+
+        # Now, test the translated state
+        # since monoatomic BCC, ci = (0,0)
+        ci = (0, 0)
+        for site in range(Nsites):
+            Rsite = self.VclusExp.sup.ciR(site)[1]
+
+            self.assertTrue(np.array_equal(Rsite, siteIndtoR[site, :]))
+
+            R2 = Rsite + Rf - Ri  # get the new location of the site
+            siteTrans = self.VclusExp.sup.index(R2, ci)[0]
+            R2_incell = self.VclusExp.sup.ciR(siteTrans)[1]
+
+            RTrans2 = (siteIndtoR[site, :] + Rf - Ri) % N_units
+
+            siteT2 = RtoSiteInd[RTrans2[0], RTrans2[1], RTrans2[2]]
+
+            self.assertEqual(siteT2, siteTrans, msg="\n{} {} \n{} \n{} \n{}".format(siteT2, siteTrans, R2, R2_incell, RTrans2))
+            self.assertEqual(state[site], stateTrans[siteTrans])
+            self.assertEqual(state[site], stateTrans[siteT2])
+
+
 
 
 
