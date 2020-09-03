@@ -325,6 +325,18 @@ class VectorClusterExpansion(object):
                VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict,\
                Index2InteractionDict, repClustCounter
 
+    def makeSiteIndToSite(self):
+        Nsites = self.Nsites
+        N_units = self.sup.superlatt[0, 0]
+        siteIndtoR = np.zeros((Nsites, 3), dtype=int)
+        RtoSiteInd = np.zeros((N_units, N_units, N_units), dtype=int)
+
+        for siteInd in range(Nsites):
+            R = self.sup.ciR(siteInd)[1]
+            siteIndtoR[siteInd, :] = R
+            RtoSiteInd[R[0], R[1], R[2]] = siteInd
+        return siteIndtoR, RtoSiteInd
+
 class MCSamplerClass(object):
 
     def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
