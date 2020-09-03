@@ -417,7 +417,7 @@ class KMC_JIT(object):
                  VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
                  numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
                  FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-                 vacSiteInd, siteIndtoR, RtoSiteInd):
+                 vacSiteInd, siteIndtoR, RtoSiteInd, N_unit):
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts, \
         self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.vacSiteInd = \
@@ -437,4 +437,65 @@ class KMC_JIT(object):
 
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
 
+        self.N_unit = N_unit
+
+    def TranslateState(self, state, siteFin, siteInit):
+        """
+        To take a state, and translate it, so the the species at siteInit
+        is taken to siteFin
+        :param state: The state to translate
+        :param N_unit: Number of unit cells in each direction
+        :return:
+        """
+        dR = self.siteIndtoR[siteFin, :] - self.siteIndtoR[siteInit, :]
+        stateTrans = np.zeros_like(state, dtype=int64)
+        for siteInd in range(state.shape[0]):
+            Rnew = (self.siteIndtoR[siteInd, :] + dR) % self.N_unit  # to apply PBC
+            siteIndNew = self.RtoSiteInd[Rnew[0], Rnew[1], Rnew[2]]
+            stateTrans[siteIndNew] = state[siteInd]
+        return stateTrans
+
+    def GetOffSite(self, state):
+        """
+        :param state: State for which to count off sites of interactions
+        :return: OffSiteCount array (N_interaction x 1)
+        """
+        OffSiteCount = np.zeros(self.numSitesInteracts.shape[0], dtype=int64)
+        for interactIdx in range(self.numSitesInteracts.shape[0]):
+            for intSiteind in range(self.numSitesInteracts[interactIdx]):
+                if state[self.SupSitesInteracts[interactIdx, intSiteind]] !=\
+                        self.SpecOnInteractSites[interactIdx, intSiteind]:
+                    OffSiteCount[interactIdx] += 1
+        return OffSiteCount
+
+    def GetTSOffSite(self, state):
+        """
+        :param state: State for which to count off sites of TS interactions
+        :return: OffSiteCount array (N_interaction x 1)
+        """
+        TransOffSiteCount = np.zeros(self.numSitesTSInteracts.shape[0], dtype=int64)
+        for TsInteractIdx in range(self.numSitesTSInteracts.shape[0]):
+            for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
+                if state[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
+                    TransOffSiteCount[TsInteractIdx] += 1
+        return TransOffSiteCount
+
+    def getKRAEnergies(self, state, TSOffSiteCount, ijList):
+
+        delEKRA = np.zeros(ijList.shape[0], dtype=float64)
+        for jumpInd in range(ijList.shape[0]):
+            delE = 0.0
+            # Get the transition index
+            siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
+            transInd = self.FinSiteFinSpecJumpInd[siteB, specB]
+            # We need to go through every point group for this jump
+            for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
+                for interactInd in range(self.numTSInteractsInPtGroups[transInd, tsPtGpInd]):
+                    # Check if this interaction is on
+                    interactMainInd = self.JumpInteracts[transInd, tsPtGpInd, interactInd]
+                    if TSOffSiteCount[interactMainInd] == 0:
+                        delE += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
+            delEKRA[jumpInd] = delE
+
+        return delEKRA
 
