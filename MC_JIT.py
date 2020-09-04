@@ -578,3 +578,5 @@ class KMC_JIT(object):
         state[siteA] = state[siteB]
         state[siteB] = temp
 
+    def getTraj(self, vacSiteFix):
+
