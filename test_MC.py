@@ -689,6 +689,33 @@ class Test_KMC(Test_MC_Arrays):
         stateTrans = KMC_Jit.TranslateState(state, siteB, siteB)
         self.assertTrue(np.array_equal(state, stateTrans))
 
+    def test_Offsite(self):
+        # here we check if the off site counts are being computed correctly for a state
+        state = self.initState.copy()
+
+        # First, the cluster off site counts
+        OffSiteCount = self.KMC_Jit.GetOffSite(state)
+        for (interaction, interactionInd) in self.InteractionIndexDict.items():
+            offsiteCount = 0
+            for (site, spec) in interaction:
+                if state[site] != spec:
+                    offsiteCount += 1
+            self.assertEqual(OffSiteCount[interactionInd], offsiteCount)
+
+        # Next, the TS cluster off site counts
+        TransOffSiteCount = self.KMC_Jit.GetTSOffSite(state)
+        for TsInteractIdx in range(self.numSitesTSInteracts.shape[0]):
+            Interaction = self.Index2TSinteractDict[TsInteractIdx]
+            offcount = 0
+            for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
+                self.assertEqual(self.TSInteractSpecs[TsInteractIdx, Siteind], Interaction[Siteind][1])
+                self.assertEqual(self.TSInteractSites[TsInteractIdx, Siteind], Interaction[Siteind][0])
+                if state[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
+                    offcount += 1
+            self.assertEqual(offcount, TransOffSiteCount[TsInteractIdx])
+
+
+
 
 
 
