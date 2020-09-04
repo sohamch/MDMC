@@ -116,7 +116,7 @@ class KRAExpand(object):
 
         :returns  SpecClusterJumpList - a cluster expansion for KRA with species assigned to the clusters.
         """
-
+        TSInteracts = set([])  # this will store all our transition state clusters
         Nmobile = len(self.mobCountList)
 
         mobileSpecs = tuple(range(Nmobile - 1))  # the last species is the vacancy, so we are not considering it.
