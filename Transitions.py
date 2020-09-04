@@ -131,7 +131,7 @@ class KRAExpand(object):
                 # remember that we have removed vacancies from being considered in mobileSpecs
                 # Norder for TSClusters is 2 less than the actual site count, to exclude initial final sites from any
                 # "touching" so to speak - specI is always vacancy, we'll assign specJ later on
-                Specs = itertools.product(mobileSpecs, repeat=cl0.Norder)
+                Specs = itertools.product(mobileSpecs, repeat=cl0.Norder)  # this is the combination of species on the final site
                 for specJ in range(Nmobile - 1):
                     ABspecJ = (AB[0], AB[1], specJ)
                     for tup in Specs:
