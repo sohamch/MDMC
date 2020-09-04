@@ -719,8 +719,7 @@ class Test_KMC(Test_MC_Arrays):
         OffSiteCount = self.KMC_Jit.GetOffSite(state)
         offscCopy = OffSiteCount.copy()
 
-        Nsites = self.VclusExp.Nsites
-        N_units = self.VclusExp.sup.superlatt[0, 0]
+
         siteIndtoR = self.siteIndtoR
         RtoSiteInd = self.RtoSiteInd
 
@@ -757,6 +756,35 @@ class Test_KMC(Test_MC_Arrays):
             print("\n{:.4f} {:.4f}".format(delE, delEJumps[jumpInd]))
 
             self.assertAlmostEqual(delE, delEJumps[jumpInd])
+
+    def test_state_updating(self):
+        state = self.initState.copy()
+        OffSiteCount = self.KMC_Jit.GetOffSite(state)
+        offscCopy = OffSiteCount.copy()
+
+        Nsites = self.VclusExp.Nsites
+        N_units = self.VclusExp.sup.superlatt[0, 0]
+
+        # do some random swaps and check if updates are being done correctly
+        for i in range(10):
+            siteA = np.random.randint(0, Nsites)
+            siteB = np.random.randint(0, Nsites)
+
+            # produce a new state by swapping the two
+
+            stateNew = state.copy()
+            stateNew[siteA] = state[siteB]
+            stateNew[siteB] = state[siteA]
+
+            offscnew = self.KMC_Jit.GetOffSite(stateNew)
+
+            self.KMC_Jit.updateState(state, OffSiteCount, siteA, siteB)
+
+            self.assertTrue(np.array_equal(state, stateNew))
+            self.assertTrue(np.array_equal(offscnew, OffSiteCount))
+
+
+
 
 
 
