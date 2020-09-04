@@ -81,6 +81,9 @@ class Test_MC_Arrays(unittest.TestCase):
             siteIndtoR[siteInd, :] = R
             RtoSiteInd[R[0], R[1], R[2]] = siteInd
 
+        self.RtoSiteInd = RtoSiteInd
+        self.siteIndtoR = siteIndtoR
+
         self.KMC_Jit = MC_JIT.KMC_JIT(numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
                                  VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
                                  numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
@@ -639,28 +642,14 @@ class Test_MC(Test_MC_Arrays):
 class Test_KMC(Test_MC_Arrays):
 
     def test_translation(self):
-
-        initState = np.zeros(len(self.VclusExp.sup.mobilepos), dtype=int)
-        # Now assign random species (excluding the vacancy)
-        for i in range(len(self.VclusExp.sup.mobilepos)):
-            initState[i] = np.random.randint(0, self.NSpec - 1)
-
-        # Now put in the vacancy at the vacancy site
-        initState[self.vacsiteInd] = self.NSpec - 1
+        initState = self.initState
         state = initState.copy()
 
         # Now make the RtoSiteInd and SiteIndtoR arrays
         Nsites = self.VclusExp.Nsites
         N_units = self.VclusExp.sup.superlatt[0, 0]
-        siteIndtoR = np.zeros((Nsites, 3), dtype=int)
-        RtoSiteInd = np.zeros((N_units, N_units, N_units), dtype=int)
-
-        for siteInd in range(Nsites):
-            R = self.VclusExp.sup.ciR(siteInd)[1]
-            siteIndtoR[siteInd, :] = R
-            RtoSiteInd[R[0], R[1], R[2]] = siteInd
-
-        # Now, generate the KMC JIT object
+        siteIndtoR = self.siteIndtoR
+        RtoSiteInd = self.RtoSiteInd
 
         KMC_Jit = self.KMC_Jit
 
@@ -695,6 +684,10 @@ class Test_KMC(Test_MC_Arrays):
             self.assertEqual(siteT2, siteTrans, msg="\n{} {} \n{} \n{} \n{}".format(siteT2, siteTrans, R2, R2_incell, RTrans2))
             self.assertEqual(state[site], stateTrans[siteTrans])
             self.assertEqual(state[site], stateTrans[siteT2])
+
+        # Now check that no change occurs when no translation is needed
+        stateTrans = KMC_Jit.TranslateState(state, siteB, siteB)
+        self.assertTrue(np.array_equal(state, stateTrans))
 
 
 
