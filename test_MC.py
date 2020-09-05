@@ -464,8 +464,6 @@ class Test_MC(Test_MC_Arrays):
 
         # Check that the offsitecounts have been correctly reverted and state is unchanged.
 
-        # self.assertFalse(np.allclose(Wbar, np.zeros_like(Wbar)))
-
         self.assertTrue(np.array_equal(MCSampler_Jit.OffSiteCount, offscjit))
         self.assertTrue(np.array_equal(state, initState))
 
@@ -509,8 +507,6 @@ class Test_MC(Test_MC_Arrays):
                             offcount = TSOffCount[self.JumpInteracts[jumpInd, ptgrpInd, ptGpInteractInd]]
                             if offcount == 0:
                                 delEKRA += self.Jump2KRAEng[jumpInd, ptgrpInd, ptGpInteractInd]
-
-                    # self.assertTrue(np.allclose(delEKRA, delEKRAarray[TInd]), msg="{} {}".format(delEKRA, delEKRAarray[TInd]))
 
                     # Now do the site swaps and calculate the energy
                     delE = 0.0
@@ -616,25 +612,16 @@ class Test_MC(Test_MC_Arrays):
                                     self.assertEqual(self.VecGroupInteracts[interactInd, tupInd], vs2)
                                     vec2 += self.VecsInteracts[interactInd, tupInd, :]
                     # get the rate
-                    # self.assertTrue(np.allclose(delE, delEarray[TInd]),
-                    #                 msg="{} {} {} {} {}".format(vs1, vs2, TInd, delE, delEarray[TInd]))
                     rate = np.exp(-(0.5 * delE + delEKRA))
                     # get the dot product
                     dot = np.dot(vec1, vec2)
-                    # self.assertTrue(np.allclose(rate, ratelist[TInd]))
-                    # self.assertTrue(np.allclose(dot, del_lamb_mat[vs1, vs2, TInd]))
+
                     Wbar_test[vs1, vs2] += rate*dot
                     if vs1 == 0:
                         Bbar_test[vs2] += rate*np.dot(dxList[TInd], vec2)
 
                 self.assertAlmostEqual(Wbar[vs1, vs2], Wbar_test[vs1, vs2], 8,
                                        msg="\n{} {}".format(Wbar[vs1, vs2], Wbar_test[vs1, vs2]))
-
-                # if np.allclose(Wbar_test[vs1, vs2], 0):
-
-                # self.assertTrue(np.allclose(Wbar[vs1, vs2], Wbar_test[vs1, vs2]), msg="{}, {}\n {}, {}"
-                #                     .format(vs1, vs2, Wbar[vs1, vs2], Wbar_test[vs1, vs2]))
-                # print(vs1, vs2)
 
         self.assertTrue(np.allclose(Bbar, Bbar_test))
 
