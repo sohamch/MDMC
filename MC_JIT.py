@@ -578,5 +578,58 @@ class KMC_JIT(object):
         state[siteA] = state[siteB]
         state[siteB] = temp
 
-    def getTraj(self, vacSiteFix):
+    def getTraj(self, state, offsc, vacSiteFix, jumpFinSiteList, dxList, NSpec, Nsteps, beta):
+
+        X = np.zeros((NSpec, 3))
+        t = 0.
+
+        X_steps = np.zeros((Nsteps, NSpec, 3))
+        t_steps = np.zeros(Nsteps)
+
+        jumpFinSiteListTrans = np.zeros_like(jumpFinSiteList)
+        vacIndNow = vacSiteFix
+
+        for step in range(Nsteps):
+
+            # Translate the states so that vacancy is taken from vacIndnow to vacSiteFix
+            stateTrans = self.TranslateState(state, vacSiteFix, vacIndNow)
+            TSoffsc = self.GetTSOffSite(stateTrans)
+
+            delEKRA = self.getKRAEnergies(stateTrans, TSoffsc, jumpFinSiteList)
+
+            dR = self.siteIndtoR[vacIndNow] - self.siteIndtoR[vacSiteFix]
+
+            for jmp in range(jumpFinSiteList.shape[0]):
+                RfinSiteNew = (dR + self.siteIndtoR[jumpFinSiteList[jmp]]) % self.N_unit
+                jumpFinSiteListTrans[jmp] = self.RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
+
+            delE = self.getEnergyChangeJumps(state, offsc, vacIndNow, jumpFinSiteListTrans)
+
+            rates = np.exp(-(0.5 * delE + delEKRA) * beta)
+            rateTot = np.sum(rates)
+            t += 1.0/rateTot
+
+            rates /= rateTot
+            rates_cm = np.cumsum(rates)
+            rn = np.random.rand()
+            jmpSelect = np.searchsorted(rates_cm, rn)
+
+            vacIndNext = jumpFinSiteListTrans[jmpSelect]
+
+            X[NSpec - 1, :] += dxList[jmpSelect]
+            specB = state[vacIndNext]
+            X[specB, :] -= dxList[jmpSelect]
+
+            X_steps[step, :, :] = X.copy()
+            t_steps[step] = t
+
+            self.updateState(state, offsc, vacIndNow, vacIndNext)
+
+            vacIndNow = vacIndNext
+
+        return X_steps, t_steps
+
+
+
+
 
