@@ -441,7 +441,7 @@ class Test_MC(Test_MC_Arrays):
         for (interaction, interactionInd) in self.InteractionIndexDict.items():
             offsiteCount = 0
             for (site, spec) in interaction:
-                if state[site] != spec:
+                if initState[site] != spec:
                     offsiteCount += 1
             self.assertEqual(MCSampler_Jit.OffSiteCount[interactionInd], offsiteCount)
 
