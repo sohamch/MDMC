@@ -435,8 +435,6 @@ class Test_MC(Test_MC_Arrays):
 
         initState = self.initState
 
-        state = initState.copy()
-
         # initiate MC Sampler
         MCSampler_Jit = self.MCSampler_Jit
 
@@ -448,7 +446,7 @@ class Test_MC(Test_MC_Arrays):
             self.assertEqual(MCSampler_Jit.OffSiteCount[interactionInd], offsiteCount)
 
         TransOffSiteCount = np.zeros(len(self.TSInteractSites), dtype=int)
-        offscjit = MCSampler_Jit.OffSiteCount.copy()
+
         # Build TS offsites
         for TsInteractIdx in range(len(TransOffSiteCount)):
             for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
@@ -459,6 +457,8 @@ class Test_MC(Test_MC_Arrays):
         lenVecClus = len(self.VclusExp.vecClus)
 
         # Now, do the expansion
+        offscjit = MCSampler_Jit.OffSiteCount.copy()
+        state = initState.copy()
         Wbar, Bbar = MCSampler_Jit.Expand(state, ijList, dxList, offscjit, TransOffSiteCount,
                                                                   lenVecClus, 1.0)
 
