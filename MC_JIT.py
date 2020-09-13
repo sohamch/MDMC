@@ -580,13 +580,13 @@ class KMC_JIT(object):
 
     def getTraj(self, state, offsc, vacSiteFix, jumpFinSiteList, dxList, NSpec, Nsteps, beta):
 
-        X = np.zeros((NSpec, 3))
+        X = np.zeros((NSpec, 3), dtype=float64)
         t = 0.
 
-        X_steps = np.zeros((Nsteps, NSpec, 3))
-        t_steps = np.zeros(Nsteps)
+        X_steps = np.zeros((Nsteps, NSpec, 3), dtype=float64)
+        t_steps = np.zeros(Nsteps, dtype=float64)
 
-        jumpFinSiteListTrans = np.zeros_like(jumpFinSiteList)
+        jumpFinSiteListTrans = np.zeros_like(jumpFinSiteList, dtype=int64)
         vacIndNow = vacSiteFix
 
         for step in range(Nsteps):

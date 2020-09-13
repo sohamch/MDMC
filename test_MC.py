@@ -705,7 +705,7 @@ class Test_KMC(Test_MC_Arrays):
         state = self.initState.copy()
         OffSiteCount = self.KMC_Jit.GetOffSite(state)
         offscCopy = OffSiteCount.copy()
-
+        N_units = self.VclusExp.sup.superlatt[0, 0]
 
         siteIndtoR = self.siteIndtoR
         RtoSiteInd = self.RtoSiteInd
@@ -730,6 +730,63 @@ class Test_KMC(Test_MC_Arrays):
             stateNew = state.copy()
             stateNew[siteInd] = self.NSpec - 1  # this site will contain the vacancy in the new site
             stateNew[self.vacSiteInd] = state[siteInd]  # this site will contain the vacancy in the new site
+
+            OffScTrans = self.KMC_Jit.GetOffSite(stateNew)
+
+            EnNew = 0.
+            for interactInd in range(len(OffSiteCount)):
+                if OffScTrans[interactInd] == 0:
+                    EnNew += self.Interaction2En[interactInd]
+
+            delE = EnNew - EnState
+
+            print("\n{:.4f} {:.4f}".format(delE, delEJumps[jumpInd]))
+
+            self.assertAlmostEqual(delE, delEJumps[jumpInd])
+
+        # now let's swap the sites so that the vacancy is not at the origin anymore, and then test it
+        state = self.initState.copy()
+
+        siteSwap = np.random.randint(0, len(state))
+
+        temp = state[siteSwap]
+        state[siteSwap] = state[self.vacSiteInd]
+        state[self.vacSiteInd] = temp
+        self.assertEqual(state[siteSwap], self.NSpec-1)
+        statecpy = state.copy()
+
+        OffSiteCount = self.KMC_Jit.GetOffSite(state)
+        offscCopy = OffSiteCount.copy()
+
+        jmpFinSiteList = self.VclusExp.KRAexpander.ijList
+
+        jmpFinSiteListTrans = np.zeros_like(jmpFinSiteList)
+
+        dR = self.siteIndtoR[siteSwap] - self.siteIndtoR[self.vacSiteInd]
+
+        for jmp in range(jmpFinSiteList.shape[0]):
+            RfinSiteNew = (dR + self.siteIndtoR[jmpFinSiteList[jmp]]) % N_units
+            jmpFinSiteListTrans[jmp] = self.RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
+
+        # Now get the energy changes during the jumps
+        delEJumps = self.KMC_Jit.getEnergyChangeJumps(state, OffSiteCount, siteSwap, jmpFinSiteListTrans)
+
+        # Now evaluate the energy changes explicitly and see if the energies are the same
+
+        self.assertTrue(np.array_equal(OffSiteCount, offscCopy))
+        self.assertTrue(np.array_equal(state, statecpy))
+
+        # Calculate the energy of the initial state
+        EnState = 0.
+        for interactInd in range(len(OffSiteCount)):
+            if OffSiteCount[interactInd] == 0:
+                EnState += self.Interaction2En[interactInd]
+
+        # Now go through each of the transitions and evaluate the energy changes explicitly
+        for jumpInd, siteInd in enumerate(jmpFinSiteListTrans):
+            stateNew = state.copy()
+            stateNew[siteInd] = self.NSpec - 1  # this site will contain the vacancy in the new site
+            stateNew[siteSwap] = state[siteInd]  # this site will contain the vacancy in the new site
 
             OffScTrans = self.KMC_Jit.GetOffSite(stateNew)
 
