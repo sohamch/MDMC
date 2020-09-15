@@ -220,7 +220,6 @@ class VectorClusterExpansion(object):
                         Rtrans = R - site.R
                         interactSupInd = tuple([(self.sup.index(site.R+Rtrans, site.ci)[0], spec)
                                                 for site, spec in cl.SiteSpecs])
-                        # # this check is to account for periodic boundary conditions
                         SiteSpecinteractList[(clSite, spec)].append([interactSupInd, cl, Rtrans])
 
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
