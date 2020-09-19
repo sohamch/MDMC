@@ -249,7 +249,7 @@ class VectorClusterExpansion(object):
 
         count = 0  # to keep a steady count of interactions.
         for key, interactInfoList in self.SiteSpecInteractions.items():
-            keySite = self.sup.index(key[0].R, key[0].ci)[0]  # the "incell" function applies PBC to sites outside sup.
+            keySite = self.sup.index(key[0].R, key[0].ci)[0]  # the "index" function applies PBC to sites outside sup.
             keySpec = key[1]
             numInteractsSiteSpec[keySite, keySpec] = len(interactInfoList)
             for interactInd, interactInfo in enumerate(interactInfoList):
