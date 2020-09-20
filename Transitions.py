@@ -229,8 +229,9 @@ class KRAExpand(object):
         Jump2KRAEng = np.zeros((len(self.clusterSpeciesJumps), maxInteractGroups, maxInteractsInGroups))
         # Fill up the arrays
         count = 0  # to keep track of the integer assigned to each TS interaction.
-        for jumpInd, (Jumpkey, interactGroupList) in zip(itertools.count(),
-                                                         self.clusterSpeciesJumps.items()):
+        for (Jumpkey, interactGroupList) in self.clusterSpeciesJumps.items():
+
+            jumpInd = self.jump2Index[Jumpkey]
 
             jumpFinSites[jumpInd] = Jumpkey[1]
             jumpFinSpec[jumpInd] = Jumpkey[2]
