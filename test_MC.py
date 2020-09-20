@@ -197,7 +197,8 @@ class Test_MC_Arrays(unittest.TestCase):
         # jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng
         # TODO : Re write after figuring out detailed balance
 
-        for jumpInd, (jumpkey, TSptGrps) in zip(itertools.count(), self.VclusExp.KRAexpander.clusterSpeciesJumps.items()):
+        for (jumpkey, TSptGrps) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items():
+            jumpInd = self.VclusExp.KRAexpander.jump2Index[jumpkey]
             FinSite = jumpkey[1]
             FinSpec = jumpkey[2]
             # Check that the correct initial and final states have been stored

@@ -34,6 +34,7 @@ class KRAExpand(object):
         self.TSClusters = cluster.makeTSclusters(sup.crys, chem, jumpnetwork, clusexp)
         self.SymTransClusters = self.GroupTransClusters()
         self.clusterSpeciesJumps = self.defineTransSpecies()
+        self.assignTransInd()
 
     def IndexJumps(self):
         jumpFinSite = []
