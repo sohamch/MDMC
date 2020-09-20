@@ -179,6 +179,18 @@ class KRAExpand(object):
         # Next, we need the contributions of the initial and final states.
         # Have to check which clusters are on and which are off
 
+    def assignTransInd(self):
+
+        self.jump2Index = {}
+        self.Index2Jump = {}
+
+        for jumpInd, (Jumpkey, interactGroupList) in zip(itertools.count(),
+                                                         self.clusterSpeciesJumps.items()):
+
+            self.jump2Index[Jumpkey] = jumpInd
+            self.Index2Jump[jumpInd] = Jumpkey
+
+
     # Next, build numpy arrays for jitting
     def makeTransJitData(self, KRAEnergies):
 
