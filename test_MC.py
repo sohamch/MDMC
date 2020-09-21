@@ -741,7 +741,7 @@ class Test_KMC(Test_MC_Arrays):
 
             delE = EnNew - EnState
 
-            print("\n{:.4f} {:.4f}".format(delE, delEJumps[jumpInd]))
+            # print("\n{:.4f} {:.4f}".format(delE, delEJumps[jumpInd]))
 
             self.assertAlmostEqual(delE, delEJumps[jumpInd])
 
