@@ -630,6 +630,61 @@ class KMC_JIT(object):
         return X_steps, t_steps
 
 
+# Here, we write a function that takes forms the shells
+def makeShells(MC_jit, KMC_jit, state0, offsc0, TSoffsc0, ijList, dxList, beta, Nsites, Nspec, Nshells=1):
+    """
+    Function to make shells around a "seed" state
+    :param MC_jit: JIT class MC sampler - to use the exitstates function
+    :param KMC_jit: KMC Jit Class - to use state translations, offsite counters etc.
+    The MC and KMC Jit classes need to be initialized with the same arrays.
+    :param state0: The starting initial state.
+    :param Nshells: The number of shells to build
+    :return:
+    """
+    vacSiteInd = MC_jit.vacSiteInd
+
+    nextShell = set([])
+
+    state2Index = {}
+    Index2State = {}
+    TransitionRates = {}
+    velocities = {}
+
+    count = 0
+
+    state0bytes = state0.tobytes()
+    state2Index[state0bytes] = count
+    Index2State[count] = state0
+
+    statesTrans0, ratelist0, Specdisps0 = MC_jit.getExitData(state0, ijList, dxList, offsc0, TSoffsc0,
+                                                                    beta, Nsites)
+
+    # build the first shell
+    TransitionRates[(0, 0)] = (-np.sum(ratelist0), -1)
+    vel = np.zeros(3)
+    for jumpInd, exitState0 in enumerate(statesTrans0):
+        # assign a new index this exit state
+        count += 1
+
+        # translate it so that the vac is at the origin
+        origVac = KMC_jit.TranslateState(exitState0, vacSiteInd, ijList[jumpInd])
+
+        # Hash the state from memory buffer
+        origVacbytes = origVac.tobytes()
+        nextShell.add(origVacbytes)
+        state2Index[origVacbytes] = count
+        Index2State[count] = origVac
+
+        # store the transition rate to this state.
+        TransitionRates[(0, count)] = (ratelist0[jumpInd], jumpInd)
+        vel += ratelist0[jumpInd] * dxList[jumpInd]
+
+    velocities[state2Index[state0.tobytes()]] = vel.copy()
+    lastShell = nextShell.copy()
+
+    pass
+
+
 
 
 
