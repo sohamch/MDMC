@@ -828,6 +828,58 @@ class Test_KMC(Test_MC_Arrays):
             self.assertTrue(np.array_equal(state, stateNew))
             self.assertTrue(np.array_equal(offscnew, OffSiteCount))
 
+class test_shells(Test_MC_Arrays):
+
+    def test_transitions(self):
+        state = self.initState.copy()
+        offsc = self.KMC_Jit.GetOffSite(state)
+        TSoffsc = self.KMC_Jit.GetTSOffSite(state)
+        beta = 1.0
+        ijList = self.VclusExp.KRAexpander.ijList
+        dxList = self.VclusExp.KRAexpander.dxList
+        Nsites = len(state)
+        Nspec = len(self.VclusExp.mobCountList)
+
+        state2Index, Index2State, TransitionRates, velocities = MC_JIT.makeShells(self.MCSampler_Jit, self.KMC_Jit, state, offsc, TSoffsc, ijList,
+                                                                                  dxList, beta, Nsites, Nspec, Nshells=2)
+
+        # First verify the starting state
+
+        state0Ind = state2Index[state.tobytes()]
+        self.assertEqual(state0Ind, 0)
+
+        vel0 = velocities[0]
+        exitstates, exitRates, Specdisps = self.MCSampler_Jit.getExitData(state, ijList, dxList, offsc, TSoffsc, beta, Nsites)
+        vel_test = np.zeros(3)
+        for jmpInd in range(ijList.shape[0]):
+            vel_test += exitRates[jmpInd]*dxList[jmpInd]
+
+        self.assertTrue(np.allclose(vel0, vel_test))
+
+        # First, we test the velocities out of a state
+        for stateInd, vel in velocities.items():
+            state1 = Index2State[stateInd]
+            offsc1 = self.KMC_Jit.GetOffSite(state1)
+            TSoffsc1 = self.KMC_Jit.GetTSOffSite(state1)
+
+            self.assertTrue(state1[self.vacSiteInd] == Nspec - 1)
+            if stateInd == 0:
+                self.assertTrue(np.array_equal(state1, state))
+                self.assertEqual(state1.tobytes(), state.tobytes())
+                self.assertTrue(np.array_equal(offsc1, offsc))
+                self.assertTrue(np.array_equal(TSoffsc1, TSoffsc))
+
+            exitstates, exitRates, Specdisps = self.MCSampler_Jit.getExitData(state1, ijList, dxList, offsc1, TSoffsc1, beta, Nsites)
+
+            vel_test = np.zeros(3)
+            for jmpInd in range(ijList.shape[0]):
+                self.assertTrue(np.allclose(Specdisps[jmpInd, -1, :], dxList[jmpInd, :]))
+                # check that the correct species has been exchanged.
+                vel_test += exitRates[jmpInd]*dxList[jmpInd]
+
+            self.assertTrue(np.allclose(vel, vel_test), msg="\n{}\n{}\n{}\n{}".format(stateInd, vel, vel_test, vel0))
+
+
 
 
 
