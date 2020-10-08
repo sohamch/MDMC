@@ -830,7 +830,7 @@ class Test_KMC(Test_MC_Arrays):
 
 class test_shells(Test_MC_Arrays):
 
-    def test_transitions(self):
+    def test_ShellBuild(self):
         state = self.initState.copy()
         offsc = self.KMC_Jit.GetOffSite(state)
         TSoffsc = self.KMC_Jit.GetTSOffSite(state)
@@ -879,26 +879,13 @@ class test_shells(Test_MC_Arrays):
 
             self.assertTrue(np.allclose(vel, vel_test), msg="\n{}\n{}\n{}\n{}".format(stateInd, vel, vel_test, vel0))
 
+        # Now test the transitions
+        for (state1Ind, state2Ind), (rate, jumpInd) in TransitionRates.items():
+            state1 = Index2State[state1Ind]
+            state2 = Index2State[state2Ind]
 
+            offsc1 = self.KMC_Jit.GetOffSite(state1)
+            TSoffsc1 = self.KMC_Jit.GetTSOffSite(state1)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            offsc2 = self.KMC_Jit.GetOffSite(state2)
+            TSoffsc2 = self.KMC_Jit.GetTSOffSite(state2)
