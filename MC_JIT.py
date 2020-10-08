@@ -682,7 +682,36 @@ def makeShells(MC_jit, KMC_jit, state0, offsc0, TSoffsc0, ijList, dxList, beta, 
     velocities[state2Index[state0.tobytes()]] = vel.copy()
     lastShell = nextShell.copy()
 
-    pass
+    for shell in range(Nshells - 1):
+        nextshell = set([])
+        for stateBin in lastShell:
+            state = np.frombuffer(stateBin, dtype=state0.dtype)
+            offsc = KMC_jit.GetOffSite(state)
+            TSoffsc = KMC_jit.GetTSOffSite(state)
+
+            # Now get the exits out of this state
+            statesTrans, ratelist, Specdisps = MC_jit.getExitData(state, ijList, dxList, offsc,
+                                                                         TSoffsc, beta, Nsites)
+
+            TransitionRates[(state2Index[stateBin], state2Index[stateBin])] = (-np.sum(ratelist), -1)
+            vel = np.zeros(3)
+            for jumpInd, exitState in enumerate(statesTrans):
+                origVac = KMC_jit.TranslateState(exitState, vacSiteInd, ijList[jumpInd])
+                origVacbytes = origVac.tobytes()
+                if not origVacbytes in state2Index:
+                    count += 1
+                    state2Index[origVacbytes] = count
+                    Index2State[count] = origVac
+
+                TransitionRates[(state2Index[stateBin], state2Index[origVacbytes])] = (ratelist[jumpInd], jumpInd)
+                vel += ratelist[jumpInd] * dxList[jumpInd]
+                nextShell.add(origVacbytes)
+
+            velocities[state2Index[stateBin]] = vel.copy()
+
+        lastShell = nextShell.copy()
+
+    return state2Index, Index2State, TransitionRates, velocities
 
 
 
