@@ -382,6 +382,7 @@ class MCSamplerClass(object):
 
             ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
             Specdisps[jumpInd, specB, :] = -dxList[jumpInd, :]
+            Specdisps[jumpInd, -1, :] = dxList[jumpInd, :]
 
             # Next, restore OffSiteCounts to original values for next jump, as well as
             # for use in the next MC sweep.
