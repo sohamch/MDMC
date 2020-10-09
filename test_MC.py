@@ -903,13 +903,15 @@ class test_shells(Test_MC_Arrays):
 
             if not np.array_equal(state1, state2):
                 offsc2 = self.KMC_Jit.GetOffSite(state2)
-                TSoffsc2 = self.KMC_Jit.GetTSOffSite(state2)
 
                 self.assertAlmostEqual(exitRates[jumpInd], rate)
 
                 # translate all exit state to the origin
                 currentExitState = exitstates[jumpInd]
+
                 origVacexit = self.KMC_Jit.TranslateState(currentExitState, self.vacSiteInd, ijList[jumpInd])
+                offsc2Orig = self.KMC_Jit.GetOffSite(origVacexit)
+                TSoffsc2Orig = self.KMC_Jit.GetTSOffSite(origVacexit)
 
                 self.assertTrue(np.array_equal(origVacexit, state2))
 
@@ -929,8 +931,6 @@ class test_shells(Test_MC_Arrays):
                     if offsc2[Interaction] == 0:
                         En2 += self.Interaction2En[Interaction]
 
-                offsc2Orig = self.KMC_Jit.GetOffSite(origVacexit)
-
                 En22 = 0.
                 for Interaction in range(offsc2Orig.shape[0]):
                     if offsc2Orig[Interaction] == 0:
@@ -943,6 +943,26 @@ class test_shells(Test_MC_Arrays):
 
                 rateCheck = np.exp(-beta*(0.5*delE + delEKra))
                 self.assertAlmostEqual(rateCheck, rate)
+
+                # Check detailed balance
+
+                # get exit rates out of state2
+                exitstates2, exitRates2, Specdisps2 = self.MCSampler_Jit.getExitData(origVacexit, ijList, dxList, offsc2Orig,
+                                                                                  TSoffsc2Orig, beta, Nsites)
+
+                initIdx = 0
+                initCount = 0
+                for i in range(ijList.shape[0]):
+                    stex2 = exitstates2[i]
+                    stex2Orig = self.KMC_Jit.TranslateState(stex2, self.vacSiteInd, ijList[i])
+                    if np.array_equal(stex2Orig, state1):
+                        initIdx = i
+                        initCount += 1
+
+                self.assertEqual(initCount, 1)
+                rateRev = exitRates2[initIdx]
+
+                self.assertTrue(np.allclose(np.exp(-(En2 - En1)), rate/rateRev))
 
 
         # Check that all jumps have been accounted for including diagonal elements
