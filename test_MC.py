@@ -42,7 +42,9 @@ class Test_MC_Arrays(unittest.TestCase):
                                                                  self.MaxOrderTrans)
 
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
-        self.KRAEnergies = [np.random.rand(len(val)) for (key, val) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
+        KRAEn = np.random.rand()
+        self.KRAEnergies = [np.ones(len(TSptGroups))*KRAEn for (key, TSptGroups) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
+
         print("Done setting up")
 
         self.MakeJITs()
@@ -900,7 +902,6 @@ class test_shells(Test_MC_Arrays):
             self.assertAlmostEqual(total, -TransitionRates[(state1Ind, state1Ind)][0])
 
             if not np.array_equal(state1, state2):
-
                 offsc2 = self.KMC_Jit.GetOffSite(state2)
                 TSoffsc2 = self.KMC_Jit.GetTSOffSite(state2)
 
@@ -911,6 +912,38 @@ class test_shells(Test_MC_Arrays):
                 origVacexit = self.KMC_Jit.TranslateState(currentExitState, self.vacSiteInd, ijList[jumpInd])
 
                 self.assertTrue(np.array_equal(origVacexit, state2))
+
+                # let's check the energies explicitly
+
+                # First, get the KRA energy change
+                KRA = self.KMC_Jit.getKRAEnergies(state1, TSoffsc1, ijList)
+                delEKra = KRA[jumpInd]
+
+                En1 = 0.
+                for Interaction in range(offsc1.shape[0]):
+                    if offsc1[Interaction] == 0:
+                        En1 += self.Interaction2En[Interaction]
+
+                En2 = 0.
+                for Interaction in range(offsc2.shape[0]):
+                    if offsc2[Interaction] == 0:
+                        En2 += self.Interaction2En[Interaction]
+
+                offsc2Orig = self.KMC_Jit.GetOffSite(origVacexit)
+
+                En22 = 0.
+                for Interaction in range(offsc2Orig.shape[0]):
+                    if offsc2Orig[Interaction] == 0:
+                        En22 += self.Interaction2En[Interaction]
+
+                self.assertAlmostEqual(En22, En2)
+
+
+                delE = -En1 + En2
+
+                rateCheck = np.exp(-beta*(0.5*delE + delEKra))
+                self.assertAlmostEqual(rateCheck, rate)
+
 
         # Check that all jumps have been accounted for including diagonal elements
         for key, item in exitcounts.items():
