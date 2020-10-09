@@ -680,6 +680,8 @@ def makeShells(MC_jit, KMC_jit, state0, offsc0, TSoffsc0, ijList, dxList, beta, 
         TransitionRates[(0, count)] = (ratelist0[jumpInd], jumpInd)
         vel += ratelist0[jumpInd] * dxList[jumpInd]
 
+    TransitionsZero = TransitionRates.copy()
+
     velocities[state2Index[state0.tobytes()]] = vel.copy()
     lastShell = nextShell.copy()
 
@@ -712,7 +714,7 @@ def makeShells(MC_jit, KMC_jit, state0, offsc0, TSoffsc0, ijList, dxList, beta, 
 
         lastShell = nextShell.copy()
 
-    return state2Index, Index2State, TransitionRates, velocities
+    return state2Index, Index2State, TransitionRates, TransitionsZero, velocities
 
 
 

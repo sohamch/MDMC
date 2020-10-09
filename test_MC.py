@@ -843,13 +843,15 @@ class test_shells(Test_MC_Arrays):
         Nsites = len(state)
         Nspec = len(self.VclusExp.mobCountList)
 
-        state2Index, Index2State, TransitionRates, velocities = MC_JIT.makeShells(self.MCSampler_Jit, self.KMC_Jit, state, offsc, TSoffsc, ijList,
-                                                                                  dxList, beta, Nsites, Nspec, Nshells=2)
+        state2Index, Index2State, TransitionRates, TransitionsZero, velocities = MC_JIT.makeShells(self.MCSampler_Jit, self.KMC_Jit, state, offsc,
+                                                                                                   TSoffsc, ijList, dxList, beta, Nsites, Nspec,
+                                                                                                   Nshells=2)
 
         # First verify the starting state
 
         state0Ind = state2Index[state.tobytes()]
         self.assertEqual(state0Ind, 0)
+        self.assertEqual(len(TransitionsZero), len(ijList)+1, msg="\n{}".format(TransitionsZero))
 
         vel0 = velocities[0]
         exitstates, exitRates, Specdisps = self.MCSampler_Jit.getExitData(state, ijList, dxList, offsc, TSoffsc, beta, Nsites)
