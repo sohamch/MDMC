@@ -7,6 +7,7 @@ import MC_JIT
 import unittest
 import time
 import warnings
+import collections
 
 warnings.filterwarnings('error', category=RuntimeWarning)
 
@@ -880,12 +881,37 @@ class test_shells(Test_MC_Arrays):
             self.assertTrue(np.allclose(vel, vel_test), msg="\n{}\n{}\n{}\n{}".format(stateInd, vel, vel_test, vel0))
 
         # Now test the transitions
+        exitcounts = collections.defaultdict(int)
         for (state1Ind, state2Ind), (rate, jumpInd) in TransitionRates.items():
             state1 = Index2State[state1Ind]
+            exitcounts[state1Ind] += 1
+
             state2 = Index2State[state2Ind]
 
             offsc1 = self.KMC_Jit.GetOffSite(state1)
             TSoffsc1 = self.KMC_Jit.GetTSOffSite(state1)
 
-            offsc2 = self.KMC_Jit.GetOffSite(state2)
-            TSoffsc2 = self.KMC_Jit.GetTSOffSite(state2)
+            exitstates, exitRates, Specdisps = self.MCSampler_Jit.getExitData(state1, ijList, dxList, offsc1, TSoffsc1, beta, Nsites)
+
+            total = 0.
+            for r in exitRates:
+                total += r
+
+            self.assertAlmostEqual(total, -TransitionRates[(state1Ind, state1Ind)][0])
+
+            if not np.array_equal(state1, state2):
+
+                offsc2 = self.KMC_Jit.GetOffSite(state2)
+                TSoffsc2 = self.KMC_Jit.GetTSOffSite(state2)
+
+                self.assertAlmostEqual(exitRates[jumpInd], rate)
+
+                # translate all exit state to the origin
+                currentExitState = exitstates[jumpInd]
+                origVacexit = self.KMC_Jit.TranslateState(currentExitState, self.vacSiteInd, ijList[jumpInd])
+
+                self.assertTrue(np.array_equal(origVacexit, state2))
+
+        # Check that all jumps have been accounted for including diagonal elements
+        for key, item in exitcounts.items():
+            self.assertEqual(item, ijList.shape[0]+1)
