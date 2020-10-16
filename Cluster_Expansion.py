@@ -264,8 +264,8 @@ class VectorClusterExpansion(object):
                     repClustCounter[interactInfo[1]] += 1
                     # also sort the sites by the supercell site indices - will help in identifying TSclusters as interactions
                     # later on
-                    Interact_sort = tuple(sorted(interaction, key=lambda x: x[0]))
-                    siteSortedInteractionIndexDict[Interact_sort] = count
+                    # Interact_sort = tuple(sorted(interaction, key=lambda x: x[0]))
+                    # siteSortedInteractionIndexDict[Interact_sort] = count
                     InteractionRepClusDict[interaction] = interactInfo[1]
                     Index2InteractionDict[count] = interaction
                     SiteSpecInterArray[keySite, keySpec, interactInd] = count
