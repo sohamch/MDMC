@@ -216,22 +216,55 @@ class test_Vector_Cluster_Expansion(testKRA):
         oneBody = 0
         TwoBody = 0
         ThreeBody = 0
+
+        oneBodyList = []
+        TwoBodyList = []
+        ThreeBodyList = []
         # Check some of the numbers explicitly - this part is the definitive test
         for clusterList in self.VclusExp.SpecClusters:
             for clust in clusterList:
                 order = len(clust.SiteSpecs)
                 if order == 1:
                     oneBody += 1
-
+                    oneBodyList.append(clust)
                 if order == 2:
                     TwoBody += 1
+                    TwoBodyList.append(clust)
 
                 if order == 3:
                     ThreeBody += 1
+                    ThreeBodyList.append(clust)
 
         self.assertEqual(oneBody, 3)
         self.assertEqual(TwoBody, 56)
         self.assertEqual(ThreeBody, 240)
+
+        # Now let's check some two body numbers
+        vacCount = 0
+        nonVacCount = 0
+        for clust in TwoBodyList:
+            specList = clust.specList
+            if any([spec == 2 for spec in specList]):
+                vacCount += 1
+            else:
+                nonVacCount += 1
+
+        self.assertEqual(vacCount, 2*2*4 + 2*2*3)  # The first term is for nearest neighbor, the second for second nearest neighbor
+        self.assertEqual(nonVacCount, 2*2*4 + 2*2*3)
+
+        # Now let's check some three body numbers
+        vacCount = 0
+        nonVacCount = 0
+        for clust in ThreeBodyList:
+            specList = clust.specList
+            if any([spec == 2 for spec in specList]):
+                vacCount += 1
+            else:
+                nonVacCount += 1
+
+        self.assertEqual(vacCount, (3 * 2 * 2) * 12)
+        self.assertEqual(nonVacCount, (2 * 2 * 2) * 12)
+
 
     def test_genvecs(self):
         """
