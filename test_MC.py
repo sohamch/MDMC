@@ -239,19 +239,55 @@ class Test_MC_Arrays(unittest.TestCase):
                 self.assertTrue(np.allclose(vec, self.VecsInteracts[i, vecind, :]))
 
         # Next, test the interactions each (site, spec) is a part of
+        InteractSet = set([])
         self.assertEqual(self.numInteractsSiteSpec.shape[0], len(self.superBCC.mobilepos))
         self.assertEqual(self.numInteractsSiteSpec.shape[1], self.NSpec)
-        for site in range(len(self.superBCC.mobilepos)):
+        for siteInd in range(len(self.superBCC.mobilepos)):
             for spec in range(self.NSpec):
-                numInteractStored = self.numInteractsSiteSpec[site, spec]
+                numInteractStored = self.numInteractsSiteSpec[siteInd, spec]
                 # get the actual count
-                ci, R = self.VclusExp.sup.ciR(site)
+                ci, R = self.VclusExp.sup.ciR(siteInd)
                 clsite = cluster.ClusterSite(ci=ci, R=R)
                 self.assertEqual(len(self.VclusExp.SiteSpecInteractions[(clsite, spec)]), numInteractStored)
                 for IdxOfInteract in range(numInteractStored):
-                    interactMainIndex = self.SiteSpecInterArray[site, spec, IdxOfInteract]
-                    self.assertEqual(self.Index2InteractionDict[interactMainIndex],
-                                     self.VclusExp.SiteSpecInteractions[(clsite, spec)][IdxOfInteract][0])
+                    interactMainIndex = self.SiteSpecInterArray[siteInd, spec, IdxOfInteract]
+                    interactMain = self.Index2InteractionDict[interactMainIndex]
+                    InteractSet.add(interactMain)
+                    self.assertEqual(interactMain, self.VclusExp.SiteSpecInteractions[(clsite, spec)][IdxOfInteract][0])
+
+                    # Now translate it back and look at the energies
+                    siteList = []
+                    specList = []
+
+                    i = interactMainIndex
+                    count = 0
+                    for siteNum, sp in [(self.SupSitesInteracts[i, j], self.SpecOnInteractSites[i, j])
+                                          for j in range(self.numSitesInteracts[i])]:
+                        ci, R = self.VclusExp.sup.ciR(siteNum)
+                        # R %= self.N_units  # Bring it within the unit cell
+                        cls = cluster.ClusterSite(ci=ci, R=R)
+                        siteList.append(cls)
+                        specList.append(sp)
+                        if cls == clsite and sp == spec:
+                            count += 1
+                    self.assertEqual(count, 1)
+
+                    SpCl = Cluster_Expansion.ClusterSpecies(specList, siteList)
+
+                    # apply periodicity to the siteList and rebuild
+                    siteListBuilt = [site for (site, spec) in SpCl.transPairs]
+                    specListBuilt = [spec for (site, spec) in SpCl.transPairs]
+                    siteListnew = []
+                    for site in siteListBuilt:
+                        R = site.R
+                        ci = site.ci
+                        R %= self.N_units
+                        siteListnew.append(cluster.ClusterSite(ci=ci, R=R))
+
+                    SpCl = Cluster_Expansion.ClusterSpecies(specListBuilt, siteListnew)
+                    En = self.Energies[self.VclusExp.clust2SpecClus[SpCl][0]]
+                    EnStored = self.Interaction2En[interactMainIndex]
+                    self.assertAlmostEqual(En, EnStored, 10)
 
     def testTransArrays(self):
         # Now, we start testing the jump arrays
