@@ -19,9 +19,14 @@ class ClusterSpecies():
         self.siteList = siteList
         Rtrans = sum([site.R for site in siteList])//len(siteList)
         self.transPairs = [(site-Rtrans, spec) for site, spec in zip(siteList, specList)]
-        self.transPairs = sorted(self.transPairs, key=lambda x: x[1])  # sort according to species for ease
-        self.__hashcache__ = hash(tuple([hash((site, spec)) for site, spec in self.transPairs]))
+        # self.transPairs = sorted(self.transPairs, key=lambda x: x[1])
         self.SiteSpecs = set(self.transPairs)
+        # self.__hashcache__ = int(hash(tuple([hash((site, spec)) for site, spec in self.transPairs])))
+        # self.__hashcache__ = int(np.prod(np.array([hash((site, spec)) for site, spec in self.transPairs]))) +\
+        #                      sum([hash((site, spec)) for site, spec in self.transPairs])
+
+        self.__hashcache__ = sum([hash((site, spec)) for site, spec in self.transPairs])
+        # self.__hashcache__ = hash(tuple(self.transPairs))
 
     def __eq__(self, other):
         if self.SiteSpecs == other.SiteSpecs:
