@@ -73,7 +73,8 @@ class MCSamplerClass(object):
     def makeMCsweep(self, mobOcc, OffSiteCount, TransOffSiteCount,
                     SwapTrials, beta, randarr, Nswaptrials):
 
-        # TODO : Need to implement biased sampling methods to select sites from TSinteractions with more prob.
+        acceptCount = 0
+
         for swapcount in range(Nswaptrials):
             # first select two random sites to swap - for now, let's just select naively.
             siteA = SwapTrials[swapcount, 0]
@@ -117,6 +118,7 @@ class MCSamplerClass(object):
                 mobOcc[siteA] = specB
                 mobOcc[siteB] = specA
                 # OffSiteCount is already updated to that of the new state.
+                acceptCount += 1
 
             else:
                 # revert back the off site counts, because the state has not changed
@@ -142,6 +144,8 @@ class MCSamplerClass(object):
             for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
                 if mobOcc[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
                     TransOffSiteCount[TsInteractIdx] += 1
+
+        return acceptCount
 
     # For testing, use this signature.
     # def Expand(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, lenVecClus, beta, delEKRAarray, delEarray,
