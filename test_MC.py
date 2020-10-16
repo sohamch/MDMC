@@ -198,10 +198,15 @@ class Test_MC_Arrays(unittest.TestCase):
             self.assertEqual(SpCl, repClusStored)
             self.assertTrue(SpCl in SpClset, msg="\n{}\n{}\n{}\n{}".format(SpCl, repClusStored, siteList, specList))
 
+            # Check that the correct energies have been assigned
+            En = self.Energies[self.VclusExp.clust2SpecClus[repClusStored][0]]
+            EnStored = self.Interaction2En[i]
+            self.assertAlmostEqual(En, EnStored, 10)
             SpClset2.add(SpCl)
 
             repclustCount[SpCl] += 1
 
+        # Check that all translations of repclusts were considered
         self.assertEqual(SpClset, SpClset2)
         for key, item in repclustCount.items():
             self.assertEqual(item, len(self.VclusExp.sup.mobilepos))
