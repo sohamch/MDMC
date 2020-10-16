@@ -163,6 +163,9 @@ class test_Vector_Cluster_Expansion(testKRA):
             for clust in clusterList:
                 Rtrans = sum([site.R for site in clust.siteList]) // len(clust.siteList)
                 sites_shift = tuple([site-Rtrans for site in clust.siteList])
+                # check correct translations
+                sitesBuilt = tuple([site for site, spec in clust.transPairs])
+                self.assertEqual(sites_shift, sitesBuilt)
                 sitetuples.add(sites_shift)
 
         sitesFromClusexp = set([])
@@ -209,6 +212,26 @@ class test_Vector_Cluster_Expansion(testKRA):
         total_code = sum([len(lst) for lst in self.VclusExp.SpecClusters])
         #
         self.assertEqual(total_code, total_spec_clusts, msg="{}, {}".format(total_code, total_spec_clusts))
+
+        oneBody = 0
+        TwoBody = 0
+        ThreeBody = 0
+        # Check some of the numbers explicitly - this part is the definitive test
+        for clusterList in self.VclusExp.SpecClusters:
+            for clust in clusterList:
+                order = len(clust.SiteSpecs)
+                if order == 1:
+                    oneBody += 1
+
+                if order == 2:
+                    TwoBody += 1
+
+                if order == 3:
+                    ThreeBody += 1
+
+        self.assertEqual(oneBody, 3)
+        self.assertEqual(TwoBody, 56)
+        self.assertEqual(ThreeBody, 240)
 
     def test_genvecs(self):
         """
