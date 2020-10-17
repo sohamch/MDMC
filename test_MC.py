@@ -326,7 +326,6 @@ class Test_MC(Test_MC_Arrays):
 
         # Now put in the vacancy at the vacancy site
         initCopy = initState.copy()
-        initJit = initState.copy()
 
         # Get the MC samplers
         MCSampler = self.MCSampler
@@ -415,31 +414,67 @@ class Test_MC(Test_MC_Arrays):
             if offsc2[i] == 0:
                 FinEn += self.Interaction2En[i]
 
-        OffSiteCount = np.zeros_like(MCSampler.OffSiteCount, dtype=int)
-        TSOffSiteCount2 = np.zeros_like(TransOffSiteCountNew)
+        self.assertTrue(np.allclose(MCSampler.delE, FinEn - InitEn), msg="{}, {}".format(MCSampler.delE, FinEn - InitEn))
 
+        # Put in tests for Jit calculations
         # make the offsite counts
-        offscjit = MCSampler_Jit.OffSiteCount.copy()
+        initJit = initState.copy()
 
-        # get the array counting how many representative clusters are on from offscjit
+        # build the offsite count and get initial energy
+        En1 = 0
+        offscjit = np.zeros_like(self.numSitesInteracts)
+        for interactIdx in range(self.numSitesInteracts.shape[0]):
+            numSites = self.numSitesInteracts[interactIdx]
+            offcount = 0
+            for intSiteind in range(numSites):
+                interSite = self.SupSitesInteracts[interactIdx, intSiteind]
+                interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
+                if initJit[interSite] != interSpec:
+                    offcount += 1
+            offscjit[interactIdx] = offcount
+            if offcount == 0:
+                En1 += self.Interaction2En[interactIdx]
+
+        TSOffSiteCount2 = np.zeros_like(TransOffSiteCountNew)
 
         MCSampler_Jit.makeMCsweep(initJit, offscjit, TSOffSiteCount2, swaptrials, 1.0, randarr, Nswaptrials)
 
-        # Check that the same results are found
+        # Check offsite counts after sweep and get the final energy
+        En2 = 0.
+        for interactIdx in range(self.numSitesInteracts.shape[0]):
+            numSites = self.numSitesInteracts[interactIdx]
+            offcount = 0
+            for intSiteind in range(numSites):
+                interSite = self.SupSitesInteracts[interactIdx, intSiteind]
+                interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
+                if initJit[interSite] != interSpec:
+                    offcount += 1
+            self.assertTrue(offscjit[interactIdx] == offcount)
+            if offcount == 0:
+                En2 += self.Interaction2En[interactIdx]
+
+        # Check that TS offsite counts were constructed correctly.
+        for TsInteractIdx in range(len(TSOffSiteCount2)):
+            offcount = 0
+            for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
+                if initState[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
+                    offcount += 1
+            self.assertEqual(TSOffSiteCount2[TsInteractIdx], offcount)
+
+        # Check that the same results are found between Jit and non-Jit versions.
         self.assertTrue(np.array_equal(initJit, initState))
         self.assertTrue(np.array_equal(offscjit, offsc))
         self.assertTrue(np.array_equal(TransOffSiteCountNew, TSOffSiteCount2))
 
         # test that energy calculation and site swaps are done correctly.
-        if np.exp(-MCSampler.delE) > np.exp(randarr[0]):
+        if -1.0*(En2 - En1) > randarr[0]:
             self.assertEqual(initJit[siteA], initCopy[siteB])
             self.assertEqual(initJit[siteB], initCopy[siteA])
-            print("move was accepted {} {}".format(np.exp(-MCSampler.delE), np.exp(randarr[0])))
+            print("move was accepted {} {}".format(-1.0*(En2 - En1), randarr[0]))
+
         else:
             self.assertTrue(np.array_equal(initJit, initCopy))
-            print("move was not accepted {} {}".format(np.exp(-MCSampler.delE), np.exp(randarr[0])))
-
-        self.assertTrue(np.allclose(MCSampler.delE, FinEn - InitEn), msg="{}, {}".format(MCSampler.delE, FinEn - InitEn))
+            print("move was not accepted {} {}".format(-1.0*(En2 - En1), randarr[0]))
 
     def test_exit_states(self):
         # First, create a random state

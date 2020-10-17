@@ -76,6 +76,7 @@ class MCSamplerClass(object):
         acceptCount = 0
         acceptInd = np.zeros(Nswaptrials, dtype=int64)
         badTrials = 0
+        self.delEArray = np.zeros(Nswaptrials)
 
         Nsites = len(mobOcc)
 
@@ -121,6 +122,8 @@ class MCSamplerClass(object):
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
+
+            self.delEArray[swapcount] = delE
 
             # do the selection test
             if -beta*delE > randarr[swapcount]:
