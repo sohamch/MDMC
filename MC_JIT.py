@@ -95,6 +95,10 @@ class MCSamplerClass(object):
                 badTrials += 1
                 continue
 
+            # If the move is not a bad one, then store it for testing later on
+            SwapTrials[swapcount, 0] = siteA
+            SwapTrials[swapcount, 1] = siteB
+
             delE = 0.
             # Next, switch required sites off
             for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
