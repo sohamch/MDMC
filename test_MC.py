@@ -372,7 +372,7 @@ class Test_MC(Test_MC_Arrays):
             if offcount == 0:
                 En1 += self.Interaction2En[interactIdx]
 
-        TSOffSiteCount2 = np.zeros_like(len(self.numSitesTSInteracts), dtype=int)
+        TSOffSiteCount2 = np.zeros(len(self.numSitesTSInteracts), dtype=int)
 
         MCSampler_Jit.makeMCsweep(initJit, offscjit, TSOffSiteCount2, swaptrials, 1.0, randarr, Nswaptrials)
 
