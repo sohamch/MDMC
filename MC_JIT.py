@@ -71,23 +71,27 @@ class MCSamplerClass(object):
         # Reformat the array so that the swaps are always between atoms of different species
 
     def makeMCsweep(self, mobOcc, OffSiteCount, TransOffSiteCount,
-                    SwapTrials, beta, randarr, Nswaptrials):
+                    SwapTrials, beta, randarr, Nswaptrials, vacSiteInd=0):
 
         acceptCount = 0
         acceptInd = np.zeros(Nswaptrials, dtype=int64)
         badTrials = 0
 
+        Nsites = len(mobOcc)
+
         count = 0  # to keep a steady count of accepted moves
+        swapcount = 0
         while swapcount < Nswaptrials:
             # first select two random sites to swap - for now, let's just select naively.
-            siteA = SwapTrials[swapcount, 0]
-            siteB = SwapTrials[swapcount, 1]
+            siteA = np.random.randint(0, Nsites)
+            siteB = np.random.randint(0, Nsites)
 
             specA = mobOcc[siteA]
             specB = mobOcc[siteB]
 
-            if specA == specB:
+            if specA == specB or siteA == vacSiteInd or siteB == vacSiteInd:
                 badTrials += 1
+                continue
 
             delE = 0.
             # Next, switch required sites off
