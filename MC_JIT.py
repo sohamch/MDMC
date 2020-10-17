@@ -93,6 +93,9 @@ class MCSamplerClass(object):
                 badTrials += 1
                 continue
 
+            SwapTrials[swapcount, 0] = siteA
+            SwapTrials[swapcount, 1] = siteB
+
             delE = 0.
             # Next, switch required sites off
             for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
