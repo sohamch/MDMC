@@ -476,8 +476,6 @@ class Test_MC(Test_MC_Arrays):
         # First, create a random state
         initState = self.initState
         initCopy = initState.copy()
-        initJit = initState.copy()
-
         MCSampler_Jit = self.MCSampler_Jit
 
         ijList = self.VclusExp.KRAexpander.ijList
@@ -485,8 +483,19 @@ class Test_MC(Test_MC_Arrays):
 
         # get the offsite counts
         state = initCopy.copy()
-        offsc = MCSampler_Jit.OffSiteCount.copy()
-        Nsites = self.VclusExp.Nsites
+        En1 = 0.
+        offsc = np.zeros_like(self.numSitesInteracts)
+        for interactIdx in range(self.numSitesInteracts.shape[0]):
+            numSites = self.numSitesInteracts[interactIdx]
+            offcount = 0
+            for intSiteind in range(numSites):
+                interSite = self.SupSitesInteracts[interactIdx, intSiteind]
+                interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
+                if state[interSite] != interSpec:
+                    offcount += 1
+            offsc[interactIdx] = offcount
+            if offcount == 0:
+                En1 += self.Interaction2En[interactIdx]
 
         # make the TS offsite counts
         TSoffsc = np.zeros(len(MCSampler_Jit.TSInteractSites))
@@ -496,11 +505,11 @@ class Test_MC(Test_MC_Arrays):
                 if state[MCSampler_Jit.TSInteractSites[TsInteractIdx, Siteind]] != MCSampler_Jit.TSInteractSpecs[TsInteractIdx, Siteind]:
                     TSoffsc[TsInteractIdx] += 1
 
+        Nsites = self.VclusExp.Nsites
         # Next, get the exit data
         statesTrans, ratelist, Specdisps = MCSampler_Jit.getExitData(state, ijList, dxList, offsc, TSoffsc, 1.0, Nsites)
 
         self.assertEqual(len(statesTrans), ijList.shape[0])
-
         # check that the species have been exchanged properly
         for jInd in range(ijList.shape[0]):
             stateFin = statesTrans[jInd, :]
@@ -512,6 +521,53 @@ class Test_MC(Test_MC_Arrays):
             specB = state[finSite]  # the species that has moved
             dx = Specdisps[jInd, specB, :]
             self.assertTrue(np.allclose(dx, -dxList[jInd]))
+
+            # Next, get the KRA energies
+
+            # Check which transition this final site, final spec pair corresponds to
+            transInd = self.FinSiteFinSpecJumpInd[finSite, specB]
+            delEKRA = 0.
+            for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
+                for interactInd in range(self.numTSInteractsInPtGroups[transInd, tsPtGpInd]):
+                    # Check if this interaction is on
+                    interactMainInd = self.JumpInteracts[transInd, tsPtGpInd, interactInd]
+                    if TSoffsc[interactMainInd] == 0:
+                        delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
+
+            # Now check it without the arrays
+            self.assertEqual(self.VclusExp.KRAexpander.jump2Index[(self.vacSiteInd, finSite, specB)], transInd)
+
+            # Get the point groups
+            TSptGrps = self.VclusExp.KRAexpander.clusterSpeciesJumps[(self.vacSiteInd, finSite, specB)]
+            EnKRA = 0.
+            for TsPtGpInd, (spectup, TSinteractList) in zip(itertools.count(), TSptGrps):
+                specList = [self.NSpec - 1, specB] + [spec for spec in spectup]
+                # Go through the TS clusters
+                for interactInd, TSClust in enumerate(TSinteractList):
+                    interact = tuple([(self.VclusExp.sup.index(site.R, site.ci)[0], spec)
+                                      for site, spec in zip(TSClust.sites, specList)])
+
+                    # Check if this interaction is on
+                    offcount = 0
+                    for (site, spec) in interact:
+                        if state[site] != spec:
+                            offcount += 1
+
+                    # Assert the offcount
+                    interactMainInd = self.JumpInteracts[transInd, TsPtGpInd, interactInd]
+                    self.assertEqual(TSoffsc[interactMainInd], offcount)
+
+                    if offcount == 0:
+                        EnKRA += self.KRAEnergies[transInd][TsPtGpInd]
+
+            self.assertAlmostEqual(EnKRA, delEKRA, msg="\n{}".format(self.KRAEnergies))
+
+
+            # Next, check that the rates satisfy detailed balance
+            stateExit = statesTrans[jInd]
+            # Get the offsite count of this state
+            En2 = 0.
+
 
     def test_random_state(self):
         initState = self.initState
