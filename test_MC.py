@@ -369,6 +369,7 @@ class Test_MC(Test_MC_Arrays):
             swaptrials[count, 0] = siteA
             swaptrials[count, 1] = siteB
             count += 1
+
         randarr = np.random.rand(Nswaptrials)
 
         randarr = np.log(randarr)

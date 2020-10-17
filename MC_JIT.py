@@ -83,18 +83,15 @@ class MCSamplerClass(object):
         swapcount = 0
         while swapcount < Nswaptrials:
             # first select two random sites to swap - for now, let's just select naively.
-            siteA = np.random.randint(0, Nsites)
-            siteB = np.random.randint(0, Nsites)
+            siteA = SwapTrials[swapcount, 0]
+            siteB = SwapTrials[swapcount, 1]
 
             specA = mobOcc[siteA]
             specB = mobOcc[siteB]
 
             if specA == specB or siteA == vacSiteInd or siteB == vacSiteInd:
                 badTrials += 1
-                continue
-
-            SwapTrials[swapcount, 0] = siteA
-            SwapTrials[swapcount, 1] = siteB
+                # continue
 
             delE = 0.
             # Next, switch required sites off
