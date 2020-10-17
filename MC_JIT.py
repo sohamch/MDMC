@@ -78,7 +78,7 @@ class MCSamplerClass(object):
         badTrials = 0
 
         count = 0  # to keep a steady count of accepted moves
-        for swapcount in range(Nswaptrials):
+        while swapcount < Nswaptrials:
             # first select two random sites to swap - for now, let's just select naively.
             siteA = SwapTrials[swapcount, 0]
             siteB = SwapTrials[swapcount, 1]
