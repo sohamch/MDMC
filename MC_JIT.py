@@ -75,6 +75,7 @@ class MCSamplerClass(object):
 
         acceptCount = 0
         acceptInd = np.zeros(Nswaptrials, dtype=int64)
+        badTrials = 0
 
         count = 0  # to keep a steady count of accepted moves
         for swapcount in range(Nswaptrials):
@@ -84,6 +85,9 @@ class MCSamplerClass(object):
 
             specA = mobOcc[siteA]
             specB = mobOcc[siteB]
+
+            if specA == specB:
+                badTrials += 1
 
             delE = 0.
             # Next, switch required sites off
@@ -149,7 +153,7 @@ class MCSamplerClass(object):
                 if mobOcc[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
                     TransOffSiteCount[TsInteractIdx] += 1
 
-        return acceptCount, acceptInd
+        return acceptCount, badTrials, acceptInd
 
     def Expand(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, lenVecClus, beta):
 
