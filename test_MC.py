@@ -362,6 +362,9 @@ class Test_MC(Test_MC_Arrays):
         siteA = swaptrials[0, 0]
         siteB = swaptrials[0, 1]
 
+        print("\nsiteA: {}, specA:{}".format(siteA, initJit[siteA]))
+        print("\nsiteB: {}, specB:{}\n".format(siteB, initJit[siteB]))
+
         # Get the energy for the swapped state - will determine if move is calculated correctly or not
         # swap the occupancies
         stateSwap = initCopy.copy()
@@ -401,7 +404,7 @@ class Test_MC(Test_MC_Arrays):
         for TsInteractIdx in range(len(TSOffSiteCount2)):
             offcount = 0
             for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
-                if initState[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
+                if initJit[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
                     offcount += 1
             self.assertEqual(TSOffSiteCount2[TsInteractIdx], offcount)
 
