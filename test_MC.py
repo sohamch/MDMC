@@ -505,14 +505,50 @@ class Test_MC(Test_MC_Arrays):
         EnInit = 0.
         # translate every cluster by all lattice translations and get the corresponding energy
         for SpCl in allSpCl:
+            EnCl = self.Energies[self.VclusExp.clust2SpecClus[SpCl][0]]  # get the energy of the group this cluster belongs to
             siteSpecList = list(SpCl.SiteSpecs)
             siteList = [site for (site, spec) in siteSpecList]
             specList = [spec for (site, spec) in siteSpecList]
             for transInd in range(self.VclusExp.Nsites):
+                # Get the off counts for this interactions
+                offcount = 0
                 R = self.VclusExp.sup.ciR(transInd)[1]  # get the translation
                 # translate all sites in the cluster by that amount
                 for clSiteInd, clSite in enumerate(siteList):
                     clSiteNew = clSite + R
+                    supSiteNew = self.VclusExp.sup.index(clSiteNew.R, clSiteNew.ci)[0]
+                    # Check if the required species is there
+                    if initCopy[supSiteNew] != specList[clSiteInd]:
+                        offcount += 1
+                if offcount == 0:
+                    EnInit += EnCl
+
+        self.assertAlmostEqual(EnInit, En1)
+
+        # Now do the same for the swapped state
+        EnSwap = 0.
+        # translate every cluster by all lattice translations and get the corresponding energy
+        for SpCl in allSpCl:
+            EnCl = self.Energies[self.VclusExp.clust2SpecClus[SpCl][0]]  # get the energy of the group this cluster belongs to
+            siteSpecList = list(SpCl.SiteSpecs)
+            siteList = [site for (site, spec) in siteSpecList]
+            specList = [spec for (site, spec) in siteSpecList]
+            for transInd in range(self.VclusExp.Nsites):
+                # Get the off counts for this interactions
+                offcount = 0
+                R = self.VclusExp.sup.ciR(transInd)[1]  # get the translation
+                # translate all sites in the cluster by that amount
+                for clSiteInd, clSite in enumerate(siteList):
+                    clSiteNew = clSite + R
+                    supSiteNew = self.VclusExp.sup.index(clSiteNew.R, clSiteNew.ci)[0]
+                    # Check if the required species is there
+                    if stateSwap[supSiteNew] != specList[clSiteInd]:
+                        offcount += 1
+                if offcount == 0:
+                    EnSwap += EnCl
+
+        self.assertAlmostEqual(EnSwap, En1+MCSampler_Jit.delEArray[0])
+
 
     def test_exit_states(self):
         # First, create a random state
