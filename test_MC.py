@@ -490,6 +490,7 @@ class Test_MC(Test_MC_Arrays):
         if -1.0*MCSampler_Jit.delEArray[0] > randarr[0]:
             self.assertEqual(initJit[siteA], initCopy[siteB])
             self.assertEqual(initJit[siteB], initCopy[siteA])
+            self.assertTrue(np.array_equal(initJit, stateSwap))
             self.assertAlmostEqual(EnSwap, En2)
             print("move was accepted {} {}".format(-1.0*MCSampler_Jit.delEArray[0], randarr[0]))
 
@@ -497,6 +498,21 @@ class Test_MC(Test_MC_Arrays):
             self.assertTrue(np.array_equal(initJit, initCopy))
             self.assertAlmostEqual(En2, En1)
             print("move was not accepted {} {}".format(-1.0*MCSampler_Jit.delEArray[0], randarr[0]))
+
+        # Check the energies by translating the clusters around
+        allSpCl = [SpCl for SpClList in self.VclusExp.SpecClusters for SpCl in SpClList]
+        # First, the initial state
+        EnInit = 0.
+        # translate every cluster by all lattice translations and get the corresponding energy
+        for SpCl in allSpCl:
+            siteSpecList = list(SpCl.SiteSpecs)
+            siteList = [site for (site, spec) in siteSpecList]
+            specList = [spec for (site, spec) in siteSpecList]
+            for transInd in range(self.VclusExp.Nsites):
+                R = self.VclusExp.sup.ciR(transInd)[1]  # get the translation
+                # translate all sites in the cluster by that amount
+                for clSiteInd, clSite in enumerate(siteList):
+                    clSiteNew = clSite + R
 
     def test_exit_states(self):
         # First, create a random state
