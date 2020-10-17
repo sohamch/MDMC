@@ -333,30 +333,12 @@ class Test_MC(Test_MC_Arrays):
         Nsites = len(self.VclusExp.sup.mobilepos)
         Nswaptrials = 1  # We are only testing a single step here
         swaptrials = np.zeros((Nswaptrials, 2), dtype=int)
-
-        count = 0
-        while count < Nswaptrials:
-            # first select two random sites to swap - for now, let's just select naively.
-            siteA = np.random.randint(0, Nsites)
-            siteB = np.random.randint(0, Nsites)
-
-            # make sure we are swapping different atoms because otherwise we are in the same state
-            if siteA == siteB or siteA == self.vacSiteInd or siteB == self.vacSiteInd:
-                continue
-
-            swaptrials[count, 0] = siteA
-            swaptrials[count, 1] = siteB
-            count += 1
-
-        randarr = np.random.rand(Nswaptrials)
-
-        randarr = np.log(randarr)
-
-        # Check that offsitecounts are updated correctly
+        randarr = np.log(np.random.rand(Nswaptrials))
 
         # Put in tests for Jit calculations
         # make the offsite counts
         initJit = initCopy.copy()
+
         # build the offsite count and get initial energy
         En1 = 0.
         offscjit = np.zeros_like(self.numSitesInteracts)
@@ -375,6 +357,10 @@ class Test_MC(Test_MC_Arrays):
         TSOffSiteCount2 = np.zeros(len(self.numSitesTSInteracts), dtype=int)
 
         MCSampler_Jit.makeMCsweep(initJit, offscjit, TSOffSiteCount2, swaptrials, 1.0, randarr, Nswaptrials)
+
+        # Get the sites that were selected
+        siteA = swaptrials[0, 0]
+        siteB = swaptrials[0, 1]
 
         # Get the energy for the swapped state - will determine if move is calculated correctly or not
         # swap the occupancies
