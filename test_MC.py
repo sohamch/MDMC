@@ -328,29 +328,8 @@ class Test_MC(Test_MC_Arrays):
         initCopy = initState.copy()
 
         # Get the MC samplers
-        MCSampler = self.MCSampler
         MCSampler_Jit = self.MCSampler_Jit
 
-        # First check that the initial OffsiteCount is computed correctly
-        for (interaction, interactionInd) in self.InteractionIndexDict.items():
-            offsiteCount = 0
-            for (site, spec) in interaction:
-                if initState[site] != spec:
-                    offsiteCount += 1
-            self.assertEqual(MCSampler.OffSiteCount[interactionInd], offsiteCount, msg="{} {} \n{} \n{}".format(
-                MCSampler.OffSiteCount[interactionInd], offsiteCount,
-                interaction, [initState[site] for site in [site for site, spec in interaction]]
-            ))
-
-        # calculate Initial energy
-        InitEn = 0.
-        for i in range(len(MCSampler.OffSiteCount)):
-            if MCSampler.OffSiteCount[i] == 0:
-                InitEn += self.Interaction2En[i]
-
-        # Do MC single metropolis step that updates the state
-        offsc = MCSampler.OffSiteCount.copy()
-        TransOffSiteCountNew = np.zeros(len(self.TSInteractSites), dtype=int)
         Nsites = len(self.VclusExp.sup.mobilepos)
         Nswaptrials = 1  # We are only testing a single step here
         swaptrials = np.zeros((Nswaptrials, 2), dtype=int)
@@ -362,7 +341,7 @@ class Test_MC(Test_MC_Arrays):
             siteB = np.random.randint(0, Nsites)
 
             # make sure we are swapping different atoms because otherwise we are in the same state
-            if initState[siteA] == initState[siteB] or siteA == self.vacSiteInd or siteB == self.vacSiteInd:
+            if siteA == siteB or siteA == self.vacSiteInd or siteB == self.vacSiteInd:
                 continue
 
             swaptrials[count, 0] = siteA
@@ -373,48 +352,7 @@ class Test_MC(Test_MC_Arrays):
 
         randarr = np.log(randarr)
 
-        # Do MC sweep
-        MCSampler.makeMCsweep(initState, offsc, TransOffSiteCountNew, swaptrials, 1.0, randarr, Nswaptrials)
-
         # Check that offsitecounts are updated correctly
-        for interactIdx in range(self.numSitesInteracts.shape[0]):
-            numSites = self.numSitesInteracts[interactIdx]
-            offcount = 0
-            for intSiteind in range(numSites):
-                interSite = self.SupSitesInteracts[interactIdx, intSiteind]
-                interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
-                if initState[interSite] != interSpec:
-                    offcount += 1
-            self.assertTrue(offsc[interactIdx] == offcount)
-
-
-        for TsInteractIdx in range(len(TransOffSiteCountNew)):
-            offcount = 0
-            for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
-                if initState[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
-                    offcount += 1
-            self.assertEqual(TransOffSiteCountNew[TsInteractIdx], offcount)
-
-        offsc2 = MCSampler.OffSiteCount.copy()
-        for intInd in range(self.numInteractsSiteSpec[siteA, initCopy[siteA]]):
-            offsc2[self.SiteSpecInterArray[siteA, initCopy[siteA], intInd]] += 1
-
-        for intInd in range(self.numInteractsSiteSpec[siteB, initCopy[siteB]]):
-            offsc2[self.SiteSpecInterArray[siteB, initCopy[siteB], intInd]] += 1
-
-        for intInd in range(self.numInteractsSiteSpec[siteA, initCopy[siteB]]):
-            offsc2[self.SiteSpecInterArray[siteA, initCopy[siteB], intInd]] -= 1
-
-        for intInd in range(self.numInteractsSiteSpec[siteB, initCopy[siteA]]):
-            offsc2[self.SiteSpecInterArray[siteB, initCopy[siteA], intInd]] -= 1
-
-        # Now calculate the final energy based on the new offsite counts
-        FinEn = 0.
-        for i in range(len(offsc2)):
-            if offsc2[i] == 0:
-                FinEn += self.Interaction2En[i]
-
-        self.assertTrue(np.allclose(MCSampler.delE, FinEn - InitEn), msg="{}, {}".format(MCSampler.delE, FinEn - InitEn))
 
         # Put in tests for Jit calculations
         # make the offsite counts
@@ -434,7 +372,7 @@ class Test_MC(Test_MC_Arrays):
             if offcount == 0:
                 En1 += self.Interaction2En[interactIdx]
 
-        TSOffSiteCount2 = np.zeros_like(TransOffSiteCountNew)
+        TSOffSiteCount2 = np.zeros_like(len(self.numSitesTSInteracts), dtype=int)
 
         MCSampler_Jit.makeMCsweep(initJit, offscjit, TSOffSiteCount2, swaptrials, 1.0, randarr, Nswaptrials)
 
@@ -480,11 +418,6 @@ class Test_MC(Test_MC_Arrays):
                 if initState[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
                     offcount += 1
             self.assertEqual(TSOffSiteCount2[TsInteractIdx], offcount)
-
-        # Check that the same results are found between Jit and non-Jit versions.
-        self.assertTrue(np.array_equal(initJit, initState))
-        self.assertTrue(np.array_equal(offscjit, offsc))
-        self.assertTrue(np.array_equal(TransOffSiteCountNew, TSOffSiteCount2))
 
         # test that energy calculation and site swaps are done correctly.
         if -1.0*MCSampler_Jit.delEArray[0] > randarr[0]:
