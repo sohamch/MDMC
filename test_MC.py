@@ -562,12 +562,24 @@ class Test_MC(Test_MC_Arrays):
 
             self.assertAlmostEqual(EnKRA, delEKRA, msg="\n{}".format(self.KRAEnergies))
 
-
             # Next, check that the rates satisfy detailed balance
             stateExit = statesTrans[jInd]
-            # Get the offsite count of this state
+            # Get the offsite count of this state and its energy
             En2 = 0.
+            for interactIdx in range(self.numSitesInteracts.shape[0]):
+                numSites = self.numSitesInteracts[interactIdx]
+                offcount = 0
+                for intSiteind in range(numSites):
+                    interSite = self.SupSitesInteracts[interactIdx, intSiteind]
+                    interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
+                    if stateExit[interSite] != interSpec:
+                        offcount += 1
+                if offcount == 0:
+                    En2 += self.Interaction2En[interactIdx]
 
+            delE = En2 - En1
+            rate = np.exp(-1.0*(0.5*delE + delEKRA))
+            self.assertAlmostEqual(rate, ratelist[jInd])
 
     def test_random_state(self):
         initState = self.initState
