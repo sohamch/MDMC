@@ -418,10 +418,9 @@ class Test_MC(Test_MC_Arrays):
 
         # Put in tests for Jit calculations
         # make the offsite counts
-        initJit = initState.copy()
-
+        initJit = initCopy.copy()
         # build the offsite count and get initial energy
-        En1 = 0
+        En1 = 0.
         offscjit = np.zeros_like(self.numSitesInteracts)
         for interactIdx in range(self.numSitesInteracts.shape[0]):
             numSites = self.numSitesInteracts[interactIdx]
@@ -439,7 +438,28 @@ class Test_MC(Test_MC_Arrays):
 
         MCSampler_Jit.makeMCsweep(initJit, offscjit, TSOffSiteCount2, swaptrials, 1.0, randarr, Nswaptrials)
 
-        # Check offsite counts after sweep and get the final energy
+        # Get the energy for the swapped state - will determine if move is calculated correctly or not
+        # swap the occupancies
+        stateSwap = initCopy.copy()
+        temp = stateSwap[siteA]
+        stateSwap[siteA] = stateSwap[siteB]
+        stateSwap[siteB] = temp
+        EnSwap = 0.
+        # Now get its energy
+        for interactIdx in range(self.numSitesInteracts.shape[0]):
+            numSites = self.numSitesInteracts[interactIdx]
+            offcount = 0
+            for intSiteind in range(numSites):
+                interSite = self.SupSitesInteracts[interactIdx, intSiteind]
+                interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
+                if stateSwap[interSite] != interSpec:
+                    offcount += 1
+            if offcount == 0:
+                EnSwap += self.Interaction2En[interactIdx]
+
+        self.assertAlmostEqual(EnSwap - En1, MCSampler_Jit.delEArray[0])  # Check that the correct energy change was computed
+
+        # Check off site counts after trial and get the energy
         En2 = 0.
         for interactIdx in range(self.numSitesInteracts.shape[0]):
             numSites = self.numSitesInteracts[interactIdx]
@@ -467,14 +487,16 @@ class Test_MC(Test_MC_Arrays):
         self.assertTrue(np.array_equal(TransOffSiteCountNew, TSOffSiteCount2))
 
         # test that energy calculation and site swaps are done correctly.
-        if -1.0*(En2 - En1) > randarr[0]:
+        if -1.0*MCSampler_Jit.delEArray[0] > randarr[0]:
             self.assertEqual(initJit[siteA], initCopy[siteB])
             self.assertEqual(initJit[siteB], initCopy[siteA])
-            print("move was accepted {} {}".format(-1.0*(En2 - En1), randarr[0]))
+            self.assertAlmostEqual(EnSwap, En2)
+            print("move was accepted {} {}".format(-1.0*MCSampler_Jit.delEArray[0], randarr[0]))
 
         else:
             self.assertTrue(np.array_equal(initJit, initCopy))
-            print("move was not accepted {} {}".format(-1.0*(En2 - En1), randarr[0]))
+            self.assertAlmostEqual(En2, En1)
+            print("move was not accepted {} {}".format(-1.0*MCSampler_Jit.delEArray[0], randarr[0]))
 
     def test_exit_states(self):
         # First, create a random state

@@ -28,6 +28,7 @@ MonteCarloSamplerSpec = [
     ("Nsites", int64),
     ("Nspecs", int64),
     ("OffSiteCount", int64[:]),
+    ("delEArray", float64[:]),
     ("FinSiteFinSpecJumpInd", int64[:, :]),
     ("VecGroupInteracts", int64[:, :])
 
