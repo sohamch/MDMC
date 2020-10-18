@@ -237,6 +237,8 @@ class MCSamplerClass(object):
                 siteA = SwapTrials[i, 0]
                 siteB = SwapTrials[i, 1]
 
+                # remember that the sites have been swapped.
+                # So, The previous specA is now at siteB
                 specA = mobOcc[siteB]
                 specB = mobOcc[siteA]
 
