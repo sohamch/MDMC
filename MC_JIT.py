@@ -293,16 +293,24 @@ class MCSamplerClass(object):
 
         return WBar, BBar
 
-    def GetNewRandState(self, mobOcc, OffSiteCount, Energy, SwapTrials, Nswaptrials):
+    def GetNewRandState(self, mobOcc, OffSiteCount, Energy, SwapTrials, Nswaptrials, vacSiteInd=0):
 
         En = Energy
-        for swapcount in range(Nswaptrials):
-            # first select two random sites to swap - for now, let's just select naively.
-            siteA = SwapTrials[swapcount, 0]
-            siteB = SwapTrials[swapcount, 1]
+        Nsites = len(mobOcc)
+        swapcount = 0
+        while swapcount < Nswaptrials:
+            # first select two random sites to swap - for now, let's just select naively and store
+            siteA = np.random.randint(0, Nsites)
+            siteB = np.random.randint(0, Nsites)
 
             specA = mobOcc[siteA]
             specB = mobOcc[siteB]
+
+            if specA == specB or siteA == vacSiteInd or siteB == vacSiteInd:
+                continue
+
+            SwapTrials[swapcount, 0] = siteA
+            SwapTrials[swapcount, 1] = siteB
 
             delE = 0.
             # Next, switch required sites off
@@ -333,12 +341,12 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
 
-            # do the selection test
             # swap the sites to get to the next state
             mobOcc[siteA] = specB
             mobOcc[siteB] = specA
             # add the energy to get the energy of the next state
             En += delE
+            swapcount += 1
 
         return En
 
