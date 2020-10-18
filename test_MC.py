@@ -589,25 +589,33 @@ class Test_MC(Test_MC_Arrays):
 
         # test random state generation
         state = initCopy.copy()
+        offsc = MCSampler_Jit.OffSiteCount.copy()
 
-        En1 = 0.
-        offsc = np.zeros_like(self.numSitesInteracts)
-        for interactIdx in range(self.numSitesInteracts.shape[0]):
-            numSites = self.numSitesInteracts[interactIdx]
-            offcount = 0
-            for intSiteind in range(numSites):
-                interSite = self.SupSitesInteracts[interactIdx, intSiteind]
-                interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
-                if state[interSite] != interSpec:
-                    offcount += 1
-            offsc[interactIdx] = offcount
-            if offcount == 0:
-                En1 += self.Interaction2En[interactIdx]
-
-        Nswaptrials = 100
+        Nswaptrials = 100  # We are only testing a single step here
         swaptrials = np.zeros((Nswaptrials, 2), dtype=int)
 
-        En_new = MCSampler_Jit.GetNewRandState(state, offsc, swaptrials, Nswaptrials)
+        Nsites = len(self.VclusExp.sup.mobilepos)
+
+        count = 0
+        while count < Nswaptrials:
+            # first select two random sites to swap - for now, let's just select naively.
+            siteA = np.random.randint(0, Nsites)
+            siteB = np.random.randint(0, Nsites)
+
+            # make sure we are swapping different atoms because otherwise we are in the same state
+            if state[siteA] == state[siteB] or siteA == self.vacSiteInd or siteB == self.vacSiteInd:
+                continue
+
+            swaptrials[count, 0] = siteA
+            swaptrials[count, 1] = siteB
+            count += 1
+
+        InitEn = 0.
+        for i in range(len(offsc)):
+            if offsc[i] == 0:
+                InitEn += self.Interaction2En[i]
+
+        En_new = MCSampler_Jit.GetNewRandState(state, offsc, InitEn, swaptrials, Nswaptrials)
 
         FinEn = 0.
         for i in range(len(offsc)):
