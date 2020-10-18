@@ -479,7 +479,7 @@ class Test_MC(Test_MC_Arrays):
         MCSampler_Jit = self.MCSampler_Jit
 
         Nsites = len(self.VclusExp.sup.mobilepos)
-        Nswaptrials = 100  # Let's do single step first, then two steps, then higher
+        Nswaptrials = 1  # Let's do single step first, then two steps, then higher
         swaptrials = np.zeros((Nswaptrials, 2), dtype=int)
 
         initJit = initCopy.copy()
@@ -523,6 +523,33 @@ class Test_MC(Test_MC_Arrays):
                     if initJit[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
                         offcount += 1
                 self.assertEqual(TSoffsc[TsInteractIdx], offcount)
+
+        # Now, let's make it accept by making randLog very small
+        randLog = -2e5
+
+        EnChange = MCSampler_Jit.MultiSwapMC(initJit, offsc, TSoffsc, swaptrials, Nswaptrials, 1.0, randLog)
+
+        if -1.0*EnChange > randLog:
+            print("{} swaps accepted".format(Nswaptrials))
+
+            # let's reconstruct the off site count and energies
+            En2 = 0.
+            offsc2 = np.zeros_like(self.numSitesInteracts)
+            for interactIdx in range(self.numSitesInteracts.shape[0]):
+                numSites = self.numSitesInteracts[interactIdx]
+                offcount = 0
+                for intSiteind in range(numSites):
+                    interSite = self.SupSitesInteracts[interactIdx, intSiteind]
+                    interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
+                    if initJit[interSite] != interSpec:
+                        offcount += 1
+                offsc2[interactIdx] = offcount
+                if offcount == 0:
+                    En2 += self.Interaction2En[interactIdx]
+
+            self.assertAlmostEqual(En2, En1+EnChange)
+            self.assertTrue(np.array_equal(offsc, offsc2))
+
 
 
     def test_exit_states(self):
