@@ -293,7 +293,7 @@ class MCSamplerClass(object):
 
         return WBar, BBar
 
-    def GetNewRandState(self, mobOcc, OffSiteCount, Energy, SwapTrials, Nswaptrials, vacSiteInd=0):
+    def GetNewRandState(self, mobOcc, OffSiteCount, SwapTrials, Nswaptrials, vacSiteInd=0):
 
         EnChange = 0
         Nsites = len(mobOcc)

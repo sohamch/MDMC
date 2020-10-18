@@ -607,7 +607,7 @@ class Test_MC(Test_MC_Arrays):
         Nswaptrials = 100
         swaptrials = np.zeros((Nswaptrials, 2), dtype=int)
 
-        En_new = MCSampler_Jit.GetNewRandState(state, offsc, InitEn, swaptrials, Nswaptrials)
+        En_new = MCSampler_Jit.GetNewRandState(state, offsc, swaptrials, Nswaptrials)
 
         FinEn = 0.
         for i in range(len(offsc)):
