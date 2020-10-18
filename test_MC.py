@@ -479,7 +479,7 @@ class Test_MC(Test_MC_Arrays):
         MCSampler_Jit = self.MCSampler_Jit
 
         Nsites = len(self.VclusExp.sup.mobilepos)
-        Nswaptrials = 2  # Let's do single step first, then two steps, then higher
+        Nswaptrials = 100  # Let's do single step first, then two steps, then higher
         swaptrials = np.zeros((Nswaptrials, 2), dtype=int)
 
         initJit = initCopy.copy()
@@ -513,10 +513,16 @@ class Test_MC(Test_MC_Arrays):
         # Now check if the state should have changed or remained the same
         if -1.0*EnChange < randLog:
             print("{} swaps rejected".format(Nswaptrials))
-            self.assertTrue(np.array_equal(initJit, initCopy), msg="{} {}\n {} {}\n {} {}".format(swaptrials[0, 0], swaptrials[0, 1],
-                                                                                  initJit[swaptrials[0, 0]], initJit[swaptrials[0, 1]],
-                                                                                  initCopy[swaptrials[0, 0]], initCopy[swaptrials[0, 1]]))
+            self.assertTrue(np.array_equal(initJit, initCopy))
             self.assertTrue(np.array_equal(offsc, offscInit))
+
+            # Check that TS offsite counts were constructed correctly.
+            for TsInteractIdx in range(len(TSoffsc)):
+                offcount = 0
+                for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
+                    if initJit[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
+                        offcount += 1
+                self.assertEqual(TSoffsc[TsInteractIdx], offcount)
 
 
     def test_exit_states(self):
