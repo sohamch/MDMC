@@ -479,7 +479,7 @@ class Test_MC(Test_MC_Arrays):
         MCSampler_Jit = self.MCSampler_Jit
 
         Nsites = len(self.VclusExp.sup.mobilepos)
-        Nswaptrials = 1  # Let's do single step first, then two steps, then higher
+        Nswaptrials = 20  # Let's do single step first, then two steps, then higher
         swaptrials = np.zeros((Nswaptrials, 2), dtype=int)
 
         initJit = initCopy.copy()
@@ -549,8 +549,6 @@ class Test_MC(Test_MC_Arrays):
 
             self.assertAlmostEqual(En2, En1+EnChange)
             self.assertTrue(np.array_equal(offsc, offsc2))
-
-
 
     def test_exit_states(self):
         # First, create a random state
