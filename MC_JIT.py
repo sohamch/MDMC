@@ -169,6 +169,55 @@ class MCSamplerClass(object):
 
         return acceptCount, badTrials, acceptInd
 
+    def MultiSwapMC(self, mobOcc, OffSiteCount, SwapTrials, Nswaptrials):
+
+        EnChange = 0.
+        for swapcount in range(Nswaptrials):
+            # first select two random sites to swap - for now, let's just select naively.
+            siteA = SwapTrials[swapcount, 0]
+            siteB = SwapTrials[swapcount, 1]
+
+            specA = mobOcc[siteA]
+            specB = mobOcc[siteB]
+
+            delE = 0.
+            # Next, switch required sites off
+            for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
+                # check if an interaction is on
+                interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
+                if OffSiteCount[interMainInd] == 0:
+                    delE -= self.Interaction2En[interMainInd]
+                OffSiteCount[interMainInd] += 1
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
+                interMainInd = self.SiteSpecInterArray[siteB, specB, interIdx]
+                # offscount = OffSiteCount[interMainInd]
+                if OffSiteCount[interMainInd] == 0:
+                    delE -= self.Interaction2En[interMainInd]
+                OffSiteCount[interMainInd] += 1
+
+            # Next, switch required sites on
+            for interIdx in range(self.numInteractsSiteSpec[siteA, specB]):
+                interMainInd = self.SiteSpecInterArray[siteA, specB, interIdx]
+                OffSiteCount[interMainInd] -= 1
+                if OffSiteCount[interMainInd] == 0:
+                    delE += self.Interaction2En[interMainInd]
+
+            for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
+                interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
+                OffSiteCount[interMainInd] -= 1
+                if OffSiteCount[interMainInd] == 0:
+                    delE += self.Interaction2En[interMainInd]
+
+            # do the selection test
+            # swap the sites to get to the next state
+            mobOcc[siteA] = specB
+            mobOcc[siteB] = specA
+            # add the energy to get the energy of the next state
+            EnChange += delE
+
+        return EnChange
+
     def Expand(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, lenVecClus, beta):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
