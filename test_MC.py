@@ -472,6 +472,40 @@ class Test_MC(Test_MC_Arrays):
         self.assertAlmostEqual(EnSwap, En1+MCSampler_Jit.delEArray[0])
 
 
+    def test_MultiSwap(self):
+        initCopy = self.initState.copy()
+
+        # Get the MC sampler
+        MCSampler_Jit = self.MCSampler_Jit
+
+        Nsites = len(self.VclusExp.sup.mobilepos)
+        Nswaptrials = 1  # Let's do single step first
+        swaptrials = np.zeros((Nswaptrials, 2), dtype=int)
+
+        randLog = np.log(np.random.rand())
+
+        initJit = initCopy.copy()
+
+        # build the offsite count and get initial energy
+        En1 = 0.
+        offsc = np.zeros_like(self.numSitesInteracts)
+        for interactIdx in range(self.numSitesInteracts.shape[0]):
+            numSites = self.numSitesInteracts[interactIdx]
+            offcount = 0
+            for intSiteind in range(numSites):
+                interSite = self.SupSitesInteracts[interactIdx, intSiteind]
+                interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
+                if initJit[interSite] != interSpec:
+                    offcount += 1
+            offsc[interactIdx] = offcount
+            if offcount == 0:
+                En1 += self.Interaction2En[interactIdx]
+
+        TSoffsc = np.zeros(len(self.numSitesTSInteracts), dtype=int)
+
+        # Now attempt the sweep
+
+
     def test_exit_states(self):
         # First, create a random state
         initState = self.initState
