@@ -295,7 +295,7 @@ class MCSamplerClass(object):
 
     def GetNewRandState(self, mobOcc, OffSiteCount, Energy, SwapTrials, Nswaptrials, vacSiteInd=0):
 
-        En = Energy
+        EnChange = 0
         Nsites = len(mobOcc)
         swapcount = 0
         while swapcount < Nswaptrials:
@@ -345,10 +345,10 @@ class MCSamplerClass(object):
             mobOcc[siteA] = specB
             mobOcc[siteB] = specA
             # add the energy to get the energy of the next state
-            En += delE
+            EnChange += delE
             swapcount += 1
 
-        return En
+        return EnChange
 
     def getExitData(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, beta, Nsites):
 
