@@ -169,7 +169,8 @@ class MCSamplerClass(object):
 
         return acceptCount, badTrials, acceptInd
 
-    def MultiSwapMC(self, mobOcc, OffSiteCount, SwapTrials, Nswaptrials, beta, vacSiteInd=0):
+    def MultiSwapMC(self, mobOcc, OffSiteCount, SwapTrials, Nswaptrials, beta, randlog, vacSiteInd=0):
+
         Nsites = len(mobOcc)
         EnChange = 0.
         swapcount = 0
@@ -223,10 +224,18 @@ class MCSamplerClass(object):
             mobOcc[siteB] = specA
             # add the energy to get the energy of the next state
             EnChange += delE
-
             swapcount += 1
 
         # Do the Metropolis test
+
+        if -beta*EnChange < randlog:  # Then the whole thing needs to be reverted
+
+            # We need to reverse everythin in the exact opposite sequence of how it was produced
+            for i in range(Nswaptrials-1, -1, -1):
+
+                # Get the sites that were swapped
+
+                continue
 
 
         return EnChange
