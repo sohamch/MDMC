@@ -479,7 +479,7 @@ class Test_MC(Test_MC_Arrays):
         MCSampler_Jit = self.MCSampler_Jit
 
         Nsites = len(self.VclusExp.sup.mobilepos)
-        Nswaptrials = 1  # Let's do single step first, then two steps
+        Nswaptrials = 2  # Let's do single step first, then two steps, then higher
         swaptrials = np.zeros((Nswaptrials, 2), dtype=int)
 
         initJit = initCopy.copy()
