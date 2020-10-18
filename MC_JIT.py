@@ -169,16 +169,24 @@ class MCSamplerClass(object):
 
         return acceptCount, badTrials, acceptInd
 
-    def MultiSwapMC(self, mobOcc, OffSiteCount, SwapTrials, Nswaptrials):
-
+    def MultiSwapMC(self, mobOcc, OffSiteCount, SwapTrials, Nswaptrials, beta, vacSiteInd=0):
+        Nsites = len(mobOcc)
         EnChange = 0.
-        for swapcount in range(Nswaptrials):
+        swapcount = 0
+
+        while swapcount < Nswaptrials:
             # first select two random sites to swap - for now, let's just select naively.
-            siteA = SwapTrials[swapcount, 0]
-            siteB = SwapTrials[swapcount, 1]
+            siteA = np.random.randint(0, Nsites)
+            siteB = np.random.randint(0, Nsites)
 
             specA = mobOcc[siteA]
             specB = mobOcc[siteB]
+
+            if specA == specB or siteA == vacSiteInd or siteB == vacSiteInd:
+                continue
+
+            SwapTrials[swapcount, 0] = siteA
+            SwapTrials[swapcount, 1] = siteB
 
             delE = 0.
             # Next, switch required sites off
@@ -215,6 +223,11 @@ class MCSamplerClass(object):
             mobOcc[siteB] = specA
             # add the energy to get the energy of the next state
             EnChange += delE
+
+            swapcount += 1
+
+        # Do the Metropolis test
+
 
         return EnChange
 
