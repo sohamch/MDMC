@@ -235,31 +235,27 @@ class MCSamplerClass(object):
             for i in range(Nswaptrials-1, -1, -1):
                 # Get the sites that were swapped
                 siteA = SwapTrials[i, 0]
-                siteB = SwapTrials[i, 0]
+                siteB = SwapTrials[i, 1]
 
-                specA = mobOcc[siteA]
-                specB = mobOcc[siteB]
+                specA = mobOcc[siteB]
+                specB = mobOcc[siteA]
 
                 # revert off site counts
                 for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
-                    # interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
                     OffSiteCount[self.SiteSpecInterArray[siteA, specA, interIdx]] -= 1
 
                 for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
-                    # interMainInd = self.SiteSpecInterArray[siteB, specB, interIdx]
                     OffSiteCount[self.SiteSpecInterArray[siteB, specB, interIdx]] -= 1
 
                 for interIdx in range(self.numInteractsSiteSpec[siteA, specB]):
-                    # interMainInd = self.SiteSpecInterArray[siteA, specB, interIdx]
                     OffSiteCount[self.SiteSpecInterArray[siteA, specB, interIdx]] += 1
 
                 for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
-                    # interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
                     OffSiteCount[self.SiteSpecInterArray[siteB, specA, interIdx]] += 1
 
                 # revert state
-                mobOcc[siteA] = specB
-                mobOcc[siteB] = specA
+                mobOcc[siteA] = specA
+                mobOcc[siteB] = specB
 
         # once the final state is decided, compute the TS energies.
         for TsInteractIdx in range(len(self.TSInteractSites)):

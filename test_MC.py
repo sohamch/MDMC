@@ -479,10 +479,8 @@ class Test_MC(Test_MC_Arrays):
         MCSampler_Jit = self.MCSampler_Jit
 
         Nsites = len(self.VclusExp.sup.mobilepos)
-        Nswaptrials = 1  # Let's do single step first
+        Nswaptrials = 1  # Let's do single step first, then two steps
         swaptrials = np.zeros((Nswaptrials, 2), dtype=int)
-
-        randLog = np.log(np.random.rand())
 
         initJit = initCopy.copy()
 
@@ -501,9 +499,24 @@ class Test_MC(Test_MC_Arrays):
             if offcount == 0:
                 En1 += self.Interaction2En[interactIdx]
 
+        offscInit = offsc.copy()
+
         TSoffsc = np.zeros(len(self.numSitesTSInteracts), dtype=int)
 
         # Now attempt the sweep
+
+        # The most critical part is the reversal on rejection, so we'll make it reject first
+        randLog = 2e5
+
+        EnChange = MCSampler_Jit.MultiSwapMC(initJit, offsc, TSoffsc, swaptrials, Nswaptrials, 1.0, randLog)
+
+        # Now check if the state should have changed or remained the same
+        if -1.0*EnChange < randLog:
+            print("{} swaps rejected".format(Nswaptrials))
+            self.assertTrue(np.array_equal(initJit, initCopy), msg="{} {}\n {} {}\n {} {}".format(swaptrials[0, 0], swaptrials[0, 1],
+                                                                                  initJit[swaptrials[0, 0]], initJit[swaptrials[0, 1]],
+                                                                                  initCopy[swaptrials[0, 0]], initCopy[swaptrials[0, 1]]))
+            self.assertTrue(np.array_equal(offsc, offscInit))
 
 
     def test_exit_states(self):
