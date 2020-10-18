@@ -169,7 +169,8 @@ class MCSamplerClass(object):
 
         return acceptCount, badTrials, acceptInd
 
-    def MultiSwapMC(self, mobOcc, OffSiteCount, SwapTrials, Nswaptrials, beta, randlog, vacSiteInd=0):
+    def MultiSwapMC(self, mobOcc, OffSiteCount, TransOffSiteCount,
+                    SwapTrials, Nswaptrials, beta, randlog, vacSiteInd=0):
 
         Nsites = len(mobOcc)
         EnChange = 0.
@@ -230,7 +231,7 @@ class MCSamplerClass(object):
 
         if -beta*EnChange < randlog:  # Then the whole thing needs to be reverted
 
-            # We need to reverse everythin in the exact opposite sequence of how it was produced
+            # We need to reverse everything in the exact opposite sequence of how it was produced
             for i in range(Nswaptrials-1, -1, -1):
                 # Get the sites that were swapped
                 siteA = SwapTrials[i, 0]
@@ -259,6 +260,13 @@ class MCSamplerClass(object):
                 # revert state
                 mobOcc[siteA] = specB
                 mobOcc[siteB] = specA
+
+        # once the final state is decided, compute the TS energies.
+        for TsInteractIdx in range(len(self.TSInteractSites)):
+            TransOffSiteCount[TsInteractIdx] = 0
+            for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
+                if mobOcc[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
+                    TransOffSiteCount[TsInteractIdx] += 1
 
         return EnChange  # For testing
 
