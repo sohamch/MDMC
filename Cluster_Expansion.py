@@ -81,6 +81,7 @@ class VectorClusterExpansion(object):
 
         start = time.time()
         self.SpecClusters = self.recalcClusters()
+        self.IndexClusters()
         print("Generated clusters with species: {:.4f}".format(time.time()-start))
         start = time.time()
         self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
@@ -230,7 +231,19 @@ class VectorClusterExpansion(object):
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
         return SiteSpecinteractList, maxinteractions
 
-    def makeJitInteractionsData(self, Energies):
+    def IndexClusters(self):
+        """
+        Assign a unique integer to each representative cluster. To help identifying them in JIT operations
+        """
+        allSpCl = [SpCl for SpClList in self.SpecClusters for SpCl in SpClList]
+        self.Clus2Num = {}
+        self.Num2Clus = {}
+
+        for i, SpCl in enumerate(allSpCl):
+            self.Clus2Num[SpCl] = i
+            self.Num2Clus[i] = SpCl
+
+    def makeJitInteractionsData(self, Energies, returnCount=False):
         """
         Function to represent all the data structures in the form of numpy arrays so that they can be accelerated with
         numba's jit compilations.
