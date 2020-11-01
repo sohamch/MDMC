@@ -1,10 +1,37 @@
 import numpy as np
 from numba.experimental import jitclass
-from numba import int64, float64
+from numba import jit, int64, float64
 
 # Paste all the function definitions here as comments
 
 np.seterr(all='raise')
+
+
+@jit(nopython=True)
+def DoRandSwap(state, Ntrials, vacSiteInd):
+    Nsite = state.shape[0]
+    initSiteList = np.zeros(Ntrials, dtype=int64)
+    finSiteList = np.zeros(Ntrials, dtype=int64)
+
+    count = 0
+    while count < Ntrials:
+        siteA = np.random.randint(0, Nsite)
+        siteB = np.random.randint(0, Nsite)
+
+        if state[siteA] == state[siteB] or siteA == vacSiteInd or siteB == vacSiteInd:
+            continue
+
+        # Otherwise, store the index of the site that was swapped
+        initSiteList[count] = siteA
+        finSiteList[count] = siteB
+
+        # Now do the swap
+        temp = state[siteA]
+        state[siteA] = state[siteB]
+        state[siteB] = temp
+
+    return initSiteList, finSiteList
+
 MonteCarloSamplerSpec = [
     ("numInteractsSiteSpec", int64[:, :]),
     ("SiteSpecInterArray", int64[:, :, :]),
