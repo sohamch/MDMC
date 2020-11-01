@@ -778,8 +778,21 @@ class KMC_JIT(object):
 
         return X_steps, t_steps
 
+    def LatGasKMC(self, state, rates, NSteps, ijList, dxList):
+        """
+        This is to do KMC simulation on a lattice gas where there aren't any energetic interactions, and
+        vacancy transition rates with all species are pre-defined
+        """
+        rateArr = np.zeros_like(rates, dtype=float64)
+        for i in range(NSteps):
 
-# Here, we write a function that takes forms the shells
+            # first get the exit rates out of this state
+            for jmpInd in range(ijList.shape[0]):
+                specB = state[ijList[jmpInd]]
+                rateArr[jmpInd] = rates[specB]
+
+
+# Here, we write a function that forms the shells
 def makeShells(MC_jit, KMC_jit, state0, offsc0, TSoffsc0, ijList, dxList, beta, Nsites, Nspec, Nshells=1):
     """
     Function to make shells around a "seed" state
