@@ -778,20 +778,6 @@ class KMC_JIT(object):
 
         return X_steps, t_steps
 
-    def LatGasKMC(self, state, rates, NSteps, ijList, dxList):
-        """
-        This is to do KMC simulation on a lattice gas where there aren't any energetic interactions, and
-        vacancy transition rates with all species are pre-defined
-        """
-        rateArr = np.zeros_like(rates, dtype=float64)
-        for i in range(NSteps):
-
-            # first get the exit rates out of this state
-            for jmpInd in range(ijList.shape[0]):
-                specB = state[ijList[jmpInd]]
-                rateArr[jmpInd] = rates[specB]
-
-
 # Here, we write a function that forms the shells
 def makeShells(MC_jit, KMC_jit, state0, offsc0, TSoffsc0, ijList, dxList, beta, Nsites, Nspec, Nshells=1):
     """
@@ -876,6 +862,49 @@ def makeShells(MC_jit, KMC_jit, state0, offsc0, TSoffsc0, ijList, dxList, beta, 
         lastShell = nextShell.copy()
 
     return state2Index, Index2State, TransitionRates, TransitionsZero, velocities
+
+@jit(nopython=True)
+def LatGasKMC(self, state, SpecRates, Nsteps, NSpec, ijList, dxList):
+    """
+    This is to do KMC simulation on a lattice gas where there aren't any energetic interactions, and
+    vacancy transition rates with all species are pre-defined
+    """
+    X = np.zeros((NSpec, 3), dtype=float64)
+    t = 0.
+
+    X_steps = np.zeros((Nsteps, NSpec, 3), dtype=float64)
+    t_steps = np.zeros(Nsteps, dtype=float64)
+
+    rateArr = np.zeros_like(SpecRates, dtype=float64)
+    for step in range(Nsteps):
+
+        # first get the exit rates out of this state
+        for jmpInd in range(ijList.shape[0]):
+            specB = state[ijList[jmpInd]]
+            rateArr[jmpInd] = SpecRates[specB]
+
+        # Next get the escape time
+        rateTot = np.sum(rateArr)
+        t += 1/rateTot
+
+        # convert the rates to cumulative probability
+        rateArr /= rateTot
+        rates_cm = np.cumsum(rateArr)
+
+        # Then select the jump
+        rn = np.random.rand()
+        jmpSelect = np.searchsorted(rates_cm, rn)
+
+        # Store the displacement and the time for this step
+        X[NSpec - 1, :] += dxList[jmpSelect]
+        specB = state[ijList[jmpSelect]]
+        X[specB, :] -= dxList[jmpSelect]
+
+        X_steps[step, :, :] = X.copy()
+        t_steps[step] = t
+
+        # Next, do the site swap, and translate the vacancy back to the origin
+
 
 
 
