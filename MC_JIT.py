@@ -873,7 +873,7 @@ def LatGasKMCTraj(self, state, SpecRates, Nsteps, ijList,
     :param state - the starting state for the trajectory
     :param SpecRates - the exchange rates of the vacancy with the different species
     :param Nsteps - the no. of KMC steps to take
-    :param ijList - array containing the final site indices of each jump
+    :param ijList - array containing the final site indices of each vacancy jump out of the initial state.
     :param dxList - array containing the displacement of each jump
     :param vacSiteInit - Integer, representing the site at which the vacancy is initially present.
     :param N_unit - Supercell size.
@@ -903,7 +903,7 @@ def LatGasKMCTraj(self, state, SpecRates, Nsteps, ijList,
     for step in range(Nsteps):
 
         # first get the exit rates out of this state
-        for jmpInd in range(ijList.shape[0]):
+        for jmpInd in range(jmpFinSiteList.shape[0]):
             specB = state[jmpFinSiteList[jmpInd]]  # Get the species occupying the exit site.
             rateArr[jmpInd] = SpecRates[specB]  # Get the exit rate corresponding to this species.
 
@@ -931,13 +931,18 @@ def LatGasKMCTraj(self, state, SpecRates, Nsteps, ijList,
         X_steps[step, :, :] = X.copy()
         t_steps[step] = t
 
-        # Next, do the site swap, and update the jump final site list
-        temp = state[vacSiteNow]
-        state[vacSiteNow] = specB
-        state[siteB] = temp
+        # Update the final site list
 
+        vacSiteNow = siteB
         dR = siteIndtoR[vacSiteNow] - siteIndtoR[vacSiteInit]
 
         for jmp in range(jmpFinSiteList.shape[0]):
             RfinSiteNew = (dR + self.siteIndtoR[ijList[jmp]]) % self.N_unit
             jmpFinSiteList[jmp] = RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
+
+        # Next, do the site swap to update the state
+        temp = state[vacSiteNow]
+        state[vacSiteNow] = specB
+        state[siteB] = temp
+
+    return X_steps, t_steps, jmpSelectSteps, jmpFinSiteList
