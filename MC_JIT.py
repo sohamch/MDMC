@@ -863,25 +863,49 @@ def makeShells(MC_jit, KMC_jit, state0, offsc0, TSoffsc0, ijList, dxList, beta, 
 
     return state2Index, Index2State, TransitionRates, TransitionsZero, velocities
 
+
 @jit(nopython=True)
-def LatGasKMC(self, state, SpecRates, Nsteps, NSpec, ijList, dxList):
+def LatGasKMCTraj(self, state, SpecRates, Nsteps, ijList,
+              dxList, vacSiteInit, N_unit, siteIndtoR, RtoSiteInd):
     """
     This is to do KMC simulation on a lattice gas where there aren't any energetic interactions, and
     vacancy transition rates with all species are pre-defined
+    :param state - the starting state for the trajectory
+    :param SpecRates - the exchange rates of the vacancy with the different species
+    :param Nsteps - the no. of KMC steps to take
+    :param ijList - array containing the final site indices of each jump
+    :param dxList - array containing the displacement of each jump
+    :param vacSiteInit - Integer, representing the site at which the vacancy is initially present.
+    :param N_unit - Supercell size.
+    :param siteIndtoR - contains the lattice vectors pointing to specific supercell sites
+    :param RtoSiteInd - contains the index of the site to which a lattice vector points.
+
+    :returns
+    X_steps - (NstepsxNSpecx3) the displacement at each step for each of the NSpec species
+    t_steps - (Nsteps-size array)the residence time at each step
+    jmpSelectSteps - (Nsteps-size array) which jump was selected at each step - for reproduction of a trajectory during testing.
+    jmpFinSites - The exit site index list for the vacancy out of the final state - for testing.
     """
+    NSpec = SpecRates.shape[0] + 1
     X = np.zeros((NSpec, 3), dtype=float64)
     t = 0.
 
     X_steps = np.zeros((Nsteps, NSpec, 3), dtype=float64)
     t_steps = np.zeros(Nsteps, dtype=float64)
 
-    rateArr = np.zeros_like(SpecRates, dtype=float64)
+    rateArr = np.zeros(ijList.shape[0], dtype=float64)
+
+    jmpFinSiteList = ijList.copy()
+    vacSiteNow = vacSiteInit
+
+    jmpSelectSteps = np.zeros(Nsteps, dtype=int64)  # To store which jump was selected in each step
+
     for step in range(Nsteps):
 
         # first get the exit rates out of this state
         for jmpInd in range(ijList.shape[0]):
-            specB = state[ijList[jmpInd]]
-            rateArr[jmpInd] = SpecRates[specB]
+            specB = state[jmpFinSiteList[jmpInd]]  # Get the species occupying the exit site.
+            rateArr[jmpInd] = SpecRates[specB]  # Get the exit rate corresponding to this species.
 
         # Next get the escape time
         rateTot = np.sum(rateArr)
@@ -895,18 +919,25 @@ def LatGasKMC(self, state, SpecRates, Nsteps, NSpec, ijList, dxList):
         rn = np.random.rand()
         jmpSelect = np.searchsorted(rates_cm, rn)
 
+        jmpSelectSteps[step] = jmpSelect  # Store which jump was selected
+
         # Store the displacement and the time for this step
         X[NSpec - 1, :] += dxList[jmpSelect]
-        specB = state[ijList[jmpSelect]]
+
+        siteB = jmpFinSiteList[jmpSelect]
+        specB = state[siteB]
         X[specB, :] -= dxList[jmpSelect]
 
         X_steps[step, :, :] = X.copy()
         t_steps[step] = t
 
-        # Next, do the site swap, and translate the vacancy back to the origin
+        # Next, do the site swap, and update the jump final site list
+        temp = state[vacSiteNow]
+        state[vacSiteNow] = specB
+        state[siteB] = temp
 
+        dR = siteIndtoR[vacSiteNow] - siteIndtoR[vacSiteInit]
 
-
-
-
-
+        for jmp in range(jmpFinSiteList.shape[0]):
+            RfinSiteNew = (dR + self.siteIndtoR[ijList[jmp]]) % self.N_unit
+            jmpFinSiteList[jmp] = RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
