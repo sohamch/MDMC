@@ -1320,7 +1320,7 @@ class Test_latGasKMC(unittest.TestCase):
 
         # We have two species, let's make one rate "1.0" and the other "2.0"
 
-        SpecRates = np.array([1.0, 2.0, 3.0, 4.0])
+        SpecRates = np.array(range(1, self.NSpec))
 
         ijList, dxList = self.ijList.copy(), self.dxList.copy()
 
