@@ -887,13 +887,13 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
     jmpFinSites - The exit site index list for the vacancy out of the final state - for testing.
     """
     NSpec = SpecRates.shape[0] + 1
-    X = np.zeros((NSpec, 3), dtype=float64)
+    X = np.zeros((NSpec, 3))
     t = 0.
 
-    X_steps = np.zeros((Nsteps, NSpec, 3), dtype=float64)
-    t_steps = np.zeros(Nsteps, dtype=float64)
+    X_steps = np.zeros((Nsteps, NSpec, 3))
+    t_steps = np.zeros(Nsteps)
 
-    rateArr = np.zeros(ijList.shape[0], dtype=float64)
+    rateArr = np.zeros(ijList.shape[0])
 
     jmpFinSiteList = ijList.copy()
     vacSiteNow = vacSiteInit

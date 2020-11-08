@@ -1327,7 +1327,7 @@ class Test_latGasKMC(unittest.TestCase):
         vacSiteInit = self.vacsiteInd
         self.assertEqual(vacSiteInit, 0)
 
-        Nsteps = 500  # Let's try a single step first
+        Nsteps = 5000 # Let's try a single step first
 
         X_steps, t_steps, jmpSelectSteps, jmpFinSiteList = MC_JIT.LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
                                                                                 vacSiteInit, N_unit, siteIndtoR, RtoSiteInd)
