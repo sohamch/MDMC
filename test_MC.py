@@ -1276,10 +1276,7 @@ class Test_latGasKMC(unittest.TestCase):
         for jump in [jmp for jmpList in self.jnetBCC for jmp in jmpList]:
 
             siteA = cluster.ClusterSite(ci=(self.chem, jump[0][0]), R=np.zeros(3, dtype=int))
-            if siteA != self.vacsite:
-                # if the initial site of the vacancy is not the vacSite, it is not a jump out of this state.
-                # Ignore it - removes reverse jumps from multi-site, single-Wyckoff lattices.
-                continue
+            assert siteA == self.vacsite
 
             # Rj + uj = ui + dx (since Ri is zero in the jumpnetwork)
             Rj, (c, cj) = self.crys.cart2pos(jump[1] + np.dot(self.crys.lattice, self.crys.basis[self.chem][jump[0][0]]))
@@ -1299,10 +1296,22 @@ class Test_latGasKMC(unittest.TestCase):
         # cast into numpy arrays - to be used in KRA expansions
         self.ijList = np.array(jumpFinSite, dtype=int)
         self.dxList = np.array(jumpdx, dtype=float)
+
+        initState = np.zeros(len(self.superBCC.mobilepos), dtype=int)
+        # Now assign random species (excluding the vacancy)
+        for i in range(len(self.superBCC.mobilepos)):
+            initState[i] = np.random.randint(0, self.NSpec - 1)
+
+        # Now put in the vacancy at the vacancy site
+        initState[self.vacsiteInd] = self.NSpec - 1
+
+        self.initState = initState
+
         print("Done setting up")
 
 
     def testStep(self):
+
         state = self.initState.copy()
 
         RtoSiteInd, siteIndtoR = self.RtoSiteInd.copy(), self.siteIndtoR.copy()
@@ -1311,18 +1320,17 @@ class Test_latGasKMC(unittest.TestCase):
 
         # We have two species, let's make one rate "1.0" and the other "2.0"
 
-        SpecRates = np.array([1.0, 2.0])
+        SpecRates = np.array([1.0, 2.0, 3.0, 4.0])
 
-        ijList, dxList = self.VclusExp.KRAexpander.ijList.copy(), self.VclusExp.KRAexpander.dxList.copy()
+        ijList, dxList = self.ijList.copy(), self.dxList.copy()
 
-        vacSiteInit = self.vacSiteInd
+        vacSiteInit = self.vacsiteInd
         self.assertEqual(vacSiteInit, 0)
 
-        Nsteps = 4  # Let's try a single step first
+        Nsteps = 500  # Let's try a single step first
 
         X_steps, t_steps, jmpSelectSteps, jmpFinSiteList = MC_JIT.LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
                                                                                 vacSiteInit, N_unit, siteIndtoR, RtoSiteInd)
-        # stateInit = self.initState.copy()
 
         dxtoR = [np.around(np.dot(np.linalg.inv(self.crys.lattice), dx), decimals=4).astype(int) for dx in dxList]
 
@@ -1349,7 +1357,7 @@ class Test_latGasKMC(unittest.TestCase):
             Rvac = siteIndtoR[vacNow]
 
             # add the displacement
-            RExchange = (Rvac + dxtoR[jmpStep])%N_unit
+            RExchange = (Rvac + dxtoR[jmpStep]) % N_unit
 
             # Get the exchange site
             vacNext = RtoSiteInd[RExchange[0], RExchange[1], RExchange[2]]
@@ -1392,3 +1400,5 @@ class Test_latGasKMC(unittest.TestCase):
         # Check if vacancy is tracked correctly always.
         self.assertTrue(np.array_equal(dxRunR, poscart2R))
         self.assertEqual(state[RtoSiteInd[dxRunR[0], dxRunR[1], dxRunR[2]]], self.NSpec-1)
+
+        print("finished testing steps")
