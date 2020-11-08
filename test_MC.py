@@ -1242,3 +1242,62 @@ class test_shells(Test_MC_Arrays):
         # Check that all jumps have been accounted for including diagonal elements
         for key, item in exitcounts.items():
             self.assertEqual(item, ijList.shape[0]+1)
+
+class Test_latGasKMC(Test_MC_Arrays):
+
+    def testStep(self):
+        state = self.initState.copy()
+
+        RtoSiteInd, siteIndtoR = self.RtoSiteInd.copy(), self.siteIndtoR.copy()
+
+        N_unit = self.N_units
+
+        # We have two species, let's make one rate "1.0" and the other "2.0"
+
+        SpecRates = np.array([1.0, 2.0])
+
+        ijList, dxList = self.VclusExp.KRAexpander.ijList.copy(), self.VclusExp.KRAexpander.dxList.copy()
+
+        vacSiteInit = self.vacSiteInd
+        self.assertEqual(vacSiteInit, 0)
+
+        Nsteps = 20  # Let's try a single step first
+
+        X_steps, t_steps, jmpSelectSteps, jmpFinSiteList = MC_JIT.LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
+                                                                                vacSiteInit, N_unit, siteIndtoR, RtoSiteInd)
+
+        # stateInit = self.initState.copy()
+
+        dxtoR = [np.dot(np.linalg.inv(self.crys.lattice), dx).astype(int) for dx in dxList]
+
+        # state0 = self.initState.copy()
+
+        dxRun = np.zeros(3)
+        dxRunR = np.zeros(3, dtype=int)
+        for step in range(Nsteps):
+            # get the jump selected
+            jmpStep = jmpSelectSteps[step]
+            dxRun += dxList[jmpStep]
+            dxRunR += dxtoR[jmpStep]
+
+            # Check the vacancy displacements
+            self.assertTrue(np.allclose(X_steps[step, self.NSpec-1], dxRun))
+
+            # Next, we need to check if the correct species has been exchanged.
+
+            # # First, get where the vacancy is in the current state
+            # vacNow = np.where(state0 == self.NSpec-1)[0][0]
+            # print(vacNow)
+
+
+        # get the vacancy postiton vector in lattice coordinates
+        poscart2R = np.around(np.dot(np.linalg.inv(self.crys.lattice), dxRun), decimals=3)  # sometimes round off will be observed
+                                                                                            # during type casting
+        poscart2R = poscart2R.astype(int)
+
+        poscart2R %= N_unit
+        dxRunR %= N_unit
+
+        # Check if vacancy is tracked correctly always.
+        self.assertTrue(np.array_equal(dxRunR, poscart2R))
+        self.assertEqual(state[RtoSiteInd[dxRunR[0], dxRunR[1], dxRunR[2]]], self.NSpec-1)

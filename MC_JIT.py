@@ -865,8 +865,8 @@ def makeShells(MC_jit, KMC_jit, state0, offsc0, TSoffsc0, ijList, dxList, beta, 
 
 
 @jit(nopython=True)
-def LatGasKMCTraj(self, state, SpecRates, Nsteps, ijList,
-              dxList, vacSiteInit, N_unit, siteIndtoR, RtoSiteInd):
+def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
+                  vacSiteInit, N_unit, siteIndtoR, RtoSiteInd):
     """
     This is to do KMC simulation on a lattice gas where there aren't any energetic interactions, and
     vacancy transition rates with all species are pre-defined
@@ -933,16 +933,17 @@ def LatGasKMCTraj(self, state, SpecRates, Nsteps, ijList,
 
         # Update the final site list
 
-        vacSiteNow = siteB
-        dR = siteIndtoR[vacSiteNow] - siteIndtoR[vacSiteInit]
+        dR = siteIndtoR[siteB] - siteIndtoR[vacSiteInit]
 
         for jmp in range(jmpFinSiteList.shape[0]):
-            RfinSiteNew = (dR + self.siteIndtoR[ijList[jmp]]) % self.N_unit
+            RfinSiteNew = (dR + siteIndtoR[ijList[jmp]]) % N_unit
             jmpFinSiteList[jmp] = RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
 
         # Next, do the site swap to update the state
         temp = state[vacSiteNow]
         state[vacSiteNow] = specB
         state[siteB] = temp
+
+        vacSiteNow = siteB
 
     return X_steps, t_steps, jmpSelectSteps, jmpFinSiteList
