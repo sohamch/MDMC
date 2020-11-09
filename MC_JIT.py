@@ -909,7 +909,11 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
 
         # Next get the escape time
         rateTot = np.sum(rateArr)
-        t += 1/rateTot
+
+        t += 1 / rateTot
+
+        if np.allclose(rateTot, 0.):
+            t = np.inf
 
         # convert the rates to cumulative probability
         rateArr /= rateTot
