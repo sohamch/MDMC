@@ -909,34 +909,36 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
 
         # Next get the escape time
         rateTot = np.sum(rateArr)
-
-        if np.abs(rateTot) < 1e-8:
-            t += np.inf
-
+        if rateTot < 1e-8:  # If escape rate is zero, then nothing will move and time will be infinite
+            X[:, :] += 0.
+            t = np.inf
         else:
-            t += 1 / rateTot
+            # convert the rates to cumulative probability
+            rateArr /= rateTot
 
-        # convert the rates to cumulative probability
-        rateArr /= rateTot
-        rates_cm = np.cumsum(rateArr)
+            t += 1. / rateTot
+            rates_cm = np.cumsum(rateArr)
 
-        # Then select the jump
-        rn = np.random.rand()
-        jmpSelect = np.searchsorted(rates_cm, rn)
+            # Then select the jump
+            rn = np.random.rand()
+            jmpSelect = np.searchsorted(rates_cm, rn)
 
-        jmpSelectSteps[step] = jmpSelect  # Store which jump was selected
+            jmpSelectSteps[step] = jmpSelect  # Store which jump was selected
 
-        # Store the displacement and the time for this step
-        X[NSpec - 1, :] += dxList[jmpSelect]
+            # Store the displacement and the time for this step
+            X[NSpec - 1, :] += dxList[jmpSelect]
 
-        siteB = jmpFinSiteList[jmpSelect]
-        specB = state[siteB]
-        X[specB, :] -= dxList[jmpSelect]
+            siteB = jmpFinSiteList[jmpSelect]
+            specB = state[siteB]
+            X[specB, :] -= dxList[jmpSelect]
 
         X_steps[step, :, :] = X.copy()
         t_steps[step] = t
 
         # Update the final site list
+        # If the rate is zero, nothing will have moved
+        if rateTot <1e-8:
+            continue
 
         dR = siteIndtoR[siteB] - siteIndtoR[vacSiteInit]
 
