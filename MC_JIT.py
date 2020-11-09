@@ -910,7 +910,7 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
         # Next get the escape time
         rateTot = np.sum(rateArr)
 
-        if np.allclose(rateTot, 0.):
+        if np.abs(rateTot) < 1e-8:
             t += np.inf
 
         else:
