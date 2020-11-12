@@ -932,25 +932,20 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
             specB = state[siteB]
             X[specB, :] -= dxList[jmpSelect]
 
+            dR = siteIndtoR[siteB] - siteIndtoR[vacSiteInit]
+
+            for jmp in range(jmpFinSiteList.shape[0]):
+                RfinSiteNew = (dR + siteIndtoR[ijList[jmp]]) % N_unit
+                jmpFinSiteList[jmp] = RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
+
+            # Next, do the site swap to update the state
+            temp = state[vacSiteNow]
+            state[vacSiteNow] = specB
+            state[siteB] = temp
+
+            vacSiteNow = siteB
+
         X_steps[step, :, :] = X.copy()
         t_steps[step] = t
-
-        # Update the final site list
-        # If the rate is zero, nothing will have moved
-        if rateTot <1e-8:
-            continue
-
-        dR = siteIndtoR[siteB] - siteIndtoR[vacSiteInit]
-
-        for jmp in range(jmpFinSiteList.shape[0]):
-            RfinSiteNew = (dR + siteIndtoR[ijList[jmp]]) % N_unit
-            jmpFinSiteList[jmp] = RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
-
-        # Next, do the site swap to update the state
-        temp = state[vacSiteNow]
-        state[vacSiteNow] = specB
-        state[siteB] = temp
-
-        vacSiteNow = siteB
 
     return X_steps, t_steps, jmpSelectSteps, jmpFinSiteList
