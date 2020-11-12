@@ -1318,8 +1318,6 @@ class Test_latGasKMC(unittest.TestCase):
 
         N_unit = self.N_units
 
-        # We have two species, let's make one rate "1.0" and the other "2.0"
-
         SpecRates = np.array(range(1, self.NSpec))
 
         ijList, dxList = self.ijList.copy(), self.dxList.copy()
@@ -1327,7 +1325,7 @@ class Test_latGasKMC(unittest.TestCase):
         vacSiteInit = self.vacsiteInd
         self.assertEqual(vacSiteInit, 0)
 
-        Nsteps = 5000 # Let's try a single step first
+        Nsteps = 5000
 
         X_steps, t_steps, jmpSelectSteps, jmpFinSiteList = MC_JIT.LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
                                                                                 vacSiteInit, N_unit, siteIndtoR, RtoSiteInd)
