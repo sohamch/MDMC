@@ -2,10 +2,30 @@
 Functions to perform KMC simulations on mono-atomic lattice gases.
 """
 import numpy as np
-from numba.experimental import jitclass
 from onsager import cluster
 from numba import jit, int64, float64
 
+
+def makeSiteIndtoR(supercell):
+    """
+    Function to map supercell sites to corresponding lattice coordinates and vice versa.
+    Works only for mono-atomic lattices for now on supercells constructed by just scaling unit cell vectors.
+    :param supercell:
+    :return: siteIndtoR - takes a supercell site index and returns the corresponding lattice coordinates.
+             RtoSiteInd - takes integer lattice coordinates and returns the supercell sites.
+    """
+
+    Nsites = len(supercell.mobilepos)
+    N_units = supercell.superlatt[0, 0]  # superlatt must be diagonal right now for this to work.
+    siteIndtoR = np.zeros((Nsites, 3), dtype=int)
+    RtoSiteInd = np.zeros((N_units, N_units, N_units), dtype=int)
+
+    for siteInd in range(Nsites):
+        R = supercell.ciR(siteInd)[1]
+        siteIndtoR[siteInd, :] = R
+        RtoSiteInd[R[0], R[1], R[2]] = siteInd
+
+    return RtoSiteInd, siteIndtoR
 
 def makeSupJumps(supercell, jumpnetwork, chem):
 
@@ -122,6 +142,7 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
 
             dR = siteIndtoR[siteB] - siteIndtoR[vacSiteInit]
 
+            # Update the final jump sites
             for jmp in range(jmpFinSiteList.shape[0]):
                 RfinSiteNew = (dR + siteIndtoR[ijList[jmp]]) % N_unit
                 jmpFinSiteList[jmp] = RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
