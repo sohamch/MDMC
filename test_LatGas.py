@@ -18,7 +18,7 @@ class Test_latGasKMC(unittest.TestCase):
         self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
         self.vacsiteInd = self.superBCC.index(np.zeros(3, dtype=int), (0, 0))[0]
 
-        self.RtoSiteInd, self.siteIndtoR = LatGas.makeSiteIndtoR(supercell)
+        self.RtoSiteInd, self.siteIndtoR = LatGas.makeSiteIndtoR(self.superBCC)
 
         # make the ijList and dxList from the jump network
         self.ijList, self.dxList, self.dxtoR = LatGas.makeSupJumps(self.superBCC, self.jnetBCC, self.chem)
@@ -32,6 +32,16 @@ class Test_latGasKMC(unittest.TestCase):
         initState[self.vacsiteInd] = self.NSpec - 1
         self.initState = initState
         print("Done setting up")
+
+    def test_RtoSiteInd(self):
+
+        for siteInd in range(self.siteIndtoR.shape[0]):
+            Rsite = self.siteIndtoR[siteInd]
+            self.assertEqual(self.RtoSiteInd[Rsite[0], Rsite[1], Rsite[2]], siteInd)
+
+            ci, R = self.superBCC.ciR(siteInd)
+
+            np.array_equal(Rsite, R)
 
     def testStep(self):
 
