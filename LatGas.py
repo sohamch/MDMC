@@ -27,6 +27,23 @@ def makeSiteIndtoR(supercell):
 
     return RtoSiteInd, siteIndtoR
 
+
+@jit(nopython=True)
+def TrajAv(X_steps, t_steps, diff):
+    """
+    To produce average displacements divided by time across trajectories
+    :param X_steps: Nsteps x Nspec x 3 array to store accumulated displacements at each step in a trajectory
+    :param t_steps: Nsteps array to store the accumulated time at each step in a trajectory
+    :param diff: array to accumulate the diffusivity in
+    """
+    Nsteps = X_steps.shape[0]
+    for step in range(Nsteps):
+        t = t_steps[step]
+        X = X_steps[step].copy()
+        for spec in range(X_steps.shape[1]):
+            diff[spec, step] += np.dot(X[spec], X[spec])/(6*t)
+
+
 def makeSupJumps(supercell, jumpnetwork, chem):
 
     """
