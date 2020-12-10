@@ -13,7 +13,8 @@ class Test_latGasKMC(unittest.TestCase):
         self.N_units = 8
         self.superlatt = self.N_units * np.eye(3, dtype=int)
         self.superBCC = supercell.ClusterSupercell(self.crys, self.superlatt)
-        # get the number of sites in the supercell - should be 8x8x8
+
+        # The initial vacancy needs to be at [0, 0, 0].
         self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
         self.vacsiteInd = self.superBCC.index(np.zeros(3, dtype=int), (0, 0))[0]
 
@@ -31,31 +32,7 @@ class Test_latGasKMC(unittest.TestCase):
         self.siteIndtoR = siteIndtoR
 
         # make the ijList and dxList from the jump network
-        jumpFinSite = []
-        jumpdx = []
-        for jump in [jmp for jmpList in self.jnetBCC for jmp in jmpList]:
-
-            siteA = cluster.ClusterSite(ci=(self.chem, jump[0][0]), R=np.zeros(3, dtype=int))
-            assert siteA == self.vacsite
-
-            # Rj + uj = ui + dx (since Ri is zero in the jumpnetwork)
-            Rj, (c, cj) = self.crys.cart2pos(jump[1] + np.dot(self.crys.lattice, self.crys.basis[self.chem][jump[0][0]]))
-            # check we have the correct site
-            if not cj == jump[0][1]:
-                raise ValueError("improper coordinate transformation, did not get same final jump site")
-
-            siteB = cluster.ClusterSite(ci=(self.chem, jump[0][1]), R=Rj)
-
-            indA = self.superBCC.index(siteA.R, siteA.ci)[0]
-            assert indA == self.superBCC.index(self.vacsite.R, self.vacsite.ci)[0]
-            indB = self.superBCC.index(siteB.R, siteB.ci)[0]
-
-            jumpFinSite.append(indB)
-            jumpdx.append(jump[1])
-
-        # cast into numpy arrays - to be used in KRA expansions
-        self.ijList = np.array(jumpFinSite, dtype=int)
-        self.dxList = np.array(jumpdx, dtype=float)
+        self.ijList, self.dxList, self.dxtoR = LatGas.makeSupJumps(self.superBCC, self.jnetBCC, self.chem)
 
         initState = np.zeros(len(self.superBCC.mobilepos), dtype=int)
         # Now assign random species (excluding the vacancy)
@@ -64,11 +41,8 @@ class Test_latGasKMC(unittest.TestCase):
 
         # Now put in the vacancy at the vacancy site
         initState[self.vacsiteInd] = self.NSpec - 1
-
         self.initState = initState
-
         print("Done setting up")
-
 
     def testStep(self):
 
