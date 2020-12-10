@@ -16,9 +16,12 @@ def makeSiteIndtoR(supercell):
     """
 
     Nsites = len(supercell.mobilepos)
-    N_units = supercell.superlatt[0, 0]  # superlatt must be diagonal right now for this to work.
+
+    N_units = np.array([supercell.superlatt[0, 0], supercell.superlatt[1, 1], supercell.superlatt[2, 2]])
+    # superlatt must be diagonal right now for this to work.
+
     siteIndtoR = np.zeros((Nsites, 3), dtype=int)
-    RtoSiteInd = np.zeros((N_units, N_units, N_units), dtype=int)
+    RtoSiteInd = np.zeros((N_units[0], N_units[1], N_units[2]), dtype=int)
 
     for siteInd in range(Nsites):
         R = supercell.ciR(siteInd)[1]

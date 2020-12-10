@@ -18,18 +18,7 @@ class Test_latGasKMC(unittest.TestCase):
         self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
         self.vacsiteInd = self.superBCC.index(np.zeros(3, dtype=int), (0, 0))[0]
 
-        Nsites = len(self.superBCC.mobilepos)
-        N_units = self.superlatt[0, 0]
-        siteIndtoR = np.zeros((Nsites, 3), dtype=int)
-        RtoSiteInd = np.zeros((N_units, N_units, N_units), dtype=int)
-
-        for siteInd in range(Nsites):
-            R = self.superBCC.ciR(siteInd)[1]
-            siteIndtoR[siteInd, :] = R
-            RtoSiteInd[R[0], R[1], R[2]] = siteInd
-
-        self.RtoSiteInd = RtoSiteInd
-        self.siteIndtoR = siteIndtoR
+        self.RtoSiteInd, self.siteIndtoR = LatGas.makeSiteIndtoR(supercell)
 
         # make the ijList and dxList from the jump network
         self.ijList, self.dxList, self.dxtoR = LatGas.makeSupJumps(self.superBCC, self.jnetBCC, self.chem)
