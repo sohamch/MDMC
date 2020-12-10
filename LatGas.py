@@ -120,7 +120,7 @@ def translateState(state, vacSiteNow, vacsiteDes, RtoSiteInd, siteIndtoR, N_unit
     :param N_units: Integer - supercell scaling units
     :return: state2New : The translated state
     """
-    state2New = np.zeros_like(state, dtype=int)
+    state2New = np.zeros_like(state, dtype=int64)
     dR = siteIndtoR[vacsiteDes] - siteIndtoR[vacSiteNow]  # this is the vector by which everything has to move
     for siteInd in range(siteIndtoR.shape[0]):
         Rsite = siteIndtoR[siteInd]

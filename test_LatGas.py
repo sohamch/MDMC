@@ -58,6 +58,18 @@ class Test_latGasKMC(unittest.TestCase):
 
             self.assertTrue(np.array_equal(dxRInCell, siteR))
 
+    def test_gridState(self):
+        superBCC = self.superBCC
+        state = self.initState.copy()
+
+        N_units = np.array([superBCC.superlatt[0, 0], superBCC.superlatt[1, 1], superBCC.superlatt[2, 2]])
+        stateGrid = LatGas.gridState(state, self.siteIndtoR, N_units)
+
+        for siteInd in range(self.siteIndtoR.shape[0]):
+            spec = state[siteInd]
+            Rsite = self.siteIndtoR[siteInd]
+            self.assertEqual(stateGrid[Rsite[0], Rsite[1], Rsite[2]], spec)
+
     def test_Translate(self):
 
         superBCC = self.superBCC
@@ -66,12 +78,14 @@ class Test_latGasKMC(unittest.TestCase):
         state = self.initState.copy()
         state = np.random.permutation(state)
 
+        stateGrid = LatGas.gridState(state, self.siteIndtoR, N_units)
+
         vacIndNow = np.where(state == self.NSpec-1)[0][0]
         print(vacIndNow)
 
         vacDes = self.vacsiteInd
 
-        stateTrans = LatGas.translateState(state, vacIndNow, vacDes, self.RtoSiteInd, self.siteIndtoR, N_units)
+        stateTransGrid = LatGas.translateState(stateGrid, vacIndNow, vacDes, self.RtoSiteInd, self.siteIndtoR, N_units)
 
         dR = -self.siteIndtoR[vacDes] + self.siteIndtoR[vacIndNow]
         for R0 in range(N_units[0]):
@@ -80,7 +94,7 @@ class Test_latGasKMC(unittest.TestCase):
                     R0T = (R0 + dR[0]) % N_units[0]
                     R1T = (R1 + dR[1]) % N_units[1]
                     R2T = (R2 + dR[2]) % N_units[2]
-                    assert state[R0T, R1T, R2T] == stateTrans[R0, R1, R2]
+                    assert stateGrid[R0T, R1T, R2T] == stateTransGrid[R0, R1, R2]
 
     def testStep(self):
 
