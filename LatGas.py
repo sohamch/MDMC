@@ -100,6 +100,7 @@ def gridState(state, siteIndtoR, N_units):
     :param N_units: scaling of the supercell. (how many unit cells along each lattice vector)
     :return:
     """
+
     stateGrid = np.zeros((N_units[0], N_units[1], N_units[2]), dtype=int64)
 
     for siteInd in range(siteIndtoR.shape[0]):
