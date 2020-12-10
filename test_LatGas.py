@@ -58,6 +58,29 @@ class Test_latGasKMC(unittest.TestCase):
 
             self.assertTrue(np.array_equal(dxRInCell, siteR))
 
+    def test_Translate(self):
+
+        superBCC = self.superBCC
+        N_units = np.array([superBCC.superlatt[0, 0], superBCC.superlatt[1, 1], superBCC.superlatt[2, 2]])
+
+        state = self.initState.copy()
+        state = np.random.permutation(state)
+
+        vacIndNow = np.where(state == self.NSpec-1)[0][0]
+        print(vacIndNow)
+
+        vacDes = self.vacsiteInd
+
+        stateTrans = LatGas.translateState(state, vacIndNow, vacDes, self.RtoSiteInd, self.siteIndtoR, N_units)
+
+        dR = -self.siteIndtoR[vacDes] + self.siteIndtoR[vacIndNow]
+        for R0 in range(N_units[0]):
+            for R1 in range(N_units[1]):
+                for R2 in range(N_units[2]):
+                    R0T = (R0 + dR[0]) % N_units[0]
+                    R1T = (R1 + dR[1]) % N_units[1]
+                    R2T = (R2 + dR[2]) % N_units[2]
+                    assert state[R0T, R1T, R2T] == stateTrans[R0, R1, R2]
 
     def testStep(self):
 

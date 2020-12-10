@@ -89,20 +89,38 @@ def TrajAv(X_steps, t_steps, diff):
         for spec in range(X_steps.shape[1]):
             diff[spec, step] += np.dot(X[spec], X[spec])/(6*t)
 
+
+# Function to convert a state into grid form
+@jit(nopython=True)
+def gridState(state, siteIndtoR, N_units):
+    """
+    Function to transform a mono-atomic lattice supercell state into a 3d grid based on lattice coordinates
+    :param state: flat numpy array describing the occupancy of supercell sites
+    :param siteIndtoR: takes the index of a site and returns the lattice coordinate for its location.
+    :param N_units: scaling of the supercell. (how many unit cells along each lattice vector)
+    :return:
+    """
+    stateGrid = np.zeros((N_units[0], N_units[1], N_units[2]), dtype=int64)
+
+    for siteInd in range(siteIndtoR.shape[0]):
+        R = siteIndtoR[siteInd]
+        stateGrid[R[0], R[1], R[2]] = state[siteInd]
+    return stateGrid
+
 @jit(nopython=True)
 def translateState(state, vacSiteNow, vacsiteDes, RtoSiteInd, siteIndtoR, N_units):
     """
-    Function to translate a state so that the vacancy is at a desired location
+    Function to periodically translate a grid state so that the vacancy is at a desired location
     in a monoatomic lattice
     :param state: The state to translate
     :param vacSiteNow: Where the vacancy is at the current state
     :param vacsiteDes: Where the vacancy should be at the end state
     :param RtoSiteInd: Takes the lattice coordinates of a site and returns the site index (see makeSiteIndtoR)
     :param siteIndtoR: Takes the site index and returns the lattice coordinates of a site
-    :param N_units: Integer - supercell scaling units (assumes same scaling of all unit cell vectors for now)
+    :param N_units: Integer - supercell scaling units
     :return: state2New : The translated state
     """
-    state2New = np.zeros_like(state, dtype=int64)
+    state2New = np.zeros_like(state, dtype=int)
     dR = siteIndtoR[vacsiteDes] - siteIndtoR[vacSiteNow]  # this is the vector by which everything has to move
     for siteInd in range(siteIndtoR.shape[0]):
         Rsite = siteIndtoR[siteInd]
