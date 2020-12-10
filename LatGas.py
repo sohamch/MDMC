@@ -72,7 +72,7 @@ def makeSupJumps(supercell, jumpnetwork, chem):
         dxList.append(dx)
         dxtoR.append(Rj)
 
-    return ijList, dxList, dxtoR
+    return np.array(ijList), np.array(dxList), np.array(dxtoR)
 
 @jit(nopython=True)
 def TrajAv(X_steps, t_steps, diff):

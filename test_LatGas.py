@@ -34,14 +34,30 @@ class Test_latGasKMC(unittest.TestCase):
         print("Done setting up")
 
     def test_RtoSiteInd(self):
-
         for siteInd in range(self.siteIndtoR.shape[0]):
             Rsite = self.siteIndtoR[siteInd]
             self.assertEqual(self.RtoSiteInd[Rsite[0], Rsite[1], Rsite[2]], siteInd)
-
             ci, R = self.superBCC.ciR(siteInd)
-
             np.array_equal(Rsite, R)
+
+    def test_makeSupJumps(self):
+
+        superBCC = self.superBCC
+        N_units = np.array([superBCC.superlatt[0, 0], superBCC.superlatt[1, 1], superBCC.superlatt[2, 2]])
+
+        for jmp in range(self.ijList.shape[0]):
+            dx = self.dxList[jmp]
+            dxR = self.dxtoR[jmp]
+            self.assertTrue(np.allclose(np.dot(self.crys.lattice, dxR), dx))
+
+            # Apply PBC to the lattice vector
+            dxRInCell = dxR % N_units
+
+            # Then see the location of the site in ijList
+            siteR = superBCC.ciR(self.ijList[jmp])[1]
+
+            self.assertTrue(np.array_equal(dxRInCell, siteR))
+
 
     def testStep(self):
 
