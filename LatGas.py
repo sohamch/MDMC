@@ -27,44 +27,6 @@ def makeSiteIndtoR(supercell):
 
     return RtoSiteInd, siteIndtoR
 
-
-@jit(nopython=True)
-def TrajAv(X_steps, t_steps, diff):
-    """
-    To produce average displacements divided by time across trajectories
-    :param X_steps: Nsteps x Nspec x 3 array to store accumulated displacements at each step in a trajectory
-    :param t_steps: Nsteps array to store the accumulated time at each step in a trajectory
-    :param diff: array to accumulate the diffusivity in
-    """
-    Nsteps = X_steps.shape[0]
-    for step in range(Nsteps):
-        t = t_steps[step]
-        X = X_steps[step].copy()
-        for spec in range(X_steps.shape[1]):
-            diff[spec, step] += np.dot(X[spec], X[spec])/(6*t)
-
-@jit(nopython=True)
-def translateState(state, vacSiteNow, vacsiteDes, RtoSiteInd, siteIndtoR, N_units):
-    """
-    Function to translate a state so that the vacancy is at a desired location
-    in a monoatomic lattice
-    :param state: The state to translate
-    :param vacSiteNow: Where the vacancy is at the current state
-    :param vacsiteDes: Where the vacancy should be at the end state
-    :param RtoSiteInd: Takes the lattice coordinates of a site and returns the site index (see makeSiteIndtoR)
-    :param siteIndtoR: Takes the site index and returns the lattice coordinates of a site
-    :param N_units: Integer - supercell scaling units (assumes same scaling of all unit cell vectors for now)
-    :return: state2New : The translated state
-    """
-    state2New = np.zeros_like(state, dtype=int64)
-    dR = siteIndtoR[vacsiteDes] - siteIndtoR[vacSiteNow]  # this is the vector by which everything has to move
-    for siteInd in range(siteIndtoR.shape[0]):
-        Rsite = siteIndtoR[siteInd]
-        spec = state[Rsite[0], Rsite[1], Rsite[2]]
-        RsiteNew = (Rsite + dR) % N_units
-        state2New[RsiteNew[0], RsiteNew[1], RsiteNew[2]] = spec
-    return state2New
-
 def makeSupJumps(supercell, jumpnetwork, chem):
 
     """
@@ -109,6 +71,42 @@ def makeSupJumps(supercell, jumpnetwork, chem):
 
     return ijList, dxList, dxtoR
 
+@jit(nopython=True)
+def TrajAv(X_steps, t_steps, diff):
+    """
+    To produce average displacements divided by time across trajectories
+    :param X_steps: Nsteps x Nspec x 3 array to store accumulated displacements at each step in a trajectory
+    :param t_steps: Nsteps array to store the accumulated time at each step in a trajectory
+    :param diff: array to accumulate the diffusivity in
+    """
+    Nsteps = X_steps.shape[0]
+    for step in range(Nsteps):
+        t = t_steps[step]
+        X = X_steps[step].copy()
+        for spec in range(X_steps.shape[1]):
+            diff[spec, step] += np.dot(X[spec], X[spec])/(6*t)
+
+@jit(nopython=True)
+def translateState(state, vacSiteNow, vacsiteDes, RtoSiteInd, siteIndtoR, N_units):
+    """
+    Function to translate a state so that the vacancy is at a desired location
+    in a monoatomic lattice
+    :param state: The state to translate
+    :param vacSiteNow: Where the vacancy is at the current state
+    :param vacsiteDes: Where the vacancy should be at the end state
+    :param RtoSiteInd: Takes the lattice coordinates of a site and returns the site index (see makeSiteIndtoR)
+    :param siteIndtoR: Takes the site index and returns the lattice coordinates of a site
+    :param N_units: Integer - supercell scaling units (assumes same scaling of all unit cell vectors for now)
+    :return: state2New : The translated state
+    """
+    state2New = np.zeros_like(state, dtype=int64)
+    dR = siteIndtoR[vacsiteDes] - siteIndtoR[vacSiteNow]  # this is the vector by which everything has to move
+    for siteInd in range(siteIndtoR.shape[0]):
+        Rsite = siteIndtoR[siteInd]
+        spec = state[Rsite[0], Rsite[1], Rsite[2]]
+        RsiteNew = (Rsite + dR) % N_units
+        state2New[RsiteNew[0], RsiteNew[1], RsiteNew[2]] = spec
+    return state2New
 
 @jit(nopython=True)
 def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
