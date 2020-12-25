@@ -202,7 +202,9 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
 
             # Update the final jump sites
             for jmp in range(jmpFinSiteList.shape[0]):
-                RfinSiteNew = (dR + siteIndtoR[ijList[jmp]]) % N_unit
+                RfinSiteNew = (dR + siteIndtoR[ijList[jmp]]) % N_unit  # This returns element wise modulo when N_unit is an
+                                                                       # array instead of an integer.
+
                 jmpFinSiteList[jmp] = RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
 
             # Next, do the site swap to update the state
