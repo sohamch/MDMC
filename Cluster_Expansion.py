@@ -56,7 +56,7 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, Tclusexp, jumpnetwork, mobCountList, vacSite, maxorder, maxorderTrans):
+    def __init__(self, sup, clusexp, Tclusexp, jumpnetwork, NSpec, Nvac, vacSite, maxorder, maxorderTrans):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
@@ -73,9 +73,9 @@ class VectorClusterExpansion(object):
         self.clusexp = clusexp
         self.Tclusexp = Tclusexp
         self.maxOrder = maxorder
-        self.mobCountList = mobCountList
-        self.vacSpec = len(mobCountList) - 1
-        self.mobList = list(range(len(mobCountList)))
+        self.vacSpec = NSpec - 1
+        self.Nvac = Nvac
+        self.mobList = list(range(NSpec))
         self.vacSite = vacSite  # This stays fixed throughout the simulation, so makes sense to store it.
         self.jumpnetwork = jumpnetwork
 
@@ -100,7 +100,7 @@ class VectorClusterExpansion(object):
         # self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
 
         # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
-        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, Tclusexp, mobCountList, vacSite)
+        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, Tclusexp, NSpec, Nvac, vacSite)
 
     def recalcClusters(self):
         """
@@ -120,9 +120,8 @@ class VectorClusterExpansion(object):
                         continue
                     # Check if number of each species in the cluster is okay
                     mobcount = collections.Counter(siteOcc)
-                    # Check if the number of atoms of a given species does not exceed the total number of atoms of that
-                    # species in the solid.
-                    if any(j > self.mobCountList[i] for i, j in mobcount.items()):
+                    # Check if the number of vacancies is kept to the allowed number
+                    if mobcount[self.vacSpec] > self.Nvac:
                         continue
                     # Otherwise, find all symmetry-grouped counterparts
                     newSymSet = set([ClustSpec.g(self.crys, g) for g in self.crys.G])

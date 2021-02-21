@@ -8,12 +8,11 @@ class KRAExpand(object):
     """
     Object that contains all information regarding the KRA expansion of a jumpnetwork in a supercell.
     """
-    def __init__(self, sup, chem, jumpnetwork, maxOrderTrans, clusexp, mobCountList, vacSite):
+    def __init__(self, sup, chem, jumpnetwork, maxOrderTrans, clusexp, NSpec, Nvac, vacSite):
         """
         :param sup: clusterSupercell Object
         :param chem: the sublattice index on which the jumpnetwork has been built.
         :param jumpnetwork: jumpnetwork to expand
-        :param mobCountList : total count for each species in the supercell.
         :param clusexp: representative set of clusters - out put of make clusters function.
         """
         self.sup = sup
@@ -27,7 +26,12 @@ class KRAExpand(object):
 
         self.vacSite = vacSite  # We'll be concerned with only those jumps where this is site A in A->B jumps.
                                 # The reverse jumps are not jumps out of this state, we need not worry about them.
-        self.mobCountList = mobCountList
+
+        # self.mobCountList = mobCountList
+        self.NSpec = NSpec
+        self.Nvac = Nvac  # How many vacancies at max should there be in a cluster
+        self.vacSpec = NSpec - 1
+
         # Index the jump network into an array
         self.IndexJumps()
         # First, we reform the jumpnetwork
@@ -117,8 +121,7 @@ class KRAExpand(object):
 
         :returns  SpecClusterJumpList - a cluster expansion for KRA with species assigned to the clusters.
         """
-        TSInteracts = set([])  # this will store all our transition state clusters
-        Nmobile = len(self.mobCountList)
+        Nmobile = self.NSpec
 
         mobileSpecs = tuple(range(Nmobile - 1))  # the last species is the vacancy, so we are not considering it.
         # print("mobilespecs :{} \n".format(mobileSpecs))
@@ -143,7 +146,7 @@ class KRAExpand(object):
                         else:
                             MobNumber[specJ] = 1
                         # print(len(self.mobCountList), MobNumber)
-                        if any(self.mobCountList[i] < j for i, j in MobNumber.items()):
+                        if MobNumber[self.vacSpec] > 1:
                             continue
                         AtomicClusterSymList.append([tup, clusterList])
                     clusterJumpsSpecies[ABspecJ] = AtomicClusterSymList
@@ -173,8 +176,8 @@ class KRAExpand(object):
         DelEKRA = 0
         # How do we speed this up?
         for interactIdx, (tups, clusterList) in zip(itertools.count(), SymClusterlists):
-            for cluster in clusterList:
-                if all(mobOcc[spec, self.sup.index(site.R, site.ci)[0]] == 1 for spec, site in zip(tups, cluster.sites[2:])):
+            for clust in clusterList:
+                if all(mobOcc[spec, self.sup.index(site.R, site.ci)[0]] == 1 for spec, site in zip(tups, clust.sites[2:])):
                     DelEKRA += KRACoeffs[interactIdx]
         return DelEKRA
         # Next, we need the contributions of the initial and final states.
@@ -198,7 +201,6 @@ class KRAExpand(object):
         TsInteractIndexDict = {}
         Index2TSinteractDict = {}
         # 1 Get the maximum of cluster groups amongst all jumps
-        vacSpecInd = len(self.mobCountList) - 1
         maxInteractGroups = max([len(interactGroupList)
                                  for Jumpkey, interactGroupList in self.clusterSpeciesJumps.items()])
 
@@ -212,7 +214,7 @@ class KRAExpand(object):
         jumpFinSites = np.full(len(self.clusterSpeciesJumps), -1, dtype=int)
         jumpFinSpec = np.full(len(self.clusterSpeciesJumps), -1, dtype=int)
 
-        FinSiteFinSpecJumpInd = np.full((self.Nsites, len(self.mobCountList)), -1, dtype=int)
+        FinSiteFinSpecJumpInd = np.full((self.Nsites, self.NSpec), -1, dtype=int)
 
         # 3.2 To store the number of TSInteraction groups for each transition
         numJumpPointGroups = np.full(len(self.clusterSpeciesJumps), -1, dtype=int)
@@ -240,7 +242,7 @@ class KRAExpand(object):
             numJumpPointGroups[jumpInd] = len(interactGroupList)
 
             for interactGroupInd, interactGroup in enumerate(interactGroupList):
-                specList = [vacSpecInd, Jumpkey[2]]  # the initial species is the vacancy, and specJ is stored as the key
+                specList = [self.vacSpec, Jumpkey[2]]  # the initial species is the vacancy, and specJ is stored as the key
                 spectup, clusterList = interactGroup[0], interactGroup[1]
                 for spec in spectup:
                     specList.append(spec)
