@@ -75,6 +75,7 @@ class VectorClusterExpansion(object):
         self.maxOrder = maxorder
         self.vacSpec = NSpec - 1
         self.Nvac = Nvac
+        self.NSpec = NSpec
         self.mobList = list(range(NSpec))
         self.vacSite = vacSite  # This stays fixed throughout the simulation, so makes sense to store it.
         self.jumpnetwork = jumpnetwork
@@ -261,8 +262,8 @@ class VectorClusterExpansion(object):
         # siteSpecInteractIndexDict = collections.defaultdict(list)
 
         # while we're at it, let's also store which siteSpec contains which interact
-        numInteractsSiteSpec = np.zeros((self.Nsites, len(self.mobCountList)), dtype=int)
-        SiteSpecInterArray = np.full((self.Nsites, len(self.mobCountList), self.maxInteractCount), -1, dtype=int)
+        numInteractsSiteSpec = np.zeros((self.Nsites, self.NSpec), dtype=int)
+        SiteSpecInterArray = np.full((self.Nsites, self.NSpec, self.maxInteractCount), -1, dtype=int)
 
         count = 0  # to keep a steady count of interactions.
         for key, interactInfoList in self.SiteSpecInteractions.items():

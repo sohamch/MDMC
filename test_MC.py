@@ -17,6 +17,7 @@ class Test_MC_Arrays(unittest.TestCase):
 
     def setUp(self):
         self.NSpec = 3
+        self.Nvac = 1
         self.MaxOrder = 3
         self.MaxOrderTrans = 3
         self.crys = crystal.Crystal.BCC(0.2836, chemistry="A")
@@ -36,10 +37,10 @@ class Test_MC_Arrays(unittest.TestCase):
         self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
         self.clusexp = cluster.makeclusters(self.crys, 0.284, self.MaxOrder)
         self.Tclusexp = cluster.makeclusters(self.crys, 0.29, self.MaxOrderTrans)
-        self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.Tclusexp, self.Tclusexp, self.mobCountList,
-                                                 self.vacsite)
+        self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.Tclusexp, self.Tclusexp, self.NSpec,
+                                                 self.Nvac, self.vacsite)
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.Tclusexp, self.jnetBCC,
-                                                                 self.mobCountList, self.vacsite, self.MaxOrder,
+                                                                 self.NSpec, self.Nvac, self.vacsite, self.MaxOrder,
                                                                  self.MaxOrderTrans)
 
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
