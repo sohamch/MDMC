@@ -11,6 +11,7 @@ class testKRA(unittest.TestCase):
 
     def setUp(self):
         self.NSpec = 3
+        self.Nvac = 1
         self.MaxOrder = 3
         self.MaxOrderTrans = 3
         self.crys = crystal.Crystal.BCC(0.2836, chemistry="A")
@@ -29,10 +30,10 @@ class testKRA(unittest.TestCase):
         self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
         self.clusexp = cluster.makeclusters(self.crys, 0.284, self.MaxOrder)
         self.Tclusexp = cluster.makeclusters(self.crys, 0.29, self.MaxOrderTrans)
-        self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.Tclusexp, self.Tclusexp, self.mobCountList,
-                                                 self.vacsite)
+        self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.Tclusexp, self.Tclusexp, self.NSpec,
+                                                 self.Nvac, self.vacsite)
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.Tclusexp, self.jnetBCC,
-                                                                 self.mobCountList, self.vacsite, self.MaxOrder,
+                                                                 self.NSpec, self.Nvac, self.vacsite, self.MaxOrder,
                                                                  self.MaxOrderTrans)
 
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
@@ -349,11 +350,11 @@ class test_Vector_Cluster_Expansion(testKRA):
             count = 0
             # For each assigned species, check that all translations of a cluster are considered.
             for SpecClus in allSpCl:
-                for (spec, site) in SpecClus.SiteSpecs:
+                for (site, spec) in SpecClus.SiteSpecs:
                     if spec == sp and site.ci == clSite.ci:
                         count += 1  # a translation of this cluster should exist
 
-            self.assertEqual(count, len(infoList), msg="count {}, stored {}".format(count, len(infoList)))
+            self.assertEqual(count, len(infoList), msg="count {}, stored {}\n{}".format(count, len(infoList), key))
 
     def testcluster2SpecClus(self):
 
