@@ -70,14 +70,13 @@ class MCSamplerClass(object):
     def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, Interact2RepClusArray, Interact2SymClassArray,
                  numVecsInteracts, VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
                  numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
-                 FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-                 vacSiteInd, mobOcc, OffSiteCount):
+                 FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng):
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts, \
         self.Interact2RepClusArray, self.Interact2SymClassArray, self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec,\
-        self.SiteSpecInterArray, self.vacSiteInd = \
+        self.SiteSpecInterArray = \
             numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, Interact2RepClusArray, Interact2SymClassArray,\
-            numVecsInteracts, VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd
+            numVecsInteracts, VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray
 
         self.numSitesTSInteracts, self.TSInteractSites, self.TSInteractSpecs = \
             numSitesTSInteracts, TSInteractSites, TSInteractSpecs
@@ -89,15 +88,6 @@ class MCSamplerClass(object):
 
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
-        self.mobOcc = mobOcc
-        self.OffSiteCount = OffSiteCount.copy()
-        for interactIdx in range(numSitesInteracts.shape[0]):
-            numSites = numSitesInteracts[interactIdx]
-            for intSiteind in range(numSites):
-                interSite = SupSitesInteracts[interactIdx, intSiteind]
-                interSpec = SpecOnInteractSites[interactIdx, intSiteind]
-                if mobOcc[interSite] != interSpec:
-                    self.OffSiteCount[interactIdx] += 1
 
         # Reformat the array so that the swaps are always between atoms of different species
 
@@ -215,14 +205,14 @@ class MCSamplerClass(object):
 
         return acceptCount, badTrials, acceptInd
 
-    def Expand(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, lenVecClus, beta):
+    def Expand(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, lenVecClus, beta, vacSiteInd=0):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
 
         ratelist = np.zeros(ijList.shape[0])
 
-        siteA, specA = self.vacSiteInd, self.Nspecs - 1
+        siteA, specA = vacSiteInd, self.Nspecs - 1
         # go through all the transition
 
         for jumpInd in range(ijList.shape[0]):
@@ -398,13 +388,13 @@ class MCSamplerClass(object):
 
         return En
 
-    def getExitData(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, beta, Nsites):
+    def getExitData(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, beta, Nsites, vacSiteInd=0):
 
         statesTrans = np.zeros((ijList.shape[0], Nsites), dtype=int64)
         ratelist = np.zeros(ijList.shape[0])
         Specdisps = np.zeros((ijList.shape[0], self.Nspecs, 3))  # To store the displacement of each species during every jump
 
-        siteA, specA = self.vacSiteInd, self.Nspecs - 1
+        siteA, specA = vacSiteInd, self.Nspecs - 1
         # go through all the transition
 
         for jumpInd in range(ijList.shape[0]):
