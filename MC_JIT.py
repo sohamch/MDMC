@@ -136,13 +136,19 @@ class MCSamplerClass(object):
                 interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
+                    # If this interaction was on, the on counts for the corresponding symmetry class
+                    # needs to decrease by one.
+                    # Get the symmetry class of this interaction
+                    symclass = self.Interact2SymClassArray[interMainInd]
+                    symclassCounts[symclass] -= 1
                 OffSiteCount[interMainInd] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
                 interMainInd = self.SiteSpecInterArray[siteB, specB, interIdx]
-                # offscount = OffSiteCount[interMainInd]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
+                    symclass = self.Interact2SymClassArray[interMainInd]
+                    symclassCounts[symclass] -= 1
                 OffSiteCount[interMainInd] += 1
 
             # Next, switch required sites on
@@ -151,12 +157,17 @@ class MCSamplerClass(object):
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
+                    # If the new interaction has switched "on", the corresponding symmetry count needs to increase by one
+                    symclass = self.Interact2SymClassArray[interMainInd]
+                    symclassCounts[symclass] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
                 interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
+                    symclass = self.Interact2SymClassArray[interMainInd]
+                    symclassCounts[symclass] += 1
 
             self.delEArray[swapcount] = delE
 
