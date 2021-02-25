@@ -63,6 +63,33 @@ MonteCarloSamplerSpec = [
 
 ]
 
+@jit(nopython=True)
+def GetOffSite(state, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites):
+    """
+    :param state: State for which to count off sites of interactions
+    :return: OffSiteCount array (N_interaction x 1)
+    """
+    OffSiteCount = np.zeros(numSitesInteracts.shape[0], dtype=int64)
+    for interactIdx in range(numSitesInteracts.shape[0]):
+        for intSiteind in range(numSitesInteracts[interactIdx]):
+            if state[SupSitesInteracts[interactIdx, intSiteind]] != \
+                    SpecOnInteractSites[interactIdx, intSiteind]:
+                OffSiteCount[interactIdx] += 1
+    return OffSiteCount
+
+@ jit(nopython=True)
+def GetTSOffSite(state, numSitesTSInteracts, TSInteractSites, TSInteractSpecs):
+    """
+    :param state: State for which to count off sites of TS interactions
+    :return: OffSiteCount array (N_interaction x 1)
+    """
+    TransOffSiteCount = np.zeros(numSitesTSInteracts.shape[0], dtype=int64)
+    for TsInteractIdx in range(numSitesTSInteracts.shape[0]):
+        for Siteind in range(numSitesTSInteracts[TsInteractIdx]):
+            if state[TSInteractSites[TsInteractIdx, Siteind]] != TSInteractSpecs[TsInteractIdx, Siteind]:
+                TransOffSiteCount[TsInteractIdx] += 1
+    return TransOffSiteCount
+
 
 @jitclass(MonteCarloSamplerSpec)
 class MCSamplerClass(object):
@@ -524,31 +551,6 @@ class KMC_JIT(object):
             siteIndNew = self.RtoSiteInd[Rnew[0], Rnew[1], Rnew[2]]
             stateTrans[siteIndNew] = state[siteInd]
         return stateTrans
-
-    def GetOffSite(self, state):
-        """
-        :param state: State for which to count off sites of interactions
-        :return: OffSiteCount array (N_interaction x 1)
-        """
-        OffSiteCount = np.zeros(self.numSitesInteracts.shape[0], dtype=int64)
-        for interactIdx in range(self.numSitesInteracts.shape[0]):
-            for intSiteind in range(self.numSitesInteracts[interactIdx]):
-                if state[self.SupSitesInteracts[interactIdx, intSiteind]] !=\
-                        self.SpecOnInteractSites[interactIdx, intSiteind]:
-                    OffSiteCount[interactIdx] += 1
-        return OffSiteCount
-
-    def GetTSOffSite(self, state):
-        """
-        :param state: State for which to count off sites of TS interactions
-        :return: OffSiteCount array (N_interaction x 1)
-        """
-        TransOffSiteCount = np.zeros(self.numSitesTSInteracts.shape[0], dtype=int64)
-        for TsInteractIdx in range(self.numSitesTSInteracts.shape[0]):
-            for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
-                if state[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
-                    TransOffSiteCount[TsInteractIdx] += 1
-        return TransOffSiteCount
 
     def getKRAEnergies(self, state, TSOffSiteCount, ijList):
 
