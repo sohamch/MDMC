@@ -700,6 +700,76 @@ class KMC_JIT(object):
 
         return X_steps, t_steps
 
+    def LatGasKMCTraj(self, state, offsc, symClassCounts, SpecRates, Nsteps, ijList, dxList, vacSiteInit):
+        NSpec = SpecRates.shape[0] + 1
+        X = np.zeros((NSpec, 3))
+        t = 0.
+
+        X_steps = np.zeros((Nsteps, NSpec, 3))
+        t_steps = np.zeros(Nsteps)
+
+        rateArr = np.zeros(ijList.shape[0])
+
+        jmpFinSiteList = ijList.copy()
+        vacSiteNow = vacSiteInit
+
+        jmpSelectSteps = np.zeros(Nsteps, dtype=int64)  # To store which jump was selected in each step
+
+        for step in range(Nsteps):
+
+            # first get the exit rates out of this state
+            for jmpInd in range(jmpFinSiteList.shape[0]):
+                specB = state[jmpFinSiteList[jmpInd]]  # Get the species occupying the exit site.
+                rateArr[jmpInd] = SpecRates[specB]  # Get the exit rate corresponding to this species.
+
+            # Next get the escape time
+            rateTot = np.sum(rateArr)
+            if rateTot < 1e-8:  # If escape rate is zero, then nothing will move and time will be infinite
+                X[:, :] += 0.
+                t = np.inf
+            else:
+                # convert the rates to cumulative probability
+                rateArr /= rateTot
+
+                t += 1. / rateTot
+                rates_cm = np.cumsum(rateArr)
+
+                # Then select the jump
+                rn = np.random.rand()
+                jmpSelect = np.searchsorted(rates_cm, rn)
+
+                jmpSelectSteps[step] = jmpSelect  # Store which jump was selected
+
+                # Store the displacement and the time for this step
+                X[NSpec - 1, :] += dxList[jmpSelect]
+
+                siteB = jmpFinSiteList[jmpSelect]
+                specB = state[siteB]
+                X[specB, :] -= dxList[jmpSelect]
+
+                dR = self.siteIndtoR[siteB] - self.siteIndtoR[vacSiteInit]
+
+                # Update the final jump sites
+                for jmp in range(jmpFinSiteList.shape[0]):
+                    RfinSiteNew = (dR + self.siteIndtoR[ijList[jmp]]) % self.N_unit  # This returns element wise modulo when N_unit is an
+                    # array instead of an integer.
+
+                    jmpFinSiteList[jmp] = self.RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
+
+                # Next, do the site swap to update the state
+                temp = state[vacSiteNow]
+                state[vacSiteNow] = specB
+                state[siteB] = temp
+
+                self.updateState(state, offsc, vacSiteNow, siteB)
+
+                vacSiteNow = siteB
+
+            X_steps[step, :, :] = X.copy()
+            t_steps[step] = t
+
+        return X_steps, t_steps, jmpSelectSteps, jmpFinSiteList
+
 # Here, we write a function that forms the shells
 def makeShells(MC_jit, KMC_jit, state0, offsc0, TSoffsc0, ijList, dxList, beta, Nsites, Nspec, Nshells=1):
     """
