@@ -104,6 +104,8 @@ class MCSamplerClass(object):
     def makeMCsweep(self, state, OffSiteCount, TransOffSiteCount, symclassCounts,
                     SwapTrials, beta, randarr, Nswaptrials, vacSiteInd=0):
 
+        symClassCountsOld = symclassCounts.copy()  # keep a copy to revert to (this is just a few elements)
+
         acceptCount = 0
         acceptInd = np.zeros(Nswaptrials, dtype=int64)
         badTrials = 0
@@ -199,6 +201,9 @@ class MCSamplerClass(object):
                     # interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
                     OffSiteCount[self.SiteSpecInterArray[siteB, specA, interIdx]] += 1
 
+                # revert back the symclasscounts
+                symclassCounts = symClassCountsOld.copy()
+
             swapcount += 1
 
         # make the offsite for the transition states
@@ -209,105 +214,6 @@ class MCSamplerClass(object):
                     TransOffSiteCount[TsInteractIdx] += 1
 
         return acceptCount, badTrials, acceptInd
-
-    def MultiSwapMC(self, mobOcc, OffSiteCount, TransOffSiteCount,
-                    SwapTrials, Nswaptrials, beta, randlog, vacSiteInd=0):
-
-        Nsites = len(mobOcc)
-        EnChange = 0.
-        swapcount = 0
-
-        while swapcount < Nswaptrials:
-            # first select two random sites to swap - for now, let's just select naively.
-            siteA = np.random.randint(0, Nsites)
-            siteB = np.random.randint(0, Nsites)
-
-            specA = mobOcc[siteA]
-            specB = mobOcc[siteB]
-
-            if specA == specB or siteA == vacSiteInd or siteB == vacSiteInd:
-                continue
-
-            SwapTrials[swapcount, 0] = siteA
-            SwapTrials[swapcount, 1] = siteB
-
-            delE = 0.
-            # Next, switch required sites off
-            for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
-                # check if an interaction is on
-                interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
-                if OffSiteCount[interMainInd] == 0:
-                    delE -= self.Interaction2En[interMainInd]
-                OffSiteCount[interMainInd] += 1
-
-            for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
-                interMainInd = self.SiteSpecInterArray[siteB, specB, interIdx]
-                # offscount = OffSiteCount[interMainInd]
-                if OffSiteCount[interMainInd] == 0:
-                    delE -= self.Interaction2En[interMainInd]
-                OffSiteCount[interMainInd] += 1
-
-            # Next, switch required sites on
-            for interIdx in range(self.numInteractsSiteSpec[siteA, specB]):
-                interMainInd = self.SiteSpecInterArray[siteA, specB, interIdx]
-                OffSiteCount[interMainInd] -= 1
-                if OffSiteCount[interMainInd] == 0:
-                    delE += self.Interaction2En[interMainInd]
-
-            for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
-                interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
-                OffSiteCount[interMainInd] -= 1
-                if OffSiteCount[interMainInd] == 0:
-                    delE += self.Interaction2En[interMainInd]
-
-            # do the selection test
-            # swap the sites to get to the next state
-            mobOcc[siteA] = specB
-            mobOcc[siteB] = specA
-            # add the energy to get the energy of the next state
-            EnChange += delE
-            swapcount += 1
-
-        # Do the Metropolis test
-
-        if -beta*EnChange < randlog:  # Then the whole thing needs to be reverted
-
-            # We need to reverse everything in the exact opposite sequence of how it was produced
-            for i in range(Nswaptrials-1, -1, -1):
-                # Get the sites that were swapped
-                siteA = SwapTrials[i, 0]
-                siteB = SwapTrials[i, 1]
-
-                # remember that the sites have been swapped.
-                # So, The previous specA is now at siteB
-                specA = mobOcc[siteB]
-                specB = mobOcc[siteA]
-
-                # revert off site counts
-                for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
-                    OffSiteCount[self.SiteSpecInterArray[siteA, specA, interIdx]] -= 1
-
-                for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
-                    OffSiteCount[self.SiteSpecInterArray[siteB, specB, interIdx]] -= 1
-
-                for interIdx in range(self.numInteractsSiteSpec[siteA, specB]):
-                    OffSiteCount[self.SiteSpecInterArray[siteA, specB, interIdx]] += 1
-
-                for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
-                    OffSiteCount[self.SiteSpecInterArray[siteB, specA, interIdx]] += 1
-
-                # revert state
-                mobOcc[siteA] = specA
-                mobOcc[siteB] = specB
-
-        # once the final state is decided, compute the TS energies.
-        for TsInteractIdx in range(len(self.TSInteractSites)):
-            TransOffSiteCount[TsInteractIdx] = 0
-            for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
-                if mobOcc[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
-                    TransOffSiteCount[TsInteractIdx] += 1
-
-        return EnChange  # For testing
 
     def Expand(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, lenVecClus, beta):
 
