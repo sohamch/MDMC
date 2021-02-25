@@ -339,7 +339,7 @@ class MCSamplerClass(object):
 
         return WBar, BBar
 
-    def GetNewRandState(self, mobOcc, OffSiteCount, Energy, SwapTrials, Nswaptrials):
+    def GetNewRandState(self, state, OffSiteCount, symClassCounts, SwapTrials, Nswaptrials, Energy):
 
         En = Energy
         for swapcount in range(Nswaptrials):
@@ -347,8 +347,8 @@ class MCSamplerClass(object):
             siteA = SwapTrials[swapcount, 0]
             siteB = SwapTrials[swapcount, 1]
 
-            specA = mobOcc[siteA]
-            specB = mobOcc[siteB]
+            specA = state[siteA]
+            specB = state[siteB]
 
             delE = 0.
             # Next, switch required sites off
@@ -357,6 +357,9 @@ class MCSamplerClass(object):
                 interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
+                    symclass = self.Interact2SymClassArray[interMainInd]
+                    symClassCounts[symclass] -= 1
+
                 OffSiteCount[interMainInd] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
@@ -364,6 +367,9 @@ class MCSamplerClass(object):
                 # offscount = OffSiteCount[interMainInd]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
+                    symclass = self.Interact2SymClassArray[interMainInd]
+                    symClassCounts[symclass] -= 1
+
                 OffSiteCount[interMainInd] += 1
 
             # Next, switch required sites on
@@ -372,17 +378,21 @@ class MCSamplerClass(object):
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
+                    symclass = self.Interact2SymClassArray[interMainInd]
+                    symClassCounts[symclass] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
                 interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
+                    symclass = self.Interact2SymClassArray[interMainInd]
+                    symClassCounts[symclass] += 1
 
             # do the selection test
             # swap the sites to get to the next state
-            mobOcc[siteA] = specB
-            mobOcc[siteB] = specA
+            state[siteA] = specB
+            state[siteB] = specA
             # add the energy to get the energy of the next state
             En += delE
 
