@@ -67,16 +67,17 @@ MonteCarloSamplerSpec = [
 @jitclass(MonteCarloSamplerSpec)
 class MCSamplerClass(object):
 
-    def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
-                 VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
+    def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, Interact2RepClusArray, Interact2SymClassArray,
+                 numVecsInteracts, VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
                  numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
                  FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
                  vacSiteInd, mobOcc, OffSiteCount):
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts, \
-        self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.vacSiteInd = \
-            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, \
-            VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd
+        self.Interact2RepClusArray, self.Interact2SymClassArray, self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec,\
+        self.SiteSpecInterArray, self.vacSiteInd = \
+            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, Interact2RepClusArray, Interact2SymClassArray,\
+            numVecsInteracts, VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd
 
         self.numSitesTSInteracts, self.TSInteractSites, self.TSInteractSpecs = \
             numSitesTSInteracts, TSInteractSites, TSInteractSpecs
@@ -100,7 +101,7 @@ class MCSamplerClass(object):
 
         # Reformat the array so that the swaps are always between atoms of different species
 
-    def makeMCsweep(self, mobOcc, OffSiteCount, TransOffSiteCount,
+    def makeMCsweep(self, state, OffSiteCount, TransOffSiteCount, symclassCounts,
                     SwapTrials, beta, randarr, Nswaptrials, vacSiteInd=0):
 
         acceptCount = 0
@@ -108,7 +109,7 @@ class MCSamplerClass(object):
         badTrials = 0
         self.delEArray = np.zeros(Nswaptrials)
 
-        Nsites = len(mobOcc)
+        Nsites = len(state)
 
         count = 0  # to keep a steady count of accepted moves
         swapcount = 0
@@ -117,8 +118,8 @@ class MCSamplerClass(object):
             siteA = np.random.randint(0, Nsites)
             siteB = np.random.randint(0, Nsites)
 
-            specA = mobOcc[siteA]
-            specB = mobOcc[siteB]
+            specA = state[siteA]
+            specB = state[siteB]
 
             if specA == specB or siteA == vacSiteInd or siteB == vacSiteInd:
                 badTrials += 1
@@ -162,8 +163,8 @@ class MCSamplerClass(object):
             # do the selection test
             if -beta*delE > randarr[swapcount]:
                 # swap the sites to get to the next state
-                mobOcc[siteA] = specB
-                mobOcc[siteB] = specA
+                state[siteA] = specB
+                state[siteB] = specA
                 # OffSiteCount is already updated to that of the new state.
                 acceptCount += 1
                 count += 1
@@ -193,7 +194,7 @@ class MCSamplerClass(object):
         for TsInteractIdx in range(len(self.TSInteractSites)):
             TransOffSiteCount[TsInteractIdx] = 0
             for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
-                if mobOcc[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
+                if state[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
                     TransOffSiteCount[TsInteractIdx] += 1
 
         return acceptCount, badTrials, acceptInd
