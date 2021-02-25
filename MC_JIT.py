@@ -32,6 +32,33 @@ def DoRandSwap(state, Ntrials, vacSiteInd):
 
     return initSiteList, finSiteList
 
+@jit(nopython=True)
+def GetOffSite(state, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites):
+    """
+    :param state: State for which to count off sites of interactions
+    :return: OffSiteCount array (N_interaction x 1)
+    """
+    OffSiteCount = np.zeros(numSitesInteracts.shape[0], dtype=int64)
+    for interactIdx in range(numSitesInteracts.shape[0]):
+        for intSiteind in range(numSitesInteracts[interactIdx]):
+            if state[SupSitesInteracts[interactIdx, intSiteind]] != \
+                    SpecOnInteractSites[interactIdx, intSiteind]:
+                OffSiteCount[interactIdx] += 1
+    return OffSiteCount
+
+@ jit(nopython=True)
+def GetTSOffSite(state, numSitesTSInteracts, TSInteractSites, TSInteractSpecs):
+    """
+    :param state: State for which to count off sites of TS interactions
+    :return: OffSiteCount array (N_interaction x 1)
+    """
+    TransOffSiteCount = np.zeros(numSitesTSInteracts.shape[0], dtype=int64)
+    for TsInteractIdx in range(numSitesTSInteracts.shape[0]):
+        for Siteind in range(numSitesTSInteracts[TsInteractIdx]):
+            if state[TSInteractSites[TsInteractIdx, Siteind]] != TSInteractSpecs[TsInteractIdx, Siteind]:
+                TransOffSiteCount[TsInteractIdx] += 1
+    return TransOffSiteCount
+
 MonteCarloSamplerSpec = [
     ("numInteractsSiteSpec", int64[:, :]),
     ("SiteSpecInterArray", int64[:, :, :]),
@@ -62,33 +89,6 @@ MonteCarloSamplerSpec = [
     ("VecGroupInteracts", int64[:, :])
 
 ]
-
-@jit(nopython=True)
-def GetOffSite(state, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites):
-    """
-    :param state: State for which to count off sites of interactions
-    :return: OffSiteCount array (N_interaction x 1)
-    """
-    OffSiteCount = np.zeros(numSitesInteracts.shape[0], dtype=int64)
-    for interactIdx in range(numSitesInteracts.shape[0]):
-        for intSiteind in range(numSitesInteracts[interactIdx]):
-            if state[SupSitesInteracts[interactIdx, intSiteind]] != \
-                    SpecOnInteractSites[interactIdx, intSiteind]:
-                OffSiteCount[interactIdx] += 1
-    return OffSiteCount
-
-@ jit(nopython=True)
-def GetTSOffSite(state, numSitesTSInteracts, TSInteractSites, TSInteractSpecs):
-    """
-    :param state: State for which to count off sites of TS interactions
-    :return: OffSiteCount array (N_interaction x 1)
-    """
-    TransOffSiteCount = np.zeros(numSitesTSInteracts.shape[0], dtype=int64)
-    for TsInteractIdx in range(numSitesTSInteracts.shape[0]):
-        for Siteind in range(numSitesTSInteracts[TsInteractIdx]):
-            if state[TSInteractSites[TsInteractIdx, Siteind]] != TSInteractSpecs[TsInteractIdx, Siteind]:
-                TransOffSiteCount[TsInteractIdx] += 1
-    return TransOffSiteCount
 
 
 @jitclass(MonteCarloSamplerSpec)
