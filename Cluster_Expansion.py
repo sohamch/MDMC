@@ -243,7 +243,7 @@ class VectorClusterExpansion(object):
             self.Clus2Num[SpCl] = i
             self.Num2Clus[i] = SpCl
 
-    def makeJitInteractionsData(self, Energies, returnCount=False):
+    def makeJitInteractionsData(self, Energies):
         """
         Function to represent all the data structures in the form of numpy arrays so that they can be accelerated with
         numba's jit compilations.
@@ -282,12 +282,9 @@ class VectorClusterExpansion(object):
                     repClustCounter[interactInfo[1]] += 1
                     # also sort the sites by the supercell site indices - will help in identifying TSclusters as interactions
                     # later on
-                    # Interact_sort = tuple(sorted(interaction, key=lambda x: x[0]))
-                    # siteSortedInteractionIndexDict[Interact_sort] = count
                     InteractionRepClusDict[interaction] = interactInfo[1]
                     Index2InteractionDict[count] = interaction
                     SiteSpecInterArray[keySite, keySpec, interactInd] = count
-                    #siteSpecInteractIndexDict[(keySite, keySpec)].append(count)
                     count += 1
 
         print("Done Indexing interactions : {}".format(time.time() - start))
@@ -305,13 +302,18 @@ class VectorClusterExpansion(object):
         # and the species on the supercell sites in each interaction
         SpecOnInteractSites = np.full((numInteracts, self.maxOrder), -1, dtype=int)
 
+        # and we want to the know the symmetry class of each interaction
+        Interact2RepClusArray = np.full(numInteracts, -1, dtype=int)
+        Interact2SymClassArray = np.full(numInteracts, -1, dtype=int)
+
         for (key, interaction) in Index2InteractionDict.items():
             numSitesInteracts[key] = len(interaction)
             for idx, (intSite, intSpec) in enumerate(interaction):
                 SupSitesInteracts[key, idx] = intSite
                 SpecOnInteractSites[key, idx] = intSpec
 
-        print("Done with chemical data for interactions : {}".format(time.time() - start))
+
+        print("Done with chemical and symmetry class data for interactions : {}".format(time.time() - start))
 
         # 2. Store energy data and vector data
         start = time.time()
