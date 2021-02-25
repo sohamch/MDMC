@@ -92,9 +92,10 @@ class VectorClusterExpansion(object):
         self.vecClus, self.vecVec, self.clus2LenVecClus = self.genVecClustBasis(self.SpecClusters)
         print("Generated vector basis data {:.4f}".format(time.time() - start))
         start = time.time()
-        self.indexVclus2Clus()
-        self.indexClustertoVecClus()
-        self.indexClustertoSpecClus()
+        self.IndexClusters()  #  assign integer identifiers to each cluster
+        self.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
+        self.indexClustertoVecClus()  # Index where in the vector cluster list a cluster is present
+        self.indexClustertoSpecClus()  # Index clusters to symmetry groups
         print("Generated Indexing data {:.4f}".format(time.time() - start))
 
         # Generate the transitions-based data structures - moved to KRAexpander
@@ -157,7 +158,7 @@ class VectorClusterExpansion(object):
 
             for v in vlist:
                 newClustList = [cl0]
-                # The first state being the same helps in indexing
+                # The first cluster being the same helps in indexing
                 newVecList = [v]
                 for g in self.crys.G:
                     cl1 = cl0.g(self.crys, g)
@@ -308,6 +309,13 @@ class VectorClusterExpansion(object):
 
         for (key, interaction) in Index2InteractionDict.items():
             numSitesInteracts[key] = len(interaction)
+
+            # Now get the representative cluster
+            repClus = InteractionRepClusDict[interaction]
+
+            # Now get the index assigned to this cluster
+            clustInd = self.clus2N
+
             for idx, (intSite, intSpec) in enumerate(interaction):
                 SupSitesInteracts[key, idx] = intSite
                 SpecOnInteractSites[key, idx] = intSpec
