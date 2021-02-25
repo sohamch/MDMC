@@ -82,7 +82,6 @@ class VectorClusterExpansion(object):
 
         start = time.time()
         self.SpecClusters = self.recalcClusters()
-        self.IndexClusters()
         print("Generated clusters with species: {:.4f}".format(time.time()-start))
         start = time.time()
         self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
@@ -314,7 +313,13 @@ class VectorClusterExpansion(object):
             repClus = InteractionRepClusDict[interaction]
 
             # Now get the index assigned to this cluster
-            clustInd = self.clus2N
+            clustInd = self.Clus2Num[repClus]
+            Interact2RepClusArray[key] = clustInd
+
+            # Now get the symmetry class for this representative cluster
+            (clListInd, clInd) = self.clust2SpecClus[repClus]
+
+            Interact2SymClassArray[key] = clListInd
 
             for idx, (intSite, intSpec) in enumerate(interaction):
                 SupSitesInteracts[key, idx] = intSite
@@ -350,7 +355,7 @@ class VectorClusterExpansion(object):
 
         return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts,\
                VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict,\
-               Index2InteractionDict, repClustCounter
+               Index2InteractionDict, repClustCounter, Interact2RepClusArray, Interact2SymClassArray
 
     def makeSiteIndToSite(self):
         Nsites = self.Nsites
