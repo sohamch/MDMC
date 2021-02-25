@@ -42,6 +42,8 @@ MonteCarloSamplerSpec = [
     ("TSInteractSpecs", int64[:, :]),
     ("SpecOnInteractSites", int64[:, :]),
     ("Interaction2En", float64[:]),
+    ("Interact2RepClusArray", int64[:]),
+    ("Interact2SymClassArray", int64[:]),
     ("numVecsInteracts", int64[:]),
     ("VecsInteracts", float64[:, :, :]),
     ("jumpFinSites", int64[:]),
