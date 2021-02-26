@@ -211,6 +211,12 @@ class MCSamplerClass(object):
                 acceptCount += 1
                 count += 1
                 acceptInd[swapcount] = count
+                # make the offsite for the transition states
+                for TsInteractIdx in range(len(self.TSInteractSites)):
+                    TransOffSiteCount[TsInteractIdx] = 0
+                    for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
+                        if state[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
+                            TransOffSiteCount[TsInteractIdx] += 1
 
             else:
                 # revert back the off site counts, because the state has not changed
@@ -252,13 +258,6 @@ class MCSamplerClass(object):
                             symclassCounts[intSite, symclass] += 1
 
             swapcount += 1
-
-        # make the offsite for the transition states
-        for TsInteractIdx in range(len(self.TSInteractSites)):
-            TransOffSiteCount[TsInteractIdx] = 0
-            for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
-                if state[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
-                    TransOffSiteCount[TsInteractIdx] += 1
 
         return acceptCount, badTrials, acceptInd
 
