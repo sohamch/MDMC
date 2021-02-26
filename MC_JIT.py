@@ -837,6 +837,8 @@ class KMC_JIT(object):
             X_steps[step, :, :] = X.copy()
             t_steps[step] = t
 
+        # After all the steps have been completed, we need to translate sites so that vacancy is back at the origin
+        # We also need to make sure that the symmetry cluster counts have been translated accordingly
         return X_steps, t_steps, jmpSelectSteps, jmpFinSiteList
 
 # Here, we write a function that forms the shells
