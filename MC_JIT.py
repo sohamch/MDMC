@@ -773,7 +773,7 @@ class KMC_JIT(object):
 
         return X_steps, t_steps
 
-    def LatGasKMCTraj(self, state, offsc, symClassCounts, SpecRates, Nsteps, ijList, dxList, vacSiteInit):
+    def LatGasTraj(self, state, symClassCounts, offsc, SpecRates, Nsteps, ijList, dxList, vacSiteInit):
         NSpec = SpecRates.shape[0] + 1
         X = np.zeros((NSpec, 3))
         t = 0.
@@ -830,7 +830,7 @@ class KMC_JIT(object):
                     jmpFinSiteList[jmp] = self.RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
 
                 # Next, do the site swap to update the state
-                self.updateState(state, offsc, vacSiteNow, siteB)
+                self.updateState(state, symClassCounts, offsc, vacSiteNow, siteB)
 
                 vacSiteNow = siteB
 
