@@ -676,29 +676,53 @@ class KMC_JIT(object):
                 # Get the symmetry class of the interaction
                 symclass = self.Interact2SymClassArray[interMainInd]
                 # Now go through every site that contains this interaction
-                for intSiteInd in
+                for intSiteInd in range(self.numSitesInteracts[interMainInd]):
+                    # get the site
+                    intSite = self.SupSitesInteracts[intSiteInd]
+                    # update the symclass on count
+                    symClassCounts[intSite, symclass] -= 1
 
             OffSiteCount[interMainInd] += 1
 
         for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
             interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
+            if OffSiteCount[interMainInd] == 0:
+                symclass = self.Interact2SymClassArray[interMainInd]
+                # Now go through every site that contains this interaction
+                for intSiteInd in range(self.numSitesInteracts[interMainInd]):
+                    # get the site
+                    intSite = self.SupSitesInteracts[intSiteInd]
+                    # update the symclass on count
+                    symClassCounts[intSite, symclass] -= 1
             OffSiteCount[interMainInd] += 1
 
         # Next, switch required sites on
         for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
             interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
             OffSiteCount[interMainInd] -= 1
+            # if this interaction has then switched on, increment the symmetry class counts
+            if OffSiteCount[interMainInd] == 0:
+                # get the symmetry class
+                symclass = self.Interact2SymClassArray[interMainInd]
+                for intSiteInd in range(self.numSitesInteracts[interMainInd]):
+                    intSite = self.SupSitesInteracts[intSiteInd]
+                    symClassCounts[intSite, symclass] += 1
 
         for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
             interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
             OffSiteCount[interMainInd] -= 1
+            if OffSiteCount[interMainInd] == 0:
+                symclass = self.Interact2SymClassArray[interMainInd]
+                for intSiteInd in range(self.numSitesInteracts[interMainInd]):
+                    intSite = self.SupSitesInteracts[intSiteInd]
+                    symClassCounts[intSite, symclass] += 1
 
         # swap sites
         temp = state[siteA]
         state[siteA] = state[siteB]
         state[siteB] = temp
 
-    def getTraj(self, state, offsc, vacSiteFix, jumpFinSiteList, dxList, NSpec, Nsteps, beta):
+    def getTraj(self, state, symClassCounts, offsc, vacSiteFix, jumpFinSiteList, dxList, NSpec, Nsteps, beta):
 
         X = np.zeros((NSpec, 3), dtype=float64)
         t = 0.
@@ -743,7 +767,7 @@ class KMC_JIT(object):
             X_steps[step, :, :] = X.copy()
             t_steps[step] = t
 
-            self.updateState(state, offsc, vacIndNow, vacIndNext)
+            self.updateState(state, symClassCounts, offsc, vacIndNow, vacIndNext)
 
             vacIndNow = vacIndNext
 
