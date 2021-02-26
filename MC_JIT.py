@@ -578,7 +578,7 @@ class KMC_JIT(object):
 
         self.N_unit = N_unit
 
-    def TranslateState(self, state, siteFin, siteInit):
+    def TranslateState(self, state, symClassCounts, siteFin, siteInit, symUpdates=False):
         """
         To take a state, and translate it, so the the species at siteInit
         is taken to siteFin
@@ -592,7 +592,16 @@ class KMC_JIT(object):
             Rnew = (self.siteIndtoR[siteInd, :] + dR) % self.N_unit  # to apply PBC
             siteIndNew = self.RtoSiteInd[Rnew[0], Rnew[1], Rnew[2]]
             stateTrans[siteIndNew] = state[siteInd]
+
+        if symUpdates:
+            symClassCountsOld = symClassCounts.copy()
+            for siteInd in range(state.shape[0]):
+                Rnew = (self.siteIndtoR[siteInd, :] + dR) % self.N_unit  # to apply PBC
+                siteIndNew = self.RtoSiteInd[Rnew[0], Rnew[1], Rnew[2]]
+                symClassCounts[siteIndNew, :] = symClassCountsOld[siteInd, :]
+
         return stateTrans
+
 
     def getKRAEnergies(self, state, TSOffSiteCount, ijList):
 
