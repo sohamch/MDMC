@@ -118,7 +118,7 @@ class MCSamplerClass(object):
 
         # Reformat the array so that the swaps are always between atoms of different species
 
-    def makeMCsweep(self, state, OffSiteCount, TransOffSiteCount, symclassCounts,
+    def makeMCsweep(self, state, OffSiteCount, TransOffSiteCount, symclassCounts, symCountsTotal,
                     SwapTrials, beta, randarr, Nswaptrials, vacSiteInd=0):
 
         acceptCount = 0
@@ -157,6 +157,7 @@ class MCSamplerClass(object):
                     # needs to decrease by one for all the sites that contain this interaction.
                     # Get the symmetry class of this interaction
                     symclass = self.Interact2SymClassArray[interMainInd]
+                    symCountsTotal[symclass] -= 1  # This will be symmetry identifier for the whole state
                     for intSiteInd in range(self.numSitesInteracts[interMainInd]):
                         intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
                         # Now update the symmetry cluster class count for this site
@@ -169,6 +170,7 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
                     symclass = self.Interact2SymClassArray[interMainInd]
+                    symCountsTotal[symclass] -= 1
                     for intSiteInd in range(self.numSitesInteracts[interMainInd]):
                         intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
                         # Now update the symmetry cluster class count for this site
@@ -184,6 +186,7 @@ class MCSamplerClass(object):
                     # If the new interaction has switched "on", the corresponding symmetry count needs to increase by one
                     # for each site that contains this interaction
                     symclass = self.Interact2SymClassArray[interMainInd]
+                    symCountsTotal[symclass] += 1
                     for intSiteInd in range(self.numSitesInteracts[interMainInd]):
                         intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
                         # Now update the symmetry cluster class count for this site
@@ -195,6 +198,7 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
                     symclass = self.Interact2SymClassArray[interMainInd]
+                    symCountsTotal[symclass] += 1
                     for intSiteInd in range(self.numSitesInteracts[interMainInd]):
                         intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
                         # Now update the symmetry cluster class count for this site
@@ -226,6 +230,7 @@ class MCSamplerClass(object):
                     if OffSiteCount[self.SiteSpecInterArray[siteA, specA, interIdx]] == 0:
                         # get the symmetry class of this interaction
                         symclass = self.Interact2SymClassArray[interIdx]
+                        symCountsTotal[symclass] += 1
                         for intSiteInd in range(self.numSitesInteracts[interIdx]):
                             intSite = self.SupSitesInteracts[intSiteInd]
                             symclassCounts[intSite, symclass] += 1
@@ -235,6 +240,7 @@ class MCSamplerClass(object):
                     if OffSiteCount[self.SiteSpecInterArray[siteB, specB, interIdx]] == 0:
                         # get the symmetry class of this interaction
                         symclass = self.Interact2SymClassArray[interIdx]
+                        symCountsTotal[symclass] += 1
                         for intSiteInd in range(self.numSitesInteracts[interIdx]):
                             intSite = self.SupSitesInteracts[intSiteInd]
                             symclassCounts[intSite, symclass] += 1
@@ -244,6 +250,7 @@ class MCSamplerClass(object):
                     if OffSiteCount[self.SiteSpecInterArray[siteA, specB, interIdx]] == 0:
                         # get the symmetry class of this interaction
                         symclass = self.Interact2SymClassArray[interIdx]
+                        symCountsTotal[symclass] -= 1
                         for intSiteInd in range(self.numSitesInteracts[interIdx]):
                             intSite = self.SupSitesInteracts[intSiteInd]
                             symclassCounts[intSite, symclass] -= 1
@@ -253,6 +260,7 @@ class MCSamplerClass(object):
                     if OffSiteCount[self.SiteSpecInterArray[siteB, specA, interIdx]] == 0:
                         # get the symmetry class of this interaction
                         symclass = self.Interact2SymClassArray[interIdx]
+                        symCountsTotal[symclass] -= 1
                         for intSiteInd in range(self.numSitesInteracts[interIdx]):
                             intSite = self.SupSitesInteracts[intSiteInd]
                             symclassCounts[intSite, symclass] += 1
@@ -385,7 +393,7 @@ class MCSamplerClass(object):
 
         return WBar, BBar
 
-    def GetNewRandState(self, state, OffSiteCount, symClassCounts, SwapTrials, Nswaptrials, Energy):
+    def GetNewRandState(self, state, OffSiteCount, symClassCounts, symCountsTotal, SwapTrials, Nswaptrials, Energy):
 
         En = Energy
         for swapcount in range(Nswaptrials):
@@ -404,6 +412,7 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
                     symclass = self.Interact2SymClassArray[interMainInd]
+                    symCountsTotal[symclass] -= 1
                     # Now go through all the sites that contain this interaction
                     for intSiteInd in range(self.numSitesInteracts[interMainInd]):
                         intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
@@ -418,6 +427,7 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
                     symclass = self.Interact2SymClassArray[interMainInd]
+                    symCountsTotal[symclass] -= 1
                     for intSiteInd in range(self.numSitesInteracts[interMainInd]):
                         intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
                         symClassCounts[intSite, symclass] -= 1
@@ -431,6 +441,7 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
                     symclass = self.Interact2SymClassArray[interMainInd]
+                    symCountsTotal[symclass] += 1
                     for intSiteInd in range(self.numSitesInteracts[interMainInd]):
                         intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
                         # Increment cluster class count for this site
@@ -442,6 +453,7 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
                     symclass = self.Interact2SymClassArray[interMainInd]
+                    symCountsTotal[symclass] += 1
                     for intSiteInd in range(self.numSitesInteracts[interMainInd]):
                         intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
                         symClassCounts[intSite, symclass] += 1
@@ -675,7 +687,7 @@ class KMC_JIT(object):
 
         return delEArray
 
-    def updateState(self, state, symClassCounts, OffSiteCount, siteA, siteB):
+    def updateState(self, state, symClassCounts, symCountsTotal, OffSiteCount, siteA, siteB):
 
         # update offsitecounts and symmetry classes
         for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
@@ -684,6 +696,7 @@ class KMC_JIT(object):
                 # we need to turn this interaction off for each site that contains it
                 # Get the symmetry class of the interaction
                 symclass = self.Interact2SymClassArray[interMainInd]
+                symCountsTotal[symclass] -= 1
                 # Now go through every site that contains this interaction
                 for intSiteInd in range(self.numSitesInteracts[interMainInd]):
                     # get the site
@@ -697,6 +710,7 @@ class KMC_JIT(object):
             interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
             if OffSiteCount[interMainInd] == 0:
                 symclass = self.Interact2SymClassArray[interMainInd]
+                symCountsTotal[symclass] -= 1
                 # Now go through every site that contains this interaction
                 for intSiteInd in range(self.numSitesInteracts[interMainInd]):
                     # get the site
@@ -713,6 +727,7 @@ class KMC_JIT(object):
             if OffSiteCount[interMainInd] == 0:
                 # get the symmetry class
                 symclass = self.Interact2SymClassArray[interMainInd]
+                symCountsTotal[symclass] += 1
                 for intSiteInd in range(self.numSitesInteracts[interMainInd]):
                     intSite = self.SupSitesInteracts[intSiteInd]
                     symClassCounts[intSite, symclass] += 1
@@ -722,6 +737,7 @@ class KMC_JIT(object):
             OffSiteCount[interMainInd] -= 1
             if OffSiteCount[interMainInd] == 0:
                 symclass = self.Interact2SymClassArray[interMainInd]
+                symCountsTotal[symclass] += 1
                 for intSiteInd in range(self.numSitesInteracts[interMainInd]):
                     intSite = self.SupSitesInteracts[intSiteInd]
                     symClassCounts[intSite, symclass] += 1
@@ -731,7 +747,7 @@ class KMC_JIT(object):
         state[siteA] = state[siteB]
         state[siteB] = temp
 
-    def getTraj(self, state, symClassCounts, offsc, vacSiteFix, jumpFinSiteList, dxList, NSpec, Nsteps, beta):
+    def getTraj(self, state, symClassCounts, symCountsTotal, offsc, vacSiteFix, jumpFinSiteList, dxList, NSpec, Nsteps, beta):
 
         X = np.zeros((NSpec, 3), dtype=float64)
         t = 0.
@@ -776,13 +792,13 @@ class KMC_JIT(object):
             X_steps[step, :, :] = X.copy()
             t_steps[step] = t
 
-            self.updateState(state, symClassCounts, offsc, vacIndNow, vacIndNext)
+            self.updateState(state, symClassCounts, symCountsTotal, offsc, vacIndNow, vacIndNext)
 
             vacIndNow = vacIndNext
 
         return X_steps, t_steps
 
-    def LatGasTraj(self, state, symClassCounts, offsc, SpecRates, Nsteps, ijList, dxList, vacSiteInit):
+    def LatGasTraj(self, state, symClassCounts, symCountsTotal, offsc, SpecRates, Nsteps, ijList, dxList, vacSiteInit):
         NSpec = SpecRates.shape[0] + 1
         X = np.zeros((NSpec, 3))
         t = 0.
@@ -839,7 +855,7 @@ class KMC_JIT(object):
                     jmpFinSiteList[jmp] = self.RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
 
                 # Next, do the site swap to update the state
-                self.updateState(state, symClassCounts, offsc, vacSiteNow, siteB)
+                self.updateState(state, symClassCounts, symCountsTotal, offsc, vacSiteNow, siteB)
 
                 vacSiteNow = siteB
 
