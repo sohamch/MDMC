@@ -116,8 +116,6 @@ class MCSamplerClass(object):
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
 
-        # Reformat the array so that the swaps are always between atoms of different species
-
     def makeMCsweep(self, state, OffSiteCount, TransOffSiteCount, symclassCounts, symCountsTotal,
                     SwapTrials, beta, randarr, Nswaptrials, vacSiteInd=0):
 
