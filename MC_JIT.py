@@ -588,7 +588,7 @@ class KMC_JIT(object):
 
         self.N_unit = N_unit
 
-    def TranslateState(self, state, symClassCounts, siteFin, siteInit, symUpdates=False):
+    def TranslateState(self, state, siteFin, siteInit, symClassCounts=None):
 
         dR = self.siteIndtoR[siteFin, :] - self.siteIndtoR[siteInit, :]
         stateTrans = np.zeros_like(state, dtype=int64)
@@ -598,7 +598,7 @@ class KMC_JIT(object):
             stateTrans[siteIndNew] = state[siteInd]
 
         # Keeping this separate because it is mostly just needed for the end state of a trajectory.
-        if symUpdates:
+        if symClassCounts is not None:
             symClassCountsOld = symClassCounts.copy()
             for siteInd in range(state.shape[0]):
                 Rnew = (self.siteIndtoR[siteInd, :] + dR) % self.N_unit  # apply PBC
