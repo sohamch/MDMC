@@ -99,8 +99,8 @@ class MCSamplerClass(object):
                  numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
                  FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng):
 
-        self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts, \
-        self.Interact2RepClusArray, self.Interact2SymClassArray, self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec,\
+        self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.Interact2RepClusArray,\
+        self.Interact2SymClassArray, self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec,\
         self.SiteSpecInterArray = \
             numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, Interact2RepClusArray, Interact2SymClassArray,\
             numVecsInteracts, VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray
