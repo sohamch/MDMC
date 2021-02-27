@@ -838,7 +838,7 @@ class KMC_JIT(object):
                 specB = state[siteB]
                 X[specB, :] -= dxList[jmpSelect]
 
-                dR = self.siteIndtoR[siteB] - self.siteIndtoR[vacSiteInit]
+                dR = self.siteIndtoR[siteB] - self.siteIndtoR[vacSiteInit]  # the jump sites are built around vacSiteInit
 
                 # Update the final jump sites
                 for jmp in range(jmpFinSiteList.shape[0]):
