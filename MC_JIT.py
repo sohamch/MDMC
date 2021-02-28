@@ -693,7 +693,7 @@ class KMC_JIT(object):
                 # Now go through every site that contains this interaction
                 for intSiteInd in range(self.numSitesInteracts[interMainInd]):
                     # get the site
-                    intSite = self.SupSitesInteracts[intSiteInd]
+                    intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
                     # update the symclass on count
                     symClassCounts[intSite, symclass] -= 1
 
@@ -707,7 +707,7 @@ class KMC_JIT(object):
                 # Now go through every site that contains this interaction
                 for intSiteInd in range(self.numSitesInteracts[interMainInd]):
                     # get the site
-                    intSite = self.SupSitesInteracts[intSiteInd]
+                    intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
                     # update the symclass on count
                     symClassCounts[intSite, symclass] -= 1
             OffSiteCount[interMainInd] += 1
@@ -722,7 +722,7 @@ class KMC_JIT(object):
                 symclass = self.Interact2SymClassArray[interMainInd]
                 symCountsTotal[symclass] += 1
                 for intSiteInd in range(self.numSitesInteracts[interMainInd]):
-                    intSite = self.SupSitesInteracts[intSiteInd]
+                    intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
                     symClassCounts[intSite, symclass] += 1
 
         for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
@@ -732,7 +732,7 @@ class KMC_JIT(object):
                 symclass = self.Interact2SymClassArray[interMainInd]
                 symCountsTotal[symclass] += 1
                 for intSiteInd in range(self.numSitesInteracts[interMainInd]):
-                    intSite = self.SupSitesInteracts[intSiteInd]
+                    intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
                     symClassCounts[intSite, symclass] += 1
 
         # swap sites
