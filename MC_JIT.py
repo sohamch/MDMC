@@ -463,8 +463,6 @@ class MCSamplerClass(object):
             # add the energy to get the energy of the next state
             En += delE
 
-        return En
-
     def getExitData(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, beta, Nsites, vacSiteInd=0):
 
         statesTrans = np.zeros((ijList.shape[0], Nsites), dtype=int64)
