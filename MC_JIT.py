@@ -29,6 +29,7 @@ def DoRandSwap(state, Ntrials, vacSiteInd):
         temp = state[siteA]
         state[siteA] = state[siteB]
         state[siteB] = temp
+        count += 1
 
     return initSiteList, finSiteList
 
