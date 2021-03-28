@@ -365,7 +365,8 @@ class VectorClusterExpansion(object):
         return siteIndtoR, RtoSiteInd
 
     ## Function to compute state fingerprints explicitly from only a cluster expansion
-    def GetStateSymInfo(self, state, Nsym):
+    def GetStateSymInfo(self, state):
+        Nsym = len(self.SpecClusters)
         statePrint = np.zeros((self.Nsites, Nsym), dtype=int)
         interactDone = set([])
         StateTotalSym = np.zeros(Nsym, dtype=int)
