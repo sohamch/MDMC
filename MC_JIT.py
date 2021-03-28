@@ -392,10 +392,10 @@ class MCSamplerClass(object):
 
         return WBar, BBar
 
-    def GetNewRandState(self, state, OffSiteCount, symClassCounts, symCountsTotal, SwapTrials, Nswaptrials, Energy):
+    def GetNewRandState(self, state, OffSiteCount, symClassCounts, symCountsTotal, SwapTrials, Energy):
 
         En = Energy
-        for swapcount in range(Nswaptrials):
+        for swapcount in range(SwapTrials.shape[0]):
             # first select two random sites to swap - for now, let's just select naively.
             siteA = SwapTrials[swapcount, 0]
             siteB = SwapTrials[swapcount, 1]
