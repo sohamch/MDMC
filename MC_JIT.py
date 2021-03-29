@@ -117,6 +117,36 @@ class MCSamplerClass(object):
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
 
+    def getVecs(self, state, offsc, stateSymCounts):
+
+        # array for scaled sum of basis vectors for each site
+        Nsites = state.shape[0]
+        vecSites = np.zeros((Nsites, 3, 3))
+
+        for site in range(Nsites):
+            spec = state[site]
+            for sitSpIntInd in range(self.numInteractsSiteSpec[site, spec]):
+                interactMainInd = self.SiteSpecInterArray[site, spec, sitSpIntInd]
+
+                # see if the interaction is "on"
+                if offsc[interactMainInd] != 0: continue
+
+                # See which symmetry class it belongs to
+                sym = self.Interact2SymClassArray[interactMainInd]
+
+                # how many clusters of this class are "on" in total state?
+                symState = stateSymCounts[sym]
+
+                # Next get the basis vectors for this interaction
+                for vecInd in self.numVecsInteracts[interactMainInd]:
+                    # Get the vector and scale it
+                    vec = self.VecsInteracts[interactMainInd, vecInd, :] * 1.0 / symState
+
+                    # Add it to the sum to the vecInd^th column
+                    vecSites[site, :, vecInd] += vec
+
+        return vecSites
+
     def makeMCsweep(self, state, OffSiteCount, TransOffSiteCount, symclassCounts, symCountsTotal,
                     SwapTrials, beta, randarr, Nswaptrials, vacSiteInd=0):
 
