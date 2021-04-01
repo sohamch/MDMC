@@ -8,7 +8,7 @@ import time
 
 class ClusterSpecies():
 
-    def __init__(self, specList, siteList):
+    def __init__(self, specList, siteList, zero=True):
         if len(specList)!= len(siteList):
             raise ValueError("Species and site lists must have same length")
         if not all(isinstance(site, cluster.ClusterSite) for site in siteList):
@@ -17,8 +17,11 @@ class ClusterSpecies():
         # Calculate the translation to bring center of the sites to the origin unit cell
         self.specList = specList
         self.siteList = siteList
-        Rtrans = sum([site.R for site in siteList])//len(siteList)
-        self.transPairs = [(site-Rtrans, spec) for site, spec in zip(siteList, specList)]
+        if zero:
+            Rtrans = sum([site.R for site in siteList])//len(siteList)
+            self.transPairs = [(site-Rtrans, spec) for site, spec in zip(siteList, specList)]
+        else:
+            self.transPairs = [(site, spec) for site, spec in zip(siteList, specList)]
         # self.transPairs = sorted(self.transPairs, key=lambda x: x[1])
         self.SiteSpecs = set(self.transPairs)
         self.__hashcache__ = sum([hash((site, spec)) for site, spec in self.transPairs])
@@ -31,8 +34,8 @@ class ClusterSpecies():
     def __hash__(self):
         return self.__hashcache__
 
-    def g(self, crys, g):
-        return self.__class__(self.specList, [site.g(crys, g) for site in self.siteList])
+    def g(self, crys, g, zero=True):
+        return self.__class__(self.specList, [site.g(crys, g) for site in self.siteList], zero=zero)
 
     def strRep(self):
         str= ""
