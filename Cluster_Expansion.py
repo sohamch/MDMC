@@ -269,6 +269,8 @@ class VectorClusterExpansion(object):
             self.Clus2Num[SpCl] = i
             self.Num2Clus[i] = SpCl
 
+    def VectorInteracts(self): pass
+
     def makeJitInteractionsData(self, Energies):
         """
         Function to represent all the data structures in the form of numpy arrays so that they can be accelerated with
