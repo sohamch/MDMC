@@ -247,7 +247,7 @@ class VectorClusterExpansion(object):
                                 clRot = cl.g(self.crys, gop)
                                 interactRotSupInd = tuple(sorted([(self.sup.index(site.R, site.ci)[0], spec)
                                                                   for site, spec in interactRot], key=lambda x: x[0]))
-                                Interact2RepClustDict[interactSupInd].add(clRot)
+                                Interact2RepClustDict[interactRotSupInd].add(clRot)
                                 orbit.add(interactRotSupInd)
 
                             InteractSet.update(orbit)
