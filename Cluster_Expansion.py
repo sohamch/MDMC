@@ -82,7 +82,7 @@ class VectorClusterExpansion(object):
         self.SpecClusters = self.recalcClusters()
         print("Generated clusters with species: {:.4f}".format(time.time()-start))
         start = time.time()
-        self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
+        self.SiteSpecInteractions, self.maxInteractCount, self.InteractSymListNoTrans = self.generateSiteSpecInteracts()
         # add a small check here - maybe we'll remove this later
         print("Generated Interaction data {:.4f}".format(time.time() - start))
         start = time.time()
@@ -224,17 +224,29 @@ class VectorClusterExpansion(object):
                 for site, spec in cl.SiteSpecs:
                     if site.ci == ci: # In our case we have only one chemistry.
                         Rtrans = R - site.R
-                        try:
-                            interactSupInd = tuple(sorted([(self.sup.index(site.R+Rtrans, site.ci)[0], spec)
-                                                    for site, spec in cl.SiteSpecs], key=lambda x: x[0]))
-                        except:
-                            print([(self.sup.index(site.R+Rtrans, site.ci)[0], spec)
-                                                    for site, spec in cl.SiteSpecs].sort(key=lambda x:x[0]))
-
+                        interact = tuple([(cluster.ClusterSite(R=site.R+Rtrans, ci=site.ci), spec)
+                                          for site, spec in cl.SiteSpecs])
+                        interactSupInd = tuple(sorted([(self.sup.index(site.R+Rtrans, site.ci)[0], spec)
+                                                       for site, spec in cl.SiteSpecs], key=lambda x: x[0]))
                         SiteSpecinteractList[(clSite, spec)].append([interactSupInd, cl, Rtrans])
 
+                        # See if this has already been considered
+                        if interactSupInd in InteractSet:
+                            continue
+                        else:
+                            orbit = set()
+                            # Apply group operations
+                            for gop in self.crys.G:
+                                interactRot = tuple([(site.g(self.crys, gop), spec) for site, spec in cl.SiteSpecs])
+                                interactRotSupInd = tuple(sorted([(self.sup.index(site.R+Rtrans, site.ci)[0], spec)
+                                                                  for site, spec in interactRot], key=lambda x: x[0]))
+                                orbit.add(interactRotSupInd)
+
+                            InteractSet.update(orbit)
+                            InteractSymListNoTrans.append(orbit)
+
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
-        return SiteSpecinteractList, maxinteractions
+        return SiteSpecinteractList, maxinteractions, InteractSymListNoTrans
 
     def IndexClusters(self):
         """
