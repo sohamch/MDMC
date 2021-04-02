@@ -93,7 +93,8 @@ class VectorClusterExpansion(object):
         print("Generated Indexing data {:.4f}".format(time.time() - start))
 
         start = time.time()
-        self.SiteSpecInteractions, self.maxInteractCount, self.InteractSymListNoTrans = self.generateSiteSpecInteracts()
+        self.SiteSpecInteractions, self.maxInteractCount, self.InteractSymListNoTrans, self.Interact2RepClustDict =\
+            self.generateSiteSpecInteracts()
         # add a small check here - maybe we'll remove this later
         print("Generated Interaction data {:.4f}".format(time.time() - start))
 
@@ -254,7 +255,7 @@ class VectorClusterExpansion(object):
 
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
         InteractSymListNoTrans.sort(key=lambda x: len(x))
-        return SiteSpecinteractList, maxinteractions, InteractSymListNoTrans
+        return SiteSpecinteractList, maxinteractions, InteractSymListNoTrans, Interact2RepClustDict
 
     def IndexClusters(self):
         """
