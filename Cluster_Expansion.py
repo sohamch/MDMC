@@ -245,6 +245,8 @@ class VectorClusterExpansion(object):
                                 interactRot = tuple([(site.g(self.crys, gop), spec) for site, spec in interact])
                                 # Get the representative cluster for this rotated rotated interaction
                                 clRot = cl.g(self.crys, gop)
+
+                                # Bring the rotated sites back into the supercell
                                 interactRotSupInd = tuple(sorted([(self.sup.index(site.R, site.ci)[0], spec)
                                                                   for site, spec in interactRot], key=lambda x: x[0]))
                                 Interact2RepClustDict[interactRotSupInd].add(clRot)
@@ -269,7 +271,49 @@ class VectorClusterExpansion(object):
             self.Clus2Num[SpCl] = i
             self.Num2Clus[i] = SpCl
 
-    def VectorInteracts(self): pass
+    def VectorInteracts(self):
+
+        InteractVecInteracts = []
+        InteractVecVecs = []
+        InteractSym2Vec = collections.defaultdict(list)
+        Interact2VecInteract = collections.defaultdict(list)
+        vecClassInd = 0
+        for orbitInd, orbit in enumerate(self.InteractSymListNoTrans):
+            Int0 = orbit[0]
+            # Get the representative cluster for this
+            cl0 = list(self.Interact2RepClustDict[Int0])[0]
+
+            # Get the vector basis
+            vecs = self.clust2vecClus[cl0]
+            if len(vecs) == 0:
+                continue
+
+            for vListInd, vInd in vecs:
+                IntList = [Int0]
+                v0 = self.vecVec[vListInd][vInd]
+                vList = [v0]
+                considered = set(IntList)
+                for gop in self.crys.G:
+                    # Rotate interaction
+                    IntRot = tuple([(site.g(self.crys, gop), spec) for site, spec in Int0])
+                    # Bring sites back to supercell - sort according to site index
+                    IntRotSupInd = tuple(sorted([(self.sup.index(site.R, site.ci)[0], spec)
+                                                      for site, spec in IntRot], key=lambda x: x[0]))
+
+                    # Check if this has already been considered
+                    if IntRotSupInd in considered:
+                        continue
+
+                    # Otherwise store it
+                    IntList.append(IntRotSupInd)
+                    considered.add(IntRotSupInd)
+                    vList.append(np.dot(gop.cartrot, v0))
+
+                InteractVecInteracts.append(IntList)
+                InteractVecVecs.append(vList)
+                InteractSym2Vec[orbitInd].append(len(InteractVecInteracts)-1)
+
+
 
     def makeJitInteractionsData(self, Energies):
         """
