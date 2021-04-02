@@ -277,7 +277,7 @@ class VectorClusterExpansion(object):
         InteractVecVecs = []
         InteractSym2Vec = collections.defaultdict(list)
         Interact2VecInteract = collections.defaultdict(list)
-        vecClassInd = 0
+
         for orbitInd, orbit in enumerate(self.InteractSymListNoTrans):
             Int0 = orbit[0]
             # Get the representative cluster for this
@@ -290,6 +290,7 @@ class VectorClusterExpansion(object):
 
             for vListInd, vInd in vecs:
                 IntList = [Int0]
+                Interact2VecInteract[Int0].append((len(InteractVecInteracts), 0))
                 v0 = self.vecVec[vListInd][vInd]
                 vList = [v0]
                 considered = set(IntList)
@@ -305,15 +306,14 @@ class VectorClusterExpansion(object):
                         continue
 
                     # Otherwise store it
+                    Interact2VecInteract[IntRotSupInd].append((len(InteractVecInteracts), len(IntList)))
                     IntList.append(IntRotSupInd)
                     considered.add(IntRotSupInd)
                     vList.append(np.dot(gop.cartrot, v0))
 
+                InteractSym2Vec[orbitInd].append(len(InteractVecInteracts))
                 InteractVecInteracts.append(IntList)
                 InteractVecVecs.append(vList)
-                InteractSym2Vec[orbitInd].append(len(InteractVecInteracts)-1)
-
-
 
     def makeJitInteractionsData(self, Energies):
         """
