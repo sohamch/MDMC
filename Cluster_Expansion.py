@@ -82,18 +82,20 @@ class VectorClusterExpansion(object):
         self.SpecClusters = self.recalcClusters()
         print("Generated clusters with species: {:.4f}".format(time.time()-start))
         start = time.time()
-        self.SiteSpecInteractions, self.maxInteractCount, self.InteractSymListNoTrans = self.generateSiteSpecInteracts()
-        # add a small check here - maybe we'll remove this later
-        print("Generated Interaction data {:.4f}".format(time.time() - start))
-        start = time.time()
         self.vecClus, self.vecVec, self.clus2LenVecClus = self.genVecClustBasis(self.SpecClusters)
         print("Generated vector basis data {:.4f}".format(time.time() - start))
+
         start = time.time()
         self.IndexClusters()  #  assign integer identifiers to each cluster
         self.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
         self.indexClustertoVecClus()  # Index where in the vector cluster list a cluster is present
         self.indexClustertoSpecClus()  # Index clusters to symmetry groups
         print("Generated Indexing data {:.4f}".format(time.time() - start))
+
+        start = time.time()
+        self.SiteSpecInteractions, self.maxInteractCount, self.InteractSymListNoTrans = self.generateSiteSpecInteracts()
+        # add a small check here - maybe we'll remove this later
+        print("Generated Interaction data {:.4f}".format(time.time() - start))
 
         # Generate the transitions-based data structures - moved to KRAexpander
         # self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
@@ -215,6 +217,8 @@ class VectorClusterExpansion(object):
         SiteSpecinteractList = collections.defaultdict(list)
         InteractSymListNoTrans = []
         InteractSet = set()
+        orbitCount = 0
+        RepClustLists = {}
         for siteInd in range(self.Nsites):
             # get the cluster site
             ci, R = self.sup.ciR(siteInd)
@@ -243,7 +247,8 @@ class VectorClusterExpansion(object):
                                 orbit.add(interactRotSupInd)
 
                             InteractSet.update(orbit)
-                            InteractSymListNoTrans.append(orbit)
+                            InteractSymListNoTrans.append(list(orbit))
+                            RepClustLists[orbitCount] = self.clust2SpecClus
 
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
         InteractSymListNoTrans.sort(key=lambda x: len(x))
