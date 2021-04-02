@@ -237,8 +237,8 @@ class VectorClusterExpansion(object):
                             orbit = set()
                             # Apply group operations
                             for gop in self.crys.G:
-                                interactRot = tuple([(site.g(self.crys, gop), spec) for site, spec in cl.SiteSpecs])
-                                interactRotSupInd = tuple(sorted([(self.sup.index(site.R+Rtrans, site.ci)[0], spec)
+                                interactRot = tuple([(site.g(self.crys, gop), spec) for site, spec in interact])
+                                interactRotSupInd = tuple(sorted([(self.sup.index(site.R, site.ci)[0], spec)
                                                                   for site, spec in interactRot], key=lambda x: x[0]))
                                 orbit.add(interactRotSupInd)
 
