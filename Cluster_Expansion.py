@@ -214,6 +214,7 @@ class VectorClusterExpansion(object):
         """
         SiteSpecinteractList = collections.defaultdict(list)
         InteractSymListNoTrans = []
+        InteractSet = set()
         for siteInd in range(self.Nsites):
             # get the cluster site
             ci, R = self.sup.ciR(siteInd)
@@ -223,8 +224,13 @@ class VectorClusterExpansion(object):
                 for site, spec in cl.SiteSpecs:
                     if site.ci == ci: # In our case we have only one chemistry.
                         Rtrans = R - site.R
-                        interactSupInd = tuple([(self.sup.index(site.R+Rtrans, site.ci)[0], spec)
-                                                for site, spec in cl.SiteSpecs].sort(key=lambda x:x[0]))
+                        try:
+                            interactSupInd = tuple(sorted([(self.sup.index(site.R+Rtrans, site.ci)[0], spec)
+                                                    for site, spec in cl.SiteSpecs], key=lambda x: x[0]))
+                        except:
+                            print([(self.sup.index(site.R+Rtrans, site.ci)[0], spec)
+                                                    for site, spec in cl.SiteSpecs].sort(key=lambda x:x[0]))
+
                         SiteSpecinteractList[(clSite, spec)].append([interactSupInd, cl, Rtrans])
 
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
