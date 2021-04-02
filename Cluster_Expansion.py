@@ -246,6 +246,7 @@ class VectorClusterExpansion(object):
                             InteractSymListNoTrans.append(orbit)
 
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
+        InteractSymListNoTrans.sort(key=lambda x: len(x))
         return SiteSpecinteractList, maxinteractions, InteractSymListNoTrans
 
     def IndexClusters(self):
