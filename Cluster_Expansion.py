@@ -217,8 +217,7 @@ class VectorClusterExpansion(object):
         SiteSpecinteractList = collections.defaultdict(list)
         InteractSymListNoTrans = []
         InteractSet = set()
-        orbitCount = 0
-        RepClustLists = {}
+        Interact2RepClustDict = collections.defaultdict(set)
         for siteInd in range(self.Nsites):
             # get the cluster site
             ci, R = self.sup.ciR(siteInd)
@@ -241,14 +240,17 @@ class VectorClusterExpansion(object):
                             orbit = set()
                             # Apply group operations
                             for gop in self.crys.G:
+                                # Get the rotated interaction
                                 interactRot = tuple([(site.g(self.crys, gop), spec) for site, spec in interact])
+                                # Get the representative cluster for this rotated rotated interaction
+                                clRot = cl.g(self.crys, gop)
                                 interactRotSupInd = tuple(sorted([(self.sup.index(site.R, site.ci)[0], spec)
                                                                   for site, spec in interactRot], key=lambda x: x[0]))
+                                Interact2RepClustDict[interactSupInd].add(clRot)
                                 orbit.add(interactRotSupInd)
 
                             InteractSet.update(orbit)
                             InteractSymListNoTrans.append(list(orbit))
-                            RepClustLists[orbitCount] = self.clust2SpecClus
 
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
         InteractSymListNoTrans.sort(key=lambda x: len(x))
