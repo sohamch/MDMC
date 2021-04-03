@@ -98,6 +98,11 @@ class VectorClusterExpansion(object):
         # add a small check here - maybe we'll remove this later
         print("Generated Interaction data {:.4f}".format(time.time() - start))
 
+        start = time.time()
+        self.InteractVecInteracts, self.InteractVecVecs, self.InteractSym2Vec, self.Interact2VecInteract =\
+            self.VectorInteracts()
+        print("Generated Interaction vector basis data {:.4f}".format(time.time() - start))
+
         # Generate the transitions-based data structures - moved to KRAexpander
         # self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
 
@@ -288,6 +293,10 @@ class VectorClusterExpansion(object):
             if len(vecs) == 0:
                 continue
 
+            # Get the cluster sites of the interaction
+            Int0Sites = [(cluster.ClusterSite(ci=info[0], R=info[1]), spec) for info, spec in
+                         [(self.sup.ciR(siteInd), spec) for siteInd, spec in Int0]]
+
             for vListInd, vInd in vecs:
                 IntList = [Int0]
                 Interact2VecInteract[Int0].append((len(InteractVecInteracts), 0))
@@ -296,7 +305,7 @@ class VectorClusterExpansion(object):
                 considered = set(IntList)
                 for gop in self.crys.G:
                     # Rotate interaction
-                    IntRot = tuple([(site.g(self.crys, gop), spec) for site, spec in Int0])
+                    IntRot = tuple([(site.g(self.crys, gop), spec) for site, spec in Int0Sites])
                     # Bring sites back to supercell - sort according to site index
                     IntRotSupInd = tuple(sorted([(self.sup.index(site.R, site.ci)[0], spec)
                                                       for site, spec in IntRot], key=lambda x: x[0]))
@@ -314,6 +323,8 @@ class VectorClusterExpansion(object):
                 InteractSym2Vec[orbitInd].append(len(InteractVecInteracts))
                 InteractVecInteracts.append(IntList)
                 InteractVecVecs.append(vList)
+
+        return InteractVecInteracts, InteractVecVecs, InteractSym2Vec, Interact2VecInteract
 
     def makeJitInteractionsData(self, Energies):
         """
