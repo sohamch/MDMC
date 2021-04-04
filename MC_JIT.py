@@ -8,7 +8,8 @@ np.seterr(all='raise')
 
 
 @jit(nopython=True)
-def DoRandSwap(state, Ntrials, vacSiteInd):
+def DoRandSwap(stateIn, Ntrials, vacSiteInd):
+    state = stateIn.copy()
     Nsite = state.shape[0]
     initSiteList = np.zeros(Ntrials, dtype=int64)
     finSiteList = np.zeros(Ntrials, dtype=int64)
