@@ -520,7 +520,7 @@ class MCSamplerClass(object):
 
         return WBar, BBar
 
-    def ExpandLatGas (self, state, ijList, dxList, OffSiteCount, specRates, lenVecClus, vacSiteInd=0):
+    def ExpandLatGas(self, state, ijList, dxList, OffSiteCount, specRates, lenVecClus, vacSiteInd=0):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
