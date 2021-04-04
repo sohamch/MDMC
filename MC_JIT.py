@@ -423,8 +423,9 @@ class MCSamplerClass(object):
         return WBar, BBar
 
     def ExpandLatGasFullSym (self, state, ijList, dxList, OffSiteCount, specRates, lenVecClus,
-                             VecGroupInteractsFull, VecsInteractsFull,  vacSiteInd=0):
+                             VecGroupInteractsNoTrans, VecsInteractsNoTrans,  vacSiteInd=0):
 
+        # ToDo : Try to bring all expansion functions in the same function.
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
 
@@ -448,7 +449,7 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     # take away the vectors for this interaction
                     for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
+                        del_lamb[VecGroupInteractsNoTrans[interMainInd, i]] -= VecsInteractsNoTrans[interMainInd, i, :]
                 OffSiteCount[interMainInd] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
