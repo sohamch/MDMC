@@ -54,7 +54,7 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, Tclusexp, jumpnetwork, NSpec, Nvac, vacSite, maxorder, maxorderTrans):
+    def __init__(self, sup, clusexp, Tclusexp, jumpnetwork, NSpec, Nvac, vacSite, maxorder, maxorderTrans, NoTrans=False):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
@@ -93,15 +93,19 @@ class VectorClusterExpansion(object):
         print("Generated Indexing data {:.4f}".format(time.time() - start))
 
         start = time.time()
-        self.SiteSpecInteractions, self.maxInteractCount, self.InteractSymListNoTrans, self.Interact2RepClustDict =\
-            self.generateSiteSpecInteracts()
+        if NoTrans:
+            self.SiteSpecInteractions, self.maxInteractCount, self.InteractSymListNoTrans, self.Interact2RepClustDict =\
+                self.generateSiteSpecInteracts(NoTrans=True)
+        else:
+            self.SiteSpecInteractions, self.maxInteractCount =self.generateSiteSpecInteracts()
         # add a small check here - maybe we'll remove this later
         print("Generated Interaction data {:.4f}".format(time.time() - start))
 
-        start = time.time()
-        self.InteractVecInteracts, self.InteractVecVecs, self.InteractSym2Vec, self.Interact2VecInteract =\
-            self.VectorInteracts()
-        print("Generated Interaction vector basis data {:.4f}".format(time.time() - start))
+        if NoTrans:
+            start = time.time()
+            self.InteractVecInteracts, self.InteractVecVecs, self.InteractSym2Vec, self.Interact2VecInteract =\
+                self.VectorInteracts()
+            print("Generated Interaction vector basis data {:.4f}".format(time.time() - start))
 
         # Generate the transitions-based data structures - moved to KRAexpander
         # self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
@@ -216,7 +220,7 @@ class VectorClusterExpansion(object):
             for clustInd, clust in enumerate(clList):
                 self.clust2SpecClus[clust] = (clListInd, clustInd)
 
-    def generateSiteSpecInteracts(self):
+    def generateSiteSpecInteracts(self, NoTrans=False):
         """
         generate interactions for every site - for MC moves
         """
@@ -239,30 +243,36 @@ class VectorClusterExpansion(object):
                                                        for site, spec in cl.SiteSpecs], key=lambda x: x[0]))
                         SiteSpecinteractList[(clSite, spec)].append([interactSupInd, cl, Rtrans])
 
-                        # See if this has already been considered
-                        if interactSupInd in InteractSet:
-                            continue
-                        else:
-                            orbit = set()
-                            # Apply group operations
-                            for gop in self.crys.G:
-                                # Get the rotated interaction
-                                interactRot = tuple([(site.g(self.crys, gop), spec) for site, spec in interact])
-                                # Get the representative cluster for this rotated rotated interaction
-                                clRot = cl.g(self.crys, gop)
+                        if NoTrans:
+                            # See if this has already been considered
+                            if interactSupInd in InteractSet:
+                                continue
+                            else:
+                                orbit = set()
+                                # Apply group operations
+                                for gop in self.crys.G:
+                                    # Get the rotated interaction
+                                    interactRot = tuple([(site.g(self.crys, gop), spec) for site, spec in interact])
+                                    # Get the representative cluster for this rotated rotated interaction
+                                    clRot = cl.g(self.crys, gop)
 
-                                # Bring the rotated sites back into the supercell
-                                interactRotSupInd = tuple(sorted([(self.sup.index(site.R, site.ci)[0], spec)
-                                                                  for site, spec in interactRot], key=lambda x: x[0]))
-                                Interact2RepClustDict[interactRotSupInd].add(clRot)
-                                orbit.add(interactRotSupInd)
+                                    # Bring the rotated sites back into the supercell
+                                    interactRotSupInd = tuple(sorted([(self.sup.index(site.R, site.ci)[0], spec)
+                                                                      for site, spec in interactRot], key=lambda x: x[0]))
+                                    Interact2RepClustDict[interactRotSupInd].add(clRot)
+                                    orbit.add(interactRotSupInd)
 
-                            InteractSet.update(orbit)
-                            InteractSymListNoTrans.append(list(orbit))
+                                InteractSet.update(orbit)
+                                InteractSymListNoTrans.append(list(orbit))
 
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
-        InteractSymListNoTrans.sort(key=lambda x: len(x))
-        return SiteSpecinteractList, maxinteractions, InteractSymListNoTrans, Interact2RepClustDict
+
+        if NoTrans:
+            InteractSymListNoTrans.sort(key=lambda x: len(x))
+            return SiteSpecinteractList, maxinteractions, InteractSymListNoTrans, Interact2RepClustDict
+
+        else:
+            return SiteSpecinteractList, maxinteractions
 
     def IndexClusters(self):
         """
