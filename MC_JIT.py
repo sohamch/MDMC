@@ -422,12 +422,12 @@ class MCSamplerClass(object):
 
         return WBar, BBar
 
-    def ExpandLatGasFullSym (self, state, ijList, dxList, OffSiteCount, specRates, lenVecClus,
+    def ExpandLatGasNoTrans(self, state, ijList, dxList, OffSiteCount, specRates, lenVecClusNoTrans,
                              VecGroupInteractsNoTrans, VecsInteractsNoTrans,  vacSiteInd=0):
 
         # ToDo : Try to bring all expansion functions in the same function.
-        del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
-        delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
+        del_lamb_mat = np.zeros((lenVecClusNoTrans, lenVecClusNoTrans, ijList.shape[0]))
+        delxDotdelLamb = np.zeros((lenVecClusNoTrans, ijList.shape[0]))
 
         ratelist = np.zeros(ijList.shape[0])
 
@@ -435,7 +435,7 @@ class MCSamplerClass(object):
         # go through all the transition
 
         for jumpInd in range(ijList.shape[0]):
-            del_lamb = np.zeros((lenVecClus, 3))
+            del_lamb = np.zeros((lenVecClusNoTrans, 3))
 
             # Get the transition index
             siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
@@ -456,7 +456,7 @@ class MCSamplerClass(object):
                 interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
                 if OffSiteCount[interMainInd] == 0:
                     for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
+                        del_lamb[VecGroupInteractsNoTrans[interMainInd, i]] -= VecsInteractsNoTrans[interMainInd, i, :]
                 OffSiteCount[interMainInd] += 1
 
             # Next, switch required sites on
@@ -466,7 +466,8 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     # add the vectors for this interaction
                     for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
+                        del_lamb[VecGroupInteractsNoTrans[interMainInd, i]] += VecsInteractsNoTrans[interMainInd, i, :]
+                        # del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
                 interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
@@ -476,13 +477,14 @@ class MCSamplerClass(object):
                     # for interactions with zero vector basis, numVecsInteracts[interMainInd] = -1 and the
                     # loop doesn't run
                     for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
+                        del_lamb[VecGroupInteractsNoTrans[interMainInd, i]] -= VecsInteractsNoTrans[interMainInd, i, :]
+                        # del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
 
             del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
 
             # delxDotdelLamb[:, jumpInd] = np.tensordot(del_lamb, dxList[jumpInd], axes=(1, 0))
             # let's do the tensordot by hand (work on finding numba support for this)
-            for i in range(lenVecClus):
+            for i in range(lenVecClusNoTrans):
                 # replace innder loop with outer product
                 delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], dxList[jumpInd, :])
 
@@ -504,16 +506,16 @@ class MCSamplerClass(object):
                 OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
 
         # Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 2))
-        WBar = np.zeros((lenVecClus, lenVecClus))
-        for i in range(lenVecClus):
-            for j in range(lenVecClus):
+        WBar = np.zeros((lenVecClusNoTrans, lenVecClusNoTrans))
+        for i in range(lenVecClusNoTrans):
+            for j in range(lenVecClusNoTrans):
                 WBar[i, j] += np.dot(del_lamb_mat[i, j, :], ratelist)
 
         # assert np.allclose(Wbar, WBar)
 
         # Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
-        BBar = np.zeros(lenVecClus)
-        for i in range(lenVecClus):
+        BBar = np.zeros(lenVecClusNoTrans)
+        for i in range(lenVecClusNoTrans):
             BBar[i] = np.dot(ratelist, delxDotdelLamb[i, :])
 
         return WBar, BBar
