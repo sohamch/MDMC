@@ -83,7 +83,8 @@ class Test_MC_Arrays(unittest.TestCase):
         siteIndtoR, RtoSiteInd = self.VclusExp.makeSiteIndToSite()
         self.RtoSiteInd = RtoSiteInd
         self.siteIndtoR = siteIndtoR
-        self.KMCJit = MC_JIT.KMC_JIT(numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,
+
+        self.KMC_Jit = MC_JIT.KMC_JIT(numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,
                                 Interact2RepClusArray, Interact2SymClassArray, numVecsInteracts, VecsInteracts,
                                 VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, numSitesTSInteracts,
                                 TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd,
@@ -111,11 +112,11 @@ class Test_MC_Arrays(unittest.TestCase):
         OffSiteCount = MC_JIT.GetOffSite(initState, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites)
 
         self.MCSampler_Jit = MC_JIT.MCSamplerClass(
-    numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, Interact2RepClusArray,
-    Interact2SymClassArray, numVecsInteracts, VecsInteracts, VecGroupInteracts, numInteractsSiteSpec,
-    SiteSpecInterArray, numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
-    FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng
-)
+            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, Interact2RepClusArray,
+            Interact2SymClassArray, numVecsInteracts, VecsInteracts, VecGroupInteracts, numInteractsSiteSpec,
+            SiteSpecInterArray, numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
+            FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng
+        )
 
 
 
