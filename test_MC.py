@@ -52,10 +52,11 @@ class Test_MC_Arrays(unittest.TestCase):
         self.MakeJITs()
 
     def MakeJITs(self):
-        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
-        VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
-        Index2InteractionDict, repClustCounter = \
-            self.VclusExp.makeJitInteractionsData(self.Energies)
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, \
+        VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, \
+        InteractionIndexDict, InteractionRepClusDict, Index2InteractionDict, repClustCounter, \
+        Interact2RepClusArray, Interact2SymClassArray\
+            = self.VclusExp.makeJitInteractionsData(self.Energies)
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts, self.VecsInteracts,\
         self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.vacSiteInd, self.InteractionIndexDict,\
@@ -78,22 +79,16 @@ class Test_MC_Arrays(unittest.TestCase):
 
         Nsites = self.VclusExp.Nsites
         N_units = self.VclusExp.sup.superlatt[0, 0]
-        siteIndtoR = np.zeros((Nsites, 3), dtype=int)
-        RtoSiteInd = np.zeros((N_units, N_units, N_units), dtype=int)
 
-        for siteInd in range(Nsites):
-            R = self.VclusExp.sup.ciR(siteInd)[1]
-            siteIndtoR[siteInd, :] = R
-            RtoSiteInd[R[0], R[1], R[2]] = siteInd
-
+        siteIndtoR, RtoSiteInd = self.VclusExp.makeSiteIndToSite()
         self.RtoSiteInd = RtoSiteInd
         self.siteIndtoR = siteIndtoR
-
-        self.KMC_Jit = MC_JIT.KMC_JIT(numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
-                                 VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
-                                 numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
-                                 FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-                                 siteIndtoR, RtoSiteInd, N_units)
+        self.KMCJit = MC_JIT.KMC_JIT(numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,
+                                Interact2RepClusArray, Interact2SymClassArray, numVecsInteracts, VecsInteracts,
+                                VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, numSitesTSInteracts,
+                                TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd,
+                                numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
+                                siteIndtoR, RtoSiteInd, N_units)
 
         initState = np.zeros(len(self.VclusExp.sup.mobilepos), dtype=int)
         # Now assign random species (excluding the vacancy)
@@ -113,14 +108,14 @@ class Test_MC_Arrays(unittest.TestCase):
             vacSiteInd, initState
         )
 
-        OffSiteCount = np.zeros_like(self.MCSampler.OffSiteCount)
+        OffSiteCount = MC_JIT.GetOffSite(initState, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites)
 
         self.MCSampler_Jit = MC_JIT.MCSamplerClass(
-            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
-            VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
-            numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
-            FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-            vacSiteInd, initState, OffSiteCount)
+    numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, Interact2RepClusArray,
+    Interact2SymClassArray, numVecsInteracts, VecsInteracts, VecGroupInteracts, numInteractsSiteSpec,
+    SiteSpecInterArray, numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
+    FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng
+)
 
 
 
