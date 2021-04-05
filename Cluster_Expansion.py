@@ -392,7 +392,7 @@ class VectorClusterExpansion(object):
                     SiteSpecInterArray[keySite, keySpec, interactInd] = count
                     count += 1
 
-            repClustCounter.default_factory = None
+        repClustCounter.default_factory = None
 
         print("Done Indexing interactions : {}".format(time.time() - start))
         # Now that we have integers assigned to all the interactions, let's store their data as numpy arrays
