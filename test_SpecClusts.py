@@ -22,12 +22,6 @@ class testKRA(unittest.TestCase):
         numSites = len(self.superBCC.mobilepos)
         self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
         self.vacsiteInd = self.superBCC.index(np.zeros(3, dtype=int), (0, 0))[0]
-        self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
-        for site in range(1, numSites):
-            spec = np.random.randint(0, self.NSpec - 1)
-            self.mobOccs[spec][site] = 1
-        self.mobOccs[-1, self.vacsiteInd] = 1
-        self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
         self.clusexp = cluster.makeclusters(self.crys, 0.284, self.MaxOrder)
         self.Tclusexp = cluster.makeclusters(self.crys, 0.29, self.MaxOrderTrans)
         self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.Tclusexp, self.Tclusexp, self.NSpec,
@@ -38,6 +32,13 @@ class testKRA(unittest.TestCase):
 
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
         self.KRAEnergies = [np.random.rand(len(val)) for (key, val) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
+
+        self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
+        for site in range(1, numSites):
+            spec = np.random.randint(0, self.NSpec - 1)
+            self.mobOccs[spec][site] = 1
+        self.mobOccs[-1, self.vacsiteInd] = 1
+        self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
         print("Done setting up")
 
     def test_groupTrans(self):
@@ -291,11 +292,12 @@ class test_Vector_Cluster_Expansion(testKRA):
 
         for clListInd, clList in enumerate(self.VclusExp.SpecClusters):
             for clust in clList:
-                vecList = self.VclusExp.clust2vecClus[clust]
                 if self.VclusExp.clus2LenVecClus[clListInd] == 0:
-                    self.assertEqual(len(vecList), 0)
-                for tup in vecList:
-                    self.assertEqual(clust, self.VclusExp.vecClus[tup[0]][tup[1]])
+                    self.assertFalse(clust in self.VclusExp.clust2vecClus.keys())
+                else:
+                    vecList = self.VclusExp.clust2vecClus[clust]
+                    for tup in vecList:
+                        self.assertEqual(clust, self.VclusExp.vecClus[tup[0]][tup[1]])
 
     def test_indexing(self):
         for vclusListInd, clListInd in enumerate(self.VclusExp.Vclus2Clus):
