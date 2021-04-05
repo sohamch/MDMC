@@ -306,8 +306,10 @@ class VectorClusterExpansion(object):
             cl0 = list(self.Interact2RepClustDict[Int0])[0]
 
             # Get the vector basis
-            vecs = self.clust2vecClus[cl0]
-            if len(vecs) == 0:
+            try:
+                vecs = self.clust2vecClus[cl0]
+            except KeyError:
+                assert self.clus2LenVecClus[self.clust2SpecClus[cl0][0]] == 0
                 continue
 
             # Get the cluster sites of the interaction
