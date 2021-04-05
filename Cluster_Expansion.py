@@ -196,6 +196,8 @@ class VectorClusterExpansion(object):
                     self.Vclus2Clus[vClusListInd] = cLlistInd
                     self.Clus2VClus[cLlistInd].append(vClusListInd)
 
+        self.Clus2VClus.default_factory = None
+
     def indexClustertoVecClus(self):
         """
         For a given cluster, store which vector cluster it belongs to
@@ -210,6 +212,8 @@ class VectorClusterExpansion(object):
                     for clust2Ind, clust2 in enumerate(self.vecClus[vecClusInd]):
                         if clust1 == clust2:
                             self.clust2vecClus[clust1].append((vecClusInd, clust2Ind))
+
+        self.clust2vecClus.default_factory = None
 
     def indexClustertoSpecClus(self):
         """
@@ -266,6 +270,9 @@ class VectorClusterExpansion(object):
                                 InteractSymListNoTrans.append(list(orbit))
 
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
+
+        SiteSpecinteractList.default_factory = None
+        Interact2RepClustDict.default_factory = None
 
         if NoTrans:
             InteractSymListNoTrans.sort(key=lambda x: len(x))
@@ -334,6 +341,9 @@ class VectorClusterExpansion(object):
                 InteractVecInteracts.append(IntList)
                 InteractVecVecs.append(vList)
 
+        InteractSym2Vec.default_factory = None
+        Interact2VecInteract.default_factory = None
+
         return InteractVecInteracts, InteractVecVecs, InteractSym2Vec, Interact2VecInteract
 
     def makeJitInteractionsData(self, Energies):
@@ -379,6 +389,8 @@ class VectorClusterExpansion(object):
                     Index2InteractionDict[count] = interaction
                     SiteSpecInterArray[keySite, keySpec, interactInd] = count
                     count += 1
+
+            repClustCounter.default_factory = None
 
         print("Done Indexing interactions : {}".format(time.time() - start))
         # Now that we have integers assigned to all the interactions, let's store their data as numpy arrays
