@@ -100,7 +100,7 @@ class VectorClusterExpansion(object):
             raise RuntimeWarning("Vacancy Pairs to be constructed. Setting NoTrans to False")
 
         if OrigVac:
-            self.SpecClusters, self.SiteSpecInteractions, self.maxInteractCount = self.InteractsOrgiVac()
+            self.SpecClusters, self.SiteSpecInteractions, self.maxInteractCount = self.InteractsOrigVac()
         else:
             self.SpecClusters = self.recalcClusters()
 
@@ -248,7 +248,7 @@ class VectorClusterExpansion(object):
             for clustInd, clust in enumerate(clList):
                 self.clust2SpecClus[clust] = (clListInd, clustInd)
 
-    def InteractsOrgiVac(self):
+    def InteractsOrigVac(self):
         """
         NOTE : only works for monoatomic lattices for now
         """
