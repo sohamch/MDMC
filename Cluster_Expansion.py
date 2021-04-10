@@ -23,7 +23,7 @@ class ClusterSpecies():
         else:
             self.transPairs = [(site, spec) for site, spec in zip(siteList, specList)]
         # self.transPairs = sorted(self.transPairs, key=lambda x: x[1])
-        self.SiteSpecs = set(self.transPairs)
+        self.SiteSpecs = sorted(self.transPairs, key=lambda s: np.linalg.norm(s[0].R))
         self.__hashcache__ = sum([hash((site, spec)) for site, spec in self.transPairs])
 
     def __eq__(self, other):
@@ -54,7 +54,8 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, Tclusexp, jumpnetwork, NSpec, Nvac, vacSite, maxorder, maxorderTrans, NoTrans=False):
+    def __init__(self, sup, clusexp, Tclusexp, jumpnetwork, NSpec, Nvac, vacSite, maxorder, maxorderTrans,
+                 buildInteracts=True, NoTrans=False, buildKRA=True, zeroClusts=True, OrigVac=False):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
@@ -79,6 +80,8 @@ class VectorClusterExpansion(object):
         self.jumpnetwork = jumpnetwork
 
         start = time.time()
+        self.zeroClusts = zeroClusts
+        self.OrigVac = OrigVac
         self.SpecClusters = self.recalcClusters()
         print("Generated clusters with species: {:.4f}".format(time.time()-start))
         start = time.time()
@@ -93,25 +96,27 @@ class VectorClusterExpansion(object):
         print("Generated Indexing data {:.4f}".format(time.time() - start))
 
         start = time.time()
-        if NoTrans:
-            self.SiteSpecInteractions, self.maxInteractCount, self.InteractSymListNoTrans, self.Interact2RepClustDict =\
-                self.generateSiteSpecInteracts(NoTrans=True)
-        else:
-            self.SiteSpecInteractions, self.maxInteractCount =self.generateSiteSpecInteracts()
-        # add a small check here - maybe we'll remove this later
-        print("Generated Interaction data {:.4f}".format(time.time() - start))
+        if buildInteracts:
+            if NoTrans:
+                self.SiteSpecInteractions, self.maxInteractCount, self.InteractSymListNoTrans, self.Interact2RepClustDict =\
+                    self.generateSiteSpecInteracts(NoTrans=True)
+            else:
+                self.SiteSpecInteractions, self.maxInteractCount =self.generateSiteSpecInteracts()
+            # add a small check here - maybe we'll remove this later
+            print("Generated Interaction data {:.4f}".format(time.time() - start))
 
-        if NoTrans:
-            start = time.time()
-            self.InteractVecInteracts, self.InteractVecVecs, self.InteractSym2Vec, self.Interact2VecInteract =\
-                self.VectorInteracts()
-            print("Generated Interaction vector basis data {:.4f}".format(time.time() - start))
+            if NoTrans:
+                start = time.time()
+                self.InteractVecInteracts, self.InteractVecVecs, self.InteractSym2Vec, self.Interact2VecInteract =\
+                    self.VectorInteracts()
+                print("Generated Interaction vector basis data {:.4f}".format(time.time() - start))
+
 
         # Generate the transitions-based data structures - moved to KRAexpander
         # self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
-
+        if buildKRA:
         # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
-        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, Tclusexp, NSpec, Nvac, vacSite)
+            self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, Tclusexp, NSpec, Nvac, vacSite)
 
     def recalcClusters(self):
         """
@@ -125,7 +130,10 @@ class VectorClusterExpansion(object):
                 occupancies = list(itertools.product(self.mobList, repeat=Nsites))
                 for siteOcc in occupancies:
                     # Make the cluster site object
-                    ClustSpec = ClusterSpecies(siteOcc, clust.sites)
+                    if self.OrigVac:
+                        if siteOcc[0] != self.vacSpec:
+                            continue
+                    ClustSpec = ClusterSpecies(siteOcc, clust.sites, zero=self.zeroClusts)
                     # check if this has already been considered
                     if ClustSpec in allClusts:
                         continue
@@ -135,7 +143,7 @@ class VectorClusterExpansion(object):
                     if mobcount[self.vacSpec] > self.Nvac:
                         continue
                     # Otherwise, find all symmetry-grouped counterparts
-                    newSymSet = set([ClustSpec.g(self.crys, g) for g in self.crys.G])
+                    newSymSet = set([ClustSpec.g(self.crys, g, zero=self.zeroClusts) for g in self.crys.G])
                     allClusts.update(newSymSet)
                     newList = list(newSymSet)
                     symClusterList.append(newList)
@@ -151,7 +159,7 @@ class VectorClusterExpansion(object):
             cl0 = clList[0]
             glist0 = []
             for g in self.crys.G:
-                if cl0.g(self.crys, g) == cl0:
+                if cl0.g(self.crys, g, zero=self.zeroClusts) == cl0:
                     glist0.append(g)
 
             G0 = sum([g.cartrot for g in glist0])/len(glist0)
@@ -170,7 +178,7 @@ class VectorClusterExpansion(object):
                 # The first cluster being the same helps in indexing
                 newVecList = [v]
                 for g in self.crys.G:
-                    cl1 = cl0.g(self.crys, g)
+                    cl1 = cl0.g(self.crys, g, zero=self.zeroClusts)
                     if cl1 in newClustList:
                         continue
                     newClustList.append(cl1)
