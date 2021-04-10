@@ -266,10 +266,10 @@ class VectorClusterExpansion(object):
                 if SpCl in allClusts:
                     continue
                 # Apply group operations
-                newsymset = [ClusterSpecies.inSuperCell(SpCl.g(self.crys, g, zero=self.zeroClusts), self.N_units)
-                             for g in self.crys.G]
+                newsymset = set([ClusterSpecies.inSuperCell(SpCl.g(self.crys, g, zero=self.zeroClusts), self.N_units)
+                             for g in self.crys.G])
                 allClusts.update(newsymset)
-                symClusterList.append(newsymset)
+                symClusterList.append(list(newsymset))
 
         SiteSpecinteractList = collections.defaultdict(list)
         for clList in symClusterList:
