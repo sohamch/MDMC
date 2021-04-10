@@ -68,7 +68,7 @@ class VectorClusterExpansion(object):
     class to expand velocities and rates in vector cluster functions.
     """
     def __init__(self, sup, clusexp, Tclusexp, jumpnetwork, NSpec, Nvac, vacSite, maxorder, maxorderTrans,
-                 buildInteracts=True, NoTrans=False, zeroClusts=True, OrigVac=False):
+                 NoTrans=False, zeroClusts=True, OrigVac=False):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
@@ -92,49 +92,35 @@ class VectorClusterExpansion(object):
         self.mobList = list(range(NSpec))
         self.vacSite = vacSite  # This stays fixed throughout the simulation, so makes sense to store it.
         self.jumpnetwork = jumpnetwork
-
-        start = time.time()
         self.zeroClusts = zeroClusts
         self.OrigVac = OrigVac
 
         if OrigVac:
-            self.SpecClusters = self.recalcClusters()
-            self.SiteSpecInteractions, self.maxInteractCount = self.InteractsOrgiVac()
-
+            self.SpecClusters, self.SiteSpecInteractions, self.maxInteractCount = self.InteractsOrgiVac()
         else:
             self.SpecClusters = self.recalcClusters()
-            start = time.time()
-            if buildInteracts:
-                if NoTrans:
-                    self.SiteSpecInteractions, self.maxInteractCount, self.InteractSymListNoTrans, self.Interact2RepClustDict = \
-                        self.generateSiteSpecInteracts(NoTrans=True)
-                else:
-                    self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
-                # add a small check here - maybe we'll remove this later
-                print("Generated Interaction data {:.4f}".format(time.time() - start))
 
-                if NoTrans:
-                    start = time.time()
-                    self.InteractVecInteracts, self.InteractVecVecs, self.InteractSym2Vec, self.Interact2VecInteract = \
-                        self.VectorInteracts()
-                    print("Generated Interaction vector basis data {:.4f}".format(time.time() - start))
+            if NoTrans:
+                self.SiteSpecInteractions, self.maxInteractCount, self.InteractSymListNoTrans, self.Interact2RepClustDict = \
+                    self.generateSiteSpecInteracts(NoTrans=True)
+            else:
+                self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
+            # add a small check here - maybe we'll remove this later
+
+        self.vecClus, self.vecVec, self.clus2LenVecClus = self.genVecClustBasis(self.SpecClusters)
+        if NoTrans:
+            self.InteractVecInteracts, self.InteractVecVecs, self.InteractSym2Vec, self.Interact2VecInteract = \
+                self.VectorInteracts()
             # Generate the transitions-based data structures - moved to KRAexpander
             # self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
             # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
 
         self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, Tclusexp, NSpec, Nvac, vacSite)
 
-        print("Generated clusters with species: {:.4f}".format(time.time()-start))
-        start = time.time()
-        self.vecClus, self.vecVec, self.clus2LenVecClus = self.genVecClustBasis(self.SpecClusters)
-        print("Generated vector basis data {:.4f}".format(time.time() - start))
-
-        start = time.time()
         self.IndexClusters()  #  assign integer identifiers to each cluster
         self.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
         self.indexClustertoVecClus()  # Index where in the vector cluster list a cluster is present
         self.indexClustertoSpecClus()  # Index clusters to symmetry groups
-        print("Generated Indexing data {:.4f}".format(time.time() - start))
 
     def recalcClusters(self):
         """
