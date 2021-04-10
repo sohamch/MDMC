@@ -258,9 +258,11 @@ class VectorClusterExpansion(object):
 
         for siteInd in range(self.Nsites):
             ciSite, RSite = self.sup.ciR(siteInd)
-            cl = cluster.ClusterSite(ci=ciSite, R=RSite)
+            clSite = cluster.ClusterSite(ci=ciSite, R=RSite)
+            if clSite == siteA:
+                continue
             for spec in range(self.NSpec-1):
-                siteList = [siteA, cl]
+                siteList = [siteA, clSite]
                 specList = [self.NSpec - 1, spec]
                 SpCl = ClusterSpecies(specList, siteList, zero=self.zeroClusts)
                 if SpCl in allClusts:
