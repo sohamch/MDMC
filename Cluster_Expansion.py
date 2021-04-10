@@ -232,6 +232,23 @@ class VectorClusterExpansion(object):
             for clustInd, clust in enumerate(clList):
                 self.clust2SpecClus[clust] = (clListInd, clustInd)
 
+    def InteractsOrgiVac(self):
+        SiteSpecinteractList = collections.defaultdict(list)
+
+        for siteInd in range(self.Nsites):
+            for cl in [cl for clList in self.SpecClusters for cl in clList]:
+                if len(cl.SiteSpecs) < 2:  # don't need singletons
+                    continue
+                site, spec = cl.SiteSpecs[1]
+                interactSupInd = tuple(sorted([(self.sup.index(site.R, site.ci)[0], spec)
+                                               for site, spec in cl.SiteSpecs], key=lambda x: x[0]))
+                SiteSpecinteractList[(site, spec)].append([interactSupInd, cl, np.zeros(3, dtype=int)])
+
+        maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
+        SiteSpecinteractList.default_factory = None
+
+        return SiteSpecinteractList, maxinteractions
+
     def generateSiteSpecInteracts(self, NoTrans=False):
         """
         generate interactions for every site - for MC moves
