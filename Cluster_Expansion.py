@@ -243,20 +243,41 @@ class VectorClusterExpansion(object):
                 self.clust2SpecClus[clust] = (clListInd, clustInd)
 
     def InteractsOrgiVac(self):
-        SiteSpecinteractList = collections.defaultdict(list)
+        """
+        NOTE : only works for monoatomic lattices for now
+        """
+        allClusts = set()
+        symClusterList = []
 
-        for cl in [cl for clList in self.SpecClusters for cl in clList]:
-            if len(cl.SiteSpecs) < 2:  # don't need singletons
-                continue
-            site, spec = cl.SiteSpecs[1]
-            interactSupInd = tuple(sorted([(self.sup.index(site.R, site.ci)[0], spec)
-                                           for site, spec in cl.SiteSpecs], key=lambda x: x[0]))
-            SiteSpecinteractList[(site, spec)].append([interactSupInd, cl, np.zeros(3, dtype=int)])
+        siteA = cluster.ClusterSite(ci=(0, 0), R=np.zeros(self.crys.dim, dtype=int))
+        assert siteA == self.vacSite
+
+        for siteInd in range(self.Nsites):
+            ciSite, RSite = self.sup.ciR(siteInd)
+            cl = cluster.ClusterSite(ci=ciSite, R=RSite)
+            for spec in range(self.NSpec-1):
+                siteList = [siteA, cl]
+                specList = [self.NSpec - 1, spec]
+                SpCl = ClusterSpecies(specList, siteList, zero=self.zeroClusts)
+                if SpCl in allClusts:
+                    continue
+                # Apply group operations
+                newsymset = [ClusterSpecies.inSuperCell(SpCl.g(self.crys, g, zero=self.zeroClusts), self.N_units)
+                             for g in self.crys.G]
+                allClusts.update(newsymset)
+                symClusterList.append(newsymset)
+
+        SiteSpecinteractList = collections.defaultdict(list)
+        for clList in symClusterList:
+            for cl in clList:
+                site = cl.siteList[1]
+                spec = cl.specList[1]
+                SiteSpecinteractList[(site, spec)].append([((site, spec) for site, spec in zip(cl.siteList, cl.specList)),
+                                                      cl, np.zeros(self.crys.dim, dtype=int)])
 
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
-        SiteSpecinteractList.default_factory = None
 
-        return SiteSpecinteractList, maxinteractions
+        return symClusterList, SiteSpecinteractList, maxinteractions
 
     def generateSiteSpecInteracts(self, NoTrans=False):
         """
