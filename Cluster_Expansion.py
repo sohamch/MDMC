@@ -47,8 +47,7 @@ class ClusterSpecies():
             siteNew = cluster.ClusterSite(ci=site.ci, R=Rnew)
             siteList.append(siteNew)
             specList.append(spec)
-
-        return SpCl.__class__(siteList, specList, zero=SpCl.zero)
+        return SpCl.__class__(specList, siteList, zero=SpCl.zero)
 
 
     def strRep(self):
@@ -149,7 +148,7 @@ class VectorClusterExpansion(object):
                     if self.OrigVac:
                         if siteOcc[0] != self.vacSpec:
                             continue
-                    ClustSpec = ClusterSpecies(siteOcc, clust.sites, zero=self.zeroClusts)
+                    ClustSpec = ClusterSpecies.inSuperCell(ClusterSpecies(siteOcc, clust.sites, zero=self.zeroClusts), self.N_units)
                     # check if this has already been considered
                     if ClustSpec in allClusts:
                         continue
@@ -169,7 +168,8 @@ class VectorClusterExpansion(object):
                     newList = list(newSymSet)
                     symClusterList.append(newList)
 
-        return sorted(symClusterList, key=lambda sList:np.linalg.norm(sList[0].SiteSpecs[-1][0].R))
+        # return sorted(symClusterList, key=lambda sList:np.linalg.norm(sList[0].SiteSpecs[-1][0].R))
+        return symClusterList
 
     def genVecClustBasis(self, specClusters):
 
