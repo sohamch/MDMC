@@ -96,7 +96,34 @@ class VectorClusterExpansion(object):
         start = time.time()
         self.zeroClusts = zeroClusts
         self.OrigVac = OrigVac
-        self.SpecClusters = self.recalcClusters()
+
+        if OrigVac:
+            self.SpecClusters = self.recalcClusters()
+            self.SiteSpecInteractions, self.maxInteractCount = self.InteractsOrgiVac()
+
+        else:
+            self.SpecClusters = self.recalcClusters()
+            start = time.time()
+            if buildInteracts:
+                if NoTrans:
+                    self.SiteSpecInteractions, self.maxInteractCount, self.InteractSymListNoTrans, self.Interact2RepClustDict = \
+                        self.generateSiteSpecInteracts(NoTrans=True)
+                else:
+                    self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
+                # add a small check here - maybe we'll remove this later
+                print("Generated Interaction data {:.4f}".format(time.time() - start))
+
+                if NoTrans:
+                    start = time.time()
+                    self.InteractVecInteracts, self.InteractVecVecs, self.InteractSym2Vec, self.Interact2VecInteract = \
+                        self.VectorInteracts()
+                    print("Generated Interaction vector basis data {:.4f}".format(time.time() - start))
+            # Generate the transitions-based data structures - moved to KRAexpander
+            # self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
+            # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
+
+        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, Tclusexp, NSpec, Nvac, vacSite)
+
         print("Generated clusters with species: {:.4f}".format(time.time()-start))
         start = time.time()
         self.vecClus, self.vecVec, self.clus2LenVecClus = self.genVecClustBasis(self.SpecClusters)
@@ -108,30 +135,6 @@ class VectorClusterExpansion(object):
         self.indexClustertoVecClus()  # Index where in the vector cluster list a cluster is present
         self.indexClustertoSpecClus()  # Index clusters to symmetry groups
         print("Generated Indexing data {:.4f}".format(time.time() - start))
-
-        start = time.time()
-        if buildInteracts:
-            if NoTrans:
-                self.SiteSpecInteractions, self.maxInteractCount, self.InteractSymListNoTrans, self.Interact2RepClustDict =\
-                    self.generateSiteSpecInteracts(NoTrans=True)
-            else:
-                self.SiteSpecInteractions, self.maxInteractCount =self.generateSiteSpecInteracts()
-            # add a small check here - maybe we'll remove this later
-            print("Generated Interaction data {:.4f}".format(time.time() - start))
-
-            if NoTrans:
-                start = time.time()
-                self.InteractVecInteracts, self.InteractVecVecs, self.InteractSym2Vec, self.Interact2VecInteract =\
-                    self.VectorInteracts()
-                print("Generated Interaction vector basis data {:.4f}".format(time.time() - start))
-
-        if OrigVac:
-            self.SiteSpecInteractions, self.maxInteractCount = self.InteractsOrgiVac()
-
-        # Generate the transitions-based data structures - moved to KRAexpander
-        # self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
-        # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
-        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, Tclusexp, NSpec, Nvac, vacSite)
 
     def recalcClusters(self):
         """
