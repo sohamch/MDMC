@@ -161,8 +161,7 @@ class VectorClusterExpansion(object):
                     newList = list(newSymSet)
                     symClusterList.append(newList)
 
-        # return sorted(symClusterList, key=lambda sList:np.linalg.norm(sList[0].SiteSpecs[-1][0].R))
-        return symClusterList
+        return sorted(symClusterList, key=lambda sList:np.linalg.norm(sList[0].SiteSpecs[-1][0].R))
 
     def genVecClustBasis(self, specClusters):
 
@@ -192,7 +191,10 @@ class VectorClusterExpansion(object):
                 # The first cluster being the same helps in indexing
                 newVecList = [v]
                 for g in self.crys.G:
-                    cl1 = cl0.g(self.crys, g, zero=self.zeroClusts)
+                    if not self.OrigVac:
+                        cl1 = cl0.g(self.crys, g, zero=self.zeroClusts)
+                    else:
+                        cl1 = ClusterSpecies.inSuperCell(cl0.g(self.crys, g, zero=self.zeroClusts), self.N_units)
                     if cl1 in newClustList:
                         continue
                     newClustList.append(cl1)
