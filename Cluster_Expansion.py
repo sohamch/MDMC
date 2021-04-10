@@ -15,6 +15,7 @@ class ClusterSpecies():
             raise TypeError("The sites must be entered as clusterSite object instances")
         # Form (site, species) set
         # Calculate the translation to bring center of the sites to the origin unit cell
+        self.zero=zero
         self.specList = specList
         self.siteList = siteList
         if zero:
@@ -37,6 +38,19 @@ class ClusterSpecies():
     def g(self, crys, g, zero=True):
         return self.__class__(self.specList, [site.g(crys, g) for site in self.siteList], zero=zero)
 
+    @staticmethod
+    def inSuperCell(SpCl, N_units):
+        siteList = []
+        specList = []
+        for site, spec in SpCl.SiteSpecs:
+            Rnew = site.R % N_units
+            siteNew = cluster.ClusterSite(ci=site.ci, R=Rnew)
+            siteList.append(siteNew)
+            specList.append(spec)
+
+        return SpCl.__class__(siteList, specList, zero=SpCl.zero)
+
+
     def strRep(self):
         str= ""
         for site, spec in self.SiteSpecs:
@@ -55,7 +69,7 @@ class VectorClusterExpansion(object):
     class to expand velocities and rates in vector cluster functions.
     """
     def __init__(self, sup, clusexp, Tclusexp, jumpnetwork, NSpec, Nvac, vacSite, maxorder, maxorderTrans,
-                 buildInteracts=True, NoTrans=False, buildKRA=True, zeroClusts=True, OrigVac=False):
+                 buildInteracts=True, NoTrans=False, zeroClusts=True, OrigVac=False):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
@@ -66,6 +80,7 @@ class VectorClusterExpansion(object):
         """
         self.chem = 0  # we'll work with a monoatomic basis
         self.sup = sup
+        self.N_units = sup.superlatt[0, 0]
         self.Nsites = len(self.sup.mobilepos)
         self.crys = self.sup.crys
         # vacInd will always be the initial state in the transitions that we consider.
@@ -111,12 +126,13 @@ class VectorClusterExpansion(object):
                     self.VectorInteracts()
                 print("Generated Interaction vector basis data {:.4f}".format(time.time() - start))
 
+        if OrigVac:
+            self.SiteSpecInteractions, self.maxInteractCount = self.InteractsOrgiVac()
 
         # Generate the transitions-based data structures - moved to KRAexpander
         # self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
-        if buildKRA:
         # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
-            self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, Tclusexp, NSpec, Nvac, vacSite)
+        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, Tclusexp, NSpec, Nvac, vacSite)
 
     def recalcClusters(self):
         """
@@ -143,12 +159,17 @@ class VectorClusterExpansion(object):
                     if mobcount[self.vacSpec] > self.Nvac:
                         continue
                     # Otherwise, find all symmetry-grouped counterparts
-                    newSymSet = set([ClustSpec.g(self.crys, g, zero=self.zeroClusts) for g in self.crys.G])
+                    if self.OrigVac:
+                        newSymSet = set([ClusterSpecies.inSuperCell(ClustSpec.g(self.crys, g, zero=self.zeroClusts), self.N_units)
+                                         for g in self.crys.G])
+                    else:
+                        newSymSet = set([ClustSpec.g(self.crys, g, zero=self.zeroClusts) for g in self.crys.G])
+
                     allClusts.update(newSymSet)
                     newList = list(newSymSet)
                     symClusterList.append(newList)
 
-        return symClusterList
+        return sorted(symClusterList, key=lambda sList:np.linalg.norm(sList[0].SiteSpecs[-1][0].R))
 
     def genVecClustBasis(self, specClusters):
 
@@ -235,14 +256,13 @@ class VectorClusterExpansion(object):
     def InteractsOrgiVac(self):
         SiteSpecinteractList = collections.defaultdict(list)
 
-        for siteInd in range(self.Nsites):
-            for cl in [cl for clList in self.SpecClusters for cl in clList]:
-                if len(cl.SiteSpecs) < 2:  # don't need singletons
-                    continue
-                site, spec = cl.SiteSpecs[1]
-                interactSupInd = tuple(sorted([(self.sup.index(site.R, site.ci)[0], spec)
-                                               for site, spec in cl.SiteSpecs], key=lambda x: x[0]))
-                SiteSpecinteractList[(site, spec)].append([interactSupInd, cl, np.zeros(3, dtype=int)])
+        for cl in [cl for clList in self.SpecClusters for cl in clList]:
+            if len(cl.SiteSpecs) < 2:  # don't need singletons
+                continue
+            site, spec = cl.SiteSpecs[1]
+            interactSupInd = tuple(sorted([(self.sup.index(site.R, site.ci)[0], spec)
+                                           for site, spec in cl.SiteSpecs], key=lambda x: x[0]))
+            SiteSpecinteractList[(site, spec)].append([interactSupInd, cl, np.zeros(3, dtype=int)])
 
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
         SiteSpecinteractList.default_factory = None
