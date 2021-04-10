@@ -95,6 +95,10 @@ class VectorClusterExpansion(object):
         self.zeroClusts = zeroClusts
         self.OrigVac = OrigVac
 
+        if OrigVac and NoTrans:
+            NoTrans = False
+            raise RuntimeWarning("Vacancy Pairs to be constructed. Setting NoTrans to False")
+
         if OrigVac:
             self.SpecClusters, self.SiteSpecInteractions, self.maxInteractCount = self.InteractsOrgiVac()
         else:
@@ -108,7 +112,7 @@ class VectorClusterExpansion(object):
             # add a small check here - maybe we'll remove this later
 
         self.vecClus, self.vecVec, self.clus2LenVecClus = self.genVecClustBasis(self.SpecClusters)
-        if NoTrans:
+        if NoTrans and not OrigVac:
             self.InteractVecInteracts, self.InteractVecVecs, self.InteractSym2Vec, self.Interact2VecInteract = \
                 self.VectorInteracts()
             # Generate the transitions-based data structures - moved to KRAexpander
