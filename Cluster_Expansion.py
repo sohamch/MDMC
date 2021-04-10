@@ -171,9 +171,14 @@ class VectorClusterExpansion(object):
         for clListInd, clList in enumerate(specClusters):
             cl0 = clList[0]
             glist0 = []
-            for g in self.crys.G:
-                if cl0.g(self.crys, g, zero=self.zeroClusts) == cl0:
-                    glist0.append(g)
+            if not self.OrigVac:
+                for g in self.crys.G:
+                    if cl0.g(self.crys, g, zero=self.zeroClusts) == cl0:
+                        glist0.append(g)
+            else:
+                for g in self.crys.G:
+                    if ClusterSpecies.inSuperCell(cl0.g(self.crys, g, zero=self.zeroClusts), self.N_units) == cl0:
+                        glist0.append(g)
 
             G0 = sum([g.cartrot for g in glist0])/len(glist0)
             vals, vecs = np.linalg.eig(G0)
