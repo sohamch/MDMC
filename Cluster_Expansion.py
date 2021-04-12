@@ -97,7 +97,7 @@ class VectorClusterExpansion(object):
 
         if OrigVac and NoTrans:
             NoTrans = False
-            raise RuntimeWarning("Vacancy Pairs to be constructed. Setting NoTrans to False")
+            raise RuntimeWarning("Only Vacancy Pairs to be constructed. Setting NoTrans to False")
 
         if OrigVac:
             self.SpecClusters, self.SiteSpecInteractions, self.maxInteractCount = self.InteractsOrigVac()

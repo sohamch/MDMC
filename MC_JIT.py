@@ -771,6 +771,19 @@ class MCSamplerClass(object):
 
         return statesTrans, ratelist, Specdisps
 
+    def getLambda(self, offsc, NVclus):
+        lamb = np.zeros((NVclus, 3))
+        for interactInd in range(offsc.shape[0]):
+            if offsc[interactInd] == 0:
+                for vGInd in range(self.numVecsInteracts[interactInd]):
+                    vGroup = self.VecGroupInteracts[interactInd, vGInd]
+                    vec = self.VecsInteracts[interactInd, vGInd]
+                    lamb[vGroup, :] += vec
+        return lamb
+
+    def ExpandDirectLatGas(self, lamb1, lamb2):
+        pass
+
 
 KMC_additional_spec = [
     ("siteIndtoR", int64[:, :]),
