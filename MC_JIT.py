@@ -781,8 +781,19 @@ class MCSamplerClass(object):
                     lamb[vGroup, :] += vec
         return lamb
 
-    def ExpandDirectLatGas(self, lamb1, lamb2):
-        pass
+    def ExpandDirectLatGas(self, lamb1, lamb2, rate, dx, NVclus):
+        WBar = np.zeros((NVclus, NVclus))
+        bBar = np.zeros(NVclus)
+
+        del_lamb = lamb2 - lamb1
+
+        for i in range(NVclus):
+            bBar[i] = np.dot(dx, del_lamb[i])*rate
+            for j in range(NVclus):
+                WBar[i, j] = rate*np.dot(del_lamb[i], del_lamb[j])
+
+        return WBar, bBar
+
 
 
 KMC_additional_spec = [
