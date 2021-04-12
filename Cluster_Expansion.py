@@ -285,8 +285,10 @@ class VectorClusterExpansion(object):
             for cl in clList:
                 site = cl.siteList[1]
                 spec = cl.specList[1]
-                SiteSpecinteractList[(site, spec)].append([((site, spec) for site, spec in zip(cl.siteList, cl.specList)),
-                                                      cl, np.zeros(self.crys.dim, dtype=int)])
+                SiteSpecinteractList[(site, spec)].append([tuple((self.sup.index(ci=site.ci, R=site.R)[0], spec)
+                                                                 for site, spec in zip(cl.siteList, cl.specList)),
+                                                           cl, np.zeros(self.crys.dim, dtype=int)
+                                                           ])
 
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
 
