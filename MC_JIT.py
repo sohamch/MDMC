@@ -1105,6 +1105,51 @@ class KMC_JIT(object):
         # We also need to make sure that the symmetry cluster counts have been translated accordingly
         return X_steps, t_steps, jmpSelectSteps, jmpFinSiteList
 
+    def LatGasVacPairTraj(self, state, NSteps, jList, dxList, specRates):
+
+        NSpec = np.max(state) + 1
+        vacSiteInd = np.where(state == NSpec-1)[0][0]
+
+        XSteps = np.zeros((NSteps, NSpec, 3))
+        tSteps = np.zeros(NSteps)
+        jmpSteps = np.zeros(NSteps)
+
+        X = np.zeros((NSpec, 3))
+        t = 0
+
+        for step in range(NSteps):
+            # Get jump rates
+            rates = np.array([specRates[state[j]] for j in jList])
+            totalRate = np.sum(rates)
+            t += 1. / totalRate
+            tSteps[step] = t
+
+            # Select a jump
+            rates /= totalRate
+            rates_cm = np.cumsum(rates)
+            rn = np.random.rand()
+            jmpSelect = np.searchsorted(rates_cm, rn)
+            jmpSteps[step] = jmpSelect
+
+            # Update the displacements
+            vacNext = jList[jmpSelect]
+            specB = state[vacNext]
+
+            dx = dxList[jmpSelect]
+            X[NSpec - 1] += dx
+            X[specB] -= dx
+
+            XSteps[step, :, :] = X
+
+            # Now do the exchange
+            state[vacSiteInd] = state[vacNext]
+            state[jList[jmpSelect]] = NSpec - 1
+
+            # Now translate the state back
+            state = self.TranslateState(state, vacSiteInd, vacNext)
+
+        return XSteps, tSteps, jmpSteps
+
 # Here, we write a function that forms the shells
 def makeShells(MC_jit, KMC_jit, state0, offsc0, TSoffsc0, ijList, dxList, beta, Nsites, Nspec, Nshells=1):
     """
