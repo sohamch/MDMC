@@ -1037,10 +1037,18 @@ class KMC_JIT(object):
 
         return X_steps, t_steps
 
-    def LatGasTraj(self, state, symClassCounts, symCountsTotal, offsc, SpecRates, Nsteps, ijList, dxList, vacSiteInit):
+    def LatGasTraj(self, state, symClassCounts, symCountsTotal, offsc,
+                   SpecRates, Nsteps, ijList, dxList, vacSiteInit, NoSymCount=True):
+
         NSpec = SpecRates.shape[0] + 1
         X = np.zeros((NSpec, 3))
         t = 0.
+
+        # We don't need these if NoSymCounts is true
+        if NoSymCount:
+            symClassCounts = None
+            symCountsTotal = None
+            offsc = None
 
         X_steps = np.zeros((Nsteps, NSpec, 3))
         t_steps = np.zeros(Nsteps)
@@ -1094,7 +1102,15 @@ class KMC_JIT(object):
                     jmpFinSiteList[jmp] = self.RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
 
                 # Next, do the site swap to update the state
-                self.updateState(state, symClassCounts, symCountsTotal, offsc, vacSiteNow, siteB)
+                if NoSymCount:
+                    # just do the exchange
+                    temp = state[vacSiteNow]
+                    assert temp == NSpec - 1
+                    state[vacSiteNow] = state[siteB]
+                    state[siteB] = temp
+                else:
+                    # do a full update including offsitecounts
+                    self.updateState(state, symClassCounts, symCountsTotal, offsc, vacSiteNow, siteB)
 
                 vacSiteNow = siteB
 
@@ -1104,71 +1120,6 @@ class KMC_JIT(object):
         # After all the steps have been completed, we need to translate sites so that vacancy is back at the origin
         # We also need to make sure that the symmetry cluster counts have been translated accordingly
         return X_steps, t_steps, jmpSelectSteps, jmpFinSiteList
-
-    def LatGasVacPairTraj(self, state, NSteps, jList, dxList, specRates):
-
-        NSpec = np.max(state) + 1
-        vacSiteInd = np.where(state==NSpec-1)[0][0]
-
-        assert vacSiteInd == 0
-
-        XSteps = np.zeros((NSteps, NSpec, 3))
-        tSteps = np.zeros(NSteps)
-        jmpSteps = np.zeros(NSteps)
-
-        X = np.zeros((NSpec, 3))
-        t = 0
-
-        jmpFinSiteList = jList.copy()
-        vacSiteNow = vacSiteInd
-
-        for step in range(NSteps):
-            # Get jump rates
-            rates = np.array([specRates[state[j]] for j in jmpFinSiteList])
-            totalRate = np.sum(rates)
-            t += 1. / totalRate
-            tSteps[step] = t
-
-            # Select a jump
-            rates /= totalRate
-            rates_cm = np.cumsum(rates)
-            rn = np.random.rand()
-            jmpSelect = np.searchsorted(rates_cm, rn)
-            jmpSteps[step] = jmpSelect
-
-            # Update the displacements
-            # vacNext = jList[jmpSelect]
-            # specB = state[vacNext]
-            #
-            # dx = dxList[jmpSelect]
-            # X[NSpec - 1] += dx
-            # X[specB] -= dx
-            X[NSpec - 1, :] += dxList[jmpSelect]
-            siteB = jmpFinSiteList[jmpSelect]
-            specB = state[siteB]
-            X[specB, :] -= dxList[jmpSelect]
-
-            XSteps[step, :, :] = X
-
-            dR = self.siteIndtoR[siteB] - self.siteIndtoR[vacSiteInd]  # the jump sites are built around vacSiteInit
-
-            # Update the final jump sites
-            for jmp in range(jmpFinSiteList.shape[0]):
-                RfinSiteNew = (dR + self.siteIndtoR[jList[jmp]]) % self.N_unit  # This returns element wise modulo when N_unit is an
-                # array instead of an integer.
-
-                jmpFinSiteList[jmp] = self.RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
-
-
-            # Now do the exchange
-            temp = state[vacSiteNow]
-            assert temp == NSpec - 1
-            state[vacSiteNow] = state[siteB]
-            state[siteB] = temp
-
-            vacSiteNow = siteB
-
-        return XSteps, tSteps, jmpSteps
 
 # Here, we write a function that forms the shells
 def makeShells(MC_jit, KMC_jit, state0, offsc0, TSoffsc0, ijList, dxList, beta, Nsites, Nspec, Nshells=1):
