@@ -1119,9 +1119,12 @@ class KMC_JIT(object):
         X = np.zeros((NSpec, 3))
         t = 0
 
+        jmpFinSiteList = jList.copy()
+        vacSiteNow = vacSiteInd
+
         for step in range(NSteps):
             # Get jump rates
-            rates = np.array([specRates[state[j]] for j in jList])
+            rates = np.array([specRates[state[j]] for j in jmpFinSiteList])
             totalRate = np.sum(rates)
             t += 1. / totalRate
             tSteps[step] = t
@@ -1134,22 +1137,36 @@ class KMC_JIT(object):
             jmpSteps[step] = jmpSelect
 
             # Update the displacements
-            vacNext = jList[jmpSelect]
-            specB = state[vacNext]
-
-            dx = dxList[jmpSelect]
-            X[NSpec - 1] += dx
-            X[specB] -= dx
+            # vacNext = jList[jmpSelect]
+            # specB = state[vacNext]
+            #
+            # dx = dxList[jmpSelect]
+            # X[NSpec - 1] += dx
+            # X[specB] -= dx
+            X[NSpec - 1, :] += dxList[jmpSelect]
+            siteB = jmpFinSiteList[jmpSelect]
+            specB = state[siteB]
+            X[specB, :] -= dxList[jmpSelect]
 
             XSteps[step, :, :] = X
 
-            # Now do the exchange
-            state[vacSiteInd] = state[vacNext]
-            state[vacNext] = NSpec - 1
+            dR = self.siteIndtoR[siteB] - self.siteIndtoR[vacSiteInd]  # the jump sites are built around vacSiteInit
 
-            # Now translate the state back
-            stateTrans = self.TranslateState(state, vacSiteInd, vacNext)
-            state[:] = stateTrans[:]
+            # Update the final jump sites
+            for jmp in range(jmpFinSiteList.shape[0]):
+                RfinSiteNew = (dR + self.siteIndtoR[jList[jmp]]) % self.N_unit  # This returns element wise modulo when N_unit is an
+                # array instead of an integer.
+
+                jmpFinSiteList[jmp] = self.RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
+
+
+            # Now do the exchange
+            temp = state[vacSiteNow]
+            assert temp == NSpec - 1
+            state[vacSiteNow] = state[siteB]
+            state[siteB] = temp
+
+            vacSiteNow = siteB
 
         return XSteps, tSteps, jmpSteps
 
