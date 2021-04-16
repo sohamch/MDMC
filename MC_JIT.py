@@ -1108,7 +1108,9 @@ class KMC_JIT(object):
     def LatGasVacPairTraj(self, state, NSteps, jList, dxList, specRates):
 
         NSpec = np.max(state) + 1
-        vacSiteInd = np.where(state == NSpec-1)[0][0]
+        vacSiteInd = np.where(state==NSpec-1)[0][0]
+
+        assert vacSiteInd == 0
 
         XSteps = np.zeros((NSteps, NSpec, 3))
         tSteps = np.zeros(NSteps)
@@ -1143,10 +1145,11 @@ class KMC_JIT(object):
 
             # Now do the exchange
             state[vacSiteInd] = state[vacNext]
-            state[jList[jmpSelect]] = NSpec - 1
+            state[vacNext] = NSpec - 1
 
             # Now translate the state back
-            state = self.TranslateState(state, vacSiteInd, vacNext)
+            stateTrans = self.TranslateState(state, vacSiteInd, vacNext)
+            state[:] = stateTrans[:]
 
         return XSteps, tSteps, jmpSteps
 
