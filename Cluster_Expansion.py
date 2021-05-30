@@ -9,6 +9,12 @@ import time
 class ClusterSpecies():
 
     def __init__(self, specList, siteList, zero=True):
+        """
+        Creation to represent clusters from site Lists and species lists
+        :param specList: Species lists
+        :param siteList: Sites which the species occupy. Must be ClusterSite object from Onsager (D.R. Trinkle)
+        :param zero: Whether to make the centroid of the sites at zero or not.
+        """
         if len(specList)!= len(siteList):
             raise ValueError("Species and site lists must have same length")
         if not all(isinstance(site, cluster.ClusterSite) for site in siteList):
@@ -67,14 +73,21 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, Tclusexp, jumpnetwork, NSpec, Nvac, vacSite, maxorder, maxorderTrans,
+    def __init__(self, sup, clusexp, Tclusexp, jumpnetwork, NSpec, vacSite, maxorder, maxorderTrans,
                  NoTrans=False, zeroClusts=True, OrigVac=False):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
-        :param mobCountList - list of number of each species in the supercell.
-        :param vacSite - the site of the vacancy as a clusterSite object. This does not change during the simulation.
-        :param maxorder - the maximum order of a cluster in our cluster expansion.
+        :param Tclusexp: Transition state cluster expansion
+        :param jumpnetwork: the single vacancy jump network in the lattice used to construct sup
+        :param NSpec: no. of species to consider (including vacancies)
+        :param vacSite: Index of the vacancy site (used in MC sampling and JIT construction)
+        :param vacSite: the site of the vacancy as a clusterSite object. This does not change during the simulation.
+        :param maxorder: the maximum order of a cluster in clusexp.
+        :param maxorderTrans: the maximum order of a transition state cluster
+        :param NoTrans: Whether interactions related by lattice translations should be considered equivalent (yes if false)
+        :param zeroClusts: Same as parameter "zero" of ClusterSpecies class - whether to bring a cluster's centroid to zero or not.
+        :param OrigVac: only vacancy-atom pairs with the vacancy at the centre will be considered. This will not use clusexp.
         In this type of simulations, we consider a solid with a single wyckoff set on which atoms are arranged.
         """
         self.chem = 0  # we'll work with a monoatomic basis
@@ -87,7 +100,7 @@ class VectorClusterExpansion(object):
         self.Tclusexp = Tclusexp
         self.maxOrder = maxorder
         self.vacSpec = NSpec - 1
-        self.Nvac = Nvac
+        self.Nvac = 1
         self.NSpec = NSpec
         self.mobList = list(range(NSpec))
         self.vacSite = vacSite  # This stays fixed throughout the simulation, so makes sense to store it.
@@ -119,7 +132,7 @@ class VectorClusterExpansion(object):
             # self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
             # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
 
-        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, Tclusexp, NSpec, Nvac, vacSite)
+        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, Tclusexp, NSpec, self.Nvac, vacSite)
 
         self.IndexClusters()  #  assign integer identifiers to each cluster
         self.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
@@ -309,7 +322,7 @@ class VectorClusterExpansion(object):
             # Now, go through all the clusters
             for cl in [cl for clist in self.SpecClusters for cl in clist]:
                 for site, spec in cl.SiteSpecs:
-                    if site.ci == ci: # In our case we have only one chemistry.
+                    if site.ci == ci:
                         Rtrans = R - site.R
                         interact = tuple([(cluster.ClusterSite(R=site.R+Rtrans, ci=site.ci), spec)
                                           for site, spec in cl.SiteSpecs])
