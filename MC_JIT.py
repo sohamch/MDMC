@@ -1044,12 +1044,6 @@ class KMC_JIT(object):
         X = np.zeros((NSpec, 3))
         t = 0.
 
-        # We don't need these if NoSymCounts is true
-        if NoSymCount:
-            symClassCounts = None
-            symCountsTotal = None
-            offsc = None
-
         X_steps = np.zeros((Nsteps, NSpec, 3))
         t_steps = np.zeros(Nsteps)
 
