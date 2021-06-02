@@ -125,9 +125,6 @@ class VectorClusterExpansion(object):
             # add a small check here - maybe we'll remove this later
 
         self.vecClus, self.vecVec, self.clus2LenVecClus = self.genVecClustBasis(self.SpecClusters)
-        if NoTrans and not OrigVac:
-            self.InteractVecInteracts, self.InteractVecVecs, self.InteractSym2Vec, self.Interact2VecInteract = \
-                self.VectorInteracts()
             # Generate the transitions-based data structures - moved to KRAexpander
             # self.ijList, self.dxList, self.clustersOn, self.clustersOff = self.GetTransActiveClusts(self.jumpnetwork)
             # Generate the complete cluster basis including the arrangement of species on sites other than the vacancy site.
@@ -138,6 +135,10 @@ class VectorClusterExpansion(object):
         self.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
         self.indexClustertoVecClus()  # Index where in the vector cluster list a cluster is present
         self.indexClustertoSpecClus()  # Index clusters to symmetry groups
+
+        if NoTrans and not OrigVac:
+            self.InteractVecInteracts, self.InteractVecVecs, self.InteractSym2Vec, self.Interact2VecInteract = \
+                self.VectorInteracts()
 
     def recalcClusters(self):
         """
