@@ -172,7 +172,7 @@ class SymNet(nn.Module):
         In = pt.gather(In, 2, NNRepeat)
         return In
     
-    def G_conv(layer, out, UseShellWeights, Test, InLayer, outlayers, outlayersG):
+    def G_conv(layer, out, InLayer, outlayers, outlayersG, Test=False):
         
         
         Psi = self.GWeights[layer]
@@ -201,7 +201,7 @@ class SymNet(nn.Module):
         
         return out
     
-    def forward(self, InStates, UseShellWeights=True, Test=False):
+    def forward(self, InStates, Test=False):
         """
         :param InStates : input states with shape (N_batch, Nch, Nsites)
         """
@@ -217,7 +217,7 @@ class SymNet(nn.Module):
         
         # Now do the scalar kernel convolutions
         for layer in range(self.Nlayers):
-            out = self.G_conv(layer, out, UseShellWeights, Test, InLayer, outlayers, outlayersG)
+            out = self.G_conv(layer, out, InLayer, outlayers, outlayersG, Test=Test)
         
         # Finally, do the R3 convolution
         # out should now have the shape (N_batch, N_ngb, Nsites)
@@ -226,8 +226,7 @@ class SymNet(nn.Module):
         # Then group average
         out = pt.sum(out, dim=1)/self.Ng
         
-        if UseShellWeights:
-            out = out*self.SiteShellWeights
+        out = out*self.SiteShellWeights
         
         outVecSites = out.clone().data
         
