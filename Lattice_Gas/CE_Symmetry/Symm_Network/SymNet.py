@@ -172,6 +172,35 @@ class SymNet(nn.Module):
         In = pt.gather(In, 2, NNRepeat)
         return In
     
+    def G_conv(layer, out, UseShellWeights, Test, InLayer, outlayers, outlayersG):
+        
+        
+        Psi = self.GWeights[layer]
+        bias = self.Gbias[layer]
+
+        NchOut = self.NchOutLayers[layer]
+
+        if Test:
+            InLayer.append(out.clone().detach().data)
+
+
+        # do the convolution
+        out = self.activation((pt.matmul(Psi, out) + bias)).view(Nbatch, NchOut, self.Ng, NSites)
+
+        if Test:
+            outlayersG.append(out.clone().detach().data)
+
+        # do the group averaging
+        out = pt.sum(out, dim=2)/self.Ng
+
+        if Test:
+            outlayers.append(out.clone().detach().data)
+
+        # Rearrange input for the next layer
+        out = self.RearrangeToInput(out)
+        
+        return out
+    
     def forward(self, InStates, UseShellWeights=True, Test=False):
         """
         :param InStates : input states with shape (N_batch, Nch, Nsites)
@@ -188,31 +217,7 @@ class SymNet(nn.Module):
         
         # Now do the scalar kernel convolutions
         for layer in range(self.Nlayers):
-            
-            # Get the weights and biases
-            Psi = self.GWeights[layer]
-            bias = self.Gbias[layer]
-            
-            NchOut = self.NchOutLayers[layer]
-            
-            if Test:
-                InLayer.append(out.clone().detach().data)
-            
-            
-            # do the convolution
-            out = self.activation((pt.matmul(Psi, out) + bias)).view(Nbatch, NchOut, self.Ng, NSites)
-            
-            if Test:
-                outlayersG.append(out.clone().detach().data)
-            
-            # do the group averaging
-            out = pt.sum(out, dim=2)/self.Ng
-            
-            if Test:
-                outlayers.append(out.clone().detach().data)
-            
-            # Rearrange input for the next layer
-            out = self.RearrangeToInput(out)
+            out = self.G_conv(layer, out, UseShellWeights, Test, InLayer, outlayers, outlayersG)
         
         # Finally, do the R3 convolution
         # out should now have the shape (N_batch, N_ngb, Nsites)
