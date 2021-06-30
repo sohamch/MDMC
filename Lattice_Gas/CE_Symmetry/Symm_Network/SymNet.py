@@ -75,7 +75,7 @@ class SymNet(nn.Module):
         self.weightList = nn.ParameterList([])
         self.biasList = nn.ParameterList([])
         # define weights first
-        for layer in range(Nlayers):
+        for layer in range(self.Nlayers):
             if layer == 0:
                 # Layer 0 processes the input state
                 NchIn = 1
