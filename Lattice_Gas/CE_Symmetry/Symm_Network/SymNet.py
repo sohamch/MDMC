@@ -172,7 +172,7 @@ class SymNet(nn.Module):
         In = pt.gather(In, 2, NNRepeat)
         return In
     
-    def G_conv(layer, out, InLayer, outlayers, outlayersG, Test=False):
+    def G_conv(layer, out, InLayer, outlayers, outlayersG, Test):
         
         
         Psi = self.GWeights[layer]
@@ -205,6 +205,7 @@ class SymNet(nn.Module):
         """
         :param InStates : input states with shape (N_batch, Nch, Nsites)
         """
+        t = Test
         Nbatch = InStates.shape[0]
         NSites = InStates.shape[2]
         # Expand to include nearest neighbors
@@ -217,7 +218,7 @@ class SymNet(nn.Module):
         
         # Now do the scalar kernel convolutions
         for layer in range(self.Nlayers):
-            out = self.G_conv(layer, out, InLayer, outlayers, outlayersG, Test=Test)
+            out = self.G_conv(layer, out, InLayer, outlayers, outlayersG, t)
         
         # Finally, do the R3 convolution
         # out should now have the shape (N_batch, N_ngb, Nsites)
