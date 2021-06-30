@@ -170,6 +170,8 @@ class SymNet(nn.Module):
         In = In.repeat_interleave(self.N_ngb, dim=1)
         NNRepeat = self.NNSites.unsqueeze(0).repeat(In.shape[0], Nch, 1)
         In = pt.gather(In, 2, NNRepeat)
+        del(NNRepeat)
+        pt.cuda.empty_cache()
         return In
     
     def G_conv(self, layer, out, Nbatch, NSites, InLayer, outlayers, outlayersG, Test=False):
