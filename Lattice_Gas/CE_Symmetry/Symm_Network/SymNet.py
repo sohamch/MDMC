@@ -166,7 +166,7 @@ class SymNet(nn.Module):
 #         pt.cuda.empty_cache()
         return In
     
-    def G_conv(self, layer, out, Nbatch, NSites, InLayer, outlayers, outlayersG, Test=False):
+    def G_conv(self, layer, In, Nbatch, NSites, InLayer, outlayers, Test=False):
         
         
         Psi = self.GWeights[layer]
@@ -175,25 +175,25 @@ class SymNet(nn.Module):
         NchOut = self.NchOutLayers[layer]
 
         if Test:
-            InLayer.append(out.clone().detach().data)
+            InLayer.append(In.clone().detach().data)
 
 
         # do the convolution
-        out = self.activation((pt.matmul(Psi, out) + bias)).view(Nbatch, NchOut, self.Ng, NSites)
+        out = pt.sum(self.activation((pt.matmul(Psi, In) + bias)).view(Nbatch, NchOut, self.Ng, NSites), dim=2)/self.Ng
 
-        if Test:
-            outlayersG.append(out.clone().detach().data)
+#         if Test:
+#             outlayersG.append(out.clone().detach().data)
 
-        # do the group averaging
-        out = pt.sum(out, dim=2)/self.Ng
+#         # do the group averaging
+#         out = pt.sum(out, dim=2)/self.Ng
 
         if Test:
             outlayers.append(out.clone().detach().data)
 
         # Rearrange input for the next layer
-        out = self.RearrangeToInput(out)
+#         out = self.RearrangeToInput(out)
         
-        return out
+        return self.RearrangeToInput(out)
     
     def forward(self, InStates, Test=False):
         """
@@ -205,13 +205,12 @@ class SymNet(nn.Module):
         out = self.RearrangeToInput(InStates)
         
         outlayers = []
-        outlayersG = []
         
         InLayer = []
         
         # Now do the scalar kernel convolutions
         for layer in range(self.Nlayers):
-            out = self.G_conv(layer, out, Nbatch, NSites, InLayer, outlayers, outlayersG, Test=Test)
+            out = self.G_conv(layer, out, Nbatch, NSites, InLayer, outlayers, Test=Test)
         
         # Finally, do the R3 convolution
         # out should now have the shape (N_batch, N_ngb, Nsites)
@@ -228,7 +227,7 @@ class SymNet(nn.Module):
         out = pt.sum(out, dim=2)/NSites
         
         if Test:
-            return InLayer, outlayersG, outlayers, outVecSites, out 
+            return InLayer, outlayers, outVecSites, out 
         
         return out
 
