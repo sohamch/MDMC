@@ -59,15 +59,7 @@ class SymNet(nn.Module):
         
         self.NchOutLayers = NchOutLayers
         self.GDict = GDict
-        self.dim = dim
-        
-#         # Create the block diagonal group matrix for transforming the R3 layer filters
-#         self.gdiags = pt.zeros(self.Ng*self.dim, self.Ng*self.dim).double()
-#         for gInd, g in GDict.items():
-#             rowStart = gInd * self.dim
-#             rowEnd = (gInd + 1) * self.dim
-#             self.gdiags[rowStart : rowEnd, rowStart : rowEnd] = pt.tensor(g.cartrot).double()
-        
+        self.dim = dim        
         
         if self.NchOutLayers[-1] != 1:
             raise ValueError("The last conv layer must output a single channel")
