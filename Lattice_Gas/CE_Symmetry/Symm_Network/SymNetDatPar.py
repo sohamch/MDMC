@@ -41,8 +41,11 @@ class SymNetDP(nn.Module):
         
         # gather everything into buffers
         
-        self.register_buffer("Ng", pt.tensor(len(NchOutLayers)))
-#         self.Nlayers = len(NchOutLayers) 
+        self.register_buffer("Nlayers", pt.tensor(len(NchOutLayers)))
+#         self.Nlayers = len(NchOutLayers)
+
+        self.register_buffer("NchOutLayers", pt.tensor(NchOutLayers))
+#         self.NchOutLayers = NchOutLayers
         
         self.register_buffer("GnnPerms", GnnPerms)
 #         self.GnnPerms = GnnPerms
@@ -53,25 +56,21 @@ class SymNetDP(nn.Module):
         self.register_buffer("Ng", pt.tensor(GnnPerms.shape[0]))
 #         self.Ng = GnnPerms.shape[0]
         
-        self.register_buffer("N_ngb", N_ngb)
+        self.register_buffer("N_ngb", pt.tensor(N_ngb))
 #         self.N_ngb = GnnPerms.shape[1]
         
-        self.register_buffer("NNsites", NNSites)
+        self.register_buffer("NNsites", pt.tensor(NNSites))
 #         self.NNSites = NNSites
         
         NNToRepeat = NNSites.unsqueeze(0)
         self.register_buffer("NNToRepeat", NNToRepeat)
-        
         self.register_buffer("Nsites", pt.tensor(NNSites.shape[1]))
         
         if SitesToShells.shape[0] != self.Nsites:
             raise ValueError("Site to shell indexing is not correct")
-        
-        self.register_buffer("NchOutLayers", pt.tensor(NchOutLayers))
-#         self.NchOutLayers = NchOutLayers
 
 #         self.dim = dim
-        self.register_buffer("dim", dim)
+        self.register_buffer("dim", pt.tensor(dim))
         
         if self.NchOutLayers[-1] != 1:
             raise ValueError("The last conv layer must output a single channel")
@@ -104,12 +103,11 @@ class SymNetDP(nn.Module):
         
         self.register_buffer("SitesToShells", SitesToShells)
         self.register_parameter("ShellWeights", ShellWeights)
-        
+    
     def RotateParams(self):
         """
         Constructs symmetrically rotated weight matrices
         """
-#         print(len(self.weightList))
         self.GWeights = []
         self.Gbias = []
         
@@ -152,6 +150,7 @@ class SymNetDP(nn.Module):
         # Repeat the shell indices
         self.SiteShellWeights = self.ShellWeights[self.SitesToShells]
     
+    
     def RearrangeToInput(self, In):
         """
         Takes the output of a layer and rearranges it into a suitable output
@@ -175,6 +174,7 @@ class SymNetDP(nn.Module):
         In = pt.gather(In, 2, NNRepeat)
         return In
     
+    
     def G_conv(self, layer, In, NSites):
         
         Psi = self.GWeights[layer]
@@ -183,15 +183,12 @@ class SymNetDP(nn.Module):
         Nbatch = In.shape[0]
         NchOut = self.NchOutLayers[layer]
 
-        if Test:
-            InLayer.append(In.clone().detach().data)
-
-
         # do the convolution + group averaging
         out = pt.sum(F.softplus((pt.matmul(Psi, In) + bias)).view(Nbatch, NchOut, self.Ng, NSites), dim=2)/self.Ng
 
         # Rearrange input for the next layer        
         return self.RearrangeToInput(out)
+    
     
     def forward(self, InStates):
         """
@@ -201,6 +198,7 @@ class SymNetDP(nn.Module):
         
         Nbatch = InStates.shape[0]
         NSites = InStates.shape[2]
+        
         # Expand to include nearest neighbors
         out = self.RearrangeToInput(InStates, 0)
         
