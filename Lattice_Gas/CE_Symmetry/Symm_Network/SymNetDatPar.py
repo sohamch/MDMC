@@ -13,7 +13,7 @@ import torch.nn.functional as F
 
 
 class SymNetDP(nn.Module):
-    def __init__(self, NchOutLayers, GnnPerms, GDict, gdiags, NNSites,
+    def __init__(self, NchOutLayers, GnnPerms, gdiags, NNSites,
                  SitesToShells, dim, mean, std, act="softplus"):
         """               
         :param NchOutLayers : no. of output channels of each layer
@@ -21,14 +21,9 @@ class SymNetDP(nn.Module):
         :param GnnPerms : the permutation of nearest neighbor vectors due to group operations.
                 This will be used to rotate the filters.
         
-        :param Gdict : contains the cartesian rotation matrix of each group operation, with
-                Indices assigned to each group op. Format: {Index : g}
-                Note : every "i^th" row of GnnPerms must correspond to the Group operation 
-                with index "i" in GDict.
-        
         :param gdiags : block diagonal matrix, containing the cartesian rotation matrices
-                        of group operations in the diagonal block from the top left as given
-                        by the index of the group operation in GDict
+                        of group operations in the diagonal block from the top left. Must be
+                        consistent with GnnPerms
         
         :param NNSites : contains nearest neighbor indices of each site. Sites go along the 
                          columns of the first row, and nn sites of each site appear in the 
@@ -64,7 +59,7 @@ class SymNetDP(nn.Module):
         self.register_buffer("NNsites", NNSites)
 #         self.NNSites = NNSites
         
-        NNToRepeat = self.NNSites.unsqueeze(0)
+        NNToRepeat = NNSites.unsqueeze(0)
         self.register_buffer("NNToRepeat", NNToRepeat)
         
         self.register_buffer("Nsites", pt.tensor(NNSites.shape[1]))
@@ -72,11 +67,11 @@ class SymNetDP(nn.Module):
         if SitesToShells.shape[0] != self.Nsites:
             raise ValueError("Site to shell indexing is not correct")
         
-        self.SitesToShells = SitesToShells
-        
-        self.NchOutLayers = NchOutLayers
-        self.GDict = GDict
-        self.dim = dim        
+        self.register_buffer("NchOutLayers", pt.tensor(NchOutLayers))
+#         self.NchOutLayers = NchOutLayers
+
+#         self.dim = dim
+        self.register_buffer("dim", dim)
         
         if self.NchOutLayers[-1] != 1:
             raise ValueError("The last conv layer must output a single channel")
@@ -116,7 +111,7 @@ class SymNetDP(nn.Module):
         """
         Constructs symmetrically rotated weight matrices
         """
-        print(len(self.weightList))
+#         print(len(self.weightList))
         self.GWeights = []
         self.Gbias = []
         
@@ -182,12 +177,12 @@ class SymNetDP(nn.Module):
         In = pt.gather(In, 2, NNRepeat)
         return In
     
-    def G_conv(self, layer, In, Nbatch, NSites, InLayer, outlayers, Test=False):
-        
+    def G_conv(self, layer, In, NSites, InLayer, outlayers, Test=False):
         
         Psi = self.GWeights[layer]
         bias = self.Gbias[layer]
-
+        
+        Nbatch = In.shape[0]
         NchOut = self.NchOutLayers[layer]
 
         if Test:
