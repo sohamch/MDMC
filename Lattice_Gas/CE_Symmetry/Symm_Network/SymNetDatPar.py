@@ -13,7 +13,7 @@ import torch.nn.functional as F
 
 
 class SymNetDP(nn.Module):
-    def __init__(self, NchOutLayers, N_batch, GnnPerms, GDict, gdiags, NNSites,
+    def __init__(self, NchOutLayers, GnnPerms, GDict, gdiags, NNSites,
                  SitesToShells, dim, mean, std, act="softplus"):
         """               
         :param NchOutLayers : no. of output channels of each layer
@@ -94,29 +94,6 @@ class SymNetDP(nn.Module):
             
             self.register_parameter("Psi_{}".format(layer), Layerweights)
             self.register_parameter("bias_{}".format(layer), LayerBias)
-            
-            
-        
-#         weightList = []
-#         biasList = []
-#         # define weights first
-#         for layer in range(self.Nlayers):
-#             if layer == 0:
-#                 # Layer 0 processes the input state
-#                 NchIn = 1
-#             else:
-#                 NchIn = NchOutLayers[layer-1]
-            
-#             Layerweights = pt.normal(mean, std, size=(NchOutLayers[layer], NchIn, self.N_ngb),
-#                                      requires_grad=True).double()
-#             LayerBias = pt.normal(mean, std, size=(NchOutLayers[layer], 1)).double()
-            
-            
-#             weightList.append(nn.Parameter(Layerweights))
-#             biasList.append(nn.Parameter(LayerBias))
-        
-#         self.weightList = nn.ParameterList(weightList)
-#         self.biasList = nn.ParameterList(biasList)
         
         # Now make the last vector conv layer
         wtVC = nn.Parameter(pt.normal(mean, std, size=(self.dim, self.N_ngb),
@@ -130,6 +107,7 @@ class SymNetDP(nn.Module):
         ShellWeights = nn.Parameter(pt.normal(mean, std, size=(Nshells,)
                                                    ,requires_grad = True).double())
         
+        self.register_buffer("SitesToShells", SitesToShells)
         self.register_parameter("ShellWeights", ShellWeights)
         
         self.activation = F.relu if act=="relu" else F.softplus
@@ -179,9 +157,9 @@ class SymNetDP(nn.Module):
         self.wtVC_repeat_transf = pt.matmul(self.gdiags, pt.gather(wtVC_repeat, 1, GnnPerm_repeat))
         
         # Repeat the shell indices
-        SiteShellWeights = self.ShellWeights[self.SitesToShells]
+        self.SiteShellWeights = self.ShellWeights[self.SitesToShells]
     
-    def RearrangeToInput(self, In, layer):
+    def RearrangeToInput(self, In):
         """
         Takes the output of a layer and rearranges it into a suitable output
         for the next layer.
