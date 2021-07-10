@@ -14,7 +14,7 @@ import torch.nn.functional as F
 
 class SymNetDP(nn.Module):
     def __init__(self, NchOutLayers, GnnPerms, gdiags, NNSites,
-                 SitesToShells, dim, mean, std, act="softplus"):
+                 SitesToShells, dim, mean, std):
         """               
         :param NchOutLayers : no. of output channels of each layer
         
@@ -105,8 +105,6 @@ class SymNetDP(nn.Module):
         self.register_buffer("SitesToShells", SitesToShells)
         self.register_parameter("ShellWeights", ShellWeights)
         
-        self.activation = F.relu if act=="relu" else F.softplus
-        
     def RotateParams(self):
         """
         Constructs symmetrically rotated weight matrices
@@ -190,7 +188,7 @@ class SymNetDP(nn.Module):
 
 
         # do the convolution
-        out = pt.sum(self.activation((pt.matmul(Psi, In) + bias)).view(Nbatch, NchOut, self.Ng, NSites), dim=2)/self.Ng
+        out = pt.sum(F.softplus((pt.matmul(Psi, In) + bias)).view(Nbatch, NchOut, self.Ng, NSites), dim=2)/self.Ng
 
 #         if Test:
 #             outlayersG.append(out.clone().detach().data)
@@ -206,7 +204,7 @@ class SymNetDP(nn.Module):
         
         return self.RearrangeToInput(out, layer+1)
     
-    def forward(self, InStates, Test=False):
+    def forward(self, InStates):
         """
         :param InStates : input states with shape (N_batch, Nch, Nsites)
         """
@@ -217,13 +215,9 @@ class SymNetDP(nn.Module):
         # Expand to include nearest neighbors
         out = self.RearrangeToInput(InStates, 0)
         
-        outlayers = []
-        
-        InLayer = []
-        
         # Now do the scalar kernel convolutions
         for layer in range(self.Nlayers):
-            out = self.G_conv(layer, out, Nbatch, NSites, InLayer, outlayers, Test=Test)
+            out = self.G_conv(layer, out, NSites, InLayer, outlayers, Test=Test)
         
         # Finally, do the R3 convolution
         # out should now have the shape (N_batch, N_ngb, Nsites)
@@ -234,13 +228,8 @@ class SymNetDP(nn.Module):
         
         out = out*self.SiteShellWeights
         
-        outVecSites = out.clone().data
-        
         # Then site average
         out = pt.sum(out, dim=2)/NSites
-        
-        if Test:
-            return InLayer, outlayers, outVecSites, out 
         
         return out
 
