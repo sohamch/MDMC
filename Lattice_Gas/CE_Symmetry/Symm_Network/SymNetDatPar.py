@@ -44,13 +44,30 @@ class SymNetDP(nn.Module):
         """
         super().__init__()
         
-        self.Nlayers = len(NchOutLayers)
-        self.GnnPerms = GnnPerms
-        self.gdiags = gdiags
-        self.Ng = GnnPerms.shape[0]
-        self.N_ngb = GnnPerms.shape[1]
-        self.NNSites = NNSites
-        self.Nsites = NNSites.shape[1]
+        # gather everything into buffers
+        
+        self.register_buffer("Ng", pt.tensor(len(NchOutLayers)))
+#         self.Nlayers = len(NchOutLayers) 
+        
+        self.register_buffer("GnnPerms", GnnPerms)
+#         self.GnnPerms = GnnPerms
+        
+        self.register_buffer("gdiags", pt.tensor(GnnPerms.shape[0]))
+#         self.gdiags = gdiags
+        
+        self.register_buffer("Ng", pt.tensor(GnnPerms.shape[0]))
+#         self.Ng = GnnPerms.shape[0]
+        
+        self.register_buffer("N_ngb", N_ngb)
+#         self.N_ngb = GnnPerms.shape[1]
+        
+        self.register_buffer("NNsites", NNSites)
+#         self.NNSites = NNSites
+        
+        NNToRepeat = self.NNSites.unsqueeze(0)
+        self.register_buffer("NNToRepeat", NNToRepeat)
+        
+        self.register_buffer("Nsites", pt.tensor(NNSites.shape[1]))
         
         if SitesToShells.shape[0] != self.Nsites:
             raise ValueError("Site to shell indexing is not correct")
@@ -117,10 +134,6 @@ class SymNetDP(nn.Module):
         
         self.activation = F.relu if act=="relu" else F.softplus
         
-        NNToRepeat = self.NNSites.unsqueeze(0)
-        
-        self.register_buffer("NNToRepeat", NNToRepeat)
-        
     def RotateParams(self):
         """
         Constructs symmetrically rotated weight matrices
@@ -129,12 +142,14 @@ class SymNetDP(nn.Module):
         self.GWeights = []
         self.Gbias = []
         
-        for Idx, weight in enumerate(self.weightList):
+        for Idx in range(self.Nlayers):
             
             # First, get the input and output channels
             NchIn = 1 if Idx == 0 else self.NchOutLayers[Idx-1]
             NchOut = self.NchOutLayers[Idx]
             
+            weight = getattr(self, "Psi_{}".format(Idx))
+            bias = getattr(self, "bias_{}".format(Idx))
             # First repeat the weight
             weightRepeat = weight.repeat_interleave(self.Ng, dim=0)
             
@@ -150,7 +165,6 @@ class SymNetDP(nn.Module):
             self.GWeights.append(weight_repeat_perm)
             
             # store the repeated biases
-            bias = self.biasList[Idx]
             bias_repeat = bias.repeat_interleave(self.Ng, dim=0)
             
             self.Gbias.append(bias_repeat)
@@ -165,8 +179,7 @@ class SymNetDP(nn.Module):
         self.wtVC_repeat_transf = pt.matmul(self.gdiags, pt.gather(wtVC_repeat, 1, GnnPerm_repeat))
         
         # Repeat the shell indices
-        self.SiteShellWeights = self.ShellWeights[self.SitesToShells]
-        print("Param Rotations done")
+        SiteShellWeights = self.ShellWeights[self.SitesToShells]
     
     def RearrangeToInput(self, In, layer):
         """
