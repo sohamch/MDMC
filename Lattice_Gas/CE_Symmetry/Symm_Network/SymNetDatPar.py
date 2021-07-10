@@ -92,7 +92,7 @@ class SymNetDP(nn.Module):
         
         # Now make the last vector conv layer
         wtVC = nn.Parameter(pt.normal(mean, std, size=(self.dim, self.N_ngb),
-                                           requires_grad=True).double())
+                                           requires_grad=True))
         
         self.register_parameter("wtVC", wtVC)
         
@@ -100,7 +100,7 @@ class SymNetDP(nn.Module):
         Nshells = pt.max(SitesToShells)+1
         
         ShellWeights = nn.Parameter(pt.normal(mean, std, size=(Nshells,)
-                                                   ,requires_grad = True).double())
+                                                   ,requires_grad = True))
         
         self.register_buffer("SitesToShells", SitesToShells)
         self.register_parameter("ShellWeights", ShellWeights)
