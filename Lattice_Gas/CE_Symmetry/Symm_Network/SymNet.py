@@ -75,8 +75,8 @@ class SymNet(nn.Module):
                 NchIn = NchOutLayers[layer-1]
             
             Layerweights = pt.normal(mean, std, size=(NchOutLayers[layer], NchIn, self.N_ngb),
-                                     requires_grad=True).double()
-            LayerBias = pt.normal(mean, std, size=(NchOutLayers[layer], 1)).double()
+                                     requires_grad=True)#.double()
+            LayerBias = pt.normal(mean, std, size=(NchOutLayers[layer], 1))#.double()
             
             
             self.weightList.append(nn.Parameter(Layerweights))
@@ -84,13 +84,13 @@ class SymNet(nn.Module):
         
         # Now make the last vector conv layer
         self.wtVC = nn.Parameter(pt.normal(mean, std, size=(self.dim, self.N_ngb),
-                                           requires_grad=True).double())
+                                           requires_grad=True))#.double())
         
         # Make the shell parameters
         Nshells = pt.max(SitesToShells)+1
         
         self.ShellWeights = nn.Parameter(pt.normal(mean, std, size=(Nshells,)
-                                                   ,requires_grad = True).double())
+                                                   ,requires_grad = True))#.double())
         
         self.activation = F.relu if act=="relu" else F.softplus
         
@@ -162,8 +162,6 @@ class SymNet(nn.Module):
         In = In.repeat_interleave(self.N_ngb, dim=1)
         NNRepeat = self.NNSites.unsqueeze(0).repeat(In.shape[0], Nch, 1)
         In = pt.gather(In, 2, NNRepeat)
-#         del(NNRepeat)
-#         pt.cuda.empty_cache()
         return In
     
     def G_conv(self, layer, In, Nbatch, NSites, InLayer, outlayers, Test=False):
