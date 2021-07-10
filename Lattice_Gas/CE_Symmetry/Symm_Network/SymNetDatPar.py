@@ -102,22 +102,24 @@ class SymNetDP(nn.Module):
 #         self.biasList = nn.ParameterList(biasList)
         
         # Now make the last vector conv layer
-        self.wtVC = nn.Parameter(pt.normal(mean, std, size=(self.dim, self.N_ngb),
+        wtVC = nn.Parameter(pt.normal(mean, std, size=(self.dim, self.N_ngb),
                                            requires_grad=True).double())
+        
+        self.register_parameter("wtVC", wtVC)
         
         # Make the shell parameters
         Nshells = pt.max(SitesToShells)+1
         
-        self.ShellWeights = nn.Parameter(pt.normal(mean, std, size=(Nshells,)
+        ShellWeights = nn.Parameter(pt.normal(mean, std, size=(Nshells,)
                                                    ,requires_grad = True).double())
+        
+        self.register_parameter("ShellWeights", ShellWeights)
         
         self.activation = F.relu if act=="relu" else F.softplus
         
         NNToRepeat = self.NNSites.unsqueeze(0)
         
-        self.register_buffer("NNToRepeat", NNToRepeat, persistent=False)
-        
-        print(len(weightList), len(self.weightList))
+        self.register_buffer("NNToRepeat", NNToRepeat)
         
     def RotateParams(self):
         """
