@@ -176,20 +176,13 @@ class SymNet(nn.Module):
             InLayer.append(In.clone().detach().data)
 
 
-        # do the convolution
+        # do the convolution + group averaging
         out = pt.sum(self.activation((pt.matmul(Psi, In) + bias)).view(Nbatch, NchOut, self.Ng, NSites), dim=2)/self.Ng
-
-#         if Test:
-#             outlayersG.append(out.clone().detach().data)
-
-#         # do the group averaging
-#         out = pt.sum(out, dim=2)/self.Ng
 
         if Test:
             outlayers.append(out.clone().detach().data)
 
         # Rearrange input for the next layer
-#         out = self.RearrangeToInput(out)
         
         return self.RearrangeToInput(out)
     
