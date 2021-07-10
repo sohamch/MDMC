@@ -175,7 +175,7 @@ class SymNetDP(nn.Module):
         In = pt.gather(In, 2, NNRepeat)
         return In
     
-    def G_conv(self, layer, In, NSites, InLayer, outlayers, Test=False):
+    def G_conv(self, layer, In, NSites):
         
         Psi = self.GWeights[layer]
         bias = self.Gbias[layer]
@@ -217,7 +217,7 @@ class SymNetDP(nn.Module):
         
         # Now do the scalar kernel convolutions
         for layer in range(self.Nlayers):
-            out = self.G_conv(layer, out, NSites, InLayer, outlayers, Test=Test)
+            out = self.G_conv(layer, out, NSites)
         
         # Finally, do the R3 convolution
         # out should now have the shape (N_batch, N_ngb, Nsites)
