@@ -187,11 +187,8 @@ class SymNetDP(nn.Module):
             InLayer.append(In.clone().detach().data)
 
 
-        # do the convolution
+        # do the convolution + group averaging
         out = pt.sum(F.softplus((pt.matmul(Psi, In) + bias)).view(Nbatch, NchOut, self.Ng, NSites), dim=2)/self.Ng
-
-        # do the group averaging
-        out = pt.sum(out, dim=2)/self.Ng
 
         # Rearrange input for the next layer        
         return self.RearrangeToInput(out)
