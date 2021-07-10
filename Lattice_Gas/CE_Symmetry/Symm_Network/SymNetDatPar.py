@@ -50,16 +50,17 @@ class SymNetDP(nn.Module):
         self.register_buffer("GnnPerms", GnnPerms)
 #         self.GnnPerms = GnnPerms
         
-        self.register_buffer("gdiags", pt.tensor(GnnPerms.shape[0]))
+        self.register_buffer("gdiags", gdiags)
 #         self.gdiags = gdiags
         
         self.register_buffer("Ng", pt.tensor(GnnPerms.shape[0]))
 #         self.Ng = GnnPerms.shape[0]
         
+        N_ngb = GnnPerms.shape[1]
         self.register_buffer("N_ngb", pt.tensor(N_ngb))
 #         self.N_ngb = GnnPerms.shape[1]
         
-        self.register_buffer("NNsites", pt.tensor(NNSites))
+        self.register_buffer("NNsites", NNSites)
 #         self.NNSites = NNSites
         
         NNToRepeat = NNSites.unsqueeze(0)
@@ -200,7 +201,7 @@ class SymNetDP(nn.Module):
         NSites = InStates.shape[2]
         
         # Expand to include nearest neighbors
-        out = self.RearrangeToInput(InStates, 0)
+        out = self.RearrangeToInput(InStates)
         
         # Now do the scalar kernel convolutions
         for layer in range(self.Nlayers):
@@ -219,9 +220,6 @@ class SymNetDP(nn.Module):
         out = pt.sum(out, dim=2)/NSites
         
         return out
-
-
-# In[ ]:
 
 
 
