@@ -58,7 +58,7 @@ class GConv(nn.Module):
         NNRepeat = NNToRepeat.repeat(In.shape[0], Nch, 1)
         return pt.gather(In, 2, NNRepeat)
     
-    def forward(self, In, NSites, GnnPerms, NNsites act="softplus"):
+    def forward(self, In, NSites, GnnPerms, NNsites, act="softplus"):
         
         Nbatch = In.shape[0]
         NchOut = self.NchOut
@@ -85,7 +85,8 @@ class GConv(nn.Module):
 class R3Conv(nn.Module):
     def __init__(self, N_ngb, dim, gdiags, SitesToShells, mean=1.0, std=0.1):
         super().__init__()
-        self.register_buffer("N_ngb", pt.tensor(N_ngb))      
+        self.register_buffer("N_ngb", pt.tensor(N_ngb))
+        self.register_buffer("dim", pt.tensor(dim))      
         wtVC = nn.Parameter(pt.normal(mean, std, size=(dim, N_ngb), requires_grad=True))
         self.register_parameter("wtVC", wtVC)
         
@@ -101,7 +102,8 @@ class R3Conv(nn.Module):
     
     def RotateParams(self, GnnPerms):
         # First, we repeat the weights
-        wtVC_repeat = self.wtVC.repeat(self.Ng, 1)
+        Ng = GnnPerms.shape[0]
+        wtVC_repeat = self.wtVC.repeat(Ng, 1)
         
         # The we repeat group permutation indices
         GnnPerm_repeat = self.GnnPerms.repeat_interleave(self.dim, dim=0)            
@@ -120,7 +122,7 @@ class R3Conv(nn.Module):
         NNRepeat = NNToRepeat.repeat(In.shape[0], Nch, 1)
         return pt.gather(In, 2, NNRepeat)
     
-    def forward(self, In, NSites, GnnPerms, NNsites act="softplus"):
+    def forward(self, In, NSites, GnnPerms, NNsites, act="softplus"):
         
         Nbatch = In.shape[0]
         NchOut = self.NchOut
@@ -128,17 +130,18 @@ class R3Conv(nn.Module):
         
         self.RotateParams(GnnPerms)
         self.RearrangeInput(In, NNsites, Ng)
-        Psi = self.GWeights
-        bias = self.Gbias
-
-        # do the convolution + group averaging
-        out = pt.matmul(Psi, In) + bias
-        if act == "softplus":
-            out = F.softplus(out)
-        else:
-            out = F.leaky_relu(out)
-
-        return out.view(Nbatch, NchOut, Ng, NSites)
+        
+        # Finally, do the R3 convolution
+        # out should now have the shape (N_batch, N_ngb, Nsites)
+        out = pt.matmul(self.wtVC_repeat_transf, out).view(Nbatch, self.Ng, self.dim, NSites)
+        
+        # Then group average
+        out = pt.sum(out, dim=1)/Ng
+        
+        # Then site average with shell weights
+        out = pt.sum(out*self.SiteShellWeights, dim=2)/NSites
+        
+        return out
 
 
 # In[3]:
