@@ -14,11 +14,11 @@ import torch.nn.functional as F
 
 class GConv(nn.Module):
     def __init__(self, InChannels, OutChannels, GnnPerms, NNsites, 
-                 NSites, N_ngb, mean=1.0, std=0.1):
+                 N_ngb, mean=1.0, std=0.1):
         
         super().__init__()
-        
-        self.register_buffer("NSites", pt.tensor(NSites))
+        Nsites = NNsites.shape[1]
+        self.register_buffer("NSites", pt.tensor(Nsites))
         self.register_buffer("GnnPerms", GnnPerms)
         self.register_buffer("NNsites", NNsites)
         
@@ -57,12 +57,11 @@ class GConv(nn.Module):
     
     def RearrangeInput(self, In, NNsites):
         N_ngb = NNsites.shape[0]
-        NNtoRepeat = NNsites.unsqueeze(0)
         
         Nch = In.shape[1]
         
         In = In.repeat_interleave(N_ngb, dim=1)
-        NNRepeat = NNToRepeat.repeat(In.shape[0], Nch, 1)
+        NNRepeat = NNsites.unsqueeze(0).repeat(In.shape[0], Nch, 1)
         
         return pt.gather(In, 2, NNRepeat)
     
@@ -71,15 +70,15 @@ class GConv(nn.Module):
         Nbatch = In.shape[0]
         NchOut = self.NchOut
         Ng = self.GnnPerms.shape[0]
+        NSites = self.NSites
         
         self.RotateParams(self.GnnPerms)
-        self.RearrangeInput(In, self.NNsites)
+        out = self.RearrangeInput(In, self.NNsites)
         Psi = self.GWeights
         bias = self.Gbias
 
         # do the convolution + group averaging
-        out = pt.matmul(Psi, In) + bias
-        out = F.softplus(out)
+        out = pt.matmul(Psi, out) + bias
         
         return out.view(Nbatch, NchOut, Ng, NSites)
 
@@ -88,14 +87,14 @@ class GConv(nn.Module):
 
 
 class R3Conv(nn.Module):
-    def __init__(self, gdiags, SitesToShells, GnnPerms, NNsites,
-                 Nsites, N_ngb, dim, mean=1.0, std=0.1):
+    def __init__(self, SitesToShells, GnnPerms, gdiags, NNsites,
+                 N_ngb, dim, mean=1.0, std=0.1):
         super().__init__()
-        
-        self.register_buffer("NSites", pt.tensor(NSites))
+        Nsites = NNsites.shape[1]
+        self.register_buffer("NSites", pt.tensor(Nsites))
         self.register_buffer("GnnPerms", GnnPerms)
         self.register_buffer("NNsites", NNsites)
-        
+        self.register_buffer("gdiags", gdiags)
         self.register_buffer("N_ngb", pt.tensor(N_ngb))
         self.register_buffer("dim", pt.tensor(dim))      
         wtVC = nn.Parameter(pt.normal(mean, std, size=(dim, N_ngb), requires_grad=True))
@@ -124,13 +123,10 @@ class R3Conv(nn.Module):
         self.SiteShellWeights = self.ShellWeights[self.SitesToShells]
     
     def RearrangeInput(self, In, NNsites, Ng):
-        N_ngb = NNsites.shape[0]
-        NNtoRepeat = NNsites.unsqueeze(0)
-        
+        N_ngb = NNsites.shape[0]        
         Nch = In.shape[1]
-        
         In = In.repeat_interleave(N_ngb, dim=1)
-        NNRepeat = NNToRepeat.repeat(In.shape[0], Nch, 1)
+        NNRepeat = NNsites.unsqueeze(0).repeat(In.shape[0], Nch, 1)
         return pt.gather(In, 2, NNRepeat)
     
     def forward(self, In):
@@ -138,15 +134,13 @@ class R3Conv(nn.Module):
         NSites, GnnPerms, NNsites = self.NSites, self.GnnPerms, self.NNsites
         
         Nbatch = In.shape[0]
-        NchOut = self.NchOut
         Ng = GnnPerms.shape[0]
         
         self.RotateParams(GnnPerms)
-        self.RearrangeInput(In, NNsites, Ng)
+        out = self.RearrangeInput(In, NNsites, Ng)
         
         # Finally, do the R3 convolution
-        # out should now have the shape (N_batch, N_ngb, Nsites)
-        out = pt.matmul(self.wtVC_repeat_transf, out).view(Nbatch, self.Ng, self.dim, NSites)
+        out = pt.matmul(self.wtVC_repeat_transf, out).view(Nbatch, Ng, self.dim, NSites)
         
         # Then group average
         out = pt.sum(out, dim=1)/Ng
@@ -157,19 +151,14 @@ class R3Conv(nn.Module):
         return out
 
 
-# In[3]:
-
-
 class GAvg(nn.Module):
     def __init__(self):
         super().__init__()
     
-    def forward(In):
+    def forward(self, In):
         Ng = In.shape[2]        
         # sum out the group channels
-        return pt.sum(In, dim==2)/Ng
-# In[ ]:
-
+        return pt.sum(In, dim=2)/Ng
 
 
 
