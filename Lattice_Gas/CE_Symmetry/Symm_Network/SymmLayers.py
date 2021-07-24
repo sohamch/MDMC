@@ -164,19 +164,10 @@ class GAvg(nn.Module):
     def __init__(self):
         super().__init__()
     
-    def forward(In, NNSites):
-        N_ngb = NNsites.shape[0]
-        NNtoRepeat = NNsites.unsqueeze(0)
-        
-        Ng = In.shape[2]
-        Nch = In.shape[1]
-        
+    def forward(In):
+        Ng = In.shape[2]        
         # sum out the group channels
-        In = pt.sum(In, dim==2)/Ng        
-        
-        return In
-
-
+        return pt.sum(In, dim==2)/Ng
 # In[ ]:
 
 
