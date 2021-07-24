@@ -13,8 +13,15 @@ import torch.nn.functional as F
 
 
 class GConv(nn.Module):
-    def __init__(self, InChannels, OutChannels, N_ngb, mean=1.0, std=0.1):
+    def __init__(self, InChannels, OutChannels, GnnPerms, NNsites, 
+                 NSites, N_ngb, mean=1.0, std=0.1):
+        
         super().__init__()
+        
+        self.register_buffer("NSites", pt.tensor(NSites))
+        self.register_buffer("GnnPerms", GnnPerms)
+        self.register_buffer("NNsites", NNsites)
+        
         self.register_buffer("N_ngb", pt.tensor(N_ngb))
         self.register_buffer("NchIn", pt.tensor(InChannels))
         self.register_buffer("NchOut", pt.tensor(OutChannels))
@@ -48,7 +55,7 @@ class GConv(nn.Module):
         # store the repeated biases
         self.Gbias = bias.repeat_interleave(Ng, dim=0)
     
-    def RearrangeInput(self, In, NNsites, Ng):
+    def RearrangeInput(self, In, NNsites):
         N_ngb = NNsites.shape[0]
         NNtoRepeat = NNsites.unsqueeze(0)
         
@@ -56,26 +63,24 @@ class GConv(nn.Module):
         
         In = In.repeat_interleave(N_ngb, dim=1)
         NNRepeat = NNToRepeat.repeat(In.shape[0], Nch, 1)
+        
         return pt.gather(In, 2, NNRepeat)
     
-    def forward(self, In, NSites, GnnPerms, NNsites, act="softplus"):
+    def forward(self, In):
         
         Nbatch = In.shape[0]
         NchOut = self.NchOut
-        Ng = GnnPerms.shape[0]
+        Ng = self.GnnPerms.shape[0]
         
-        self.RotateParams(GnnPerms)
-        self.RearrangeInput(In, NNsites, Ng)
+        self.RotateParams(self.GnnPerms)
+        self.RearrangeInput(In, self.NNsites)
         Psi = self.GWeights
         bias = self.Gbias
 
         # do the convolution + group averaging
         out = pt.matmul(Psi, In) + bias
-        if act == "softplus":
-            out = F.softplus(out)
-        else:
-            out = F.leaky_relu(out)
-
+        out = F.softplus(out)
+        
         return out.view(Nbatch, NchOut, Ng, NSites)
 
 
@@ -83,8 +88,14 @@ class GConv(nn.Module):
 
 
 class R3Conv(nn.Module):
-    def __init__(self, N_ngb, dim, gdiags, SitesToShells, mean=1.0, std=0.1):
+    def __init__(self, gdiags, SitesToShells, GnnPerms, NNsites,
+                 Nsites, N_ngb, dim, mean=1.0, std=0.1):
         super().__init__()
+        
+        self.register_buffer("NSites", pt.tensor(NSites))
+        self.register_buffer("GnnPerms", GnnPerms)
+        self.register_buffer("NNsites", NNsites)
+        
         self.register_buffer("N_ngb", pt.tensor(N_ngb))
         self.register_buffer("dim", pt.tensor(dim))      
         wtVC = nn.Parameter(pt.normal(mean, std, size=(dim, N_ngb), requires_grad=True))
@@ -122,7 +133,9 @@ class R3Conv(nn.Module):
         NNRepeat = NNToRepeat.repeat(In.shape[0], Nch, 1)
         return pt.gather(In, 2, NNRepeat)
     
-    def forward(self, In, NSites, GnnPerms, NNsites, act="softplus"):
+    def forward(self, In):
+        
+        NSites, GnnPerms, NNsites = self.NSites, self.GnnPerms, self.NNsites
         
         Nbatch = In.shape[0]
         NchOut = self.NchOut
