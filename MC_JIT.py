@@ -299,6 +299,16 @@ class MCSamplerClass(object):
 
         return acceptCount, badTrials, acceptInd
 
+    def getLambda(self, offsc, NVclus):
+        lamb = np.zeros((NVclus, 3))
+        for interactInd in range(offsc.shape[0]):
+            if offsc[interactInd] == 0:
+                for vGInd in range(self.numVecsInteracts[interactInd]):
+                    vGroup = self.VecGroupInteracts[interactInd, vGInd]
+                    vec = self.VecsInteracts[interactInd, vGInd]
+                    lamb[vGroup, :] += vec
+        return lamb
+
     def Expand(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, lenVecClus, beta, vacSiteInd=0):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
@@ -423,104 +433,6 @@ class MCSamplerClass(object):
 
         return WBar, BBar
 
-    def ExpandLatGasNoTrans(self, state, ijList, dxList, OffSiteCount, specRates, lenVecClusNoTrans,
-                             VecGroupInteractsNoTrans, VecsInteractsNoTrans,  vacSiteInd=0):
-
-        # ToDo : Try to bring all expansion functions in the same function.
-        del_lamb_mat = np.zeros((lenVecClusNoTrans, lenVecClusNoTrans, ijList.shape[0]))
-        delxDotdelLamb = np.zeros((lenVecClusNoTrans, ijList.shape[0]))
-
-        ratelist = np.zeros(ijList.shape[0])
-
-        siteA, specA = vacSiteInd, self.Nspecs - 1
-        # go through all the transition
-
-        for jumpInd in range(ijList.shape[0]):
-            del_lamb = np.zeros((lenVecClusNoTrans, 3))
-
-            # Get the transition index
-            siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
-
-            ratelist[jumpInd] = specRates[specB]
-
-            # Switch required sites off
-            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
-                # check if an interaction is on
-                interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
-                if OffSiteCount[interMainInd] == 0:
-                    # take away the vectors for this interaction
-                    for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[VecGroupInteractsNoTrans[interMainInd, i]] -= VecsInteractsNoTrans[interMainInd, i, :]
-                OffSiteCount[interMainInd] += 1
-
-            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
-                interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
-                if OffSiteCount[interMainInd] == 0:
-                    for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[VecGroupInteractsNoTrans[interMainInd, i]] -= VecsInteractsNoTrans[interMainInd, i, :]
-                OffSiteCount[interMainInd] += 1
-
-            # Next, switch required sites on
-            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
-                interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
-                OffSiteCount[interMainInd] -= 1
-                if OffSiteCount[interMainInd] == 0:
-                    # add the vectors for this interaction
-                    for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[VecGroupInteractsNoTrans[interMainInd, i]] += VecsInteractsNoTrans[interMainInd, i, :]
-                        # del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
-
-            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
-                interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
-                OffSiteCount[interMainInd] -= 1
-                if OffSiteCount[interMainInd] == 0:
-                    # add the vectors for this interaction
-                    # for interactions with zero vector basis, numVecsInteracts[interMainInd] = -1 and the
-                    # loop doesn't run
-                    for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[VecGroupInteractsNoTrans[interMainInd, i]] -= VecsInteractsNoTrans[interMainInd, i, :]
-                        # del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
-
-            del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
-
-            # delxDotdelLamb[:, jumpInd] = np.tensordot(del_lamb, dxList[jumpInd], axes=(1, 0))
-            # let's do the tensordot by hand (work on finding numba support for this)
-            for i in range(lenVecClusNoTrans):
-                # replace innder loop with outer product
-                delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], dxList[jumpInd, :])
-
-            # Next, restore OffSiteCounts to original values
-            # During switch-off operations, offsite counts were increased by one.
-            # So decrease them back by one
-            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
-                OffSiteCount[self.SiteSpecInterArray[siteA, state[siteA], interIdx]] -= 1
-
-            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
-                OffSiteCount[self.SiteSpecInterArray[siteB, state[siteB], interIdx]] -= 1
-
-            # During switch-on operations, offsite counts were decreased by one.
-            # So increase them back by one
-            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
-                OffSiteCount[self.SiteSpecInterArray[siteA, state[siteB], interIdx]] += 1
-
-            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
-                OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
-
-        # Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 2))
-        WBar = np.zeros((lenVecClusNoTrans, lenVecClusNoTrans))
-        for i in range(lenVecClusNoTrans):
-            for j in range(lenVecClusNoTrans):
-                WBar[i, j] += np.dot(del_lamb_mat[i, j, :], ratelist)
-
-        # assert np.allclose(Wbar, WBar)
-
-        # Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
-        BBar = np.zeros(lenVecClusNoTrans)
-        for i in range(lenVecClusNoTrans):
-            BBar[i] = np.dot(ratelist, delxDotdelLamb[i, :])
-
-        return WBar, BBar
-
     def ExpandLatGas(self, state, ijList, dxList, OffSiteCount, specRates, lenVecClus, vacSiteInd=0):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
@@ -614,6 +526,19 @@ class MCSamplerClass(object):
             BBar[i] = np.dot(ratelist, delxDotdelLamb[i, :])
 
         return WBar, BBar
+
+    def ExpandDirectLatGas(self, lamb1, lamb2, rate, dx, NVclus):
+        WBar = np.zeros((NVclus, NVclus))
+        bBar = np.zeros(NVclus)
+
+        del_lamb = lamb2 - lamb1
+
+        for i in range(NVclus):
+            bBar[i] = np.dot(dx, del_lamb[i])*rate
+            for j in range(NVclus):
+                WBar[i, j] = rate*np.dot(del_lamb[i], del_lamb[j])
+
+        return WBar, bBar
 
     def GetNewRandState(self, state, OffSiteCount, symClassCounts, symCountsTotal, SwapTrials, Energy):
 
@@ -770,29 +695,6 @@ class MCSamplerClass(object):
                 OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
 
         return statesTrans, ratelist, Specdisps
-
-    def getLambda(self, offsc, NVclus):
-        lamb = np.zeros((NVclus, 3))
-        for interactInd in range(offsc.shape[0]):
-            if offsc[interactInd] == 0:
-                for vGInd in range(self.numVecsInteracts[interactInd]):
-                    vGroup = self.VecGroupInteracts[interactInd, vGInd]
-                    vec = self.VecsInteracts[interactInd, vGInd]
-                    lamb[vGroup, :] += vec
-        return lamb
-
-    def ExpandDirectLatGas(self, lamb1, lamb2, rate, dx, NVclus):
-        WBar = np.zeros((NVclus, NVclus))
-        bBar = np.zeros(NVclus)
-
-        del_lamb = lamb2 - lamb1
-
-        for i in range(NVclus):
-            bBar[i] = np.dot(dx, del_lamb[i])*rate
-            for j in range(NVclus):
-                WBar[i, j] = rate*np.dot(del_lamb[i], del_lamb[j])
-
-        return WBar, bBar
 
 
 
