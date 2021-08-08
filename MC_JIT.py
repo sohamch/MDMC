@@ -521,7 +521,13 @@ class MCSamplerClass(object):
 
         return WBar, BBar
 
-    def ExpandDirectLatGas(self, lamb1, lamb2, rate, dx, NVclus):
+    @staticmethod
+    def ExpandDirect(lamb1, lamb2, rate, dx, NVclus):
+        """
+        This is to get the expansion for a jump explicitly by specifying the basis functions,
+        the rates and displacements.
+        This should help when rates have been evaluated with something else other than cluster expansion
+        """
         WBar = np.zeros((NVclus, NVclus))
         bBar = np.zeros(NVclus)
 
