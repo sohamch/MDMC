@@ -522,20 +522,26 @@ class MCSamplerClass(object):
         return WBar, BBar
 
     @staticmethod
-    def ExpandDirect(lamb1, lamb2, rate, dx, NVclus):
+    def ExpandDirect(lamb1, lamb2, rate, dx):
         """
         This is to get the expansion for a jump explicitly by specifying the basis functions,
         the rates and displacements.
         This should help when rates have been evaluated with something else other than cluster expansion
+        :param lamb1: basis functions for state 1 (N_basis x 3) shape
+        :param lamb2: basis functions for state 2 (N_basis x 3) shape
+        :param rate: rate of the the jump
+        :param dx: displacement of the jumps
+        :return: Wbar, Bbar - the expanded transition rate and bias vectors in the new basis
         """
-        WBar = np.zeros((NVclus, NVclus))
-        bBar = np.zeros(NVclus)
+        Nbasis = lamb1.shape[0]
+        WBar = np.zeros((Nbasis, Nbasis))
+        bBar = np.zeros(Nbasis)
 
         del_lamb = lamb2 - lamb1
 
-        for i in range(NVclus):
+        for i in range(Nbasis):
             bBar[i] = np.dot(dx, del_lamb[i])*rate
-            for j in range(NVclus):
+            for j in range(Nbasis):
                 WBar[i, j] = rate*np.dot(del_lamb[i], del_lamb[j])
 
         return WBar, bBar
