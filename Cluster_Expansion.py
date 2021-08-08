@@ -364,61 +364,6 @@ class VectorClusterExpansion(object):
             self.Clus2Num[SpCl] = i
             self.Num2Clus[i] = SpCl
 
-    def VectorInteracts(self):
-
-        InteractVecInteracts = []
-        InteractVecVecs = []
-        InteractSym2Vec = collections.defaultdict(list)
-        Interact2VecInteract = collections.defaultdict(list)
-
-        for orbitInd, orbit in enumerate(self.InteractSymListNoTrans):
-            Int0 = orbit[0]
-            # Get the representative cluster for this
-            cl0 = list(self.Interact2RepClustDict[Int0])[0]
-
-            # Get the vector basis
-            try:
-                vecs = self.clust2vecClus[cl0]
-            except KeyError:
-                assert self.clus2LenVecClus[self.clust2SpecClus[cl0][0]] == 0
-                continue
-
-            # Get the cluster sites of the interaction
-            Int0Sites = [(cluster.ClusterSite(ci=info[0], R=info[1]), spec) for info, spec in
-                         [(self.sup.ciR(siteInd), spec) for siteInd, spec in Int0]]
-
-            for vListInd, vInd in vecs:
-                IntList = [Int0]
-                Interact2VecInteract[Int0].append((len(InteractVecInteracts), 0))
-                v0 = self.vecVec[vListInd][vInd]
-                vList = [v0]
-                considered = set(IntList)
-                for gop in self.crys.G:
-                    # Rotate interaction
-                    IntRot = tuple([(site.g(self.crys, gop), spec) for site, spec in Int0Sites])
-                    # Bring sites back to supercell - sort according to site index
-                    IntRotSupInd = tuple(sorted([(self.sup.index(site.R, site.ci)[0], spec)
-                                                      for site, spec in IntRot], key=lambda x: x[0]))
-
-                    # Check if this has already been considered
-                    if IntRotSupInd in considered:
-                        continue
-
-                    # Otherwise store it
-                    Interact2VecInteract[IntRotSupInd].append((len(InteractVecInteracts), len(IntList)))
-                    IntList.append(IntRotSupInd)
-                    considered.add(IntRotSupInd)
-                    vList.append(np.dot(gop.cartrot, v0))
-
-                InteractSym2Vec[orbitInd].append(len(InteractVecInteracts))
-                InteractVecInteracts.append(IntList)
-                InteractVecVecs.append(vList)
-
-        InteractSym2Vec.default_factory = None
-        Interact2VecInteract.default_factory = None
-
-        return InteractVecInteracts, InteractVecVecs, InteractSym2Vec, Interact2VecInteract
-
     def makeJitInteractionsData(self, Energies):
         """
         Function to represent all the data structures in the form of numpy arrays so that they can be accelerated with
