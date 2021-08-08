@@ -27,7 +27,7 @@ class testKRA(unittest.TestCase):
         self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.Tclusexp, self.Tclusexp, self.NSpec,
                                                  self.Nvac, self.vacsite)
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.Tclusexp, self.jnetBCC,
-                                                                 self.NSpec, self.Nvac, self.vacsite, self.MaxOrder,
+                                                                 self.NSpec, self.vacsite, self.MaxOrder,
                                                                  self.MaxOrderTrans)
 
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
