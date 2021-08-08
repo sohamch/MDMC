@@ -416,20 +416,14 @@ class MCSamplerClass(object):
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
                 OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
 
-        # Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 2))
         WBar = np.zeros((lenVecClus, lenVecClus))
         for i in range(lenVecClus):
             for j in range(lenVecClus):
                 WBar[i, j] += np.dot(del_lamb_mat[i, j, :], ratelist)
 
-        # assert np.allclose(Wbar, WBar)
-
-        # Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
         BBar = np.zeros(lenVecClus)
         for i in range(lenVecClus):
             BBar[i] = np.dot(ratelist, delxDotdelLamb[i, :])
-
-        # assert np.allclose(Bbar, BBar)
 
         return WBar, BBar
 
