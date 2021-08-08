@@ -108,20 +108,11 @@ class VectorClusterExpansion(object):
         self.zeroClusts = zeroClusts
         self.OrigVac = OrigVac
 
-        if OrigVac and NoTrans:
-            NoTrans = False
-            raise RuntimeWarning("Only Vacancy Pairs to be constructed. Setting NoTrans to False")
-
         if OrigVac:
             self.SpecClusters, self.SiteSpecInteractions, self.maxInteractCount = self.InteractsOrigVac()
         else:
             self.SpecClusters = self.recalcClusters()
-
-            if NoTrans:
-                self.SiteSpecInteractions, self.maxInteractCount, self.InteractSymListNoTrans, self.Interact2RepClustDict = \
-                    self.generateSiteSpecInteracts(NoTrans=True)
-            else:
-                self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
+            self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
             # add a small check here - maybe we'll remove this later
 
         self.vecClus, self.vecVec, self.clus2LenVecClus = self.genVecClustBasis(self.SpecClusters)
@@ -135,10 +126,6 @@ class VectorClusterExpansion(object):
         self.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
         self.indexClustertoVecClus()  # Index where in the vector cluster list a cluster is present
         self.indexClustertoSpecClus()  # Index clusters to symmetry groups
-
-        if NoTrans and not OrigVac:
-            self.InteractVecInteracts, self.InteractVecVecs, self.InteractSym2Vec, self.Interact2VecInteract = \
-                self.VectorInteracts()
 
     def recalcClusters(self):
         """
