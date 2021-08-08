@@ -74,7 +74,7 @@ class VectorClusterExpansion(object):
     class to expand velocities and rates in vector cluster functions.
     """
     def __init__(self, sup, clusexp, Tclusexp, jumpnetwork, NSpec, vacSite, maxorder, maxorderTrans,
-                 NoTrans=False, zeroClusts=True, OrigVac=False):
+                 zeroClusts=True, OrigVac=False):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
@@ -85,7 +85,6 @@ class VectorClusterExpansion(object):
         :param vacSite: the site of the vacancy as a clusterSite object. This does not change during the simulation.
         :param maxorder: the maximum order of a cluster in clusexp.
         :param maxorderTrans: the maximum order of a transition state cluster
-        :param NoTrans: Whether interactions related by lattice translations should be considered equivalent (yes if false)
         :param zeroClusts: Same as parameter "zero" of ClusterSpecies class - whether to bring a cluster's centroid to zero or not.
         :param OrigVac: only vacancy-atom pairs with the vacancy at the centre will be considered. This will not use clusexp.
         In this type of simulations, we consider a solid with a single wyckoff set on which atoms are arranged.
