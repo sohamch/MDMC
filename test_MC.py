@@ -83,6 +83,8 @@ class Test_MC_Arrays(unittest.TestCase):
         siteIndtoR, RtoSiteInd = self.VclusExp.makeSiteIndToSite()
         self.RtoSiteInd = RtoSiteInd
         self.siteIndtoR = siteIndtoR
+        self.Nsites = Nsites
+        self.N_units = N_units
 
         self.KMC_Jit = MC_JIT.KMC_JIT(numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,
                                 Interact2RepClusArray, Interact2SymClassArray, numVecsInteracts, VecsInteracts,
