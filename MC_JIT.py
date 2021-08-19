@@ -309,7 +309,7 @@ class MCSamplerClass(object):
                     lamb[vGroup, :] += vec
         return lamb
 
-    def Expand(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, lenVecClus, beta, vacSiteInd=0):
+    def Expand(self, state, ijList, dxList, spec, OffSiteCount, TSOffSiteCount, lenVecClus, beta, vacSiteInd=0):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
@@ -396,7 +396,10 @@ class MCSamplerClass(object):
             # let's do the tensordot by hand (work on finding numba support for this)
             for i in range(lenVecClus):
                 # replace innder loop with outer product
-                delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], dxList[jumpInd, :])
+                if spec == specA:
+                    delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], dxList[jumpInd, :])
+                elif spec == specB:
+                    delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], -dxList[jumpInd, :])
 
             # Next, restore OffSiteCounts to original values for next jump, as well as
             # for use in the next MC sweep.
@@ -427,7 +430,7 @@ class MCSamplerClass(object):
 
         return WBar, BBar
 
-    def ExpandLatGas(self, state, ijList, dxList, OffSiteCount, specRates, lenVecClus, vacSiteInd=0):
+    def ExpandLatGas(self, state, ijList, dxList, OffSiteCount, specRates, spec, lenVecClus, vacSiteInd=0):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
@@ -487,7 +490,11 @@ class MCSamplerClass(object):
             # let's do the tensordot by hand (work on finding numba support for this)
             for i in range(lenVecClus):
                 # replace innder loop with outer product
-                delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], dxList[jumpInd, :])
+                if spec == specA: # vacancy
+                    delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], dxList[jumpInd, :])
+
+                elif spec == specB: # if it is the desired species
+                    delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], -dxList[jumpInd, :])
 
             # Next, restore OffSiteCounts to original values
             # During switch-off operations, offsite counts were increased by one.

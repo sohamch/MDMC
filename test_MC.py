@@ -734,7 +734,7 @@ class Test_MC(Test_MC_Arrays):
         # Now, do the expansion
         offscjit = MCSampler_Jit.OffSiteCount.copy()
         state = initState.copy()
-        Wbar, Bbar = MCSampler_Jit.Expand(state, ijList, dxList, offscjit, TransOffSiteCount,
+        Wbar, Bbar = MCSampler_Jit.Expand(state, ijList, dxList, 2, offscjit, TransOffSiteCount,
                                                                   lenVecClus, 1.0)
 
         # Check that the offsitecounts have been correctly reverted and state is unchanged.
