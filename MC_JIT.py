@@ -325,10 +325,6 @@ class MCSamplerClass(object):
             # Get the transition index
             siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
             transInd = self.FinSiteFinSpecJumpInd[siteB, specB]
-
-            # SiteTransArray[jumpInd] = siteB
-            # SpecTransArray[jumpInd] = specB
-
             # First, work on getting the KRA energy for the jump
             delEKRA = 0.0
             # We need to go through every point group for this jump
@@ -338,8 +334,6 @@ class MCSamplerClass(object):
                     interactMainInd = self.JumpInteracts[transInd, tsPtGpInd, interactInd]
                     if TSOffSiteCount[interactMainInd] == 0:
                         delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
-
-            # delEKRAarray[jumpInd] = delEKRA
 
             # next, calculate the energy change due to site swapping
 
