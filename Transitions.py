@@ -71,7 +71,7 @@ class KRAExpand(object):
         self.dxList = np.array(jumpdx, dtype=float)
 
     def GroupTransClusters(self):
-        TransClustersAll = collections.defaultdict(list)
+        self.TransClustersAll = collections.defaultdict(list)
         TransClustersSym = {}
 
         for clList in self.TSClusters:
@@ -87,11 +87,11 @@ class KRAExpand(object):
                 IndB = self.sup.index(siteB.R, siteB.ci)[0]
                 if clust.Norder == 0:
                     continue
-                TransClustersAll[(IndA, IndB)].append(clust)
+                self.TransClustersAll[(IndA, IndB)].append(clust)
 
-        TransClustersAll.default_factory = None
+        self.TransClustersAll.default_factory = None
 
-        for key, clustList in TransClustersAll.items():
+        for key, clustList in self.TransClustersAll.items():
             ciA, RA = self.sup.ciR(key[0])
             ciB, RB = self.sup.ciR(key[1])
             siteA = cluster.ClusterSite(ci=ciA, R=RA)
