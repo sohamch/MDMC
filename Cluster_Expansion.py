@@ -287,6 +287,7 @@ class VectorClusterExpansion(object):
                                                            cl, np.zeros(self.crys.dim, dtype=int)
                                                            ])
 
+        SiteSpecinteractList.default_factory = None
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
 
         return symClusterList, SiteSpecinteractList, maxinteractions

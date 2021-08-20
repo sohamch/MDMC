@@ -89,6 +89,8 @@ class KRAExpand(object):
                     continue
                 TransClustersAll[(IndA, IndB)].append(clust)
 
+        self.TransClustersAll.default_factory = None
+
         for key, clustList in TransClustersAll.items():
             ciA, RA = self.sup.ciR(key[0])
             ciB, RB = self.sup.ciR(key[1])
