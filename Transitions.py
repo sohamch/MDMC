@@ -54,7 +54,7 @@ class KRAExpand(object):
             # Rj + uj = ui + dx (since Ri is zero in the jumpnetwork)
             Rj, (c, cj) = self.crys.cart2pos(jump[1] + np.dot(self.crys.lattice, self.crys.basis[self.chem][jump[0][0]]))
             # check we have the correct site
-            if not cj == jump[0][1]:
+            if cj != jump[0][1]:
                 raise ValueError("improper coordinate transformation, did not get same final jump site")
 
             siteB = cluster.ClusterSite(ci=(self.chem, jump[0][1]), R=Rj)
