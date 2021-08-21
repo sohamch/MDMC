@@ -91,6 +91,7 @@ class KRAExpand(object):
 
         self.TransClustersAll.default_factory = None
 
+        clusts_done = set()
         for key, clustList in self.TransClustersAll.items():
             ciA, RA = self.sup.ciR(key[0])
             ciB, RB = self.sup.ciR(key[1])
@@ -104,13 +105,12 @@ class KRAExpand(object):
                     Glist.append(g)
 
             newSymList = []
-            clusts_done = set()
             for clust in clustList:
                 if clust not in clusts_done:
                     clusterSetnew = set([clust.g(self.crys, gop) for gop in Glist])
                     newSymList.append(list(clusterSetnew))
                     clusts_done.update(clusterSetnew)
-
+            
             TransClustersSym[key] = newSymList
 
         return TransClustersSym
