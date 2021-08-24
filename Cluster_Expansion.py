@@ -34,8 +34,10 @@ class ClusterSpecies():
         self.__hashcache__ = sum([hash((site, spec)) for site, spec in self.transPairs])
 
     def __eq__(self, other):
-        if self.SiteSpecs == other.SiteSpecs:
+
+        if all([stSp in other.SiteSpecs for stSp in self.SiteSpecs]):
             return True
+
         return False
 
     def __hash__(self):

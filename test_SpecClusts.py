@@ -266,6 +266,7 @@ class test_Vector_Cluster_Expansion(testKRA):
 
         self.assertEqual(vacCount, (3 * 2 * 2) * 12)
         self.assertEqual(nonVacCount, (2 * 2 * 2) * 12)
+        print("Done assignment tests")
 
 
     def test_genvecs(self):
