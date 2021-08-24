@@ -159,6 +159,12 @@ class test_Vector_Cluster_Expansion(testKRA):
 
     def test_spec_assign(self):
 
+        # check that every cluster is just one symmetry list
+        clList = [cl for clList in self.VclusExp.SpecClusters for cl in clList]
+        clSet = set(clList)
+
+        self.assertEqual(len(clList), len(clSet))
+
         # let's test if the number of symmetric site clusters generated is the same
         sitetuples = set([])
         for clusterList in self.VclusExp.SpecClusters:
@@ -167,7 +173,8 @@ class test_Vector_Cluster_Expansion(testKRA):
                 sites_shift = tuple([site-Rtrans for site in clust.siteList])
                 # check correct translations
                 sitesBuilt = tuple([site for site, spec in clust.transPairs])
-                self.assertEqual(sites_shift, sitesBuilt)
+                if self.VclusExp.zeroClusts:
+                    self.assertEqual(sites_shift, sitesBuilt)
                 sitetuples.add(sites_shift)
 
         sitesFromClusexp = set([])

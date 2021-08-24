@@ -35,9 +35,8 @@ class ClusterSpecies():
 
     def __eq__(self, other):
 
-        if all([stSp in other.SiteSpecs for stSp in self.SiteSpecs]):
+        if len(self.SiteSpecs) == len(other.SiteSpecs) and all([stSp in other.SiteSpecs for stSp in self.SiteSpecs]):
             return True
-
         return False
 
     def __hash__(self):
