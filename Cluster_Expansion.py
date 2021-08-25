@@ -42,8 +42,10 @@ class ClusterSpecies():
     def __hash__(self):
         return self.__hashcache__
 
-    def g(self, crys, g, zero=True):
-        return self.__class__(self.specList, [site.g(crys, g) for site in self.siteList], zero=zero)
+    def g(self, crys, gop, zero=True):
+        specList = [spec for site, spec in self.SiteSpecs]
+        siteList = [site.g(crys, gop) for site, spec in self.SiteSpecs]
+        return self.__class__(specList, siteList, zero=zero)
 
     @staticmethod
     def inSuperCell(SpCl, N_units):
