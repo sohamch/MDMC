@@ -332,42 +332,13 @@ class VectorClusterExpansion(object):
             for clSite in allSites:
                 # get the cluster site
                 R = clSite.R
-                ci = clSite.ci
-
                 # translate all sites with this translation
                 interactSupInd = tuple([(self.sup.index(st.R + R, st.ci)[0], spec)
                                                                                for st, spec in cl.SiteSpecs])
 
-
-            # for site, spec in cl.SiteSpecs:
-            #     if site.ci == ci:
-            #         Rtrans = R - site.R
-            #
-            #         interactSupInd = tuple([(self.sup.index(st.R+Rtrans, site.ci)[0], spec)
-            #                                        for st, spec in cl.SiteSpecs])
-            #         SiteSpecinteractList[(clSite, spec)].append([interactSupInd, cl, Rtrans])
-
-                        # if NoTrans:
-                        #     # See if this has already been considered
-                        #     if interactSupInd in InteractSet:
-                        #         continue
-                        #     else:
-                        #         orbit = set()
-                        #         # Apply group operations
-                        #         for gop in self.crys.G:
-                        #             # Get the rotated interaction
-                        #             interactRot = tuple([(site.g(self.crys, gop), spec) for site, spec in interact])
-                        #             # Get the representative cluster for this rotated rotated interaction
-                        #             clRot = cl.g(self.crys, gop)
-                        #
-                        #             # Bring the rotated sites back into the supercell
-                        #             interactRotSupInd = tuple(sorted([(self.sup.index(site.R, site.ci)[0], spec)
-                        #                                               for site, spec in interactRot], key=lambda x: x[0]))
-                        #             Interact2RepClustDict[interactRotSupInd].add(clRot)
-                        #             orbit.add(interactRotSupInd)
-                        #
-                        #         InteractSet.update(orbit)
-                        #         InteractSymListNoTrans.append(list(orbit))
+                # for every new site, store the interaction they are a part of
+                for stInd, spec in interactSupInd:
+                    SiteSpecinteractList[(stInd, spec)].append([interactSupInd, cl, R])
 
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
 
