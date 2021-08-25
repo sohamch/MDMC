@@ -325,19 +325,27 @@ class VectorClusterExpansion(object):
 
         allClusters = [cl for clist in self.SpecClusters for cl in clist]
 
-        for clSite in allSites:
-            # get the cluster site
-            R = clSite.R
-            ci = clSite.ci
-            # Now, go through all the clusters
-            for cl in allClusters:
-                for site, spec in cl.SiteSpecs:
-                    if site.ci == ci:
-                        Rtrans = R - site.R
+        # Now, go through all the clusters
+        for cl in allClusters:
 
-                        interactSupInd = tuple([(self.sup.index(st.R+Rtrans, site.ci)[0], spec)
-                                                       for st, spec in cl.SiteSpecs])
-                        SiteSpecinteractList[(clSite, spec)].append([interactSupInd, cl, Rtrans])
+            # Go through all the lattice translations
+            for clSite in allSites:
+                # get the cluster site
+                R = clSite.R
+                ci = clSite.ci
+
+                # translate all sites with this translation
+                interactSupInd = tuple([(self.sup.index(st.R + R, st.ci)[0], spec)
+                                                                               for st, spec in cl.SiteSpecs])
+
+
+            # for site, spec in cl.SiteSpecs:
+            #     if site.ci == ci:
+            #         Rtrans = R - site.R
+            #
+            #         interactSupInd = tuple([(self.sup.index(st.R+Rtrans, site.ci)[0], spec)
+            #                                        for st, spec in cl.SiteSpecs])
+            #         SiteSpecinteractList[(clSite, spec)].append([interactSupInd, cl, Rtrans])
 
                         # if NoTrans:
                         #     # See if this has already been considered
