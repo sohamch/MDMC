@@ -122,26 +122,26 @@ class VectorClusterExpansion(object):
             end1 = time.time()
             print("\t built {} clusters:{:.4f} seconds".format(len([cl for clist in self.SpecClusters for cl in clist])
                                                                , end1 - start))
-            self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
-            print("\t built interactions:{:.4f} seconds".format(time.time() - end1))
-            # add a small check here - maybe we'll remove this later
-
-        print("Built Species Clusters : {:.4f} seconds".format(time.time() - start))
-
-        start = time.time()
-        self.vecClus, self.vecVec, self.clus2LenVecClus = self.genVecClustBasis(self.SpecClusters)
-        print("Built vector bases for clusters : {:.4f}".format(time.time() - start))
-
-        start = time.time()
-        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, Tclusexp, NSpec, self.Nvac, vacSite)
-        print("Built KRA expander : {:.4f}".format(time.time() - start))
-
-        start = time.time()
-        self.IndexClusters()  #  assign integer identifiers to each cluster
-        self.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
-        self.indexClustertoVecClus()  # Index where in the vector cluster list a cluster is present
-        self.indexClustertoSpecClus()  # Index clusters to symmetry groups
-        print("Built Indexing : {:.4f}".format(time.time() - start))
+        #     self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
+        #     print("\t built interactions:{:.4f} seconds".format(time.time() - end1))
+        #     # add a small check here - maybe we'll remove this later
+        #
+        # print("Built Species Clusters : {:.4f} seconds".format(time.time() - start))
+        #
+        # start = time.time()
+        # self.vecClus, self.vecVec, self.clus2LenVecClus = self.genVecClustBasis(self.SpecClusters)
+        # print("Built vector bases for clusters : {:.4f}".format(time.time() - start))
+        #
+        # start = time.time()
+        # self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, Tclusexp, NSpec, self.Nvac, vacSite)
+        # print("Built KRA expander : {:.4f}".format(time.time() - start))
+        #
+        # start = time.time()
+        # self.IndexClusters()  #  assign integer identifiers to each cluster
+        # self.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
+        # self.indexClustertoVecClus()  # Index where in the vector cluster list a cluster is present
+        # self.indexClustertoSpecClus()  # Index clusters to symmetry groups
+        # print("Built Indexing : {:.4f}".format(time.time() - start))
 
     def recalcClusters(self):
         """
