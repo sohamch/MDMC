@@ -30,6 +30,8 @@ class testKRA(unittest.TestCase):
                                                                  self.NSpec, self.vacsite, self.MaxOrder,
                                                                  self.MaxOrderTrans)
 
+        print(self.VclusExp.clus2LenVecClus)
+
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
         self.KRAEnergies = [np.random.rand(len(val)) for (key, val) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
 
@@ -155,7 +157,39 @@ class testKRA(unittest.TestCase):
             self.assertTrue(np.allclose(KRAen, KRAcalc), msg="{}, {}".format(KRAen, KRAcalc))
 
 
-class test_Vector_Cluster_Expansion(testKRA):
+class test_Vector_Cluster_Expansion(unittest.TestCase):
+
+    def setUp(self):
+        self.NSpec = 3
+        self.Nvac = 1
+        self.MaxOrder = 3
+        self.MaxOrderTrans = 3
+        self.crys = crystal.Crystal.BCC(0.2836, chemistry="A")
+        self.jnetBCC = self.crys.jumpnetwork(0, 0.26)
+        self.superlatt = 8 * np.eye(3, dtype=int)
+        self.superBCC = supercell.ClusterSupercell(self.crys, self.superlatt)
+        # get the number of sites in the supercell - should be 8x8x8
+        numSites = len(self.superBCC.mobilepos)
+        self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
+        self.vacsiteInd = self.superBCC.index(np.zeros(3, dtype=int), (0, 0))[0]
+        self.clusexp = cluster.makeclusters(self.crys, 0.284, self.MaxOrder)
+        self.Tclusexp = cluster.makeclusters(self.crys, 0.29, self.MaxOrderTrans)
+        self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.Tclusexp, self.Tclusexp, self.NSpec,
+                                                 self.Nvac, self.vacsite)
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.Tclusexp, self.jnetBCC,
+                                                                 self.NSpec, self.vacsite, self.MaxOrder,
+                                                                 self.MaxOrderTrans)
+
+        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
+        self.KRAEnergies = [np.random.rand(len(val)) for (key, val) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
+
+        self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
+        for site in range(1, numSites):
+            spec = np.random.randint(0, self.NSpec - 1)
+            self.mobOccs[spec][site] = 1
+        self.mobOccs[-1, self.vacsiteInd] = 1
+        self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
+        print("Done setting up cluster expansion tests.")
 
     def test_spec_assign(self):
 
@@ -302,12 +336,24 @@ class test_Vector_Cluster_Expansion(testKRA):
 
     def testcluster2vecClus(self):
 
+        # check that every cluster appears just once in just one symmetry list
+        clList = [cl for clList in self.VclusExp.SpecClusters for cl in clList]
+
+        for cl1 in clList:
+            count = 0
+            for cl2 in clList:
+                if cl1 == cl2:
+                    count += 1
+            self.assertEqual(count, 1)  # check that the cluster occurs only once
+
         for clListInd, clList in enumerate(self.VclusExp.SpecClusters):
             for clust in clList:
                 if self.VclusExp.clus2LenVecClus[clListInd] == 0:
                     self.assertFalse(clust in self.VclusExp.clust2vecClus.keys())
                 else:
+                    self.assertTrue(self.VclusExp.clus2LenVecClus[clListInd] <= 3)
                     vecList = self.VclusExp.clust2vecClus[clust]
+                    self.assertTrue(self.VclusExp.clus2LenVecClus[clListInd] == len(vecList))
                     for tup in vecList:
                         self.assertEqual(clust, self.VclusExp.vecClus[tup[0]][tup[1]])
 
@@ -343,13 +389,21 @@ class test_Vector_Cluster_Expansion(testKRA):
                         count += 1
                 self.assertEqual(count, 1)
 
+        interactCounter.default_factory = None
+        clust2Interact.default_factory = None
         # Check that an interaction has occurred as many times as there are sites in it
         for interact, count in interactCounter.items():
             self.assertEqual(count, len(interact))
 
+        # check that all representative clusters have been translated
         self.assertEqual(len(clust2Interact), sum([len(clList) for clList in self.VclusExp.SpecClusters]),
                          msg="found:{}".format(len(clust2Interact)))
 
+        clAll = [cl for clList in self.VclusExp.SpecClusters for cl in clList]
+        for clust in clust2Interact.keys():
+            self.assertTrue(clust in clAll)
+
+        # check that each interaction corresponds to a rep cluster properly
         for repClust, interactList in clust2Interact.items():
             for interaction in interactList:
                 self.assertEqual(len(interaction2RepClust[interaction]), 1)
