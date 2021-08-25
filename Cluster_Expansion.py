@@ -334,10 +334,9 @@ class VectorClusterExpansion(object):
                 for site, spec in cl.SiteSpecs:
                     if site.ci == ci:
                         Rtrans = R - site.R
-                        interact = tuple([(cluster.ClusterSite(R=site.R+Rtrans, ci=site.ci), spec)
-                                          for site, spec in cl.SiteSpecs])
-                        interactSupInd = tuple([(self.sup.index(site.R+Rtrans, site.ci)[0], spec)
-                                                       for site, spec in cl.SiteSpecs])
+
+                        interactSupInd = tuple([(self.sup.index(st.R+Rtrans, site.ci)[0], spec)
+                                                       for st, spec in cl.SiteSpecs])
                         SiteSpecinteractList[(clSite, spec)].append([interactSupInd, cl, Rtrans])
 
                         # if NoTrans:
