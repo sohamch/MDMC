@@ -114,6 +114,7 @@ class VectorClusterExpansion(object):
         self.zeroClusts = zeroClusts
         self.OrigVac = OrigVac
 
+        start = time.time()
         if OrigVac:
             self.SpecClusters, self.SiteSpecInteractions, self.maxInteractCount = self.InteractsOrigVac()
         else:
@@ -121,14 +122,22 @@ class VectorClusterExpansion(object):
             self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
             # add a small check here - maybe we'll remove this later
 
+        print("Built Species Clusters : {:.4f} seconds".format(time.time() - start))
+
+        start = time.time()
         self.vecClus, self.vecVec, self.clus2LenVecClus = self.genVecClustBasis(self.SpecClusters)
+        print("Built vector bases for clusters : {:.4f}".format(time.time() - start))
 
+        start = time.time()
         self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, Tclusexp, NSpec, self.Nvac, vacSite)
+        print("Built KRA expander : {:.4f}".format(time.time() - start))
 
+        start = time.time()
         self.IndexClusters()  #  assign integer identifiers to each cluster
         self.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
         self.indexClustertoVecClus()  # Index where in the vector cluster list a cluster is present
         self.indexClustertoSpecClus()  # Index clusters to symmetry groups
+        print("Built Indexing : {:.4f}".format(time.time() - start))
 
     def recalcClusters(self):
         """
