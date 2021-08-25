@@ -31,7 +31,11 @@ class ClusterSpecies():
             self.transPairs = [(site, spec) for site, spec in zip(siteList, specList)]
         # self.transPairs = sorted(self.transPairs, key=lambda x: x[1])
         self.SiteSpecs = sorted(self.transPairs, key=lambda s: np.linalg.norm(s[0].R))
-        self.__hashcache__ = sum([hash((site, spec)) for site, spec in self.transPairs])
+
+        hashval = 0
+        for site, spec in self.transPairs:
+            hashval ^= hash((site, spec))
+        self.__hashcache__ = hashval
 
     def __eq__(self, other):
 
