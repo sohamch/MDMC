@@ -159,11 +159,15 @@ class test_Vector_Cluster_Expansion(testKRA):
 
     def test_spec_assign(self):
 
-        # check that every cluster is just one symmetry list
+        # check that every cluster appears just once in just one symmetry list
         clList = [cl for clList in self.VclusExp.SpecClusters for cl in clList]
-        clSet = set(clList)
 
-        self.assertEqual(len(clList), len(clSet))
+        for cl1 in clList:
+            count = 0
+            for cl2 in clList:
+                if cl1 == cl2:
+                    count += 1
+            assert count == 1 # check that the cluster occurs only once
 
         # let's test if the number of symmetric site clusters generated is the same
         sitetuples = set([])
