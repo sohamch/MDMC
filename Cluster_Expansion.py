@@ -423,8 +423,7 @@ class VectorClusterExpansion(object):
                 SupSitesInteracts[key, idx] = interactSite
                 SpecOnInteractSites[key, idx] = interactSpec
 
-
-        print("Done with chemical and symmetry class data for interactions : {}".format(time.time() - start))
+        print("Done with chemical data of interactions : {}".format(time.time() - start))
 
         # 2. Store energy data and vector data
         start = time.time()
@@ -432,21 +431,21 @@ class VectorClusterExpansion(object):
         numVecsInteracts = np.full(numInteracts, -1, dtype=int)
         VecsInteracts = np.zeros((numInteracts, 3, 3))
         VecGroupInteracts = np.full((numInteracts, 3), -1, dtype=int)
-        for interaction, repClus in InteractionRepClusDict.items():
-            idx = InteractionIndexDict[interaction]
+        for repClus, interactionList in self.clust2InteractId.items():
+            for idx in interactionList:
             # get the energy index here
-            Interaction2En[idx] = Energies[self.clust2SpecClus[repClus][0]]
-            # get the vector basis data here
-            # if vector basis is empty, keep no of elements to -1.
-            if self.clus2LenVecClus[self.clust2SpecClus[repClus][0]] == 0:
-                continue
-            vecList = self.clust2vecClus[repClus]
-            # store the number of vectors in the basis
-            numVecsInteracts[idx] = len(vecList)
-            # store the vector
-            for vecidx, tup in enumerate(vecList):
-                VecsInteracts[idx, vecidx, :] = self.vecVec[tup[0]][tup[1]].copy()
-                VecGroupInteracts[idx, vecidx] = tup[0]
+                Interaction2En[idx] = Energies[self.clust2SpecClus[repClus][0]]
+                # get the vector basis data here
+                # if vector basis is empty, keep no of elements to -1.
+                if self.clus2LenVecClus[self.clust2SpecClus[repClus][0]] == 0:
+                    continue
+                vecList = self.clust2vecClus[repClus]
+                # store the number of vectors in the basis
+                numVecsInteracts[idx] = len(vecList)
+                # store the vector
+                for vecidx, tup in enumerate(vecList):
+                    VecsInteracts[idx, vecidx, :] = self.vecVec[tup[0]][tup[1]].copy()
+                    VecGroupInteracts[idx, vecidx] = tup[0]
         print("Done with vector and energy data for interactions : {}".format(time.time() - start))
 
         return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts,\
