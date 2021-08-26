@@ -352,7 +352,7 @@ class VectorClusterExpansion(object):
                 InteractionIdDict[interactSupInd] = count
 
                 # For every rep cluster, store which interactions they produce
-                clust2InteractId[clID].append(count)
+                clust2InteractId[cl].append(count)
 
                 # For every site and species, store which interaction they belong to
                 for siteInd, spec in interactSupInd:
@@ -431,7 +431,8 @@ class VectorClusterExpansion(object):
         numVecsInteracts = np.full(numInteracts, -1, dtype=int)
         VecsInteracts = np.zeros((numInteracts, 3, 3))
         VecGroupInteracts = np.full((numInteracts, 3), -1, dtype=int)
-        for repClus, interactionList in self.clust2InteractId.items():
+        for repClusInd, interactionList in self.clust2InteractId.items():
+            repClus = self.Num2Clus[repClusInd]
             for idx in interactionList:
             # get the energy index here
                 Interaction2En[idx] = Energies[self.clust2SpecClus[repClus][0]]
