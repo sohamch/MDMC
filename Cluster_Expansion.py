@@ -490,8 +490,7 @@ class VectorClusterExpansion(object):
         vacSiteInd = self.sup.index(self.vacSite.R, self.vacSite.ci)[0]
 
         return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts,\
-               VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict,\
-               Index2InteractionDict, repClustCounter, Interact2RepClusArray, Interact2SymClassArray
+               VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, Interact2RepClusArray, Interact2SymClassArray
 
     def makeSiteIndToSite(self):
         Nsites = self.Nsites
