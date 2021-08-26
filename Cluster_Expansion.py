@@ -395,29 +395,12 @@ class VectorClusterExpansion(object):
         numInteractsSiteSpec = np.zeros((self.Nsites, self.NSpec), dtype=int)
         SiteSpecInterArray = np.full((self.Nsites, self.NSpec, self.maxinteractions), -1, dtype=int)
 
-        count = 0  # to keep a steady count of interactions.
         for key, interactIdList in self.SiteSpecInteractIds.items():
             keySite = key[0]  # the "index" function applies PBC to sites outside sup.
             keySpec = key[1]
-            numInteractsSiteSpec[keySite, keySpec] = len(interactInfoList)
-            for interactInd, interactInfo in enumerate(interactInfoList):
-                interaction = interactInfo[0]
-                if interaction in InteractionIndexDict:
-                    #siteSpecInteractIndexDict[(keySite, keySpec)].append(InteractionIndexDict[interaction])
-                    SiteSpecInterArray[keySite, keySpec, interactInd] = InteractionIndexDict[interaction]
-                    continue
-                else:
-                    # assign a new unique integer to this interaction
-                    InteractionIndexDict[interaction] = count
-                    repClustCounter[interactInfo[1]] += 1
-                    # also sort the sites by the supercell site indices - will help in identifying TSclusters as interactions
-                    # later on
-                    InteractionRepClusDict[interaction] = interactInfo[1]
-                    Index2InteractionDict[count] = interaction
-                    SiteSpecInterArray[keySite, keySpec, interactInd] = count
-                    count += 1
-
-        repClustCounter.default_factory = None
+            numInteractsSiteSpec[keySite, keySpec] = len(interactIdList)
+            for interactNum, interactId in enumerate(interactIdList):
+                SiteSpecInterArray[keySite, keySpec, interactNum] = interactId
 
         print("Done Indexing interactions : {}".format(time.time() - start))
         # Now that we have integers assigned to all the interactions, let's store their data as numpy arrays
