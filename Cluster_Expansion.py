@@ -404,7 +404,7 @@ class VectorClusterExpansion(object):
 
         print("Done Indexing interactions : {}".format(time.time() - start))
         # Now that we have integers assigned to all the interactions, let's store their data as numpy arrays
-        numInteracts = len(self.InteractionIdDict)
+        numInteracts = len(InteractionIndexDict)
 
         # 1. Store chemical data
         start = time.time()
@@ -416,6 +416,10 @@ class VectorClusterExpansion(object):
 
         # and the species on the supercell sites in each interaction
         SpecOnInteractSites = np.full((numInteracts, self.maxOrder), -1, dtype=int)
+
+        # and we want to the know the symmetry class of each interaction
+        Interact2RepClusArray = np.full(numInteracts, -1, dtype=int)
+        Interact2SymClassArray = np.full(numInteracts, -1, dtype=int)
 
         for (key, interaction) in Index2InteractionDict.items():
             numSitesInteracts[key] = len(interaction)
@@ -463,7 +467,7 @@ class VectorClusterExpansion(object):
         print("Done with vector and energy data for interactions : {}".format(time.time() - start))
 
         return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts,\
-               VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray
+               VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, Interact2RepClusArray, Interact2SymClassArray
 
     def makeSiteIndToSite(self):
         Nsites = self.Nsites
