@@ -307,15 +307,18 @@ class VectorClusterExpansion(object):
             self.Clus2Num[SpCl] = i
             clust2InteractId[SpCl].append(i)
             self.Num2Clus[i] = SpCl
-            InteractionIdDict[i] = SpCl
+            InteractionIdDict[i] = tuple(sorted([(self.sup.index(st.R, st.ci)[0], spec)
+                                                 for st, spec in SpCl.SiteSpecs],
+                                                key=lambda x: x[0]))
 
         SiteSpecinteractIds = collections.defaultdict(list)
         for clSet in symClusterList:
             for cl in clSet:
                 Id = self.Clus2Num[cl]
                 site = cl.siteList[1]
+                siteInd = self.sup.index(ci=site.ci, R=site.R)
                 spec = cl.specList[1]
-                SiteSpecinteractIds[(site, spec)].append(Id)
+                SiteSpecinteractIds[(siteInd, spec)].append(Id)
 
         SiteSpecinteractIds.default_factory = None
         maxinteractions = max([len(lst) for key, lst in SiteSpecinteractIds.items()])
@@ -388,20 +391,13 @@ class VectorClusterExpansion(object):
 
         # first, we assign unique integers to interactions
         start = time.time()
-        InteractionIndexDict = {}
-        siteSortedInteractionIndexDict = {}
-        InteractionRepClusDict = {}
-        Index2InteractionDict = {}
-        repClustCounter = collections.defaultdict(int)
-        # siteSpecInteractIndexDict = collections.defaultdict(list)
-
         # while we're at it, let's also store which siteSpec contains which interact
         numInteractsSiteSpec = np.zeros((self.Nsites, self.NSpec), dtype=int)
-        SiteSpecInterArray = np.full((self.Nsites, self.NSpec, self.maxInteractCount), -1, dtype=int)
+        SiteSpecInterArray = np.full((self.Nsites, self.NSpec, self.maxinteractions), -1, dtype=int)
 
         count = 0  # to keep a steady count of interactions.
-        for key, interactInfoList in self.SiteSpecInteractions.items():
-            keySite = self.sup.index(key[0].R, key[0].ci)[0]  # the "index" function applies PBC to sites outside sup.
+        for key, interactIdList in self.SiteSpecInteractIds.items():
+            keySite = key[0]  # the "index" function applies PBC to sites outside sup.
             keySpec = key[1]
             numInteractsSiteSpec[keySite, keySpec] = len(interactInfoList)
             for interactInd, interactInfo in enumerate(interactInfoList):
