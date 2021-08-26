@@ -161,7 +161,7 @@ class VectorClusterExpansion(object):
                     if self.OrigVac:
                         if siteOcc[0] != self.vacSpec:
                             continue
-                    ClustSpec = ClusterSpecies.inSuperCell(ClusterSpecies(siteOcc, clust.sites, zero=self.zeroClusts), self.N_units)
+                    ClustSpec = ClusterSpecies(siteOcc, clust.sites, zero=self.zeroClusts)
                     # check if this has already been considered
                     if ClustSpec in allClusts:
                         continue
