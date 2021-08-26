@@ -182,7 +182,7 @@ class VectorClusterExpansion(object):
                     self.SpecClust2Clus[len(symClusterList)] = clSetInd
                     symClusterList.append(newList)
 
-        return sorted(symClusterList, key=lambda sList:np.linalg.norm(sList[0].SiteSpecs[-1][0].R))
+        return symClusterList
 
     def genVecClustBasis(self, specClusters):
 
