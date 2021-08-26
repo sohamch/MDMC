@@ -21,17 +21,16 @@ class ClusterSpecies():
             raise TypeError("The sites must be entered as clusterSite object instances")
         # Form (site, species) set
         # Calculate the translation to bring center of the sites to the origin unit cell
-        self.zero=zero
-        self.specList = specList
-        self.siteList = siteList
+        self.zero = zero
         if zero:
             Rtrans = sum([site.R for site in siteList])//len(siteList)
             self.transPairs = [(site-Rtrans, spec) for site, spec in zip(siteList, specList)]
         else:
             self.transPairs = [(site, spec) for site, spec in zip(siteList, specList)]
         # self.transPairs = sorted(self.transPairs, key=lambda x: x[1])
-        self.SiteSpecs = sorted(self.transPairs, key=lambda s: np.linalg.norm(s[0].R))
-
+        self.SiteSpecs = self.transPairs #sorted(self.transPairs, key=lambda s: np.linalg.norm(s[0].R))
+        self.siteList = [site for site, spec in self.SiteSpecs]
+        self.specList = [spec for site, spec in self.SiteSpecs]
         hashval = 0
         for site, spec in self.transPairs:
             hashval ^= hash((site, spec))
