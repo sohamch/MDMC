@@ -495,39 +495,3 @@ class VectorClusterExpansion(object):
             siteIndtoR[siteInd, :] = R
             RtoSiteInd[R[0], R[1], R[2]] = siteInd
         return siteIndtoR, RtoSiteInd
-
-    ## Function to compute state fingerprints explicitly from only a cluster expansion
-    def GetStateSymInfo(self, state):
-        Nsym = len(self.SpecClusters)
-        statePrint = np.zeros((self.Nsites, Nsym), dtype=int)
-        interactDone = set([])
-        StateTotalSym = np.zeros(Nsym, dtype=int)
-        ci = (0, 0)
-        for siteInd in range(self.Nsites):
-            spec = state[siteInd]
-            # Go through the interactions that contain this site
-            ci, R = self.sup.ciR(siteInd)
-            site = cluster.ClusterSite(ci=ci, R=R)
-            for interactInfo in self.SiteSpecInteractions[(site, spec)]:
-                # First check if the interaction is "on"
-                interaction = interactInfo[0]
-                offSites = 0
-                for (intSite, intSpec) in interaction:
-                    # small assertion check
-                    if intSite == siteInd:
-                        assert intSpec == spec
-                    if not state[intSite] == intSpec:
-                        offSites += 1
-
-                if offSites == 0:  # the interaction is on
-                    # Get the representative cluster
-                    repClus = interactInfo[1]
-                    # Get the symmetry class of this cluster
-                    symclass = self.clust2SpecClus[repClus][0]
-                    # Increment the symmetry class by 1
-                    statePrint[siteInd, symclass] += 1
-                    if not interaction in interactDone:
-                        interactDone.add(interaction)
-                        StateTotalSym[symclass] += 1
-
-        return statePrint, StateTotalSym
