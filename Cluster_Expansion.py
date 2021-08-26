@@ -151,7 +151,8 @@ class VectorClusterExpansion(object):
         """
         allClusts = set()
         symClusterList = []
-        for clSet in self.clusexp:
+        self.SpecClust2Clus = {}
+        for clSetInd, clSet in enumerate(self.clusexp):
             for clust in list(clSet):
                 Nsites = len(clust.sites)
                 occupancies = list(itertools.product(self.mobList, repeat=Nsites))
@@ -178,6 +179,7 @@ class VectorClusterExpansion(object):
 
                     allClusts.update(newSymSet)
                     newList = list(newSymSet)
+                    self.SpecClust2Clus[len(symClusterList)] = clSetInd
                     symClusterList.append(newList)
 
         return sorted(symClusterList, key=lambda sList:np.linalg.norm(sList[0].SiteSpecs[-1][0].R))
