@@ -404,7 +404,7 @@ class VectorClusterExpansion(object):
 
         print("Done Indexing interactions : {}".format(time.time() - start))
         # Now that we have integers assigned to all the interactions, let's store their data as numpy arrays
-        numInteracts = len(InteractionIndexDict)
+        numInteracts = len(self.InteractionIdDict)
 
         # 1. Store chemical data
         start = time.time()
@@ -417,28 +417,11 @@ class VectorClusterExpansion(object):
         # and the species on the supercell sites in each interaction
         SpecOnInteractSites = np.full((numInteracts, self.maxOrder), -1, dtype=int)
 
-        # and we want to the know the symmetry class of each interaction
-        Interact2RepClusArray = np.full(numInteracts, -1, dtype=int)
-        Interact2SymClassArray = np.full(numInteracts, -1, dtype=int)
-
-        for (key, interaction) in Index2InteractionDict.items():
+        for (key, interaction) in self.InteractionIdDict.items():
             numSitesInteracts[key] = len(interaction)
-
-            # Now get the representative cluster
-            repClus = InteractionRepClusDict[interaction]
-
-            # Now get the index assigned to this cluster
-            clustInd = self.Clus2Num[repClus]
-            Interact2RepClusArray[key] = clustInd
-
-            # Now get the symmetry class for this representative cluster
-            (clListInd, clInd) = self.clust2SpecClus[repClus]
-
-            Interact2SymClassArray[key] = clListInd
-
-            for idx, (intSite, intSpec) in enumerate(interaction):
-                SupSitesInteracts[key, idx] = intSite
-                SpecOnInteractSites[key, idx] = intSpec
+            for idx, (interactSite, interactSpec) in enumerate(interaction):
+                SupSitesInteracts[key, idx] = interactSite
+                SpecOnInteractSites[key, idx] = interactSpec
 
 
         print("Done with chemical and symmetry class data for interactions : {}".format(time.time() - start))
@@ -467,7 +450,7 @@ class VectorClusterExpansion(object):
         print("Done with vector and energy data for interactions : {}".format(time.time() - start))
 
         return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts,\
-               VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, Interact2RepClusArray, Interact2SymClassArray
+               VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray
 
     def makeSiteIndToSite(self):
         Nsites = self.Nsites
