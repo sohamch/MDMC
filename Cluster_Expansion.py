@@ -116,7 +116,8 @@ class VectorClusterExpansion(object):
 
         start = time.time()
         if OrigVac:
-            self.SpecClusters, self.SiteSpecInteractions, self.maxInteractCount = self.InteractsOrigVac()
+            self.SpecClusters, self.SiteSpecInteractIds, self.InteractionIdDict,\
+            self.clust2InteractId, self.maxinteractions = self.InteractsOrigVac()
         else:
             self.SpecClusters = self.recalcClusters()
             self.IndexClusters()  # assign integer integer IDs to each cluster
@@ -277,7 +278,6 @@ class VectorClusterExpansion(object):
         """
         allClusts = set()
         symClusterList = []
-
         siteA = cluster.ClusterSite(ci=(0, 0), R=np.zeros(self.crys.dim, dtype=int))
         assert siteA == self.vacSite
 
@@ -298,20 +298,29 @@ class VectorClusterExpansion(object):
                 allClusts.update(newsymset)
                 symClusterList.append(list(newsymset))
 
-        SiteSpecinteractList = collections.defaultdict(list)
-        for clList in symClusterList:
-            for cl in clList:
+        allSpCl = [cl for clSet in symClusterList for cl in clSet]
+
+        # index the clusters
+        clust2InteractId = collections.defaultdict(list)
+        InteractionIdDict = {}
+        for i, SpCl in enumerate(allSpCl):
+            self.Clus2Num[SpCl] = i
+            clust2InteractId[SpCl].append(i)
+            self.Num2Clus[i] = SpCl
+            InteractionIdDict[i] = SpCl
+
+        SiteSpecinteractIds = collections.defaultdict(list)
+        for clSet in symClusterList:
+            for cl in clSet:
+                Id = self.Clus2Num[cl]
                 site = cl.siteList[1]
                 spec = cl.specList[1]
-                SiteSpecinteractList[(site, spec)].append([tuple((self.sup.index(ci=site.ci, R=site.R)[0], spec)
-                                                                 for site, spec in zip(cl.siteList, cl.specList)),
-                                                           cl, np.zeros(self.crys.dim, dtype=int)
-                                                           ])
+                SiteSpecinteractIds[(site, spec)].append(Id)
 
-        SiteSpecinteractList.default_factory = None
-        maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
+        SiteSpecinteractIds.default_factory = None
+        maxinteractions = max([len(lst) for key, lst in SiteSpecinteractIds.items()])
 
-        return symClusterList, SiteSpecinteractList, maxinteractions
+        return symClusterList, SiteSpecinteractIds, InteractionIdDict, clust2InteractId, maxinteractions
 
     def generateSiteSpecInteracts(self):
         """
