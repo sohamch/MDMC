@@ -21,36 +21,25 @@ class ClusterSpecies():
             raise TypeError("The sites must be entered as clusterSite object instances")
         # Form (site, species) set
         # Calculate the translation to bring center of the sites to the origin unit cell
-        def sortkey(csSp):
-            return csSp[0].ci[0] * (2 ** 32) + csSp.ci[1]
         self.zero=zero
         self.specList = specList
         self.siteList = siteList
-
-        self.Pairs = [(site, spec) for site, spec in zip(siteList, specList)]
-
-        # Now sort them by chemistry (same as Onsager - less than 2**32 sites per chem assumed)
-        self.Pairs = sorted(self.Pairs, key=lambda csSp: csSp[0].ci[0] * (2 ** 32) + csSp[0].ci[1])
-
-        # Next, center in the same way as Onsager code
-
         if zero:
-            # Bring the first site back to the origin
-            Rtrans = self.Pairs[0][0].R
-            self.SiteSpecs = [(site-Rtrans, spec) for site, spec in self.Pairs]
+            Rtrans = sum([site.R for site in siteList])//len(siteList)
+            self.transPairs = [(site-Rtrans, spec) for site, spec in zip(siteList, specList)]
         else:
-            self.SiteSpecs = [(site, spec) for site, spec in zip(siteList, specList)]
+            self.transPairs = [(site, spec) for site, spec in zip(siteList, specList)]
         # self.transPairs = sorted(self.transPairs, key=lambda x: x[1])
-        # self.SiteSpecs = sorted(self.transPairs, key=lambda s: np.linalg.norm(s[0].R))
+        self.SiteSpecs = sorted(self.transPairs, key=lambda s: np.linalg.norm(s[0].R))
 
         hashval = 0
-        for site, spec in self.SiteSpecs:
+        for site, spec in self.transPairs:
             hashval ^= hash((site, spec))
         self.__hashcache__ = hashval
 
     def __eq__(self, other):
 
-        if self.SiteSpecs == other.SiteSpecs:
+        if set(self.SiteSpecs) == set(other.SiteSpecs):
             return True
         return False
 
@@ -172,7 +161,7 @@ class VectorClusterExpansion(object):
                     if self.OrigVac:
                         if siteOcc[0] != self.vacSpec:
                             continue
-                    ClustSpec = ClusterSpecies(siteOcc, clust.sites, zero=self.zeroClusts)
+                    ClustSpec = ClusterSpecies.inSuperCell(ClusterSpecies(siteOcc, clust.sites, zero=self.zeroClusts), self.N_units)
                     # check if this has already been considered
                     if ClustSpec in allClusts:
                         continue
