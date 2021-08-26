@@ -367,24 +367,13 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         # The key site should be present only once
         interaction2RepClust = {}
         interactCounter = collections.defaultdict(int)
-        clust2Interact = collections.defaultdict(list)
-        self.assertEqual(len(self.VclusExp.SiteSpecInteractions), self.NSpec*len(self.superBCC.mobilepos))
-        for (key, infoList) in self.VclusExp.SiteSpecInteractions.items():
+        self.assertEqual(len(self.VclusExp.SiteSpecInteractIds), self.NSpec*len(self.superBCC.mobilepos))
+        for (key, interactIdList) in self.VclusExp.SiteSpecInteractIds.items():
             siteInd = key[0]
-            ci, R = self.VclusExp.sup.ciR(siteInd)
-            clSite = cluster.ClusterSite(ci=ci, R=R)
             sp = key[1]
-            # print(infoList[0][0])
-            for interactionData in infoList:
-                interaction = interactionData[0]
+            for Id in interactIdList:
+                interaction = self.VclusExp.InteractionIdDict[Id]
                 interactCounter[interaction] += 1
-                RepClust = interactionData[1]
-
-                if not interaction in interaction2RepClust:
-                    interaction2RepClust[interaction] = {RepClust}
-                else:
-                    interaction2RepClust[interaction].add(RepClust)
-                clust2Interact[RepClust].append(interaction)
                 count = 0
                 for (site, spec) in interaction:
                     if site == siteInd and sp == spec:
@@ -392,41 +381,46 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
                 self.assertEqual(count, 1)
 
         interactCounter.default_factory = None
-        clust2Interact.default_factory = None
         # Check that an interaction has occurred as many times as there are sites in it
         for interact, count in interactCounter.items():
             self.assertEqual(count, len(interact))
 
         # check that all representative clusters have been translated
-        self.assertEqual(len(clust2Interact), sum([len(clList) for clList in self.VclusExp.SpecClusters]),
-                         msg="found:{}".format(len(clust2Interact)))
+        self.assertEqual(len(self.VclusExp.clust2InteractId), sum([len(clList) for clList in self.VclusExp.SpecClusters]),
+                         msg="{}".format(len(self.VclusExp.clust2InteractId)))
 
         clAll = [cl for clList in self.VclusExp.SpecClusters for cl in clList]
-        for clust in clust2Interact.keys():
+        for clInd, cl in enumerate(clAll):
+            self.assertEqual(clInd, self.VclusExp.Clus2Num[cl])
+
+        for clustInd in self.VclusExp.clust2InteractId.keys():
+            clust = self.VclusExp.Num2Clus[clustInd]
             self.assertTrue(clust in clAll)
 
-        # check that each interaction corresponds to a rep cluster properly
-        for repClust, interactList in clust2Interact.items():
-            for interaction in interactList:
-                self.assertEqual(len(interaction2RepClust[interaction]), 1)
-                self.assertTrue(repClust in interaction2RepClust[interaction])
+        # check that each interaction corresponds to a single rep cluster
+        InteractIdtoRepClust = collections.defaultdict(list)
+        for repClust, interactIdList in self.VclusExp.clust2InteractId.items():
+            for interId in interactIdList:
+                InteractIdtoRepClust[interId].append(repClust)
+
+        for key, item in InteractIdtoRepClust.items():
+            self.assertEqual(len(item), 1)
 
     def test_trans_count(self):
         # test that all translations of all representative clusters are considered
         allSpCl = [SpCl for SpClList in self.VclusExp.SpecClusters for SpCl in SpClList]
-        for (key, infoList) in self.VclusExp.SiteSpecInteractions.items():
+        for (key, interactIdList) in self.VclusExp.SiteSpecInteractIds.items():
             siteInd = key[0]
-            ci, R = self.VclusExp.sup.ciR(siteInd)
-            clSite = cluster.ClusterSite(ci=ci, R=R)
+            ci = self.VclusExp.sup.ciR(siteInd)[0]
             sp = key[1]
             count = 0
-            # For each assigned species, check that all translations of a cluster are considered.
+            # For each species at a site, check that all translations of a cluster are considered.
             for SpecClus in allSpCl:
                 for (site, spec) in SpecClus.SiteSpecs:
                     if spec == sp and site.ci == ci:
                         count += 1  # a translation of this cluster should exist
 
-            self.assertEqual(count, len(infoList), msg="\ncount {}, stored {}\n{}".format(count, len(infoList), key))
+            self.assertEqual(count, len(interactIdList), msg="\ncount {}, stored {}\n{}".format(count, len(interactIdList), key))
 
     def testcluster2SpecClus(self):
 

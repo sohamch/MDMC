@@ -349,10 +349,10 @@ class VectorClusterExpansion(object):
                     raise ValueError("Interaction encountered twice while either translating same cluster differently"
                                      "or different clusters.")
                 # give the new interaction an Index
-                InteractionIdDict[interactSupInd] = count
+                InteractionIdDict[count] = interactSupInd
 
                 # For every rep cluster, store which interactions they produce
-                clust2InteractId[cl].append(count)
+                clust2InteractId[clID].append(count)
 
                 # For every site and species, store which interaction they belong to
                 for siteInd, spec in interactSupInd:
