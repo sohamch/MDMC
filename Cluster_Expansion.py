@@ -4,7 +4,7 @@ import collections
 import itertools
 import Transitions
 import time
-
+from tqdm import tqdm
 
 class ClusterSpecies():
 
@@ -119,10 +119,12 @@ class VectorClusterExpansion(object):
             self.SpecClusters, self.SiteSpecInteractions, self.maxInteractCount = self.InteractsOrigVac()
         else:
             self.SpecClusters = self.recalcClusters()
+            self.IndexClusters()  # assign integer integer IDs to each cluster
             end1 = time.time()
             print("\t built {} clusters:{:.4f} seconds".format(len([cl for clist in self.SpecClusters for cl in clist])
                                                                , end1 - start))
-            self.SiteSpecInteractions, self.maxInteractCount = self.generateSiteSpecInteracts()
+            self.SiteSpecInteractIds, self.InteractionIdDict,\
+            self.clust2InteractId, self.maxinteractions = self.generateSiteSpecInteracts()
             print("\t built interactions:{:.4f} seconds".format(time.time() - end1))
             # add a small check here - maybe we'll remove this later
 
@@ -137,7 +139,6 @@ class VectorClusterExpansion(object):
         print("Built KRA expander : {:.4f}".format(time.time() - start))
 
         start = time.time()
-        self.IndexClusters()  #  assign integer identifiers to each cluster
         self.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
         self.indexClustertoVecClus()  # Index where in the vector cluster list a cluster is present
         self.indexClustertoSpecClus()  # Index clusters to symmetry groups
@@ -316,41 +317,44 @@ class VectorClusterExpansion(object):
         """
         generate interactions for every site - for MC moves
         """
-        SiteSpecinteractList = collections.defaultdict(list)
-        InteractSymListNoTrans = []
-        Interact2RepClustDict = collections.defaultdict(set)
+        allLatTransTuples = [self.sup.ciR(siteInd) for siteInd in range(self.Nsites)]
+        InteractionIdDict = {}
+        SiteSpecInteractIds = collections.defaultdict(list)
+        clust2InteractId = collections.defaultdict(list)
 
-        allSiteTuples = [self.sup.ciR(siteInd) for siteInd in range(self.Nsites)]
-        allSites = [cluster.ClusterSite(ci=ci, R=R) for (ci, R) in allSiteTuples]
-
-        allClusters = [cl for clist in self.SpecClusters for cl in clist]
-
-        # Now, go through all the clusters
-        for cl in allClusters:
-
-            # Go through all the lattice translations
-            for clSite in allSites:
+        count = 0
+        # Traverse through all the unit cells in the supercell
+        for translateInd in tqdm(range(self.Nsites), position=0, leave=True):
+            # Now, go through all the clusters and translate by each lattice translation
+            for clID, cl in self.Num2Clus.items():
                 # get the cluster site
-                R = clSite.R
+                R = allLatTransTuples[translateInd][1]
                 # translate all sites with this translation
-                interactSupInd = tuple([(self.sup.index(st.R + R, st.ci)[0], spec)
-                                                                               for st, spec in cl.SiteSpecs])
+                interactSupInd = tuple(sorted([(self.sup.index(st.R + R, st.ci)[0], spec)
+                                               for st, spec in cl.SiteSpecs],
+                                              key=lambda x: x[0]))
+                if interactSupInd in InteractionIdDict:
+                    raise ValueError("Interaction encountered twice while either translating same cluster differently"
+                                     "or different clusters.")
+                # give the new interaction an Index
+                InteractionIdDict[interactSupInd] = count
 
-                # for every new site, store the interaction they are a part of
-                for stInd, spec in interactSupInd:
-                    SiteSpecinteractList[(stInd, spec)].append([interactSupInd, cl, R])
+                # For every rep cluster, store which interactions they produce
+                clust2InteractId[clID].append(count)
 
-        maxinteractions = max([len(lst) for key, lst in SiteSpecinteractList.items()])
+                # For every site and species, store which interaction they belong to
+                for siteInd, spec in interactSupInd:
+                    SiteSpecInteractIds[(siteInd, spec)].append(count)
 
-        SiteSpecinteractList.default_factory = None
-        Interact2RepClustDict.default_factory = None
+                # Increment the index
+                count += 1
 
-        # if NoTrans:
-        #     InteractSymListNoTrans.sort(key=lambda x: len(x))
-        #     return SiteSpecinteractList, maxinteractions, InteractSymListNoTrans, Interact2RepClustDict
-        #
-        # else:
-        return SiteSpecinteractList, maxinteractions
+        maxinteractions = max([len(lst) for key, lst in SiteSpecInteractIds.items()])
+
+        SiteSpecInteractIds.default_factory = None
+        clust2InteractId.default_factory = None
+
+        return SiteSpecInteractIds, InteractionIdDict, clust2InteractId, maxinteractions
 
     def IndexClusters(self):
         """
@@ -491,39 +495,3 @@ class VectorClusterExpansion(object):
             siteIndtoR[siteInd, :] = R
             RtoSiteInd[R[0], R[1], R[2]] = siteInd
         return siteIndtoR, RtoSiteInd
-
-    ## Function to compute state fingerprints explicitly from only a cluster expansion
-    def GetStateSymInfo(self, state):
-        Nsym = len(self.SpecClusters)
-        statePrint = np.zeros((self.Nsites, Nsym), dtype=int)
-        interactDone = set([])
-        StateTotalSym = np.zeros(Nsym, dtype=int)
-        ci = (0, 0)
-        for siteInd in range(self.Nsites):
-            spec = state[siteInd]
-            # Go through the interactions that contain this site
-            ci, R = self.sup.ciR(siteInd)
-            site = cluster.ClusterSite(ci=ci, R=R)
-            for interactInfo in self.SiteSpecInteractions[(site, spec)]:
-                # First check if the interaction is "on"
-                interaction = interactInfo[0]
-                offSites = 0
-                for (intSite, intSpec) in interaction:
-                    # small assertion check
-                    if intSite == siteInd:
-                        assert intSpec == spec
-                    if not state[intSite] == intSpec:
-                        offSites += 1
-
-                if offSites == 0:  # the interaction is on
-                    # Get the representative cluster
-                    repClus = interactInfo[1]
-                    # Get the symmetry class of this cluster
-                    symclass = self.clust2SpecClus[repClus][0]
-                    # Increment the symmetry class by 1
-                    statePrint[siteInd, symclass] += 1
-                    if not interaction in interactDone:
-                        interactDone.add(interaction)
-                        StateTotalSym[symclass] += 1
-
-        return statePrint, StateTotalSym
