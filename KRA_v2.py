@@ -6,27 +6,29 @@ import collections
 # Test notebooks for this file:
 # "Test_site_generation"
 
-class KRA_expansion():
+class KRA3bodyInteractions():
     """
     This is to compute KRA cluster expansion involving sites up to a cutoff and transition sites
-    to be taken from a jumpnetwork in mono-atomic lattices.
+    to be taken from a jumpnetwork in mono-atomic lattices, according to the specification in
+    'doi.org/10.1016/j.msea.2018.11.064'.
     """
-    def __init__(self, sup, jnet, chem, order, cutoff):
+    def __init__(self, sup, jnet, chem, combinedShellRange, nnRange, cutoff):
         """
         :param sup: the supercell object based on which sites will be given indices
         :param jnet: the jumpnetwork from transition sites are taken
         :param chem : the sublattice on which the vacancy jumps
-        :param order : the max number of sites in the clusters (excluding the transition sites)
+        :param combinedShellRange: which combined shell of the initial and final atom should the third atom be within
+        :param nnRange: max nearest neighbor range to search within the sites that are in combinedShellRange
         :param cutoff: the maximum distance up to which sites will be considered
         (from either the vacancy (at 0,0,0) or the transition sites
         """
         self.sup = sup
         self.jnet = jnet
         self.chem = chem
-        self.order = order
         self.cutoff = cutoff
         self.crys = sup.crys
         self.IndexJumps()
+        self.TransGroupsNN = self.GenerateInteractionSites(combinedShellRange, nnRange, cutoff)
 
     def IndexJumps(self):
         jList = []
