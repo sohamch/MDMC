@@ -12,7 +12,7 @@ class KRA3bodyInteractions():
     to be taken from a jumpnetwork in mono-atomic lattices, according to the specification in
     'doi.org/10.1016/j.msea.2018.11.064'.
     """
-    def __init__(self, sup, jnet, chem, combinedShellRange, nnRange, cutoff):
+    def __init__(self, sup, jnet, chem, combinedShellRange, nnRange, cutoff, NSpec, Nvac, vacSite):
         """
         :param sup: the supercell object based on which sites will be given indices
         :param jnet: the jumpnetwork from transition sites are taken
@@ -27,6 +27,9 @@ class KRA3bodyInteractions():
         self.chem = chem
         self.cutoff = cutoff
         self.crys = sup.crys
+        self.NSpec = NSpec
+        self.Nvac = Nvac
+        self.vacSite = vacSite
         self.IndexJumps()
         self.TransGroupsNN = self.GenerateInteractionSites(combinedShellRange, nnRange, cutoff)
 
@@ -117,4 +120,23 @@ class KRA3bodyInteractions():
                 Trans2NNGroups[(siteA, siteB)] = nnGroups
 
         return Trans2NNGroups
+
+    def defineTransSpecies(self):
+        """
+        Assign species to the transition sites only. In this form of KRA, we are only going to be seeing which type
+        of atom occupies the exchange site, and whether a specified atom (Re in the reference paper) occupies the
+        third site or not. Since we are only dealing with three-body clusters, we don't need to store occupancies of
+        all kinds of atoms on the third site.
+        """
+        Nmobile = self.NSpec
+        clusterJumpsSpecies = {}
+        for AB, clusterSymLists in self.TransGroupsNN.items():
+            # For this transition, first assign species to the clusters
+            for clusterList in clusterSymLists:
+                for specJ in range(Nmobile - 1):
+                    ABspecJ = (AB[0], AB[1], specJ)
+                    clusterJumpsSpecies[ABspecJ] = clusterList
+            # use itertools.product like in normal cluster expansion.
+            # Then, assign species to the final site of the jumps.
+        return clusterJumpsSpecies
 
