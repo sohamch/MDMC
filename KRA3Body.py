@@ -28,11 +28,15 @@ class KRA3bodyInteractions():
         self.cutoff = cutoff
         self.crys = sup.crys
         self.NSpec = NSpec
+        self.vacSpec = NSpec - 1
         self.Nvac = Nvac
+        self.Nsites = len(self.sup.mobilepos)
         self.vacSite = vacSite
+        self.maxOrderTrans = 3
         self.IndexJumps()
         self.TransGroupsNN = self.GenerateInteractionSites(combinedShellRange, nnRange, cutoff)
         self.clusterSpeciesJumps = self.defineTransSpecies()
+        self.assignTransInd()
 
     def IndexJumps(self):
         jList = []
@@ -162,6 +166,7 @@ class KRA3bodyInteractions():
                                  for Jumpkey, interactGroupList in self.clusterSpeciesJumps.items()])
 
         # 2 get the maximum number of clusters in any given group
+        # noinspection PyTypeChecker
         maxInteractsInGroups = max([len(interactGroup)
                                     for Jumpkey, interactGroupList in self.clusterSpeciesJumps.items()
                                     for interactGroup in interactGroupList])
