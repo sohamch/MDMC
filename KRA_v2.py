@@ -58,5 +58,5 @@ class KRA_expansion():
         self.jList = jList
         self.dxList = dxList
 
-    # Now let's generate all the sites required
-
+    # Now let's generate all the sites required - we'll generate the sites independently
+    # and return an error if they periodically collide
