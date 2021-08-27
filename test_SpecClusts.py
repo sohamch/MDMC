@@ -2,38 +2,35 @@ from onsager import crystal, supercell, cluster
 import numpy as np
 import collections
 import itertools
-import Transitions
+# import Transitions
+from KRA3Body import KRA3bodyInteractions
 import Cluster_Expansion
 import unittest
 import time
 
-class testKRA(unittest.TestCase):
+class testKRA3body(unittest.TestCase):
 
     def setUp(self):
         self.NSpec = 3
         self.Nvac = 1
-        self.MaxOrder = 3
-        self.MaxOrderTrans = 3
-        self.crys = crystal.Crystal.BCC(0.2836, chemistry="A")
-        self.jnetBCC = self.crys.jumpnetwork(0, 0.26)
+        a0 = 1.0
+        self.crys = crystal.Crystal.FCC(a0, chemistry="A")
+        self.chem = 0
+        self.jnetFCC = self.crys.jumpnetwork(0, 1.01*a0/np.sqrt(2))
         self.superlatt = 8 * np.eye(3, dtype=int)
-        self.superBCC = supercell.ClusterSupercell(self.crys, self.superlatt)
+        self.superFCC = supercell.ClusterSupercell(self.crys, self.superlatt)
         # get the number of sites in the supercell - should be 8x8x8
-        numSites = len(self.superBCC.mobilepos)
+        numSites = len(self.superFCC.mobilepos)
         self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
-        self.vacsiteInd = self.superBCC.index(np.zeros(3, dtype=int), (0, 0))[0]
-        self.clusexp = cluster.makeclusters(self.crys, 0.284, self.MaxOrder)
-        self.Tclusexp = cluster.makeclusters(self.crys, 0.29, self.MaxOrderTrans)
-        self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.Tclusexp, self.Tclusexp, self.NSpec,
-                                                 self.Nvac, self.vacsite)
-        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.Tclusexp, self.jnetBCC,
-                                                                 self.NSpec, self.vacsite, self.MaxOrder,
-                                                                 self.MaxOrderTrans)
+        self.vacsiteInd = self.superFCC.index(np.zeros(3, dtype=int), (0, 0))[0]
 
-        print(self.VclusExp.clus2LenVecClus)
-
-        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
-        self.KRAEnergies = [np.random.rand(len(val)) for (key, val) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
+        # arguments in order
+        # sup, jnet, chem, combinedShellRange, nnRange, cutoff, NSpec, Nvac, vacSite
+        TScombShellRange = 1 # upto 1nn combined shell
+        TSnnRange = 4
+        TScutoff = np.sqrt(2)*a0 # 4th nn cutoff
+        self.KRAexpander = KRA3bodyInteractions(self.superFCC, self.jnetFCC, self.chem, TScombShellRange, TSnnRange, TScutoff,
+                                                self.NSpec, self.Nvac, self.vacsite)
 
         self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
         for site in range(1, numSites):
@@ -45,7 +42,7 @@ class testKRA(unittest.TestCase):
 
     def test_groupTrans(self):
         """
-        To check if the group operations that form the clusters keep the transition sites unchanged.
+        To check if the 3 body interactions were constructed properly.
         """
         for key, clusterLists in self.KRAexpander.SymTransClusters.items():
 
