@@ -71,10 +71,6 @@ MonteCarloSamplerSpec = [
     ("TSInteractSpecs", int64[:, :]),
     ("SpecOnInteractSites", int64[:, :]),
     ("Interaction2En", float64[:]),
-    ("Interact2RepClusArray", int64[:]),
-    ("Interact2SymClassArray", int64[:]),
-    ("numVecsInteracts", int64[:]),
-    ("VecsInteracts", float64[:, :, :]),
     ("jumpFinSites", int64[:]),
     ("jumpFinSpec", int64[:]),
     ("numJumpPointGroups", int64[:]),
@@ -87,9 +83,7 @@ MonteCarloSamplerSpec = [
     ("Nspecs", int64),
     ("OffSiteCount", int64[:]),
     ("delEArray", float64[:]),
-    ("FinSiteFinSpecJumpInd", int64[:, :]),
-    ("VecGroupInteracts", int64[:, :])
-
+    ("FinSiteFinSpecJumpInd", int64[:, :])
 ]
 
 
@@ -115,8 +109,8 @@ class MCSamplerClass(object):
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
 
-    def makeMCsweep(self, state, OffSiteCount, TransOffSiteCount, symclassCounts, symCountsTotal,
-                    SwapTrials, beta, randarr, Nswaptrials, vacSiteInd=0):
+    def makeMCsweep(self, state, OffSiteCount, TransOffSiteCount, SwapTrials,
+                    beta, randarr, Nswaptrials, vacSiteInd=0):
 
         acceptCount = 0
         acceptInd = np.zeros(Nswaptrials, dtype=int64)
@@ -150,28 +144,12 @@ class MCSamplerClass(object):
                 interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
-                    # If this interaction was on, the on counts for the corresponding symmetry class
-                    # needs to decrease by one for all the sites that contain this interaction.
-                    # Get the symmetry class of this interaction
-                    symclass = self.Interact2SymClassArray[interMainInd]
-                    symCountsTotal[symclass] -= 1  # This will be symmetry identifier for the whole state
-                    for intSiteInd in range(self.numSitesInteracts[interMainInd]):
-                        intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
-                        # Now update the symmetry cluster class count for this site
-                        symclassCounts[intSite, symclass] -= 1
-
                 OffSiteCount[interMainInd] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
                 interMainInd = self.SiteSpecInterArray[siteB, specB, interIdx]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
-                    symclass = self.Interact2SymClassArray[interMainInd]
-                    symCountsTotal[symclass] -= 1
-                    for intSiteInd in range(self.numSitesInteracts[interMainInd]):
-                        intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
-                        # Now update the symmetry cluster class count for this site
-                        symclassCounts[intSite, symclass] -= 1
                 OffSiteCount[interMainInd] += 1
 
             # Next, switch required sites on
@@ -180,26 +158,12 @@ class MCSamplerClass(object):
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
-                    # If the new interaction has switched "on", the corresponding symmetry count needs to increase by one
-                    # for each site that contains this interaction
-                    symclass = self.Interact2SymClassArray[interMainInd]
-                    symCountsTotal[symclass] += 1
-                    for intSiteInd in range(self.numSitesInteracts[interMainInd]):
-                        intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
-                        # Now update the symmetry cluster class count for this site
-                        symclassCounts[intSite, symclass] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
                 interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
-                    symclass = self.Interact2SymClassArray[interMainInd]
-                    symCountsTotal[symclass] += 1
-                    for intSiteInd in range(self.numSitesInteracts[interMainInd]):
-                        intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
-                        # Now update the symmetry cluster class count for this site
-                        symclassCounts[intSite, symclass] += 1
 
             self.delEArray[swapcount] = delE
 
@@ -223,60 +187,33 @@ class MCSamplerClass(object):
                 # revert back the off site counts, because the state has not changed
                 for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
                     OffSiteCount[self.SiteSpecInterArray[siteA, specA, interIdx]] -= 1
-                    # revert the symmetry class counts if the interaction is back on
-                    if OffSiteCount[self.SiteSpecInterArray[siteA, specA, interIdx]] == 0:
-                        # get the symmetry class of this interaction
-                        symclass = self.Interact2SymClassArray[interIdx]
-                        symCountsTotal[symclass] += 1
-                        for intSiteInd in range(self.numSitesInteracts[interIdx]):
-                            intSite = self.SupSitesInteracts[intSiteInd]
-                            symclassCounts[intSite, symclass] += 1
 
                 for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
                     OffSiteCount[self.SiteSpecInterArray[siteB, specB, interIdx]] -= 1
-                    if OffSiteCount[self.SiteSpecInterArray[siteB, specB, interIdx]] == 0:
-                        # get the symmetry class of this interaction
-                        symclass = self.Interact2SymClassArray[interIdx]
-                        symCountsTotal[symclass] += 1
-                        for intSiteInd in range(self.numSitesInteracts[interIdx]):
-                            intSite = self.SupSitesInteracts[intSiteInd]
-                            symclassCounts[intSite, symclass] += 1
 
                 for interIdx in range(self.numInteractsSiteSpec[siteA, specB]):
                     OffSiteCount[self.SiteSpecInterArray[siteA, specB, interIdx]] += 1
-                    if OffSiteCount[self.SiteSpecInterArray[siteA, specB, interIdx]] == 0:
-                        # get the symmetry class of this interaction
-                        symclass = self.Interact2SymClassArray[interIdx]
-                        symCountsTotal[symclass] -= 1
-                        for intSiteInd in range(self.numSitesInteracts[interIdx]):
-                            intSite = self.SupSitesInteracts[intSiteInd]
-                            symclassCounts[intSite, symclass] -= 1
 
                 for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
                     OffSiteCount[self.SiteSpecInterArray[siteB, specA, interIdx]] += 1
-                    if OffSiteCount[self.SiteSpecInterArray[siteB, specA, interIdx]] == 0:
-                        # get the symmetry class of this interaction
-                        symclass = self.Interact2SymClassArray[interIdx]
-                        symCountsTotal[symclass] -= 1
-                        for intSiteInd in range(self.numSitesInteracts[interIdx]):
-                            intSite = self.SupSitesInteracts[intSiteInd]
-                            symclassCounts[intSite, symclass] += 1
 
             swapcount += 1
 
         return acceptCount, badTrials, acceptInd
 
-    def getLambda(self, offsc, NVclus):
+    def getLambda(self, offsc, NVclus, numVecsInteracts, VecGroupInteracts, VecsInteracts):
         lamb = np.zeros((NVclus, 3))
         for interactInd in range(offsc.shape[0]):
             if offsc[interactInd] == 0:
-                for vGInd in range(self.numVecsInteracts[interactInd]):
-                    vGroup = self.VecGroupInteracts[interactInd, vGInd]
-                    vec = self.VecsInteracts[interactInd, vGInd]
+                for vGInd in range(numVecsInteracts[interactInd]):
+                    vGroup = VecGroupInteracts[interactInd, vGInd]
+                    vec = VecsInteracts[interactInd, vGInd]
                     lamb[vGroup, :] += vec
         return lamb
 
-    def Expand(self, state, ijList, dxList, spec, OffSiteCount, TSOffSiteCount, lenVecClus, beta, vacSiteInd=0):
+    def Expand(self, state, ijList, dxList, spec, OffSiteCount, TSOffSiteCount,
+               numVecsInteracts, VecGroupInteracts, VecsInteracts,
+               lenVecClus, beta, vacSiteInd=0):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
@@ -312,16 +249,16 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
                     # take away the vectors for this interaction
-                    for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
+                    for i in range(numVecsInteracts[interMainInd]):
+                        del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
                 OffSiteCount[interMainInd] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
                 interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
-                    for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
+                    for i in range(numVecsInteracts[interMainInd]):
+                        del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
                 OffSiteCount[interMainInd] += 1
 
             # Next, switch required sites on
@@ -331,8 +268,8 @@ class MCSamplerClass(object):
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
                     # add the vectors for this interaction
-                    for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
+                    for i in range(numVecsInteracts[interMainInd]):
+                        del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
                 interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
@@ -342,18 +279,12 @@ class MCSamplerClass(object):
                     # add the vectors for this interaction
                     # for interactions with zero vector basis, numVecsInteracts[interMainInd] = -1 and the
                     # loop doesn't run
-                    for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
+                    for i in range(numVecsInteracts[interMainInd]):
+                        del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
 
-            # delEarray[jumpInd] = delE
-            # Energy change computed, now expand
-            # if 0.5 * delE + delEKRA < 0:
-            #     print(delE, delEKRA)
-            #     raise ValueError("negative activation barrier")
             ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
             del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
 
-            # delxDotdelLamb[:, jumpInd] = np.tensordot(del_lamb, dxList[jumpInd], axes=(1, 0))
             # let's do the tensordot by hand (work on finding numba support for this)
             for i in range(lenVecClus):
                 # replace innder loop with outer product
@@ -391,7 +322,8 @@ class MCSamplerClass(object):
 
         return WBar, BBar
 
-    def ExpandLatGas(self, state, ijList, dxList, spec, OffSiteCount, specRates, lenVecClus, vacSiteInd=0):
+    def ExpandLatGas(self, state, ijList, dxList, spec, OffSiteCount, specRates, lenVecClus,
+                     numVecsInteracts, VecGroupInteracts, VecsInteracts, vacSiteInd=0):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
@@ -415,15 +347,15 @@ class MCSamplerClass(object):
                 interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
                 if OffSiteCount[interMainInd] == 0:
                     # take away the vectors for this interaction
-                    for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
+                    for i in range(numVecsInteracts[interMainInd]):
+                        del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
                 OffSiteCount[interMainInd] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
                 interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
                 if OffSiteCount[interMainInd] == 0:
-                    for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[self.VecGroupInteracts[interMainInd, i]] -= self.VecsInteracts[interMainInd, i, :]
+                    for i in range(numVecsInteracts[interMainInd]):
+                        del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
                 OffSiteCount[interMainInd] += 1
 
             # Next, switch required sites on
@@ -432,8 +364,8 @@ class MCSamplerClass(object):
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     # add the vectors for this interaction
-                    for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
+                    for i in range(numVecsInteracts[interMainInd]):
+                        del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
                 interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
@@ -442,8 +374,8 @@ class MCSamplerClass(object):
                     # add the vectors for this interaction
                     # for interactions with zero vector basis, numVecsInteracts[interMainInd] = -1 and the
                     # loop doesn't run
-                    for i in range(self.numVecsInteracts[interMainInd]):
-                        del_lamb[self.VecGroupInteracts[interMainInd, i]] += self.VecsInteracts[interMainInd, i, :]
+                    for i in range(numVecsInteracts[interMainInd]):
+                        del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
 
             del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
 
@@ -532,13 +464,6 @@ class MCSamplerClass(object):
                 interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
-                    symclass = self.Interact2SymClassArray[interMainInd]
-                    symCountsTotal[symclass] -= 1
-                    # Now go through all the sites that contain this interaction
-                    for intSiteInd in range(self.numSitesInteracts[interMainInd]):
-                        intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
-                        # Now update the symmetry cluster class count for this site
-                        symClassCounts[intSite, symclass] -= 1
 
                 OffSiteCount[interMainInd] += 1
 
@@ -547,11 +472,6 @@ class MCSamplerClass(object):
                 # offscount = OffSiteCount[interMainInd]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
-                    symclass = self.Interact2SymClassArray[interMainInd]
-                    symCountsTotal[symclass] -= 1
-                    for intSiteInd in range(self.numSitesInteracts[interMainInd]):
-                        intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
-                        symClassCounts[intSite, symclass] -= 1
 
                 OffSiteCount[interMainInd] += 1
 
@@ -561,23 +481,12 @@ class MCSamplerClass(object):
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
-                    symclass = self.Interact2SymClassArray[interMainInd]
-                    symCountsTotal[symclass] += 1
-                    for intSiteInd in range(self.numSitesInteracts[interMainInd]):
-                        intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
-                        # Increment cluster class count for this site
-                        symClassCounts[intSite, symclass] += 1
 
             for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
                 interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
                 OffSiteCount[interMainInd] -= 1
                 if OffSiteCount[interMainInd] == 0:
                     delE += self.Interaction2En[interMainInd]
-                    symclass = self.Interact2SymClassArray[interMainInd]
-                    symCountsTotal[symclass] += 1
-                    for intSiteInd in range(self.numSitesInteracts[interMainInd]):
-                        intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
-                        symClassCounts[intSite, symclass] += 1
 
             # do the selection test
             # swap the sites to get to the next state
@@ -682,18 +591,14 @@ KMC_additional_spec = [
 @jitclass(MonteCarloSamplerSpec+KMC_additional_spec)
 class KMC_JIT(object):
 
-    def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, Interact2RepClusArray, Interact2SymClassArray,
-                 numVecsInteracts, VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
+    def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,numInteractsSiteSpec, SiteSpecInterArray,
                  numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
                  FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
                  siteIndtoR, RtoSiteInd, N_unit):
 
-        self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.Interact2RepClusArray,\
-        self.Interact2SymClassArray, self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.numInteractsSiteSpec,\
+        self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numInteractsSiteSpec,\
         self.SiteSpecInterArray = \
-            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, Interact2RepClusArray, Interact2SymClassArray,\
-            numVecsInteracts, \
-            VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray
+            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numInteractsSiteSpec, SiteSpecInterArray
 
         self.numSitesTSInteracts, self.TSInteractSites, self.TSInteractSpecs = \
             numSitesTSInteracts, TSInteractSites, TSInteractSpecs
@@ -710,7 +615,7 @@ class KMC_JIT(object):
 
         self.N_unit = N_unit
 
-    def TranslateState(self, state, siteFin, siteInit, symClassCounts=None):
+    def TranslateState(self, state, siteFin, siteInit):
 
         dR = self.siteIndtoR[siteFin, :] - self.siteIndtoR[siteInit, :]
         stateTrans = np.zeros_like(state, dtype=int64)
@@ -718,15 +623,6 @@ class KMC_JIT(object):
             Rnew = (self.siteIndtoR[siteInd, :] + dR) % self.N_unit  # to apply PBC
             siteIndNew = self.RtoSiteInd[Rnew[0], Rnew[1], Rnew[2]]
             stateTrans[siteIndNew] = state[siteInd]
-
-        # Keeping this separate because it is mostly just needed for the end state of a trajectory.
-        if symClassCounts is not None:
-            symClassCountsOld = symClassCounts.copy()
-            for siteInd in range(state.shape[0]):
-                Rnew = (self.siteIndtoR[siteInd, :] + dR) % self.N_unit  # apply PBC
-                siteIndNew = self.RtoSiteInd[Rnew[0], Rnew[1], Rnew[2]]
-                symClassCounts[siteIndNew, :] = symClassCountsOld[siteInd, :]
-
         return stateTrans
 
 
@@ -802,67 +698,32 @@ class KMC_JIT(object):
 
         return delEArray
 
-    def updateState(self, state, symClassCounts, symCountsTotal, OffSiteCount, siteA, siteB):
+    def updateState(self, state, OffSiteCount, siteA, siteB):
 
         # update offsitecounts and symmetry classes
         for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
             interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
-            if OffSiteCount[interMainInd] == 0:
-                # we need to turn this interaction off for each site that contains it
-                # Get the symmetry class of the interaction
-                symclass = self.Interact2SymClassArray[interMainInd]
-                symCountsTotal[symclass] -= 1
-                # Now go through every site that contains this interaction
-                for intSiteInd in range(self.numSitesInteracts[interMainInd]):
-                    # get the site
-                    intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
-                    # update the symclass on count
-                    symClassCounts[intSite, symclass] -= 1
-
             OffSiteCount[interMainInd] += 1
 
         for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
             interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
-            if OffSiteCount[interMainInd] == 0:
-                symclass = self.Interact2SymClassArray[interMainInd]
-                symCountsTotal[symclass] -= 1
-                # Now go through every site that contains this interaction
-                for intSiteInd in range(self.numSitesInteracts[interMainInd]):
-                    # get the site
-                    intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
-                    # update the symclass on count
-                    symClassCounts[intSite, symclass] -= 1
             OffSiteCount[interMainInd] += 1
 
         # Next, switch required sites on
         for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
             interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
             OffSiteCount[interMainInd] -= 1
-            # if this interaction has then switched on, increment the symmetry class counts
-            if OffSiteCount[interMainInd] == 0:
-                # get the symmetry class
-                symclass = self.Interact2SymClassArray[interMainInd]
-                symCountsTotal[symclass] += 1
-                for intSiteInd in range(self.numSitesInteracts[interMainInd]):
-                    intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
-                    symClassCounts[intSite, symclass] += 1
 
         for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
             interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
             OffSiteCount[interMainInd] -= 1
-            if OffSiteCount[interMainInd] == 0:
-                symclass = self.Interact2SymClassArray[interMainInd]
-                symCountsTotal[symclass] += 1
-                for intSiteInd in range(self.numSitesInteracts[interMainInd]):
-                    intSite = self.SupSitesInteracts[interMainInd, intSiteInd]
-                    symClassCounts[intSite, symclass] += 1
 
         # swap sites
         temp = state[siteA]
         state[siteA] = state[siteB]
         state[siteB] = temp
 
-    def getTraj(self, state, symClassCounts, symCountsTotal, offsc, vacSiteFix, jumpFinSiteList, dxList, NSpec, Nsteps, beta):
+    def getTraj(self, state, offsc, vacSiteFix, jumpFinSiteList, dxList, NSpec, Nsteps, beta):
 
         X = np.zeros((NSpec, 3), dtype=float64)
         t = 0.
@@ -907,89 +768,11 @@ class KMC_JIT(object):
             X_steps[step, :, :] = X.copy()
             t_steps[step] = t
 
-            self.updateState(state, symClassCounts, symCountsTotal, offsc, vacIndNow, vacIndNext)
+            self.updateState(state, offsc, vacIndNow, vacIndNext)
 
             vacIndNow = vacIndNext
 
         return X_steps, t_steps
-
-    def LatGasTraj(self, state, symClassCounts, symCountsTotal, offsc,
-                   SpecRates, Nsteps, ijList, dxList, vacSiteInit, NoSymCount=True):
-
-        NSpec = SpecRates.shape[0] + 1
-        X = np.zeros((NSpec, 3))
-        t = 0.
-
-        X_steps = np.zeros((Nsteps, NSpec, 3))
-        t_steps = np.zeros(Nsteps)
-
-        rateArr = np.zeros(ijList.shape[0])
-
-        jmpFinSiteList = ijList.copy()
-        vacSiteNow = vacSiteInit
-
-        jmpSelectSteps = np.zeros(Nsteps, dtype=int64)  # To store which jump was selected in each step
-
-        for step in range(Nsteps):
-
-            # first get the exit rates out of this state
-            for jmpInd in range(jmpFinSiteList.shape[0]):
-                specB = state[jmpFinSiteList[jmpInd]]  # Get the species occupying the exit site.
-                rateArr[jmpInd] = SpecRates[specB]  # Get the exit rate corresponding to this species.
-
-            # Next get the escape time
-            rateTot = np.sum(rateArr)
-            if rateTot < 1e-8:  # If escape rate is zero, then nothing will move and time will be infinite
-                X[:, :] += 0.
-                t = np.inf
-            else:
-                # convert the rates to cumulative probability
-                rateArr /= rateTot
-
-                t += 1. / rateTot
-                rates_cm = np.cumsum(rateArr)
-
-                # Then select the jump
-                rn = np.random.rand()
-                jmpSelect = np.searchsorted(rates_cm, rn)
-
-                jmpSelectSteps[step] = jmpSelect  # Store which jump was selected
-
-                # Store the displacement and the time for this step
-                X[NSpec - 1, :] += dxList[jmpSelect]
-
-                siteB = jmpFinSiteList[jmpSelect]
-                specB = state[siteB]
-                X[specB, :] -= dxList[jmpSelect]
-
-                dR = self.siteIndtoR[siteB] - self.siteIndtoR[vacSiteInit]  # the jump sites are built around vacSiteInit
-
-                # Update the final jump sites
-                for jmp in range(jmpFinSiteList.shape[0]):
-                    RfinSiteNew = (dR + self.siteIndtoR[ijList[jmp]]) % self.N_unit  # This returns element wise modulo when N_unit is an
-                    # array instead of an integer.
-
-                    jmpFinSiteList[jmp] = self.RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
-
-                # Next, do the site swap to update the state
-                if NoSymCount:
-                    # just do the exchange
-                    temp = state[vacSiteNow]
-                    assert temp == NSpec - 1
-                    state[vacSiteNow] = state[siteB]
-                    state[siteB] = temp
-                else:
-                    # do a full update including offsitecounts
-                    self.updateState(state, symClassCounts, symCountsTotal, offsc, vacSiteNow, siteB)
-
-                vacSiteNow = siteB
-
-            X_steps[step, :, :] = X.copy()
-            t_steps[step] = t
-
-        # After all the steps have been completed, we need to translate sites so that vacancy is back at the origin
-        # We also need to make sure that the symmetry cluster counts have been translated accordingly
-        return X_steps, t_steps, jmpSelectSteps, jmpFinSiteList
 
 # Here, we write a function that forms the shells
 def makeShells(MC_jit, KMC_jit, state0, offsc0, TSoffsc0, ijList, dxList, beta, Nsites, Nspec, Nshells=1):
