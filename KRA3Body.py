@@ -32,6 +32,7 @@ class KRA3bodyInteractions():
         self.vacSite = vacSite
         self.IndexJumps()
         self.TransGroupsNN = self.GenerateInteractionSites(combinedShellRange, nnRange, cutoff)
+        self.clusterSpeciesJumps = self.defineTransSpecies()
 
     def IndexJumps(self):
         jList = []
@@ -89,7 +90,7 @@ class KRA3bodyInteractions():
                 siteA = cluster.ClusterSite(ci=(chem, i), R=z)
                 dxR, _ = self.crys.cart2pos(dx)
                 siteB = cluster.ClusterSite(ci=(chem, j), R=dxR)
-
+                assert siteA == self.vacSite
                 # First, make the combined first nearest shell of both siteA and siteB
                 siteAshell1 = set()
                 siteBshell1 = set()
@@ -138,4 +139,98 @@ class KRA3bodyInteractions():
             # use itertools.product like in normal cluster expansion.
             # Then, assign species to the final site of the jumps.
         return clusterJumpsSpecies
+
+    # assign IDs to the jumps in clusterSpeciesJumps for use in JIT calculations
+    def assignTransInd(self):
+
+        self.jump2Index = {}
+        self.Index2Jump = {}
+
+        for jumpInd, (Jumpkey, interactGroupList) in zip(itertools.count(),
+                                                         self.clusterSpeciesJumps.items()):
+
+            self.jump2Index[Jumpkey] = jumpInd
+            self.Index2Jump[jumpInd] = Jumpkey
+
+    # Then we make the arrays for Jit calculations
+    def makeTransJitData(self, counterSpec, KRAEnergies):
+
+        TsInteractIndexDict = {}
+        Index2TSinteractDict = {}
+        # 1 Get the maximum of cluster groups amongst all jumps
+        maxInteractGroups = max([len(interactGroupList)
+                                 for Jumpkey, interactGroupList in self.clusterSpeciesJumps.items()])
+
+        # 2 get the maximum number of clusters in any given group
+        maxInteractsInGroups = max([len(interactGroup)
+                                    for Jumpkey, interactGroupList in self.clusterSpeciesJumps.items()
+                                    for interactGroup in interactGroupList])
+
+        # 3 create arrays to store
+        # 3.1 initial and final sites in transitions
+        jumpFinSites = np.full(len(self.clusterSpeciesJumps), -1, dtype=int)
+        jumpFinSpec = np.full(len(self.clusterSpeciesJumps), -1, dtype=int)
+
+        FinSiteFinSpecJumpInd = np.full((self.Nsites, self.NSpec), -1, dtype=int)
+
+        # 3.2 To store the number of TSInteraction groups for each transition
+        numJumpPointGroups = np.full(len(self.clusterSpeciesJumps), -1, dtype=int)
+
+        # 3.3 To store the number of clusters in each TSInteraction group for each transition
+        numTSInteractsInPtGroups = np.full((len(self.clusterSpeciesJumps), maxInteractGroups), -1,
+                                           dtype=int)
+
+        # 3.4
+        # To store the main interaction index of each TSInteraction (will be used to check on or off status)
+        JumpInteracts = np.full((len(self.clusterSpeciesJumps), maxInteractGroups, maxInteractsInGroups),
+                                -1, dtype=int)
+
+        # 3.5 To store the KRA energies for each transition state cluster
+        Jump2KRAEng = np.zeros((len(self.clusterSpeciesJumps), maxInteractGroups, maxInteractsInGroups))
+        # Fill up the arrays
+        count = 0  # to keep track of the integer assigned to each TS interaction.
+        for (Jumpkey, interactGroupList) in self.clusterSpeciesJumps.items():
+
+            jumpInd = self.jump2Index[Jumpkey]
+
+            jumpFinSites[jumpInd] = Jumpkey[1]
+            jumpFinSpec[jumpInd] = Jumpkey[2]
+            FinSiteFinSpecJumpInd[Jumpkey[1], Jumpkey[2]] = jumpInd
+            numJumpPointGroups[jumpInd] = len(interactGroupList)
+
+            for interactGroupInd, interactGroup in enumerate(interactGroupList):
+                specList = [self.vacSpec, Jumpkey[2]]  # the initial species is the vacancy, and specJ is stored as the key
+                spectup, clusterList = interactGroup[0], interactGroup[1]
+                for spec in spectup:
+                    specList.append(spec)
+
+                numTSInteractsInPtGroups[jumpInd, interactGroupInd] = len(clusterList)
+
+                for interactInd, TSclust in enumerate(clusterList):
+                    TSInteract = tuple([(self.sup.index(clsite.R, clsite.ci)[0], sp)
+                                        for clsite, sp in zip(TSclust.sites, specList)])
+
+                    if TSInteract not in TsInteractIndexDict:
+                        TsInteractIndexDict[TSInteract] = count
+                        Index2TSinteractDict[count] = TSInteract
+                        count += 1
+
+                    JumpInteracts[jumpInd, interactGroupInd, interactInd] = TsInteractIndexDict[TSInteract]
+                    Jump2KRAEng[jumpInd, interactGroupInd, interactInd] = KRAEnergies[jumpInd][interactGroupInd]
+
+        # 4 Next, make arrays that store the sites and species in each TS interaction.
+        TSInteractSites = np.full((len(TsInteractIndexDict), self.maxOrderTrans), -1, dtype=int)
+        TSInteractSpecs = np.full((len(TsInteractIndexDict), self.maxOrderTrans), -1, dtype=int)
+        numSitesTSInteracts = np.full(len(TsInteractIndexDict), -1, dtype=int)
+
+        for index, TSInteract in Index2TSinteractDict.items():
+            numSitesTSInteracts[index] = len(TSInteract)
+            for siteIdx, (site, spec) in zip(itertools.count(), TSInteract):
+                TSInteractSites[index, siteIdx] = site
+                TSInteractSpecs[index, siteIdx] = spec
+
+        return TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites, TSInteractSpecs,\
+               jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups,\
+               JumpInteracts, Jump2KRAEng
+
 
