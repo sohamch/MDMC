@@ -8,8 +8,7 @@ class KRAExpand(object):
     """
     Object that contains all information regarding the KRA expansion of a jumpnetwork in a supercell.
     """
-    def __init__(self, sup, chem, jumpnetwork, maxOrderTrans, clusexp, NSpec, Nvac, vacSite,
-                 AllowReverseEquivalence=False):
+    def __init__(self, sup, chem, jumpnetwork, maxOrderTrans, clusexp, NSpec, Nvac, vacSite):
         """
         :param sup: clusterSupercell Object
         :param chem: the sublattice index on which the jumpnetwork has been built.
@@ -34,7 +33,6 @@ class KRAExpand(object):
         self.vacSpec = NSpec - 1
 
         # Index the jump network into an array
-        self.AllowReverseEquivalence = AllowReverseEquivalence
         self.IndexJumps()
         # First, we reform the jumpnetwork
         self.TSClusters = cluster.makeTSclusters(sup.crys, chem, jumpnetwork, clusexp)
@@ -103,13 +101,8 @@ class KRAExpand(object):
             for g in self.crys.G:
                 siteANew = siteA.g(self.crys, g)
                 siteBNew = siteB.g(self.crys, g)
-
-                if self.AllowReverseEquivalence: # if vac and jump site are considered equivalent
-                    if siteA == siteANew and siteB == siteBNew or siteB == siteANew and siteA == siteBNew:
-                        Glist.append(g)
-                else:
-                    if siteA == siteANew and siteB == siteBNew:
-                        Glist.append(g)
+                if siteA == siteANew and siteB == siteBNew:
+                    Glist.append(g)
 
             newSymList = []
             for clust in clustList:
