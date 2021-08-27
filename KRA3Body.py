@@ -137,8 +137,15 @@ class KRA3bodyInteractions():
         clusterJumpsSpecies = {}
         for AB, clusterSymLists in self.TransGroupsNN.items():
             # For this transition, first assign species to the Transition.
+            siteA = AB[0]
+            siteB = AB[1]
+            assert siteA == self.vacSite
+            indA = self.sup.index(siteA.R, siteA.ci)[0]
+            indB = self.sup.index(siteB.R, siteB.ci)[0]
+            assert indB in self.jList
+
             for specJ in range(Nmobile - 1):
-                ABspecJ = (AB[0], AB[1], specJ)
+                ABspecJ = (indA, indB, specJ)
                 clusterJumpsSpecies[ABspecJ] = clusterSymLists
             # use itertools.product like in normal cluster expansion.
             # Then, assign species to the final site of the jumps.
