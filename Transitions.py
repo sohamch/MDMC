@@ -42,6 +42,7 @@ class KRAExpand(object):
 
     def IndexJumps(self):
         jumpFinSite = []
+        jumpFinClustSite = []
         jumpdx = []
         for jump in [jmp for jmpList in self.jumpnetwork for jmp in jmpList]:
 
@@ -58,7 +59,7 @@ class KRAExpand(object):
                 raise ValueError("improper coordinate transformation, did not get same final jump site")
 
             siteB = cluster.ClusterSite(ci=(self.chem, jump[0][1]), R=Rj)
-
+            jumpFinClustSite.append(siteB)
             indA = self.sup.index(siteA.R, siteA.ci)[0]
             assert indA == self.sup.index(self.vacSite.R, self.vacSite.ci)[0]
             indB = self.sup.index(siteB.R, siteB.ci)[0]
@@ -68,6 +69,7 @@ class KRAExpand(object):
 
         # cast into numpy arrays - to be used in KRA expansions
         self.ijList = np.array(jumpFinSite, dtype=int)
+        self.ijListClustSite = jumpFinClustSite
         self.dxList = np.array(jumpdx, dtype=float)
 
     def GroupTransClusters(self):
