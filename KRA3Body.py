@@ -211,17 +211,13 @@ class KRA3bodyInteractions():
             numJumpPointGroups[jumpInd] = len(interactGroupList)
 
             for interactGroupInd, interactGroup in enumerate(interactGroupList):
-                specList = [self.vacSpec, Jumpkey[2]]  # the initial species is the vacancy, and specJ is stored as the key
-                spectup, clusterList = interactGroup[0], interactGroup[1]
-                for spec in spectup:
-                    specList.append(spec)
-
+                clusterList = interactGroup
                 numTSInteractsInPtGroups[jumpInd, interactGroupInd] = len(clusterList)
+                for interactInd, site3 in enumerate(clusterList):
+                    TSInteract = [(Jumpkey[0], self.vacSpec), (Jumpkey[1], Jumpkey[2]),
+                                  (self.sup.ind(site3.R, site3.ci)[0], counterSpec)]
 
-                for interactInd, TSclust in enumerate(clusterList):
-                    TSInteract = tuple([(self.sup.index(clsite.R, clsite.ci)[0], sp)
-                                        for clsite, sp in zip(TSclust.sites, specList)])
-
+                    # counterSpec is the species that will be considered for determining energies.
                     if TSInteract not in TsInteractIndexDict:
                         TsInteractIndexDict[TSInteract] = count
                         Index2TSinteractDict[count] = TSInteract

@@ -3,6 +3,7 @@ import numpy as np
 import collections
 import itertools
 import Transitions
+from KRA3Body import KRA3bodyInteractions
 import time
 from tqdm import tqdm
 
@@ -79,7 +80,7 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, Tclusexp, jumpnetwork, NSpec, vacSite, maxorder, maxorderTrans,
+    def __init__(self, sup, clusexp, TScutoff, TScombShellRange, TSnnRange, jumpnetwork, NSpec, vacSite, maxorder,
                  zeroClusts=True, OrigVac=False):
         """
         :param sup : clusterSupercell object
@@ -102,7 +103,6 @@ class VectorClusterExpansion(object):
         self.crys = self.sup.crys
         # vacInd will always be the initial state in the transitions that we consider.
         self.clusexp = clusexp
-        self.Tclusexp = Tclusexp
         self.maxOrder = maxorder
         self.vacSpec = NSpec - 1
         self.Nvac = 1
@@ -135,7 +135,8 @@ class VectorClusterExpansion(object):
         print("Built vector bases for clusters : {:.4f}".format(time.time() - start))
 
         start = time.time()
-        self.KRAexpander = Transitions.KRAExpand(sup, self.chem, jumpnetwork, maxorderTrans, Tclusexp, NSpec, self.Nvac, vacSite)
+        self.KRAexpander = KRA3bodyInteractions(sup, jumpnetwork, self.chem, TScombShellRange, TSnnRange, TScutoff,
+                                                NSpec, self.Nvac, vacSite)
         print("Built KRA expander : {:.4f}".format(time.time() - start))
 
         start = time.time()
