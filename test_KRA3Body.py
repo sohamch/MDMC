@@ -96,3 +96,32 @@ class testKRA3bodyFCC(unittest.TestCase):
         specs.default_factory = None
         for key, item in specs.items():
             self.assertEqual(sorted(item), [0, 1], msg="{}".format(item))
+
+    def test_Jit_data(self):
+        for Ind, jump in self.KRAexpander.Index2Jump.items():
+            self.assertEqual(self.KRAexpander.jump2Index[jump], Ind)
+
+        # Generate the JIT arrays
+
+        # Let's make energies based on jumping atoms.
+        # Ni = 0, Re = 1
+
+        EnReJumps = np.array([4, 3, 2, 1])
+        EnNiJumps = EnReJumps*2
+
+        Energies = []
+        for key, interactGroupList in self.KRAexpander.clusterSpeciesJumps:
+            jumpSpec = key[2]
+            if jumpSpec == 0:
+                Energies.append(EnNiJumps)
+            else:
+                Energies.append(EnReJumps)
+
+        CounterSpec = 1
+        TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites, TSInteractSpecs, \
+        jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, \
+        JumpInteracts, Jump2KRAEng =\
+        self.KRAexpander.makeTransJitData(CounterSpec, Energies)
+
+        self.assertEqual(len(TsInteractIndexDict), 18*24)
+
