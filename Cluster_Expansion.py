@@ -56,7 +56,7 @@ class VectorClusterExpansion(object):
             print("\t built {} clusters:{:.4f} seconds".format(len([cl for clist in self.SpecClusters for cl in clist])
                                                                , end1 - start))
             self.SiteSpecInteractIds, self.Id2InteractionDict, self.Interaction2IdDict,\
-            self.clust2InteractId, self.maxinteractions = self.generateSiteSpecInteracts()
+            self.clust2InteractId, self.InteractionId2ClusId, self.maxinteractions = self.generateSiteSpecInteracts()
             print("\t built interactions:{:.4f} seconds".format(time.time() - end1))
             # add a small check here - maybe we'll remove this later
 
@@ -269,6 +269,7 @@ class VectorClusterExpansion(object):
         Interaction2IdDict = {}
         SiteSpecInteractIds = collections.defaultdict(list)
         clust2InteractId = collections.defaultdict(list)
+        InteractionId2ClusId = {}
 
         count = 0
         # Traverse through all the unit cells in the supercell
@@ -291,6 +292,7 @@ class VectorClusterExpansion(object):
 
                 # For every rep cluster, store which interactions they produce
                 clust2InteractId[clID].append(count)
+                InteractionId2ClusId[count] = clID
 
                 # For every site and species, store which interaction they belong to
                 for siteInd, spec in interactSupInd:
@@ -304,7 +306,7 @@ class VectorClusterExpansion(object):
         SiteSpecInteractIds.default_factory = None
         clust2InteractId.default_factory = None
 
-        return SiteSpecInteractIds, Id2InteractionDict, Interaction2IdDict, clust2InteractId, maxinteractions
+        return SiteSpecInteractIds, Id2InteractionDict, Interaction2IdDict, clust2InteractId, InteractionId2ClusId, maxinteractions
 
     def IndexClusters(self):
         """
