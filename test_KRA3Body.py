@@ -85,3 +85,14 @@ class testKRA3bodyFCC(unittest.TestCase):
                     self.assertAlmostEqual(x12, np.sqrt(2)*self.a0)
                 elif np.math.isclose(x12, nnDist):
                     self.assertAlmostEqual(x02, np.sqrt(2)*self.a0)
+
+    def test_SpeciesAssignment(self):
+        self.assertEqual(len(self.KRAexpander.clusterSpeciesJumps), 24)
+        specs = collections.defaultdict(list)
+        for (key, item) in self.KRAexpander.clusterSpeciesJumps.items():
+            specs[(key[0], key[1])].append(key[2])
+
+        self.assertEqual(len(specs), 12)
+        specs.default_factory = None
+        for key, item in specs.items():
+            self.assertEqual(sorted(item), [0, 1], msg="{}".format(item))
