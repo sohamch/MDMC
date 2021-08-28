@@ -20,7 +20,8 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         self.crys = crystal.Crystal.BCC(a0, chemistry="A")
         jumpCutoff = 1.01*np.sqrt(3)*a0/2
         self.jnetBCC = self.crys.jumpnetwork(0, jumpCutoff)
-        self.superlatt = 8 * np.eye(3, dtype=int)
+        self.N_units = 8
+        self.superlatt = self.N_units * np.eye(3, dtype=int)
         self.superBCC = supercell.ClusterSupercell(self.crys, self.superlatt)
         # get the number of sites in the supercell - should be 8x8x8
         numSites = len(self.superBCC.mobilepos)
@@ -44,6 +45,7 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
             self.mobOccs[spec][site] = 1
         self.mobOccs[-1, self.vacsiteInd] = 1
         self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
+        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
         print("Done setting up cluster expansion tests.")
 
     def test_spec_assign(self):
@@ -218,16 +220,15 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
             self.assertEqual(cl0, self.VclusExp.SpecClusters[clListInd][0])
 
     def test_site_interactions(self):
-        # test that every interaction is valid with the given Rtrans provided
-        # The key site should be present only once
-        interaction2RepClust = {}
+        # test that every interaction is valid
+        # The key site should be present only once in every interaction stored for it
         interactCounter = collections.defaultdict(int)
         self.assertEqual(len(self.VclusExp.SiteSpecInteractIds), self.NSpec*len(self.superBCC.mobilepos))
         for (key, interactIdList) in self.VclusExp.SiteSpecInteractIds.items():
             siteInd = key[0]
             sp = key[1]
             for Id in interactIdList:
-                interaction = self.VclusExp.InteractionIdDict[Id]
+                interaction = self.VclusExp.Id2InteractionDict[Id]
                 interactCounter[interaction] += 1
                 count = 0
                 for (site, spec) in interaction:
@@ -285,171 +286,119 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
                 self.assertEqual(tup[0], clListInd)
                 self.assertEqual(tup[1], clustInd)
 
-    # def test_arrays(self):
+    def test_arrays(self):
+        # First, we generate the Jit arrays
+
+        # First, the chemical data
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, \
+        numInteractsSiteSpec, SiteSpecInterArray = self.VclusExp.makeJitInteractionsData(self.Energies)
+
+        # Next, the vector basis data
+        numVecsInteracts, VecsInteracts, VecGroupInteracts = self.VclusExp.makeJitVectorBasisData()
+
+        # check that every representative clusters has been translated as many times
+        # as there are unit cells in the super cell.
+
+        allSpCl = [SpCl for SpClList in self.VclusExp.SpecClusters for SpCl in SpClList]
+
+        allCount = len(self.VclusExp.sup.mobilepos) * len(allSpCl)
+        self.assertEqual(len(self.VclusExp.Id2InteractionDict), allCount,
+                         msg="\n{}\n{}".format(len(self.VclusExp.Id2InteractionDict), allCount))
+        allSpClset = set(allSpCl)
+        self.assertEqual(len(allSpCl), len(allSpClset))
+        self.assertEqual(allCount, len(numSitesInteracts))
+        self.assertEqual(len(SupSitesInteracts), len(numSitesInteracts))
+        self.assertEqual(len(SpecOnInteractSites), len(numSitesInteracts))
+
+        repclustCount = collections.defaultdict(int)
+
+        SpClset = set([])
+
+        for i in range(len(numSitesInteracts)):
+            siteSpecSet = set([(SupSitesInteracts[i, j], SpecOnInteractSites[i, j])
+                               for j in range(numSitesInteracts[i])])
+            interaction = self.VclusExp.Id2InteractionDict[i]
+            interactionSet = set(interaction)
+            self.assertEqual(siteSpecSet, interactionSet)
+
+            # let's get the representative cluster of this interaction
+            repClusStored = self.VclusExp.Num2Clus[self.VclusExp.InteractionId2ClusId[i]]
+            siteList = []
+            specList = []
+
+            for siteInd, spec in [(SupSitesInteracts[i, j], SpecOnInteractSites[i, j])
+                                  for j in range(numSitesInteracts[i])]:
+                ci, R = self.VclusExp.sup.ciR(siteInd)
+                clSite = cluster.ClusterSite(ci=ci, R=R)
+                siteList.append(clSite)
+                specList.append(spec)
+
+            SpCl = ClusterSpecies(specList, siteList)
+
+            # apply periodicity to the siteList and rebuild
+            siteListBuilt = [site for (site, spec) in SpCl.transPairs]
+            specListBuilt = [spec for (site, spec) in SpCl.transPairs]
+            siteListnew = []
+            for site in siteListBuilt:
+                R = site.R
+                ci = site.ci
+                R %= self.N_units
+                siteListnew.append(cluster.ClusterSite(ci=ci, R=R))
+
+            SpCl = ClusterSpecies(specListBuilt, siteListnew)
+            self.assertEqual(SpCl, repClusStored)
+            self.assertTrue(SpCl in allSpClset, msg="\n{}\n{}\n{}\n{}".format(SpCl, repClusStored, siteList, specList))
+
+            # Check that the correct energies have been assigned
+            En = self.Energies[self.VclusExp.clust2SpecClus[repClusStored][0]]
+            EnStored = Interaction2En[i]
+            self.assertAlmostEqual(En, EnStored, 10)
+            SpClset.add(SpCl)
+
+            repclustCount[SpCl] += 1
     #
-    #     start = time.time()
-    #
-    #     # Check that each cluster has been translated as many times as there are sites in the supercell
-    #     # Only then we have constructed every possible interaction
-    #     print("Done creating arrays : {}".format(time.time() - start))
-    #     # Now, we first test the interaction arrays - the ones to be used in the MC sweeps
-    #
-    #     # check that every representative clusters has been translated as many times
-    #     # as there are unit cells in the super cell.
-    #     for repClust, count in self.repClustCounter.items():
-    #         self.assertEqual(count, len(self.VclusExp.sup.mobilepos))
-    #     # numSitesInteracts - the number of sites in an interaction
-    #     for i in range(len(self.numSitesInteracts)):
-    #         siteCountInArray = self.numSitesInteracts[i]
-    #         # get the interaction
-    #         interaction = self.Index2InteractionDict[i]
-    #         # get the stored index for this interaction
-    #         i_stored = self.InteractionIndexDict[interaction]
-    #         self.assertEqual(i, i_stored)
-    #         self.assertEqual(len(interaction), siteCountInArray)
-    #
-    #     # Now, check the supercell sites and species stored for these interactions
-    #     # check cluster translations
-    #     allSpCl = [SpCl for SpClList in self.VclusExp.SpecClusters for SpCl in SpClList]
-    #
-    #     SpClset = set(allSpCl)
-    #
-    #     allCount = len(self.VclusExp.sup.mobilepos) * len(allSpCl)
-    #     self.assertEqual(len(self.InteractionIndexDict), allCount, msg="\n{}\n{}".format(len(self.InteractionIndexDict), allCount))
-    #
-    #     self.assertEqual(len(self.SupSitesInteracts), len(self.numSitesInteracts))
-    #     self.assertEqual(len(self.SpecOnInteractSites), len(self.numSitesInteracts))
-    #
-    #     repclustCount = collections.defaultdict(int)
-    #
-    #     SpClset2 = set([])
-    #
-    #     for i in range(len(self.numSitesInteracts)):
-    #         siteSpecSet = set([(self.SupSitesInteracts[i, j], self.SpecOnInteractSites[i, j])
-    #                            for j in range(self.numSitesInteracts[i])])
-    #         interaction = self.Index2InteractionDict[i]
-    #         interactionSet = set(interaction)
-    #         self.assertEqual(siteSpecSet, interactionSet)
-    #
-    #         # let's get the representative cluster of this interaction
-    #         repClusStored = self.InteractionRepClusDict[interaction]
-    #         siteList = []
-    #         specList = []
-    #
-    #         for siteInd, spec in [(self.SupSitesInteracts[i, j], self.SpecOnInteractSites[i, j])
-    #                               for j in range(self.numSitesInteracts[i])]:
-    #             ci, R = self.VclusExp.sup.ciR(siteInd)
-    #             # R %= self.N_units  # Bring it within the unit cell
-    #             clSite = cluster.ClusterSite(ci=ci, R=R)
-    #             siteList.append(clSite)
-    #             specList.append(spec)
-    #
-    #         SpCl = Cluster_Expansion.ClusterSpecies(specList, siteList)
-    #
-    #         # apply periodicity to the siteList and rebuild
-    #         siteListBuilt = [site for (site, spec) in SpCl.transPairs]
-    #         specListBuilt = [spec for (site, spec) in SpCl.transPairs]
-    #         siteListnew = []
-    #         for site in siteListBuilt:
-    #             R = site.R
-    #             ci = site.ci
-    #             R %= self.N_units
-    #             siteListnew.append(cluster.ClusterSite(ci=ci, R=R))
-    #
-    #         SpCl = Cluster_Expansion.ClusterSpecies(specListBuilt, siteListnew)
-    #         self.assertEqual(SpCl, repClusStored)
-    #         self.assertTrue(SpCl in SpClset, msg="\n{}\n{}\n{}\n{}".format(SpCl, repClusStored, siteList, specList))
-    #
-    #         # Check that the correct energies have been assigned
-    #         En = self.Energies[self.VclusExp.clust2SpecClus[repClusStored][0]]
-    #         EnStored = self.Interaction2En[i]
-    #         self.assertAlmostEqual(En, EnStored, 10)
-    #         SpClset2.add(SpCl)
-    #
-    #         repclustCount[SpCl] += 1
-    #
-    #     # Check that all translations of repclusts were considered
-    #     self.assertEqual(SpClset, SpClset2)
-    #     for key, item in repclustCount.items():
-    #         self.assertEqual(item, len(self.VclusExp.sup.mobilepos))
-    #
-    #
-    #     print("checked interactions")
-    #
-    #     # Now, test the vector basis and energy information for the clusters
-    #     for i in range(len(self.numSitesInteracts)):
-    #         # get the interaction
-    #         interaction = self.Index2InteractionDict[i]
-    #         # Now, get the representative cluster
-    #         repClus = self.InteractionRepClusDict[interaction]
-    #
-    #         # test the energy index
-    #         enIndex = self.VclusExp.clust2SpecClus[repClus][0]
-    #         self.assertEqual(self.Interaction2En[i], self.Energies[enIndex])
-    #
-    #         # if the vector basis is empty, continue
-    #         if self.VclusExp.clus2LenVecClus[self.VclusExp.clust2SpecClus[repClus][0]] == 0:
-    #             self.assertEqual(self.numVecsInteracts[i], -1)
-    #             continue
-    #         # get the vector basis info for this cluster
-    #         vecList = self.VclusExp.clust2vecClus[repClus]
-    #         # check the number of vectors
-    #         self.assertEqual(self.numVecsInteracts[i], len(vecList))
-    #         # check that the correct vector have been stored, in the same order as in vecList (not necessary but short testing)
-    #         for vecind in range(len(vecList)):
-    #             vec = self.VclusExp.vecVec[vecList[vecind][0]][vecList[vecind][1]]
-    #             self.assertTrue(np.allclose(vec, self.VecsInteracts[i, vecind, :]))
-    #
-    #     # Next, test the interactions each (site, spec) is a part of
-    #     InteractSet = set([])
-    #     self.assertEqual(self.numInteractsSiteSpec.shape[0], len(self.superBCC.mobilepos))
-    #     self.assertEqual(self.numInteractsSiteSpec.shape[1], self.NSpec)
-    #     for siteInd in range(len(self.superBCC.mobilepos)):
-    #         for spec in range(self.NSpec):
-    #             numInteractStored = self.numInteractsSiteSpec[siteInd, spec]
-    #             # get the actual count
-    #             ci, R = self.VclusExp.sup.ciR(siteInd)
-    #             clsite = cluster.ClusterSite(ci=ci, R=R)
-    #             self.assertEqual(len(self.VclusExp.SiteSpecInteractions[(clsite, spec)]), numInteractStored)
-    #             for IdxOfInteract in range(numInteractStored):
-    #                 interactMainIndex = self.SiteSpecInterArray[siteInd, spec, IdxOfInteract]
-    #                 interactMain = self.Index2InteractionDict[interactMainIndex]
-    #                 InteractSet.add(interactMain)
-    #                 self.assertEqual(interactMain, self.VclusExp.SiteSpecInteractions[(clsite, spec)][IdxOfInteract][0])
-    #
-    #                 # Now translate it back and look at the energies
-    #                 siteList = []
-    #                 specList = []
-    #
-    #                 i = interactMainIndex
-    #                 count = 0
-    #                 for siteNum, sp in [(self.SupSitesInteracts[i, j], self.SpecOnInteractSites[i, j])
-    #                                       for j in range(self.numSitesInteracts[i])]:
-    #                     ci, R = self.VclusExp.sup.ciR(siteNum)
-    #                     # R %= self.N_units  # Bring it within the unit cell
-    #                     cls = cluster.ClusterSite(ci=ci, R=R)
-    #                     siteList.append(cls)
-    #                     specList.append(sp)
-    #                     if cls == clsite and sp == spec:
-    #                         count += 1
-    #                 self.assertEqual(count, 1)
-    #
-    #                 SpCl = Cluster_Expansion.ClusterSpecies(specList, siteList)
-    #
-    #                 # apply periodicity to the siteList and rebuild
-    #                 siteListBuilt = [site for (site, spec) in SpCl.transPairs]
-    #                 specListBuilt = [spec for (site, spec) in SpCl.transPairs]
-    #                 siteListnew = []
-    #                 for site in siteListBuilt:
-    #                     R = site.R
-    #                     ci = site.ci
-    #                     R %= self.N_units
-    #                     siteListnew.append(cluster.ClusterSite(ci=ci, R=R))
-    #
-    #                 SpCl = Cluster_Expansion.ClusterSpecies(specListBuilt, siteListnew)
-    #                 En = self.Energies[self.VclusExp.clust2SpecClus[SpCl][0]]
-    #                 EnStored = self.Interaction2En[interactMainIndex]
-    #                 self.assertAlmostEqual(En, EnStored, 10)
+        # Check that all translations of repclusts were considered
+        self.assertEqual(SpClset, allSpClset)
+        for key, item in repclustCount.items():
+            self.assertEqual(item, len(self.VclusExp.sup.mobilepos))
+
+
+        print("checked interactions")
+
+        # Now, test the vector basis and energy information for the clusters
+        for i in range(len(numSitesInteracts)):
+            # get the representative cluster
+            repClus = self.VclusExp.Num2Clus[self.VclusExp.InteractionId2ClusId[i]]
+
+            # test the energy index
+            enIndex = self.VclusExp.clust2SpecClus[repClus][0]
+            self.assertEqual(Interaction2En[i], self.Energies[enIndex])
+
+            # if the vector basis is empty, continue
+            if self.VclusExp.clus2LenVecClus[self.VclusExp.clust2SpecClus[repClus][0]] == 0:
+                self.assertEqual(numVecsInteracts[i], -1)
+                continue
+            # get the vector basis info for this cluster
+            vecList = self.VclusExp.clust2vecClus[repClus]
+            # check the number of vectors
+            self.assertEqual(numVecsInteracts[i], len(vecList))
+            # check that the correct vector have been stored, in the same order as in vecList (not necessary but short testing)
+            for vecind in range(len(vecList)):
+                vec = self.VclusExp.vecVec[vecList[vecind][0]][vecList[vecind][1]]
+                self.assertTrue(np.allclose(vec, VecsInteracts[i, vecind, :]))
+
+        # Next, test the interactions each (site, spec) is a part of
+        self.assertEqual(numInteractsSiteSpec.shape[0], len(self.VclusExp.sup.mobilepos))
+        self.assertEqual(numInteractsSiteSpec.shape[1], self.NSpec)
+        for siteInd in range(len(self.superBCC.mobilepos)):
+            for spec in range(self.NSpec):
+                numInteractStored = numInteractsSiteSpec[siteInd, spec]
+                # get the actual count
+                ci, R = self.VclusExp.sup.ciR(siteInd)
+                self.assertEqual(len(self.VclusExp.SiteSpecInteractIds[(siteInd, spec)]), numInteractStored)
+                for IdxOfInteract in range(numInteractStored):
+                    interactMainIndex = SiteSpecInterArray[siteInd, spec, IdxOfInteract]
+                    self.assertEqual(interactMainIndex, self.VclusExp.SiteSpecInteractIds[(siteInd, spec)][IdxOfInteract])
 
         
 

@@ -343,7 +343,7 @@ class VectorClusterExpansion(object):
 
         print("Done Indexing interactions")
         # Now that we have integers assigned to all the interactions, let's store their data as numpy arrays
-        numInteracts = len(self.InteractionIdDict)
+        numInteracts = len(self.Id2InteractionDict)
 
         # 1. Store chemical data
         # we'll need the number of sites in each interaction
@@ -355,7 +355,7 @@ class VectorClusterExpansion(object):
         # and the species on the supercell sites in each interaction
         SpecOnInteractSites = np.full((numInteracts, self.maxOrder), -1, dtype=int)
 
-        for (key, interaction) in self.InteractionIdDict.items():
+        for (key, interaction) in self.Id2InteractionDict.items():
             numSitesInteracts[key] = len(interaction)
             for idx, (interactSite, interactSpec) in enumerate(interaction):
                 SupSitesInteracts[key, idx] = interactSite
@@ -376,7 +376,7 @@ class VectorClusterExpansion(object):
                numInteractsSiteSpec, SiteSpecInterArray
 
     def makeJitVectorBasisData(self):
-        numInteracts = len(self.InteractionIdDict)
+        numInteracts = len(self.Id2InteractionDict)
         numVecsInteracts = np.full(numInteracts, -1, dtype=int)
         VecsInteracts = np.zeros((numInteracts, 3, 3))
         VecGroupInteracts = np.full((numInteracts, 3), -1, dtype=int)
@@ -394,7 +394,7 @@ class VectorClusterExpansion(object):
                 for vecidx, tup in enumerate(vecList):
                     VecsInteracts[idx, vecidx, :] = self.vecVec[tup[0]][tup[1]].copy()
                     VecGroupInteracts[idx, vecidx] = tup[0]
-        print("Done energy data for interactions")
+        print("Done Vector data for interactions")
         return numVecsInteracts, VecsInteracts, VecGroupInteracts
 
     def makeSiteIndToSite(self):
