@@ -109,11 +109,12 @@ class MCSamplerClass(object):
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
 
-    def makeMCsweep(self, state, OffSiteCount, TransOffSiteCount, SwapTrials,
+    def makeMCsweep(self, state, N_nonVacSpecs, OffSiteCount, TransOffSiteCount, SwapTrials,
                     beta, randLogarr, Nswaptrials, vacSiteInd=0):
         """
 
         :param state: the starting state
+        :param N_nonVacSpecs: how many non-vacancy species are there
         :param OffSiteCount: interaction off site counts for the current state
         :param TransOffSiteCount: transition state interaction off site counts
         :param SwapTrials: An array to store which trials were attempted to analyze later on
