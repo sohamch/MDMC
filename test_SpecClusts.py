@@ -285,9 +285,6 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
                 self.assertEqual(tup[0], clListInd)
                 self.assertEqual(tup[1], clustInd)
 
-
-
-
     # def test_arrays(self):
     #
     #     start = time.time()
