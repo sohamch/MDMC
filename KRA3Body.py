@@ -174,9 +174,9 @@ class KRA3bodyInteractions():
 
         # 2 get the maximum number of clusters in any given group
         # noinspection PyTypeChecker
-        maxInteractsInGroups = max([len(interactGroup)
+        maxInteractsInGroups = max([len(interactList)
                                     for Jumpkey, interactGroupList in self.clusterSpeciesJumps.items()
-                                    for interactGroup in interactGroupList])
+                                    for interactGroupInd, interactList in interactGroupList.items()])
 
         # 3 create arrays to store
         # 3.1 initial and final sites in transitions
@@ -211,11 +211,11 @@ class KRA3bodyInteractions():
             numJumpPointGroups[jumpInd] = len(interactGroupList)
 
             for interactGroupInd, interactGroup in enumerate(interactGroupList):
-                clusterList = interactGroup
+                clusterList = interactGroupList[interactGroup]
                 numTSInteractsInPtGroups[jumpInd, interactGroupInd] = len(clusterList)
                 for interactInd, site3 in enumerate(clusterList):
-                    TSInteract = [(Jumpkey[0], self.vacSpec), (Jumpkey[1], Jumpkey[2]),
-                                  (self.sup.ind(site3.R, site3.ci)[0], counterSpec)]
+                    TSInteract = tuple([(Jumpkey[0], self.vacSpec), (Jumpkey[1], Jumpkey[2]),
+                                  (self.sup.index(site3.R, site3.ci)[0], counterSpec)])
 
                     # counterSpec is the species that will be considered for determining energies.
                     if TSInteract not in TsInteractIndexDict:
