@@ -109,15 +109,15 @@ class testKRA3bodyFCC(unittest.TestCase):
         EnReJumps = np.array([4, 3, 2, 1])
         EnNiJumps = EnReJumps*2
 
-        Energies = np.zeros((len(self.KRAexpander.clusterSpeciesJumps), 4))
-        for key, interactGroupList in self.KRAexpander.clusterSpeciesJumps.items():
-            jumpSpec = key[2]
-            # Get the index of this jump
-            jumpInd = self.KRAexpander.jump2Index[key]
+        Energies = []
+
+        for jumpInd in range(len(self.KRAexpander.jump2Index)):
+            jumpkey = self.KRAexpander.Index2Jump[jumpInd]
+            jumpSpec = jumpkey[2]
             if jumpSpec == 0:
-                Energies[jumpInd, :] = EnNiJumps[:]
+                Energies.append(EnNiJumps.copy())
             else:
-                Energies[jumpInd, :] = EnReJumps[:]
+                Energies.append(EnReJumps.copy())
 
         CounterSpec = 1
         TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites, TSInteractSpecs, \
@@ -145,12 +145,12 @@ class testKRA3bodyFCC(unittest.TestCase):
             # Check that in for each point group, the correct interactions are stored.
             for TsPtGpInd, (type, TSinteractList) in zip(itertools.count(), TSptGrps.items()):
                 self.assertEqual(numTSInteractsInPtGroups[jumpInd, TsPtGpInd], len(TSinteractList))
-                specList = [self.NSpec - 1, FinSpec] + [spec for spec in spectup]
+                specList = [self.NSpec - 1, FinSpec] + [CounterSpec]  # only Re occupancy is going to be checked
                 for interactInd, TSClust in enumerate(TSinteractList):
-                    interact = tuple([(self.VclusExp.sup.index(site.R, site.ci)[0], spec)
+                    interact = tuple([(self.KRAexpander.sup.index(site.R, site.ci)[0], spec)
                                       for site, spec in zip(TSClust.sites, specList)])
-                    interactStored = self.Index2TSinteractDict[self.JumpInteracts[jumpInd, TsPtGpInd, interactInd]]
+                    interactStored = Index2TSinteractDict[JumpInteracts[jumpInd, TsPtGpInd, interactInd]]
 
                     self.assertEqual(set(interact), set(interactStored))
-                    self.assertEqual(self.Jump2KRAEng[jumpInd, TsPtGpInd, interactInd], self.KRAEnergies[jumpInd][TsPtGpInd])
+                    self.assertEqual(Jump2KRAEng[jumpInd, TsPtGpInd, interactInd], Energies[jumpInd][TsPtGpInd])
 
