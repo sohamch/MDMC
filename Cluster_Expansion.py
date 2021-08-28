@@ -2,7 +2,7 @@ from onsager import cluster
 import numpy as np
 import collections
 import itertools
-import Transitions
+# import Transitions - needs fixing
 from KRA3Body import KRA3bodyInteractions
 from ClustSpec import ClusterSpecies
 import time
@@ -14,17 +14,16 @@ class VectorClusterExpansion(object):
     class to expand velocities and rates in vector cluster functions.
     """
     def __init__(self, sup, clusexp, TScutoff, TScombShellRange, TSnnRange, jumpnetwork, NSpec, vacSite, maxorder,
-                 zeroClusts=True, OrigVac=False):
+                 TclusExp=None, zeroClusts=True, OrigVac=False):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
-        :param Tclusexp: Transition state cluster expansion
+        :param Tclusexp: Transition state cluster expansion - will be added in later
         :param jumpnetwork: the single vacancy jump network in the lattice used to construct sup
         :param NSpec: no. of species to consider (including vacancies)
         :param vacSite: Index of the vacancy site (used in MC sampling and JIT construction)
         :param vacSite: the site of the vacancy as a clusterSite object. This does not change during the simulation.
         :param maxorder: the maximum order of a cluster in clusexp.
-        :param maxorderTrans: the maximum order of a transition state cluster
         :param zeroClusts: Same as parameter "zero" of ClusterSpecies class - whether to bring a cluster's centroid to zero or not.
         :param OrigVac: only vacancy-atom pairs with the vacancy at the centre will be considered. This will not use clusexp.
         In this type of simulations, we consider a solid with a single wyckoff set on which atoms are arranged.
@@ -56,7 +55,7 @@ class VectorClusterExpansion(object):
             end1 = time.time()
             print("\t built {} clusters:{:.4f} seconds".format(len([cl for clist in self.SpecClusters for cl in clist])
                                                                , end1 - start))
-            self.SiteSpecInteractIds, self.InteractionIdDict,\
+            self.SiteSpecInteractIds, self.Id2InteractionDict, self.Interaction2IdDict,\
             self.clust2InteractId, self.maxinteractions = self.generateSiteSpecInteracts()
             print("\t built interactions:{:.4f} seconds".format(time.time() - end1))
             # add a small check here - maybe we'll remove this later
@@ -68,8 +67,9 @@ class VectorClusterExpansion(object):
         print("Built vector bases for clusters : {:.4f}".format(time.time() - start))
 
         start = time.time()
-        self.KRAexpander = KRA3bodyInteractions(sup, jumpnetwork, self.chem, TScombShellRange, TSnnRange, TScutoff,
-                                                NSpec, self.Nvac, vacSite)
+        if TclusExp is None:
+            self.KRAexpander = KRA3bodyInteractions(sup, jumpnetwork, self.chem, TScombShellRange, TSnnRange, TScutoff,
+                                                    NSpec, self.Nvac, vacSite)
         print("Built KRA expander : {:.4f}".format(time.time() - start))
 
         start = time.time()
@@ -265,7 +265,8 @@ class VectorClusterExpansion(object):
         generate interactions for every site - for MC moves
         """
         allLatTransTuples = [self.sup.ciR(siteInd) for siteInd in range(self.Nsites)]
-        InteractionIdDict = {}
+        Id2InteractionDict = {}
+        Interaction2IdDict = {}
         SiteSpecInteractIds = collections.defaultdict(list)
         clust2InteractId = collections.defaultdict(list)
 
@@ -280,11 +281,13 @@ class VectorClusterExpansion(object):
                 interactSupInd = tuple(sorted([(self.sup.index(st.R + R, st.ci)[0], spec)
                                                for st, spec in cl.SiteSpecs],
                                               key=lambda x: x[0]))
-                if interactSupInd in InteractionIdDict:
+                if interactSupInd in Id2InteractionDict:
                     raise ValueError("Interaction encountered twice while either translating same cluster differently"
                                      "or different clusters.")
                 # give the new interaction an Index
-                InteractionIdDict[count] = interactSupInd
+                Id2InteractionDict[count] = interactSupInd
+                Interaction2IdDict[interactSupInd] = count
+
 
                 # For every rep cluster, store which interactions they produce
                 clust2InteractId[clID].append(count)
@@ -301,7 +304,7 @@ class VectorClusterExpansion(object):
         SiteSpecInteractIds.default_factory = None
         clust2InteractId.default_factory = None
 
-        return SiteSpecInteractIds, InteractionIdDict, clust2InteractId, maxinteractions
+        return SiteSpecInteractIds, Id2InteractionDict, Interaction2IdDict, clust2InteractId, maxinteractions
 
     def IndexClusters(self):
         """
