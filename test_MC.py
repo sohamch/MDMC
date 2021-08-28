@@ -21,8 +21,11 @@ class Test_MC_Arrays(unittest.TestCase):
         self.Nvac = 1
         self.MaxOrder = 3
         self.MaxOrderTrans = 3
-        self.crys = crystal.Crystal.BCC(0.2836, chemistry="A")
-        self.jnetBCC = self.crys.jumpnetwork(0, 0.26)
+        a0 = 1
+        self.a0 = a0
+        self.crys = crystal.Crystal.BCC(a0, chemistry="A")
+        jumpCutoff = 1.01 * np.sqrt(3) * a0 / 2
+        self.jnetBCC = self.crys.jumpnetwork(0, jumpCutoff)
         self.N_units = 8
         self.superlatt = self.N_units * np.eye(3, dtype=int)
         self.superBCC = supercell.ClusterSupercell(self.crys, self.superlatt)
@@ -30,23 +33,19 @@ class Test_MC_Arrays(unittest.TestCase):
         numSites = len(self.superBCC.mobilepos)
         self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
         self.vacsiteInd = self.superBCC.index(np.zeros(3, dtype=int), (0, 0))[0]
-        self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
-        for site in range(1, numSites):
-            spec = np.random.randint(0, self.NSpec-1)
-            self.mobOccs[spec][site] = 1
-        self.mobOccs[-1, self.vacsiteInd] = 1
-        self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
-        self.clusexp = cluster.makeclusters(self.crys, 0.284, self.MaxOrder)
-        self.Tclusexp = cluster.makeclusters(self.crys, 0.29, self.MaxOrderTrans)
-        self.KRAexpander = Transitions.KRAExpand(self.superBCC, 0, self.jnetBCC, self.Tclusexp, self.Tclusexp, self.NSpec,
-                                                 self.Nvac, self.vacsite)
-        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.Tclusexp, self.jnetBCC,
-                                                                 self.NSpec, self.Nvac, self.vacsite, self.MaxOrder,
-                                                                 self.MaxOrderTrans)
+        self.clusexp = cluster.makeclusters(self.crys, 1.01 * a0, self.MaxOrder)
+
+        TScombShellRange = 1  # upto 1nn combined shell
+        TSnnRange = 4
+        TScutoff = np.sqrt(3) * a0  # 5th nn cutoff
+
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, TScutoff, TScombShellRange, TSnnRange,
+                                                                 self.jnetBCC, self.NSpec, self.vacsite, self.MaxOrder)
 
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
         KRAEn = np.random.rand()
-        self.KRAEnergies = [np.ones(len(TSptGroups))*KRAEn for (key, TSptGroups) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
+        self.KRAEnergies = [np.random.rand(len(TSptGroups))
+                            for (key, TSptGroups) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
 
         print("Done setting up")
 
