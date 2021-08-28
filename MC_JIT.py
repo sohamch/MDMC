@@ -148,9 +148,8 @@ class MCSamplerClass(object):
             SwapTrials[swapcount, 1] = siteB
 
             delE = 0.
-            # Next, switch required sites off
+            # Next, switch required interactions off
             for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
-                # check if an interaction is on
                 interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
                 if OffSiteCount[interMainInd] == 0:
                     delE -= self.Interaction2En[interMainInd]
