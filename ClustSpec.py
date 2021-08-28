@@ -3,7 +3,7 @@ from onsager import cluster
 
 class ClusterSpecies(object):
 
-    def __init__(self, specList, siteList, zero=True):
+    def __init__(self, specList, siteList, zero=True, transition=False):
         """
         Creation to represent clusters from site Lists and species lists
         :param specList: Species lists
@@ -18,8 +18,12 @@ class ClusterSpecies(object):
         # Calculate the translation to bring center of the sites to the origin unit cell
         self.zero = zero
         if zero:
-            Rtrans = sum([site.R for site in siteList])//len(siteList)
-            self.transPairs = [(site-Rtrans, spec) for site, spec in zip(siteList, specList)]
+            if not transition:
+                Rtrans = sum([site.R for site in siteList])//len(siteList)
+                self.transPairs = [(site-Rtrans, spec) for site, spec in zip(siteList, specList)]
+            else:
+                Rtrans = siteList[0].R  # the init site should be at the origin unit cell if trans cluster
+                self.transPairs = [(site - Rtrans, spec) for site, spec in zip(siteList, specList)]
         else:
             self.transPairs = [(site, spec) for site, spec in zip(siteList, specList)]
         # self.transPairs = sorted(self.transPairs, key=lambda x: x[1])
