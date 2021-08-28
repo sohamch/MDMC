@@ -1,7 +1,8 @@
 from onsager import crystal, supercell, cluster
 import numpy as np
 import itertools
-import Transitions
+# import Transitions
+from KRA3Body import KRA3bodyInteractions
 import Cluster_Expansion
 import MC_JIT
 import unittest
@@ -119,36 +120,6 @@ class Test_MC_Arrays(unittest.TestCase):
             SiteSpecInterArray, numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
             FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng
         )
-
-
-    def testTransArrays(self):
-        # Now, we start testing the jump arrays
-        # jumpFinSites, jumpFinSpec, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng
-        # TODO : Re write after figuring out detailed balance
-
-        for (jumpkey, TSptGrps) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items():
-            jumpInd = self.VclusExp.KRAexpander.jump2Index[jumpkey]
-            FinSite = jumpkey[1]
-            FinSpec = jumpkey[2]
-            # Check that the correct initial and final states have been stored
-            self.assertEqual(self.jumpFinSites[jumpInd], FinSite)
-            self.assertEqual(self.jumpFinSpec[jumpInd], FinSpec)
-
-            # Check that the correct number of point groups are stored
-            NptGrp = len(TSptGrps)
-            self.assertEqual(self.numJumpPointGroups[jumpInd], NptGrp)
-
-            # Check that in for each point group, the correct interactions are stored.
-            for TsPtGpInd, (spectup, TSinteractList) in zip(itertools.count(), TSptGrps):
-                self.assertEqual(self.numTSInteractsInPtGroups[jumpInd, TsPtGpInd], len(TSinteractList))
-                specList = [self.NSpec - 1, FinSpec] + [spec for spec in spectup]
-                for interactInd, TSClust in enumerate(TSinteractList):
-                    interact = tuple([(self.VclusExp.sup.index(site.R, site.ci)[0], spec)
-                                      for site, spec in zip(TSClust.sites, specList)])
-                    interactStored = self.Index2TSinteractDict[self.JumpInteracts[jumpInd, TsPtGpInd, interactInd]]
-
-                    self.assertEqual(set(interact), set(interactStored))
-                    self.assertEqual(self.Jump2KRAEng[jumpInd, TsPtGpInd, interactInd], self.KRAEnergies[jumpInd][TsPtGpInd])
 
 class Test_MC(Test_MC_Arrays):
 

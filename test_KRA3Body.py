@@ -109,13 +109,15 @@ class testKRA3bodyFCC(unittest.TestCase):
         EnReJumps = np.array([4, 3, 2, 1])
         EnNiJumps = EnReJumps*2
 
-        Energies = []
-        for key, interactGroupList in self.KRAexpander.clusterSpeciesJumps:
+        Energies = np.zeros((len(self.KRAexpander.clusterSpeciesJumps), 4))
+        for key, interactGroupList in self.KRAexpander.clusterSpeciesJumps.items():
             jumpSpec = key[2]
+            # Get the index of this jump
+            jumpInd = self.KRAexpander.jump2Index[key]
             if jumpSpec == 0:
-                Energies.append(EnNiJumps)
+                Energies[jumpInd, :] = EnNiJumps[:]
             else:
-                Energies.append(EnReJumps)
+                Energies[jumpInd, :] = EnReJumps[:]
 
         CounterSpec = 1
         TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites, TSInteractSpecs, \
@@ -124,4 +126,31 @@ class testKRA3bodyFCC(unittest.TestCase):
         self.KRAexpander.makeTransJitData(CounterSpec, Energies)
 
         self.assertEqual(len(TsInteractIndexDict), 18*24)
+
+        # Next, we want to test if the correct sites and specs have been stored
+        # and if the correct energies have been assigned to the interactions
+
+        for (jumpkey, TSptGrps) in self.KRAexpander.clusterSpeciesJumps.items():
+            jumpInd = self.KRAexpander.jump2Index[jumpkey]
+            FinSite = jumpkey[1]
+            FinSpec = jumpkey[2]
+            # Check that the correct initial and final states have been stored
+            self.assertEqual(jumpFinSites[jumpInd], FinSite)
+            self.assertEqual(jumpFinSpec[jumpInd], FinSpec)
+
+            # Check that the correct number of point groups are stored
+            NptGrp = len(TSptGrps)
+            self.assertEqual(numJumpPointGroups[jumpInd], NptGrp)
+
+            # Check that in for each point group, the correct interactions are stored.
+            for TsPtGpInd, (type, TSinteractList) in zip(itertools.count(), TSptGrps.items()):
+                self.assertEqual(numTSInteractsInPtGroups[jumpInd, TsPtGpInd], len(TSinteractList))
+                specList = [self.NSpec - 1, FinSpec] + [spec for spec in spectup]
+                for interactInd, TSClust in enumerate(TSinteractList):
+                    interact = tuple([(self.VclusExp.sup.index(site.R, site.ci)[0], spec)
+                                      for site, spec in zip(TSClust.sites, specList)])
+                    interactStored = self.Index2TSinteractDict[self.JumpInteracts[jumpInd, TsPtGpInd, interactInd]]
+
+                    self.assertEqual(set(interact), set(interactStored))
+                    self.assertEqual(self.Jump2KRAEng[jumpInd, TsPtGpInd, interactInd], self.KRAEnergies[jumpInd][TsPtGpInd])
 
