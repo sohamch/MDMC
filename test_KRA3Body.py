@@ -134,6 +134,7 @@ class testKRA3bodyFCC(unittest.TestCase):
             jumpInd = self.KRAexpander.jump2Index[jumpkey]
             FinSite = jumpkey[1]
             FinSpec = jumpkey[2]
+            self.assertEqual(FinSiteFinSpecJumpInd[FinSite, FinSpec], jumpInd)
             # Check that the correct initial and final states have been stored
             self.assertEqual(jumpFinSites[jumpInd], FinSite)
             self.assertEqual(jumpFinSpec[jumpInd], FinSpec)
@@ -145,12 +146,26 @@ class testKRA3bodyFCC(unittest.TestCase):
             # Check that in for each point group, the correct interactions are stored.
             for TsPtGpInd, (type, TSinteractList) in zip(itertools.count(), TSptGrps.items()):
                 self.assertEqual(numTSInteractsInPtGroups[jumpInd, TsPtGpInd], len(TSinteractList))
-                specList = [self.NSpec - 1, FinSpec] + [CounterSpec]  # only Re occupancy is going to be checked
-                for interactInd, TSClust in enumerate(TSinteractList):
-                    interact = tuple([(self.KRAexpander.sup.index(site.R, site.ci)[0], spec)
-                                      for site, spec in zip(TSClust.sites, specList)])
-                    interactStored = Index2TSinteractDict[JumpInteracts[jumpInd, TsPtGpInd, interactInd]]
+                for interactInd, site3 in enumerate(TSinteractList):
+                    site3Ind = self.KRAexpander.sup.index(site3.R, site3.ci)[0]
+                    interact = tuple([(jumpkey[0], self.KRAexpander.vacSpec), (jumpkey[1], jumpkey[2]),
+                                      (site3Ind, CounterSpec)])
+
+                    interMainInd = JumpInteracts[jumpInd, TsPtGpInd, interactInd]
+                    interactStored = Index2TSinteractDict[interMainInd]
 
                     self.assertEqual(set(interact), set(interactStored))
                     self.assertEqual(Jump2KRAEng[jumpInd, TsPtGpInd, interactInd], Energies[jumpInd][TsPtGpInd])
+
+                    # Now check the site and species on this interactions
+                    nSitesIntr = numSitesTSInteracts[interMainInd]
+                    self.assertEqual(nSitesIntr, 3)  # since we are doing 3 body KRA only.
+                    self.assertEqual(TSInteractSites[interMainInd][0], 0)
+                    self.assertEqual(TSInteractSites[interMainInd][1], FinSite)
+                    self.assertEqual(TSInteractSites[interMainInd][2], site3Ind)
+
+                    self.assertEqual(TSInteractSpecs[interMainInd][0], self.NSpec - 1)
+                    self.assertEqual(TSInteractSpecs[interMainInd][1], jumpkey[2])
+                    self.assertEqual(TSInteractSpecs[interMainInd][2], CounterSpec)
+
 
