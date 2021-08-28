@@ -110,8 +110,18 @@ class MCSamplerClass(object):
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
 
     def makeMCsweep(self, state, OffSiteCount, TransOffSiteCount, SwapTrials,
-                    beta, randarr, Nswaptrials, vacSiteInd=0):
+                    beta, randLogarr, Nswaptrials, vacSiteInd=0):
+        """
 
+        :param state: the starting state
+        :param OffSiteCount: interaction off site counts for the current state
+        :param TransOffSiteCount: transition state interaction off site counts
+        :param SwapTrials: An array to store which trials were attempted to analyze later on
+        :param beta: 1/kT
+        :param randLogarr: log of random numbers for acceptance criterion
+        :param Nswaptrials: How many site swaps we want to attempt
+        :param vacSiteInd: where the vacancy is
+        """
         acceptCount = 0
         acceptInd = np.zeros(Nswaptrials, dtype=int64)
         badTrials = 0
@@ -168,7 +178,7 @@ class MCSamplerClass(object):
             self.delEArray[swapcount] = delE
 
             # do the selection test
-            if -beta*delE > randarr[swapcount]:
+            if -beta*delE > randLogarr[swapcount]:
                 # swap the sites to get to the next state
                 state[siteA] = specB
                 state[siteB] = specA
