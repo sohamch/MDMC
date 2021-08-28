@@ -2,15 +2,15 @@ from onsager import crystal, supercell, cluster
 import numpy as np
 import collections
 import itertools
-import Cluster_Expansion
 from KRA3Body import KRA3bodyInteractions
 import unittest
 
-class testKRA3body(unittest.TestCase):
+class testKRA3bodyFCC(unittest.TestCase):
     def setUp(self):
         self.NSpec = 3
         self.Nvac = 1
         a0 = 1.0
+        self.a0=a0
         self.crys = crystal.Crystal.FCC(a0, chemistry="A")
         self.chem = 0
         self.jnetFCC = self.crys.jumpnetwork(0, 1.01*a0/np.sqrt(2))
@@ -36,3 +36,52 @@ class testKRA3body(unittest.TestCase):
         self.mobOccs[-1, self.vacsiteInd] = 1
         self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
         print("Done setting up")
+
+    def test_clusterGroups(self):
+        for key, item in self.KRAexpander.TransGroupsNN.items():
+            self.assertEqual(len(item), 4)
+            self.assertEqual(len(item[1]), 4, msg="{}".format(len(item[1])))  # 1nn to both
+            self.assertEqual(len(item[2]), 4)  # 2nn to either
+            self.assertEqual(len(item[3]), 8)  # 3nn to either
+            self.assertEqual(len(item[4]), 2)  # 4nn to either
+
+            # Now let's check some explictly
+            for clSite in item[1]:
+                # this is where we have nn to both
+                x02 = np.dot(self.crys.lattice, clSite.R - key[0].R)
+                x12 = np.dot(self.crys.lattice, clSite.R - key[1].R)
+                self.assertAlmostEqual(np.linalg.norm(x02), np.linalg.norm(x12))
+                self.assertAlmostEqual(np.linalg.norm(x02), np.linalg.norm(self.crys.lattice[0]))
+
+            for clSite in item[2]:
+                x02 = np.linalg.norm(np.dot(self.crys.lattice, clSite.R - key[0].R))
+                x12 = np.linalg.norm(np.dot(self.crys.lattice, clSite.R - key[1].R))
+                self.assertFalse(np.abs(x02-x12) < 1e-8, msg="{} {}".format(x02, x12))
+
+                nnDist = np.linalg.norm(self.crys.lattice[0])
+                if np.math.isclose(x02, nnDist):
+                    self.assertAlmostEqual(x12, self.a0)
+                elif np.math.isclose(x12, nnDist):
+                    self.assertAlmostEqual(x02, self.a0)
+
+            for clSite in item[3]:
+                x02 = np.linalg.norm(np.dot(self.crys.lattice, clSite.R - key[0].R))
+                x12 = np.linalg.norm(np.dot(self.crys.lattice, clSite.R - key[1].R))
+                self.assertFalse(np.abs(x02-x12) < 1e-8, msg="{} {}".format(x02, x12))
+
+                nnDist = np.linalg.norm(self.crys.lattice[0])
+                if np.math.isclose(x02, nnDist):
+                    self.assertAlmostEqual(x12, np.sqrt(1.5)*self.a0)
+                elif np.math.isclose(x12, nnDist):
+                    self.assertAlmostEqual(x02, np.sqrt(1.5)*self.a0)
+
+            for clSite in item[4]:
+                x02 = np.linalg.norm(np.dot(self.crys.lattice, clSite.R - key[0].R))
+                x12 = np.linalg.norm(np.dot(self.crys.lattice, clSite.R - key[1].R))
+                self.assertFalse(np.abs(x02-x12) < 1e-8, msg="{} {}".format(x02, x12))
+
+                nnDist = np.linalg.norm(self.crys.lattice[0])
+                if np.math.isclose(x02, nnDist):
+                    self.assertAlmostEqual(x12, np.sqrt(2)*self.a0)
+                elif np.math.isclose(x12, nnDist):
+                    self.assertAlmostEqual(x02, np.sqrt(2)*self.a0)

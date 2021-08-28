@@ -98,9 +98,10 @@ class KRA3bodyInteractions():
                 # First, make the combined first nearest shell of both siteA and siteB
                 siteAshell1 = set()
                 siteBshell1 = set()
-                for nnT in nnVecs[:combinedShellRange]:
-                    siteAshell1.add(siteA + nnT)
-                    siteBshell1.add(siteB + nnT)
+                for nnTList in nnVecs[:combinedShellRange]:
+                    for nnT in nnTList:
+                        siteAshell1.add(siteA + nnT)
+                        siteBshell1.add(siteB + nnT)
                 combShell = siteAshell1.union(siteBshell1)
 
                 # Now go through nn translations
@@ -143,7 +144,6 @@ class KRA3bodyInteractions():
             indA = self.sup.index(siteA.R, siteA.ci)[0]
             indB = self.sup.index(siteB.R, siteB.ci)[0]
             assert indB in self.jList
-
             for specJ in range(Nmobile - 1):
                 ABspecJ = (indA, indB, specJ)
                 clusterJumpsSpecies[ABspecJ] = clusterSymLists
