@@ -49,6 +49,8 @@ class Test_Make_Arrays(unittest.TestCase):
         self.KRAEnergies = [np.random.rand(len(TSptGroups))
                             for (key, TSptGroups) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
 
+        self.KRASpecConstants = np.random.rand(self.NSpec - 1)
+
         self.MakeJITs()
         print("Done setting up BCC data")
 
@@ -89,7 +91,7 @@ class Test_Make_Arrays(unittest.TestCase):
         self.KMC_Jit = MC_JIT.KMC_JIT(numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,
                                       numInteractsSiteSpec, SiteSpecInterArray, numSitesTSInteracts, TSInteractSites,
                                       TSInteractSpecs, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd,
-                                      numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
+                                      numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, self.KRASpecConstants,
                                       siteIndtoR, RtoSiteInd, N_units)
 
         initState = np.zeros(len(self.VclusExp.sup.mobilepos), dtype=int)
@@ -105,10 +107,11 @@ class Test_Make_Arrays(unittest.TestCase):
         self.MCSampler_Jit = MC_JIT.MCSamplerClass(
             numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numInteractsSiteSpec, SiteSpecInterArray,
             numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
-            FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng
+            FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, self.KRASpecConstants,
         )
 
     def make3bodyKRAEnergies(self):
+        KRASpecConstants = np.array([1., 2.])
         En0Jumps = np.array([4, 3, 2, 1])
         En1Jumps = En0Jumps * 2
         Energies = []
@@ -119,7 +122,7 @@ class Test_Make_Arrays(unittest.TestCase):
                 Energies.append(En0Jumps.copy())
             else:
                 Energies.append(En1Jumps.copy())
-        return Energies
+        return KRASpecConstants, Energies
 
 class Test_Make_Arrays_FCC(Test_Make_Arrays):
 
@@ -150,11 +153,8 @@ class Test_Make_Arrays_FCC(Test_Make_Arrays):
                                                                  self.jnetFCC, self.NSpec, self.vacsite, self.MaxOrder)
 
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
-        self.KRAEnergies = [np.random.rand(len(TSptGroups))
-                            for (key, TSptGroups) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
 
-        if __FCC__:
-            self.KRAEnergies = self.make3bodyKRAEnergies()
+        self.KRASpecConstants, self.KRAEnergies = self.make3bodyKRAEnergies()
 
         self.MakeJITs()
         print("Done setting up FCC data.")
@@ -179,10 +179,10 @@ class Test_MC(DataClass):
         # randLogarr = np.log(np.random.rand(Nswaptrials))
 
         # If we want to ensure acceptance, we keep it really small
-        randLogarr = np.ones(Nswaptrials)*-1000.0
+        # randLogarr = np.ones(Nswaptrials)*-1000.0
 
         # If we want to ensure rejection, we keep it really big
-        # randLogarr = np.ones(Nswaptrials) * 1000.0
+        randLogarr = np.ones(Nswaptrials) * 1000.0
 
         # Put in tests for Jit calculations
         # make the offsite counts
@@ -1056,7 +1056,7 @@ class Test_KMC(DataClass):
 
     def test_KRA3body3Spec(self):
         # test that the KRA energies satisfy detailed balance
-        warnings.warn("Make sure this test is being run for FCC 3 body KRA.")
+        warnings.warn("Make sure this test is being run for FCC 3 body KRA with the Ni-Re paper parameters.")
         if self.NSpec != 3:
             raise ValueError("This test is only valid for 3-body interactions")
 
@@ -1107,6 +1107,8 @@ class Test_KMC(DataClass):
             revJumpInd = forwardJumpInd + 1
             self.assertAlmostEqual(delE_KRA_newTrans[revJumpInd], InitE_KRA[forwardJumpInd])
             print(delE_KRA_newTrans[revJumpInd], InitE_KRA[forwardJumpInd])
+
+            # Next, we want to calculate the KRA energies explicitly.
 
 
 # class test_shells(Test_Make_Arrays):

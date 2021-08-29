@@ -110,7 +110,7 @@ class MCSamplerClass(object):
 
         self.KRASpecConstants = KRASpecConstants  # a constant to be added to KRA energies depending on which species jumps
         # This can be kept to just zero if not required
-        assert KRASpecConstants.shape[0] == numInteractsSiteSpec.shape[0]
+        assert KRASpecConstants.shape[0] == numInteractsSiteSpec.shape[1] - 1
 
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
@@ -607,7 +607,7 @@ class KMC_JIT(object):
 
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
 
-        assert KRASpecConstants.shape[0] == numInteractsSiteSpec.shape[0]
+        assert KRASpecConstants.shape[0] == numInteractsSiteSpec.shape[1] - 1
 
         self.N_unit = N_unit
 
