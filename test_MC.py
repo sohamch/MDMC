@@ -861,8 +861,6 @@ class Test_KMC(DataClass):
         siteA = np.random.randint(0, Nsites)
         siteB = np.random.randint(0, Nsites)
 
-        print(siteA, siteB)
-
         stateTrans = KMC_Jit.TranslateState(state, siteB, siteA)
 
         Rf = self.VclusExp.sup.ciR(siteB)[1]
@@ -973,6 +971,8 @@ class Test_KMC(DataClass):
         offscCopy = OffSiteCount.copy()
 
         jmpFinSiteList = self.VclusExp.KRAexpander.jList
+        if __FCC__:
+            self.assertEqual(len(jmpFinSiteList), 12)
 
         jmpFinSiteListTrans = np.zeros_like(jmpFinSiteList)
 
