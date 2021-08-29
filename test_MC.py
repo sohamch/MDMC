@@ -46,7 +46,6 @@ class Test_Make_Arrays(unittest.TestCase):
                                                                  self.jnetBCC, self.NSpec, self.vacsite, self.MaxOrder)
 
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
-        KRAEn = np.random.rand()
         self.KRAEnergies = [np.random.rand(len(TSptGroups))
                             for (key, TSptGroups) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
 
@@ -109,6 +108,19 @@ class Test_Make_Arrays(unittest.TestCase):
             FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng
         )
 
+    def make3bodyKRAEnergies(self):
+        En0Jumps = np.array([4, 3, 2, 1])
+        En1Jumps = En0Jumps * 2
+        Energies = []
+        for jumpInd in range(len(self.VclusExp.KRAexpander.jump2Index)):
+            jumpkey = self.VclusExp.KRAexpander.Index2Jump[jumpInd]
+            jumpSpec = jumpkey[2]
+            if jumpSpec == 0:
+                Energies.append(En0Jumps.copy())
+            else:
+                Energies.append(En1Jumps.copy())
+        return Energies
+
 class Test_Make_Arrays_FCC(Test_Make_Arrays):
 
     def setUp(self):
@@ -140,6 +152,9 @@ class Test_Make_Arrays_FCC(Test_Make_Arrays):
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
         self.KRAEnergies = [np.random.rand(len(TSptGroups))
                             for (key, TSptGroups) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
+
+        if __FCC__:
+            self.KRAEnergies = self.make3bodyKRAEnergies()
 
         self.MakeJITs()
         print("Done setting up FCC data.")
@@ -1038,6 +1053,61 @@ class Test_KMC(DataClass):
 
             self.assertTrue(np.array_equal(state, stateNew))
             self.assertTrue(np.array_equal(offscnew, OffSiteCount))
+
+    def test_KRA3body3Spec(self):
+        # test that the KRA energies satisfy detailed balance
+        warnings.warn("Make sure this test is being run for FCC 3 body KRA.")
+        if self.NSpec != 3:
+            raise ValueError("This test is only valid for 3-body interactions")
+
+        jmpFinSiteList = np.array(self.VclusExp.KRAexpander.jList)
+
+        state = self.initState.copy()
+        initTSoffsc = MC_JIT.GetTSOffSite(state, self.numSitesTSInteracts,
+                                          self.TSInteractSites, self.TSInteractSpecs)
+
+        InitE_KRA = self.KMC_Jit.getKRAEnergies(state, initTSoffsc, jmpFinSiteList)
+
+        # we are going to test the KRA energies explicitly here
+
+        vacSiteCi, vacSiteR = self.VclusExp.sup.ciR(self.vacsiteInd)
+        self.assertEqual(vacSiteCi, (0, 0))
+        self.assertTrue(np.array_equal(vacSiteR, np.zeros(3, dtype=int)))
+
+        # Convert all the jump vectors to lattice vectors
+        dxR = [np.dot(np.linalg.inv(self.VclusExp.crys.lattice), dx)
+        for jList in self.jnetFCC for (i, j), dx in jList]
+
+        sitesJump = []
+        for R in dxR:
+            Rnew = vacSiteR + R
+            siteInd = self.VclusExp.sup.index(Rnew, vacSiteCi)[0]
+            sitesJump.append(siteInd)
+
+        self.assertTrue(set(sitesJump)==set(jmpFinSiteList), msg="{} {}".format(sitesJump, jmpFinSiteList))
+
+        # Now make the exchanges, and see if detailed balance is satisfied
+        for forwardJumpInd in range(0, len(jmpFinSiteList), 2):
+            forwardSiteInd = jmpFinSiteList[forwardJumpInd]
+
+            # Swap to make the jump
+            stateNew = state.copy()
+            stateNew[forwardSiteInd] = state[self.vacsiteInd]
+            stateNew[self.vacsiteInd] = state[forwardSiteInd]
+
+            # Now translate stateNew to origin and check detailed balance
+            stateNewTrans = self.KMC_Jit.TranslateState(stateNew, self.vacsiteInd, forwardSiteInd)
+            TSoffscNewTrans = MC_JIT.GetTSOffSite(stateNewTrans, self.numSitesTSInteracts,
+                                                  self.TSInteractSites, self.TSInteractSpecs)
+
+            # Now get KRA energies out of translated stateNew
+            delE_KRA_newTrans = self.KMC_Jit.getKRAEnergies(stateNewTrans, TSoffscNewTrans, jmpFinSiteList)
+
+            # Now check that for the forward and the reverse jumps, the KRA energies are the same.
+            revJumpInd = forwardJumpInd + 1
+            self.assertAlmostEqual(delE_KRA_newTrans[revJumpInd], InitE_KRA[forwardJumpInd])
+            print(delE_KRA_newTrans[revJumpInd], InitE_KRA[forwardJumpInd])
+
 
 # class test_shells(Test_Make_Arrays):
 #
