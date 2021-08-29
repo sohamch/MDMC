@@ -18,7 +18,7 @@ class Test_Make_Arrays(unittest.TestCase):
 
     def setUp(self):
         self.NSpec = 3
-        self.KRACounterSpec =  1
+        self.KRACounterSpec = 1
         self.Nvac = 1
         self.MaxOrder = 3
         self.MaxOrderTrans = 3
@@ -119,14 +119,31 @@ class Test_MC(Test_Make_Arrays):
         # Get the MC samplers
         MCSampler_Jit = self.MCSampler_Jit
 
-        Nsites = len(self.VclusExp.sup.mobilepos)
         Nswaptrials = 1  # We are only testing a single step here
-        swaptrials = np.zeros((Nswaptrials, 2), dtype=int)
         randLogarr = np.log(np.random.rand(Nswaptrials))
 
         # Put in tests for Jit calculations
         # make the offsite counts
         initJit = initCopy.copy()
+
+        # get the Number of species of each type
+        N_nonvacSpec = np.zeros(self.NSpec-1, dtype=int)
+        Nsites = len(self.VclusExp.sup.mobilepos)
+        for siteInd in range(Nsites):
+            if siteInd == self.vacsiteInd:
+                assert initJit[siteInd] == self.NSpec-1
+                continue
+            spec = initJit[siteInd]
+            N_nonvacSpec[spec] += 1
+
+        specLocations = np.zeros((N_nonvacSpec.shape[0], np.max(N_nonvacSpec)), dtype=int)
+        spec_counter = np.zeros_like(N_nonvacSpec, dtype=int)
+        for siteInd in range(Nsites):
+            if siteInd == self.vacsiteInd:
+                continue
+            spec = initJit[siteInd]
+            specLocations[spec, spec_counter[spec]] = siteInd
+            spec_counter[spec] += 1
 
         # build the offsite count and get initial energy
         En1 = 0.
@@ -143,23 +160,19 @@ class Test_MC(Test_Make_Arrays):
             if offcount == 0:
                 En1 += self.Interaction2En[interactIdx]
 
-        TSOffSiteCount2 = np.zeros(len(self.numSitesTSInteracts), dtype=int)
+        offscCalc = MC_JIT.GetOffSite(initJit, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
 
-        MCSampler_Jit.makeMCsweep(initJit, offscjit, TSOffSiteCount2, swaptrials, 1.0, randarr, Nswaptrials)
+        self.assertTrue(np.array_equal(offscjit, offscCalc))
 
-        # Get the sites that were selected
-        siteA = swaptrials[0, 0]
-        siteB = swaptrials[0, 1]
-
-        print("\nsiteA: {}, specA:{}".format(siteA, initJit[siteA]))
-        print("\nsiteB: {}, specB:{}\n".format(siteB, initJit[siteB]))
+        TSOffSiteCount = np.zeros(len(self.numSitesTSInteracts), dtype=int)
+        beta = 1.0
+        SpecsOnSites, acceptCount =\
+            MCSampler_Jit.makeMCsweep(initJit, N_nonvacSpec, offscjit, TSOffSiteCount,
+                                      beta, randLogarr, Nswaptrials, vacSiteInd=self.vacsiteInd)
 
         # Get the energy for the swapped state - will determine if move is calculated correctly or not
         # swap the occupancies
-        stateSwap = initCopy.copy()
-        temp = stateSwap[siteA]
-        stateSwap[siteA] = stateSwap[siteB]
-        stateSwap[siteB] = temp
+        stateSwap = initJit.copy()
         EnSwap = 0.
         # Now get its energy
         for interactIdx in range(self.numSitesInteracts.shape[0]):
@@ -175,40 +188,46 @@ class Test_MC(Test_Make_Arrays):
 
         self.assertAlmostEqual(EnSwap - En1, MCSampler_Jit.delEArray[0])  # Check that the correct energy change was computed
 
-        # Check off site counts after trial and get the energy
-        En2 = 0.
-        for interactIdx in range(self.numSitesInteracts.shape[0]):
-            numSites = self.numSitesInteracts[interactIdx]
-            offcount = 0
-            for intSiteind in range(numSites):
-                interSite = self.SupSitesInteracts[interactIdx, intSiteind]
-                interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
-                if initJit[interSite] != interSpec:
-                    offcount += 1
-            self.assertTrue(offscjit[interactIdx] == offcount)
-            if offcount == 0:
-                En2 += self.Interaction2En[interactIdx]
-
         # Check that TS offsite counts were constructed correctly.
-        for TsInteractIdx in range(len(TSOffSiteCount2)):
+        for TsInteractIdx in range(len(TSOffSiteCount)):
             offcount = 0
             for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
                 if initJit[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
                     offcount += 1
-            self.assertEqual(TSOffSiteCount2[TsInteractIdx], offcount)
+            self.assertEqual(TSOffSiteCount[TsInteractIdx], offcount)
 
-        # test that energy calculation and site swaps are done correctly.
-        if -1.0*MCSampler_Jit.delEArray[0] > randarr[0]:
-            self.assertEqual(initJit[siteA], initCopy[siteB])
-            self.assertEqual(initJit[siteB], initCopy[siteA])
-            self.assertTrue(np.array_equal(initJit, stateSwap))
-            self.assertAlmostEqual(EnSwap, En2)
-            print("move was accepted {} {}".format(-1.0*MCSampler_Jit.delEArray[0], randarr[0]))
+        # test that site swaps are done correctly.
+
+        # if the move was selected
+        if -beta*MCSampler_Jit.delEArray[0] > randLogarr[0]:
+            self.assertFalse(np.array_equal(initJit, initCopy))
+            print("move was accepted {} {}".format(-1.0*MCSampler_Jit.delEArray[0], randLogarr[0]))
+
+            # Check the update to the new site locations
+            specLocations = np.zeros((N_nonvacSpec.shape[0], np.max(N_nonvacSpec)), dtype=int)
+            spec_counter = np.zeros_like(N_nonvacSpec, dtype=int)
+            for siteInd in range(Nsites):
+                if siteInd == self.vacsiteInd:
+                    continue
+                spec = initJit[siteInd]
+                specLocations[spec, spec_counter[spec]] = siteInd
+                spec_counter[spec] += 1
+
+            self.assertTrue(np.array_equal(specLocations, SpecsOnSites))
+            self.assertEqual(acceptCount, 1)
+
+            # check that offsite counts were properly updated
+            offscCalc = MC_JIT.GetOffSite(initJit, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
+            self.assertTrue(np.array_equal(offscjit, offscCalc))
 
         else:
             self.assertTrue(np.array_equal(initJit, initCopy))
-            self.assertAlmostEqual(En2, En1)
-            print("move was not accepted {} {}".format(-1.0*MCSampler_Jit.delEArray[0], randarr[0]))
+            self.assertAlmostEqual(EnSwap, En1)
+            print("move was not accepted {} {}".format(-1.0*MCSampler_Jit.delEArray[0], randLogarr[0]))
+            self.assertTrue(np.array_equal(specLocations, SpecsOnSites))
+            # check that offsite counts were properly reverted
+            offscCalc = MC_JIT.GetOffSite(initJit, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
+            self.assertTrue(np.array_equal(offscjit, offscCalc))
 
         # Check the energies by translating the clusters around
         allSpCl = [SpCl for SpClList in self.VclusExp.SpecClusters for SpCl in SpClList]
@@ -260,236 +279,114 @@ class Test_MC(Test_Make_Arrays):
 
         self.assertAlmostEqual(EnSwap, En1+MCSampler_Jit.delEArray[0])
 
-
-    def test_MultiSwap(self):
-        initCopy = self.initState.copy()
-
-        # Get the MC sampler
-        MCSampler_Jit = self.MCSampler_Jit
-
-        Nsites = len(self.VclusExp.sup.mobilepos)
-        Nswaptrials = 20  # Let's do single step first, then two steps, then higher
-        swaptrials = np.zeros((Nswaptrials, 2), dtype=int)
-
-        initJit = initCopy.copy()
-
-        # build the offsite count and get initial energy
-        En1 = 0.
-        offsc = np.zeros_like(self.numSitesInteracts)
-        for interactIdx in range(self.numSitesInteracts.shape[0]):
-            numSites = self.numSitesInteracts[interactIdx]
-            offcount = 0
-            for intSiteind in range(numSites):
-                interSite = self.SupSitesInteracts[interactIdx, intSiteind]
-                interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
-                if initJit[interSite] != interSpec:
-                    offcount += 1
-            offsc[interactIdx] = offcount
-            if offcount == 0:
-                En1 += self.Interaction2En[interactIdx]
-
-        offscInit = offsc.copy()
-
-        TSoffsc = np.zeros(len(self.numSitesTSInteracts), dtype=int)
-
-        # Now attempt the sweep
-
-        # The most critical part is the reversal on rejection, so we'll make it reject first
-        randLog = 2e5
-
-        EnChange = MCSampler_Jit.MultiSwapMC(initJit, offsc, TSoffsc, swaptrials, Nswaptrials, 1.0, randLog)
-
-        # Now check if the state should have changed or remained the same
-        if -1.0*EnChange < randLog:
-            print("{} swaps rejected".format(Nswaptrials))
-            self.assertTrue(np.array_equal(initJit, initCopy))
-            self.assertTrue(np.array_equal(offsc, offscInit))
-
-            # Check that TS offsite counts were constructed correctly.
-            for TsInteractIdx in range(len(TSoffsc)):
-                offcount = 0
-                for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
-                    if initJit[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
-                        offcount += 1
-                self.assertEqual(TSoffsc[TsInteractIdx], offcount)
-
-        # Now, let's make it accept by making randLog very small
-        randLog = -2e5
-
-        EnChange = MCSampler_Jit.MultiSwapMC(initJit, offsc, TSoffsc, swaptrials, Nswaptrials, 1.0, randLog)
-
-        if -1.0*EnChange > randLog:
-            print("{} swaps accepted".format(Nswaptrials))
-
-            # let's reconstruct the off site count and energies
-            En2 = 0.
-            offsc2 = np.zeros_like(self.numSitesInteracts)
-            for interactIdx in range(self.numSitesInteracts.shape[0]):
-                numSites = self.numSitesInteracts[interactIdx]
-                offcount = 0
-                for intSiteind in range(numSites):
-                    interSite = self.SupSitesInteracts[interactIdx, intSiteind]
-                    interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
-                    if initJit[interSite] != interSpec:
-                        offcount += 1
-                offsc2[interactIdx] = offcount
-                if offcount == 0:
-                    En2 += self.Interaction2En[interactIdx]
-
-            self.assertAlmostEqual(En2, En1+EnChange)
-            self.assertTrue(np.array_equal(offsc, offsc2))
-
-    def test_exit_states(self):
-        # First, create a random state
-        initState = self.initState
-        initCopy = initState.copy()
-        MCSampler_Jit = self.MCSampler_Jit
-
-        ijList = self.VclusExp.KRAexpander.ijList
-        dxList = self.VclusExp.KRAexpander.dxList
-
-        # get the offsite counts
-        state = initCopy.copy()
-        En1 = 0.
-        offsc = np.zeros_like(self.numSitesInteracts)
-        for interactIdx in range(self.numSitesInteracts.shape[0]):
-            numSites = self.numSitesInteracts[interactIdx]
-            offcount = 0
-            for intSiteind in range(numSites):
-                interSite = self.SupSitesInteracts[interactIdx, intSiteind]
-                interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
-                if state[interSite] != interSpec:
-                    offcount += 1
-            offsc[interactIdx] = offcount
-            if offcount == 0:
-                En1 += self.Interaction2En[interactIdx]
-
-        # make the TS offsite counts
-        TSoffsc = np.zeros(len(MCSampler_Jit.TSInteractSites))
-        for TsInteractIdx in range(len(MCSampler_Jit.TSInteractSites)):
-            TSoffsc[TsInteractIdx] = 0
-            for Siteind in range(MCSampler_Jit.numSitesTSInteracts[TsInteractIdx]):
-                if state[MCSampler_Jit.TSInteractSites[TsInteractIdx, Siteind]] != MCSampler_Jit.TSInteractSpecs[TsInteractIdx, Siteind]:
-                    TSoffsc[TsInteractIdx] += 1
-
-        Nsites = self.VclusExp.Nsites
-        # Next, get the exit data
-        statesTrans, ratelist, Specdisps = MCSampler_Jit.getExitData(state, ijList, dxList, offsc, TSoffsc, 1.0, Nsites)
-
-        self.assertEqual(len(statesTrans), ijList.shape[0])
-        # check that the species have been exchanged properly
-        for jInd in range(ijList.shape[0]):
-            stateFin = statesTrans[jInd, :]
-            finSite = ijList[jInd]
-            # Check that in the final state the correct species have been swapped
-            self.assertEqual(stateFin[finSite], state[self.vacSiteInd])
-            self.assertEqual(stateFin[self.vacSiteInd], state[finSite])
-
-            specB = state[finSite]  # the species that has moved
-            dx = Specdisps[jInd, specB, :]
-            self.assertTrue(np.allclose(dx, -dxList[jInd]))
-
-            # Next, get the KRA energies
-
-            # Check which transition this final site, final spec pair corresponds to
-            transInd = self.FinSiteFinSpecJumpInd[finSite, specB]
-            delEKRA = 0.
-            for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
-                for interactInd in range(self.numTSInteractsInPtGroups[transInd, tsPtGpInd]):
-                    # Check if this interaction is on
-                    interactMainInd = self.JumpInteracts[transInd, tsPtGpInd, interactInd]
-                    if TSoffsc[interactMainInd] == 0:
-                        delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
-
-            # Now check it without the arrays
-            self.assertEqual(self.VclusExp.KRAexpander.jump2Index[(self.vacSiteInd, finSite, specB)], transInd)
-
-            # Get the point groups
-            TSptGrps = self.VclusExp.KRAexpander.clusterSpeciesJumps[(self.vacSiteInd, finSite, specB)]
-            EnKRA = 0.
-            for TsPtGpInd, (spectup, TSinteractList) in zip(itertools.count(), TSptGrps):
-                specList = [self.NSpec - 1, specB] + [spec for spec in spectup]
-                # Go through the TS clusters
-                for interactInd, TSClust in enumerate(TSinteractList):
-                    interact = tuple([(self.VclusExp.sup.index(site.R, site.ci)[0], spec)
-                                      for site, spec in zip(TSClust.sites, specList)])
-
-                    # Check if this interaction is on
-                    offcount = 0
-                    for (site, spec) in interact:
-                        if state[site] != spec:
-                            offcount += 1
-
-                    # Assert the offcount
-                    interactMainInd = self.JumpInteracts[transInd, TsPtGpInd, interactInd]
-                    self.assertEqual(TSoffsc[interactMainInd], offcount)
-
-                    if offcount == 0:
-                        EnKRA += self.KRAEnergies[transInd][TsPtGpInd]
-
-            self.assertAlmostEqual(EnKRA, delEKRA, msg="\n{}".format(self.KRAEnergies))
-
-            # Next, check that the rates satisfy detailed balance
-            stateExit = statesTrans[jInd]
-            # Get the offsite count of this state and its energy
-            En2 = 0.
-            for interactIdx in range(self.numSitesInteracts.shape[0]):
-                numSites = self.numSitesInteracts[interactIdx]
-                offcount = 0
-                for intSiteind in range(numSites):
-                    interSite = self.SupSitesInteracts[interactIdx, intSiteind]
-                    interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
-                    if stateExit[interSite] != interSpec:
-                        offcount += 1
-                if offcount == 0:
-                    En2 += self.Interaction2En[interactIdx]
-
-            delE = En2 - En1
-            rate = np.exp(-1.0*(0.5*delE + delEKRA))
-            self.assertAlmostEqual(rate, ratelist[jInd])
-
-    def test_random_state(self):
-        initState = self.initState
-        initCopy = initState.copy()
-
-        MCSampler_Jit = self.MCSampler_Jit
-
-        # test random state generation
-        state = initCopy.copy()
-        offsc = MCSampler_Jit.OffSiteCount.copy()
-
-        Nswaptrials = 100  # We are only testing a single step here
-        swaptrials = np.zeros((Nswaptrials, 2), dtype=int)
-
-        Nsites = len(self.VclusExp.sup.mobilepos)
-
-        count = 0
-        while count < Nswaptrials:
-            # first select two random sites to swap - for now, let's just select naively.
-            siteA = np.random.randint(0, Nsites)
-            siteB = np.random.randint(0, Nsites)
-
-            # make sure we are swapping different atoms because otherwise we are in the same state
-            if state[siteA] == state[siteB] or siteA == self.vacSiteInd or siteB == self.vacSiteInd:
-                continue
-
-            swaptrials[count, 0] = siteA
-            swaptrials[count, 1] = siteB
-            count += 1
-
-        InitEn = 0.
-        for i in range(len(offsc)):
-            if offsc[i] == 0:
-                InitEn += self.Interaction2En[i]
-
-        En_new = MCSampler_Jit.GetNewRandState(state, offsc, InitEn, swaptrials, Nswaptrials)
-
-        FinEn = 0.
-        for i in range(len(offsc)):
-            if offsc[i] == 0:
-                FinEn += self.Interaction2En[i]
-
-        self.assertTrue(np.allclose(FinEn, En_new))
+    # def test_exit_states(self):
+    #     # First, create a random state
+    #     initState = self.initState
+    #     initCopy = initState.copy()
+    #     MCSampler_Jit = self.MCSampler_Jit
+    #
+    #     ijList = self.VclusExp.KRAexpander.ijList
+    #     dxList = self.VclusExp.KRAexpander.dxList
+    #
+    #     # get the offsite counts
+    #     state = initCopy.copy()
+    #     En1 = 0.
+    #     offsc = np.zeros_like(self.numSitesInteracts)
+    #     for interactIdx in range(self.numSitesInteracts.shape[0]):
+    #         numSites = self.numSitesInteracts[interactIdx]
+    #         offcount = 0
+    #         for intSiteind in range(numSites):
+    #             interSite = self.SupSitesInteracts[interactIdx, intSiteind]
+    #             interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
+    #             if state[interSite] != interSpec:
+    #                 offcount += 1
+    #         offsc[interactIdx] = offcount
+    #         if offcount == 0:
+    #             En1 += self.Interaction2En[interactIdx]
+    #
+    #     # make the TS offsite counts
+    #     TSoffsc = np.zeros(len(MCSampler_Jit.TSInteractSites))
+    #     for TsInteractIdx in range(len(MCSampler_Jit.TSInteractSites)):
+    #         TSoffsc[TsInteractIdx] = 0
+    #         for Siteind in range(MCSampler_Jit.numSitesTSInteracts[TsInteractIdx]):
+    #             if state[MCSampler_Jit.TSInteractSites[TsInteractIdx, Siteind]] != MCSampler_Jit.TSInteractSpecs[TsInteractIdx, Siteind]:
+    #                 TSoffsc[TsInteractIdx] += 1
+    #
+    #     Nsites = self.VclusExp.Nsites
+    #     # Next, get the exit data
+    #     statesTrans, ratelist, Specdisps = MCSampler_Jit.getExitData(state, ijList, dxList, offsc, TSoffsc, 1.0, Nsites)
+    #
+    #     self.assertEqual(len(statesTrans), ijList.shape[0])
+    #     # check that the species have been exchanged properly
+    #     for jInd in range(ijList.shape[0]):
+    #         stateFin = statesTrans[jInd, :]
+    #         finSite = ijList[jInd]
+    #         # Check that in the final state the correct species have been swapped
+    #         self.assertEqual(stateFin[finSite], state[self.vacsiteInd])
+    #         self.assertEqual(stateFin[self.vacsiteInd], state[finSite])
+    #
+    #         specB = state[finSite]  # the species that has moved
+    #         dx = Specdisps[jInd, specB, :]
+    #         self.assertTrue(np.allclose(dx, -dxList[jInd]))
+    #
+    #         # Next, get the KRA energies
+    #
+    #         # Check which transition this final site, final spec pair corresponds to
+    #         transInd = self.FinSiteFinSpecJumpInd[finSite, specB]
+    #         delEKRA = 0.
+    #         for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
+    #             for interactInd in range(self.numTSInteractsInPtGroups[transInd, tsPtGpInd]):
+    #                 # Check if this interaction is on
+    #                 interactMainInd = self.JumpInteracts[transInd, tsPtGpInd, interactInd]
+    #                 if TSoffsc[interactMainInd] == 0:
+    #                     delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
+    #
+    #         # Now check it without the arrays
+    #         self.assertEqual(self.VclusExp.KRAexpander.jump2Index[(self.vacsiteInd, finSite, specB)], transInd)
+    #
+    #         # Get the point groups
+    #         TSptGrps = self.VclusExp.KRAexpander.clusterSpeciesJumps[(self.vacsiteInd, finSite, specB)]
+    #         EnKRA = 0.
+    #         for TsPtGpInd, (type, TSinteractList) in zip(itertools.count(), TSptGrps.items()):
+    #             specList = [self.NSpec - 1, specB] + [spec for spec in spectup]
+    #             # Go through the TS clusters
+    #             for interactInd, TSClust in enumerate(TSinteractList):
+    #                 interact = tuple([(self.VclusExp.sup.index(site.R, site.ci)[0], spec)
+    #                                   for site, spec in zip(TSClust.sites, specList)])
+    #
+    #                 # Check if this interaction is on
+    #                 offcount = 0
+    #                 for (site, spec) in interact:
+    #                     if state[site] != spec:
+    #                         offcount += 1
+    #
+    #                 # Assert the offcount
+    #                 interactMainInd = self.JumpInteracts[transInd, TsPtGpInd, interactInd]
+    #                 self.assertEqual(TSoffsc[interactMainInd], offcount)
+    #
+    #                 if offcount == 0:
+    #                     EnKRA += self.KRAEnergies[transInd][TsPtGpInd]
+    #
+    #         self.assertAlmostEqual(EnKRA, delEKRA, msg="\n{}".format(self.KRAEnergies))
+    #
+    #         # Next, check that the rates satisfy detailed balance
+    #         stateExit = statesTrans[jInd]
+    #         # Get the offsite count of this state and its energy
+    #         En2 = 0.
+    #         for interactIdx in range(self.numSitesInteracts.shape[0]):
+    #             numSites = self.numSitesInteracts[interactIdx]
+    #             offcount = 0
+    #             for intSiteind in range(numSites):
+    #                 interSite = self.SupSitesInteracts[interactIdx, intSiteind]
+    #                 interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
+    #                 if stateExit[interSite] != interSpec:
+    #                     offcount += 1
+    #             if offcount == 0:
+    #                 En2 += self.Interaction2En[interactIdx]
+    #
+    #         delE = En2 - En1
+    #         rate = np.exp(-1.0*(0.5*delE + delEKRA))
+    #         self.assertAlmostEqual(rate, ratelist[jInd])
 
     def test_expansion(self):
         """
@@ -500,15 +397,7 @@ class Test_MC(Test_Make_Arrays):
 
         initState = self.initState
 
-        # initiate MC Sampler
         MCSampler_Jit = self.MCSampler_Jit
-
-        for (interaction, interactionInd) in self.InteractionIndexDict.items():
-            offsiteCount = 0
-            for (site, spec) in interaction:
-                if initState[site] != spec:
-                    offsiteCount += 1
-            self.assertEqual(MCSampler_Jit.OffSiteCount[interactionInd], offsiteCount)
 
         TransOffSiteCount = np.zeros(len(self.TSInteractSites), dtype=int)
 
@@ -522,14 +411,19 @@ class Test_MC(Test_Make_Arrays):
         lenVecClus = len(self.VclusExp.vecClus)
 
         # Now, do the expansion
-        offscjit = MCSampler_Jit.OffSiteCount.copy()
+        offscjit = MC_JIT.GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
         state = initState.copy()
-        Wbar, Bbar = MCSampler_Jit.Expand(state, ijList, dxList, 2, offscjit, TransOffSiteCount,
-                                                                  lenVecClus, 1.0)
+        spec = 2
+        beta = 1.0
+        Wbar, Bbar = MCSampler_Jit.Expand(state, ijList, dxList, spec, offscjit, TransOffSiteCount,
+               self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts,
+               lenVecClus, beta, vacSiteInd=self.vacsiteInd)
+
+        offscjit2 = MC_JIT.GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
 
         # Check that the offsitecounts have been correctly reverted and state is unchanged.
 
-        self.assertTrue(np.array_equal(MCSampler_Jit.OffSiteCount, offscjit))
+        self.assertTrue(np.array_equal(offscjit2, offscjit))
         self.assertTrue(np.array_equal(state, initState))
 
         self.assertTrue(np.array_equal(self.SiteSpecInterArray, MCSampler_Jit.SiteSpecInterArray))
@@ -546,7 +440,6 @@ class Test_MC(Test_Make_Arrays):
                 # Go through all the jumps
                 for TInd in range(len(ijList)):
                     # For every jump, reset the offsite count
-                    offscjit = MCSampler_Jit.OffSiteCount.copy()
                     TSOffCount = TransOffSiteCount.copy()
 
                     delEKRA = 0.0
@@ -554,11 +447,10 @@ class Test_MC(Test_Make_Arrays):
                     vec2 = np.zeros(3, dtype=float)
 
                     siteB = ijList[TInd]
-                    siteA = MCSampler_Jit.vacSiteInd
+                    siteA = self.vacsiteInd
                     # Check that the initial site is always the vacancy
                     specA = state[siteA]  # the vacancy
                     self.assertEqual(specA, self.NSpec - 1)
-                    self.assertEqual(siteA, self.vacsiteInd)
                     specB = state[siteB]
                     # get the index of this transition
                     # self.assertEqual(specB, SpecTransArray[TInd])
@@ -578,7 +470,8 @@ class Test_MC(Test_Make_Arrays):
 
                     for interactnun in range(self.numInteractsSiteSpec[siteA, specA]):
                         interactInd = self.SiteSpecInterArray[siteA, specA, interactnun]
-                        repClus = self.InteractionRepClusDict[self.Index2InteractionDict[interactInd]]
+                        repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
+                        repClus = self.VclusExp.Num2Clus[repClusInd]
                         vecList = self.VclusExp.clust2vecClus[repClus]
 
                         if len(vecList) > 0:
@@ -589,6 +482,8 @@ class Test_MC(Test_Make_Arrays):
                         for i in range(self.numVecsInteracts[interactInd]):
                             self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
                                                         self.VclusExp.vecVec[vecList[i][0]][vecList[i][1]]))
+                            self.assertEqual(self.VecGroupInteracts[interactInd, i], vecList[i][0])
+
                         if offscjit[interactInd] == 0:
                             delE -= self.Interaction2En[interactInd]
                             for tupInd, tup in enumerate(vecList):
@@ -601,7 +496,8 @@ class Test_MC(Test_Make_Arrays):
 
                     for interactnun in range(self.numInteractsSiteSpec[siteB, specB]):
                         interactInd = self.SiteSpecInterArray[siteB, specB, interactnun]
-                        repClus = self.InteractionRepClusDict[self.Index2InteractionDict[interactInd]]
+                        repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
+                        repClus = self.VclusExp.Num2Clus[repClusInd]
                         vecList = self.VclusExp.clust2vecClus[repClus]
 
                         if len(vecList) > 0:
@@ -612,6 +508,8 @@ class Test_MC(Test_Make_Arrays):
                         for i in range(self.numVecsInteracts[interactInd]):
                             self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
                                                         self.VclusExp.vecVec[vecList[i][0]][vecList[i][1]]))
+                            self.assertEqual(self.VecGroupInteracts[interactInd, i], vecList[i][0])
+
                         if offscjit[interactInd] == 0:
                             delE -= self.Interaction2En[interactInd]
                             for tupInd, tup in enumerate(vecList):
@@ -625,7 +523,9 @@ class Test_MC(Test_Make_Arrays):
                     for interactnun in range(self.numInteractsSiteSpec[siteA, specB]):
                         interactInd = self.SiteSpecInterArray[siteA, specB, interactnun]
 
-                        repClus = self.InteractionRepClusDict[self.Index2InteractionDict[interactInd]]
+                        repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
+                        repClus = self.VclusExp.Num2Clus[repClusInd]
+
                         vecList = self.VclusExp.clust2vecClus[repClus]
 
                         if len(vecList) > 0:
@@ -636,12 +536,11 @@ class Test_MC(Test_Make_Arrays):
                         for i in range(self.numVecsInteracts[interactInd]):
                             self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
                                                         self.VclusExp.vecVec[vecList[i][0]][vecList[i][1]]))
+                            self.assertEqual(self.VecGroupInteracts[interactInd, i], vecList[i][0])
 
                         offscjit[interactInd] -= 1
                         if offscjit[interactInd] == 0:
                             delE += self.Interaction2En[interactInd]
-
-                            repClus = self.InteractionRepClusDict[self.Index2InteractionDict[interactInd]]
                             vecList = self.VclusExp.clust2vecClus[repClus]
                             for tupInd, tup in enumerate(vecList):
                                 if tup[0] == vs1:
@@ -653,7 +552,9 @@ class Test_MC(Test_Make_Arrays):
                     for interactnun in range(self.numInteractsSiteSpec[siteB, specA]):
                         interactInd = self.SiteSpecInterArray[siteB, specA, interactnun]
 
-                        repClus = self.InteractionRepClusDict[self.Index2InteractionDict[interactInd]]
+                        repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
+                        repClus = self.VclusExp.Num2Clus[repClusInd]
+
                         vecList = self.VclusExp.clust2vecClus[repClus]
 
                         if len(vecList) > 0:
@@ -664,6 +565,7 @@ class Test_MC(Test_Make_Arrays):
                         for i in range(self.numVecsInteracts[interactInd]):
                             self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
                                                         self.VclusExp.vecVec[vecList[i][0]][vecList[i][1]]))
+                            self.assertEqual(self.VecGroupInteracts[interactInd, i], vecList[i][0])
 
                         offscjit[interactInd] -= 1
                         if offscjit[interactInd] == 0:
@@ -691,7 +593,7 @@ class Test_MC(Test_Make_Arrays):
         self.assertTrue(np.allclose(Bbar, Bbar_test))
 
 
-class Test_KMC(Test_MC_Arrays):
+class Test_KMC(Test_Make_Arrays):
 
     def test_translation(self):
         initState = self.initState
@@ -746,8 +648,8 @@ class Test_KMC(Test_MC_Arrays):
         state = self.initState.copy()
 
         # First, the cluster off site counts
-        OffSiteCount = self.KMC_Jit.GetOffSite(state)
-        for (interaction, interactionInd) in self.InteractionIndexDict.items():
+        OffSiteCount = MC_JIT.GetOffSite(state, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
+        for (interaction, interactionInd) in self.VclusExp.Interaction2IdDict.items():
             offsiteCount = 0
             for (site, spec) in interaction:
                 if state[site] != spec:
@@ -768,12 +670,9 @@ class Test_KMC(Test_MC_Arrays):
 
     def test_swap_energy_change(self):
         state = self.initState.copy()
-        OffSiteCount = self.KMC_Jit.GetOffSite(state)
+        OffSiteCount = MC_JIT.GetOffSite(state, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
         offscCopy = OffSiteCount.copy()
         N_units = self.VclusExp.sup.superlatt[0, 0]
-
-        siteIndtoR = self.siteIndtoR
-        RtoSiteInd = self.RtoSiteInd
 
         jmpFinSiteList = self.VclusExp.KRAexpander.ijList
 
@@ -784,7 +683,7 @@ class Test_KMC(Test_MC_Arrays):
                 EnState += self.Interaction2En[interactInd]
 
         # collect energy changes due to the jumps
-        delEJumps = self.KMC_Jit.getEnergyChangeJumps(state, OffSiteCount, self.vacSiteInd, jmpFinSiteList)
+        delEJumps = self.KMC_Jit.getEnergyChangeJumps(state, OffSiteCount, self.vacsiteInd, jmpFinSiteList)
 
         # check that the state and the offsite counts have been left unchanged
         self.assertTrue(np.array_equal(OffSiteCount, offscCopy))
@@ -794,9 +693,9 @@ class Test_KMC(Test_MC_Arrays):
         for jumpInd, siteInd in enumerate(jmpFinSiteList):
             stateNew = state.copy()
             stateNew[siteInd] = self.NSpec - 1  # this site will contain the vacancy in the new site
-            stateNew[self.vacSiteInd] = state[siteInd]  # this site will contain the vacancy in the new site
+            stateNew[self.vacsiteInd] = state[siteInd]  # this site will contain the vacancy in the new site
 
-            OffScTrans = self.KMC_Jit.GetOffSite(stateNew)
+            OffScTrans = MC_JIT.GetOffSite(stateNew, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
 
             EnNew = 0.
             for interactInd in range(len(OffSiteCount)):
@@ -815,19 +714,19 @@ class Test_KMC(Test_MC_Arrays):
         siteSwap = np.random.randint(0, len(state))
 
         temp = state[siteSwap]
-        state[siteSwap] = state[self.vacSiteInd]
-        state[self.vacSiteInd] = temp
+        state[siteSwap] = state[self.vacsiteInd]
+        state[self.vacsiteInd] = temp
         self.assertEqual(state[siteSwap], self.NSpec-1)
         statecpy = state.copy()
 
-        OffSiteCount = self.KMC_Jit.GetOffSite(state)
+        OffSiteCount = MC_JIT.GetOffSite(state, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
         offscCopy = OffSiteCount.copy()
 
         jmpFinSiteList = self.VclusExp.KRAexpander.ijList
 
         jmpFinSiteListTrans = np.zeros_like(jmpFinSiteList)
 
-        dR = self.siteIndtoR[siteSwap] - self.siteIndtoR[self.vacSiteInd]
+        dR = self.siteIndtoR[siteSwap] - self.siteIndtoR[self.vacsiteInd]
 
         for jmp in range(jmpFinSiteList.shape[0]):
             RfinSiteNew = (dR + self.siteIndtoR[jmpFinSiteList[jmp]]) % N_units
@@ -853,7 +752,7 @@ class Test_KMC(Test_MC_Arrays):
             stateNew[siteInd] = self.NSpec - 1  # this site will contain the vacancy in the new site
             stateNew[siteSwap] = state[siteInd]  # this site will contain the vacancy in the new site
 
-            OffScTrans = self.KMC_Jit.GetOffSite(stateNew)
+            OffScTrans = MC_JIT.GetOffSite(stateNew, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
 
             EnNew = 0.
             for interactInd in range(len(OffSiteCount)):
@@ -892,7 +791,7 @@ class Test_KMC(Test_MC_Arrays):
             self.assertTrue(np.array_equal(state, stateNew))
             self.assertTrue(np.array_equal(offscnew, OffSiteCount))
 
-class test_shells(Test_MC_Arrays):
+class test_shells(Test_Make_Arrays):
 
     def test_ShellBuild(self):
         state = self.initState.copy()
@@ -902,7 +801,7 @@ class test_shells(Test_MC_Arrays):
         ijList = self.VclusExp.KRAexpander.ijList
         dxList = self.VclusExp.KRAexpander.dxList
         Nsites = len(state)
-        Nspec = len(self.VclusExp.mobCountList)
+        Nspec = self.NSpec
 
         state2Index, Index2State, TransitionRates, TransitionsZero, velocities = MC_JIT.makeShells(self.MCSampler_Jit, self.KMC_Jit, state, offsc,
                                                                                                    TSoffsc, ijList, dxList, beta, Nsites, Nspec,
