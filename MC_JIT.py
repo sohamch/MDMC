@@ -125,19 +125,19 @@ class MCSamplerClass(object):
         :param vacSiteInd: where the vacancy is
         """
         acceptCount = 0
-        acceptInd = np.zeros(Nswaptrials, dtype=int64)
-        badTrials = 0
         self.delEArray = np.zeros(Nswaptrials)
 
         Nsites = len(state)
-
+        MaxCount = np.max(N_nonVacSpecs)
         # Next, fill up where the atoms are located
         specMemberCounts = np.zeros_like(N_nonVacSpecs, dtype=int64)
-        SpecLocations = np.full((N_nonVacSpecs.shape[0], Nsites), -1, dtype=int64)
+        SpecLocations = np.full((N_nonVacSpecs.shape[0], MaxCount), -1, dtype=int64)
         for siteInd in range(Nsites):
-            if siteInd == vacSiteInd:
+            if siteInd == vacSiteInd:  # If vacancy, do nothing
+                assert state[vacSiteInd] == N_nonVacSpecs.shape[0]
                 continue
             spec = state[siteInd]
+            assert spec < N_nonVacSpecs.shape[0]
             specMemIdx = specMemberCounts[spec]
             SpecLocations[spec, specMemIdx] = siteInd
             specMemIdx += 1
@@ -145,19 +145,29 @@ class MCSamplerClass(object):
 
         count = 0  # to keep a steady count of accepted moves
         swapcount = 0
+        NonVacLabels = np.arange(N_nonVacSpecs.shape[0])
         while swapcount < Nswaptrials:
 
+            # first select two random species to swap
+            NonVacLabels = np.random.permutation(NonVacLabels)
+            spASelect = NonVacLabels[0]
+            spBSelect = NonVacLabels[1]
 
-            # first select two random sites to swap - for now, let's just select naively.
-            siteA = np.random.randint(0, Nsites)
-            siteB = np.random.randint(0, Nsites)
+            # first randomly select two different species to swap
+            siteALocIdx = np.random.randint(0, N_nonVacSpecs[spASelect])
+            siteBLocIdx = np.random.randint(0, N_nonVacSpecs[spBSelect])
+
+            siteA = SpecLocations[spASelect, siteALocIdx]
+            siteB = SpecLocations[spBSelect, siteBLocIdx]
 
             specA = state[siteA]
             specB = state[siteB]
 
-            if specA == specB or siteA == vacSiteInd or siteB == vacSiteInd:
-                badTrials += 1
-                continue
+            assert -1 < siteA < Nsites
+            assert -1 < siteB < Nsites
+            assert specA == spASelect
+            assert specB == spBSelect
+            assert specA != specB
 
             # If the move is not a bad one, then store it for testing later on
             SwapTrials[swapcount, 0] = siteA
@@ -197,10 +207,14 @@ class MCSamplerClass(object):
                 # swap the sites to get to the next state
                 state[siteA] = specB
                 state[siteB] = specA
+
+                # swap the site indices stored for these two atoms
+                SpecLocations[spASelect, siteALocIdx] = siteB
+                SpecLocations[spBSelect, siteBLocIdx] = siteA
+
                 # OffSiteCount is already updated to that of the new state.
                 acceptCount += 1
                 count += 1
-                acceptInd[swapcount] = count
                 # make the offsite for the transition states
                 for TsInteractIdx in range(len(self.TSInteractSites)):
                     TransOffSiteCount[TsInteractIdx] = 0
@@ -222,9 +236,7 @@ class MCSamplerClass(object):
                 for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
                     OffSiteCount[self.SiteSpecInterArray[siteB, specA, interIdx]] += 1
 
-            swapcount += 1
-
-        return acceptCount, badTrials, acceptInd
+        return SpecLocations, acceptCount
 
     def getLambda(self, offsc, NVclus, numVecsInteracts, VecGroupInteracts, VecsInteracts):
         lamb = np.zeros((NVclus, 3))
