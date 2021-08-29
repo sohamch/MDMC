@@ -114,7 +114,8 @@ class MCSamplerClass(object):
         """
 
         :param state: the starting state
-        :param N_nonVacSpecs: how many non-vacancy species are there
+        :param N_nonVacSpecs: how many of non-vacancy species are there in the state
+        Example input array[10, 501]- 10 species 0 atoms and 501 specis 1 atoms.
         :param OffSiteCount: interaction off site counts for the current state
         :param TransOffSiteCount: transition state interaction off site counts
         :param SwapTrials: An array to store which trials were attempted to analyze later on
@@ -130,9 +131,23 @@ class MCSamplerClass(object):
 
         Nsites = len(state)
 
+        # Next, fill up where the atoms are located
+        specMemberCounts = np.zeros_like(N_nonVacSpecs, dtype=int64)
+        SpecLocations = np.full((N_nonVacSpecs.shape[0], Nsites), -1, dtype=int64)
+        for siteInd in range(Nsites):
+            if siteInd == vacSiteInd:
+                continue
+            spec = state[siteInd]
+            specMemIdx = specMemberCounts[spec]
+            SpecLocations[spec, specMemIdx] = siteInd
+            specMemIdx += 1
+            specMemberCounts[spec] = specMemIdx
+
         count = 0  # to keep a steady count of accepted moves
         swapcount = 0
         while swapcount < Nswaptrials:
+
+
             # first select two random sites to swap - for now, let's just select naively.
             siteA = np.random.randint(0, Nsites)
             siteB = np.random.randint(0, Nsites)
