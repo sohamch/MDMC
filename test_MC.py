@@ -14,10 +14,11 @@ warnings.filterwarnings('error', category=RuntimeWarning)
 
 np.seterr(all='raise')
 
-class Test_MC_Arrays(unittest.TestCase):
+class Test_Make_Arrays(unittest.TestCase):
 
     def setUp(self):
         self.NSpec = 3
+        self.KRACounterSpec =  1
         self.Nvac = 1
         self.MaxOrder = 3
         self.MaxOrderTrans = 3
@@ -52,23 +53,22 @@ class Test_MC_Arrays(unittest.TestCase):
         self.MakeJITs()
 
     def MakeJITs(self):
-        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, \
-        VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, \
-        InteractionIndexDict, InteractionRepClusDict, Index2InteractionDict, repClustCounter, \
-        Interact2RepClusArray, Interact2SymClassArray\
-            = self.VclusExp.makeJitInteractionsData(self.Energies)
+        # First, the chemical data
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, \
+        numInteractsSiteSpec, SiteSpecInterArray = self.VclusExp.makeJitInteractionsData(self.Energies)
 
-        self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numVecsInteracts, self.VecsInteracts,\
-        self.VecGroupInteracts, self.numInteractsSiteSpec, self.SiteSpecInterArray, self.vacSiteInd, self.InteractionIndexDict,\
-        self.InteractionRepClusDict, self.Index2InteractionDict, self.repClustCounter = \
-            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts, VecsInteracts, \
-            VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, vacSiteInd, InteractionIndexDict, InteractionRepClusDict, \
-            Index2InteractionDict, repClustCounter
+        self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, \
+        self.numInteractsSiteSpec, self.SiteSpecInterArray= \
+            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, \
+            numInteractsSiteSpec, SiteSpecInterArray
+
+        # Next, the vector basis data
+        self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts = self.VclusExp.makeJitVectorBasisData()
 
         TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites, TSInteractSpecs, \
         jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, \
         JumpInteracts, Jump2KRAEng = \
-            self.VclusExp.KRAexpander.makeTransJitData(self.KRAEnergies)
+            self.VclusExp.KRAexpander.makeTransJitData(self.KRACounterSpec, self.KRAEnergies)
 
         self.TsInteractIndexDict, self.Index2TSinteractDict, self.numSitesTSInteracts, self.TSInteractSites, self.TSInteractSpecs, \
         self.jumpFinSites, self.jumpFinSpec, self.FinSiteFinSpecJumpInd, self.numJumpPointGroups, self.numTSInteractsInPtGroups, \
@@ -86,12 +86,10 @@ class Test_MC_Arrays(unittest.TestCase):
         self.Nsites = Nsites
         self.N_units = N_units
 
-        self.KMC_Jit = MC_JIT.KMC_JIT(numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,
-                                Interact2RepClusArray, Interact2SymClassArray, numVecsInteracts, VecsInteracts,
-                                VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray, numSitesTSInteracts,
-                                TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd,
-                                numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-                                siteIndtoR, RtoSiteInd, N_units)
+        self.KMC_Jit = MC_JIT.KMC_JIT(numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,numInteractsSiteSpec, SiteSpecInterArray,
+                 numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
+                 FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
+                 siteIndtoR, RtoSiteInd, N_units)
 
         initState = np.zeros(len(self.VclusExp.sup.mobilepos), dtype=int)
         # Now assign random species (excluding the vacancy)
@@ -103,24 +101,13 @@ class Test_MC_Arrays(unittest.TestCase):
 
         self.initState = initState
 
-        self.MCSampler = Cluster_Expansion.MCSamplerClass(
-            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numVecsInteracts,
-            VecsInteracts, VecGroupInteracts, numInteractsSiteSpec, SiteSpecInterArray,
-            numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
-            FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-            vacSiteInd, initState
-        )
-
-        OffSiteCount = MC_JIT.GetOffSite(initState, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites)
-
         self.MCSampler_Jit = MC_JIT.MCSamplerClass(
-            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, Interact2RepClusArray,
-            Interact2SymClassArray, numVecsInteracts, VecsInteracts, VecGroupInteracts, numInteractsSiteSpec,
-            SiteSpecInterArray, numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
+            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numInteractsSiteSpec, SiteSpecInterArray,
+            numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
             FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng
         )
 
-class Test_MC(Test_MC_Arrays):
+class Test_MC(Test_Make_Arrays):
 
     def test_MC_step(self):
         # First, create a random state
@@ -135,7 +122,7 @@ class Test_MC(Test_MC_Arrays):
         Nsites = len(self.VclusExp.sup.mobilepos)
         Nswaptrials = 1  # We are only testing a single step here
         swaptrials = np.zeros((Nswaptrials, 2), dtype=int)
-        randarr = np.log(np.random.rand(Nswaptrials))
+        randLogarr = np.log(np.random.rand(Nswaptrials))
 
         # Put in tests for Jit calculations
         # make the offsite counts
