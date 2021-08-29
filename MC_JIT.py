@@ -110,6 +110,13 @@ class MCSamplerClass(object):
 
         self.KRASpecConstants = KRASpecConstants  # a constant to be added to KRA energies depending on which species jumps
         # This can be kept to just zero if not required
+        try:
+            assert KRASpecConstants.shape[0] == numInteractsSiteSpec.shape[0]
+
+        except AssertionError:
+            raise TypeError("KRA species constants array, {}, does not have the"
+                            "same length as the number of species?".format(KRASpecConstants))
+
 
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
