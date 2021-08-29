@@ -109,7 +109,7 @@ class MCSamplerClass(object):
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
 
-    def makeMCsweep(self, state, N_nonVacSpecs, OffSiteCount, TransOffSiteCount, SwapTrials,
+    def makeMCsweep(self, state, N_nonVacSpecs, OffSiteCount, TransOffSiteCount,
                     beta, randLogarr, Nswaptrials, vacSiteInd=0):
         """
 
@@ -153,7 +153,7 @@ class MCSamplerClass(object):
             spASelect = NonVacLabels[0]
             spBSelect = NonVacLabels[1]
 
-            # first randomly select two different species to swap
+            # randomly select two different locations to swap
             siteALocIdx = np.random.randint(0, N_nonVacSpecs[spASelect])
             siteBLocIdx = np.random.randint(0, N_nonVacSpecs[spBSelect])
 
@@ -168,10 +168,6 @@ class MCSamplerClass(object):
             assert specA == spASelect
             assert specB == spBSelect
             assert specA != specB
-
-            # If the move is not a bad one, then store it for testing later on
-            SwapTrials[swapcount, 0] = siteA
-            SwapTrials[swapcount, 1] = siteB
 
             delE = 0.
             # Next, switch required interactions off
@@ -482,55 +478,6 @@ class MCSamplerClass(object):
                 WBar[i, j] = rate*np.dot(del_lamb[i], del_lamb[j])
 
         return WBar, bBar
-
-    def GetNewRandState(self, state, OffSiteCount, symClassCounts, symCountsTotal, SwapTrials, Energy):
-
-        En = Energy
-        for swapcount in range(SwapTrials.shape[0]):
-            # first select two random sites to swap - for now, let's just select naively.
-            siteA = SwapTrials[swapcount, 0]
-            siteB = SwapTrials[swapcount, 1]
-
-            specA = state[siteA]
-            specB = state[siteB]
-
-            delE = 0.
-            # Next, switch required sites off
-            for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
-                # check if an interaction is on
-                interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
-                if OffSiteCount[interMainInd] == 0:
-                    delE -= self.Interaction2En[interMainInd]
-
-                OffSiteCount[interMainInd] += 1
-
-            for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
-                interMainInd = self.SiteSpecInterArray[siteB, specB, interIdx]
-                # offscount = OffSiteCount[interMainInd]
-                if OffSiteCount[interMainInd] == 0:
-                    delE -= self.Interaction2En[interMainInd]
-
-                OffSiteCount[interMainInd] += 1
-
-            # Next, switch required sites on
-            for interIdx in range(self.numInteractsSiteSpec[siteA, specB]):
-                interMainInd = self.SiteSpecInterArray[siteA, specB, interIdx]
-                OffSiteCount[interMainInd] -= 1
-                if OffSiteCount[interMainInd] == 0:
-                    delE += self.Interaction2En[interMainInd]
-
-            for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
-                interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
-                OffSiteCount[interMainInd] -= 1
-                if OffSiteCount[interMainInd] == 0:
-                    delE += self.Interaction2En[interMainInd]
-
-            # do the selection test
-            # swap the sites to get to the next state
-            state[siteA] = specB
-            state[siteB] = specA
-            # add the energy to get the energy of the next state
-            En += delE
 
     def getExitData(self, state, ijList, dxList, OffSiteCount, TSOffSiteCount, beta, Nsites, vacSiteInd=0):
 
