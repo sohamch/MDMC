@@ -85,10 +85,11 @@ class Test_Make_Arrays(unittest.TestCase):
         self.Nsites = Nsites
         self.N_units = N_units
 
-        self.KMC_Jit = MC_JIT.KMC_JIT(numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,numInteractsSiteSpec, SiteSpecInterArray,
-                 numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
-                 FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
-                 siteIndtoR, RtoSiteInd, N_units)
+        self.KMC_Jit = MC_JIT.KMC_JIT(numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,
+                                      numInteractsSiteSpec, SiteSpecInterArray, numSitesTSInteracts, TSInteractSites,
+                                      TSInteractSpecs, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd,
+                                      numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
+                                      siteIndtoR, RtoSiteInd, N_units)
 
         initState = np.zeros(len(self.VclusExp.sup.mobilepos), dtype=int)
         # Now assign random species (excluding the vacancy)
@@ -821,7 +822,7 @@ class Test_KMC(Test_Make_Arrays):
         Ri = self.VclusExp.sup.ciR(siteA)[1]
 
         # Now, test the translated state
-        # since monoatomic BCC, ci = (0,0)
+        # since monoatomic, ci = (0,0)
         ci = (0, 0)
         for site in range(Nsites):
             Rsite = self.VclusExp.sup.ciR(site)[1]
@@ -836,6 +837,7 @@ class Test_KMC(Test_Make_Arrays):
 
             siteT2 = RtoSiteInd[RTrans2[0], RTrans2[1], RTrans2[2]]
 
+            self.assertTrue(np.array_equal(RTrans2, R2_incell))
             self.assertEqual(siteT2, siteTrans, msg="\n{} {} \n{} \n{} \n{}".format(siteT2, siteTrans, R2, R2_incell, RTrans2))
             self.assertEqual(state[site], stateTrans[siteTrans])
             self.assertEqual(state[site], stateTrans[siteT2])
@@ -858,7 +860,7 @@ class Test_KMC(Test_Make_Arrays):
             self.assertEqual(OffSiteCount[interactionInd], offsiteCount)
 
         # Next, the TS cluster off site counts
-        TransOffSiteCount = self.KMC_Jit.GetTSOffSite(state)
+        TransOffSiteCount = MC_JIT.GetTSOffSite(state, self.numSitesTSInteracts, self.TSInteractSites, self.TSInteractSpecs)
         for TsInteractIdx in range(self.numSitesTSInteracts.shape[0]):
             Interaction = self.Index2TSinteractDict[TsInteractIdx]
             offcount = 0
@@ -875,7 +877,7 @@ class Test_KMC(Test_Make_Arrays):
         offscCopy = OffSiteCount.copy()
         N_units = self.VclusExp.sup.superlatt[0, 0]
 
-        jmpFinSiteList = self.VclusExp.KRAexpander.ijList
+        jmpFinSiteList = self.VclusExp.KRAexpander.jList
 
         # Calculate the energy of the initial state
         EnState = 0.
@@ -884,7 +886,7 @@ class Test_KMC(Test_Make_Arrays):
                 EnState += self.Interaction2En[interactInd]
 
         # collect energy changes due to the jumps
-        delEJumps = self.KMC_Jit.getEnergyChangeJumps(state, OffSiteCount, self.vacsiteInd, jmpFinSiteList)
+        delEJumps = self.KMC_Jit.getEnergyChangeJumps(state, OffSiteCount, self.vacsiteInd, np.array(jmpFinSiteList, dtype=int))
 
         # check that the state and the offsite counts have been left unchanged
         self.assertTrue(np.array_equal(OffSiteCount, offscCopy))
@@ -894,7 +896,7 @@ class Test_KMC(Test_Make_Arrays):
         for jumpInd, siteInd in enumerate(jmpFinSiteList):
             stateNew = state.copy()
             stateNew[siteInd] = self.NSpec - 1  # this site will contain the vacancy in the new site
-            stateNew[self.vacsiteInd] = state[siteInd]  # this site will contain the vacancy in the new site
+            stateNew[self.vacsiteInd] = state[siteInd]
 
             OffScTrans = MC_JIT.GetOffSite(stateNew, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
 
@@ -923,18 +925,18 @@ class Test_KMC(Test_Make_Arrays):
         OffSiteCount = MC_JIT.GetOffSite(state, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
         offscCopy = OffSiteCount.copy()
 
-        jmpFinSiteList = self.VclusExp.KRAexpander.ijList
+        jmpFinSiteList = self.VclusExp.KRAexpander.jList
 
         jmpFinSiteListTrans = np.zeros_like(jmpFinSiteList)
 
         dR = self.siteIndtoR[siteSwap] - self.siteIndtoR[self.vacsiteInd]
 
-        for jmp in range(jmpFinSiteList.shape[0]):
+        for jmp in range(len(jmpFinSiteList)):
             RfinSiteNew = (dR + self.siteIndtoR[jmpFinSiteList[jmp]]) % N_units
             jmpFinSiteListTrans[jmp] = self.RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
 
         # Now get the energy changes during the jumps
-        delEJumps = self.KMC_Jit.getEnergyChangeJumps(state, OffSiteCount, siteSwap, jmpFinSiteListTrans)
+        delEJumps = self.KMC_Jit.getEnergyChangeJumps(state, OffSiteCount, siteSwap, np.array(jmpFinSiteListTrans, dtype=int))
 
         # Now evaluate the energy changes explicitly and see if the energies are the same
 
@@ -968,11 +970,9 @@ class Test_KMC(Test_Make_Arrays):
 
     def test_state_updating(self):
         state = self.initState.copy()
-        OffSiteCount = self.KMC_Jit.GetOffSite(state)
-        offscCopy = OffSiteCount.copy()
+        OffSiteCount = MC_JIT.GetOffSite(state, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
 
         Nsites = self.VclusExp.Nsites
-        N_units = self.VclusExp.sup.superlatt[0, 0]
 
         # do some random swaps and check if updates are being done correctly
         for i in range(10):
@@ -985,7 +985,7 @@ class Test_KMC(Test_Make_Arrays):
             stateNew[siteA] = state[siteB]
             stateNew[siteB] = state[siteA]
 
-            offscnew = self.KMC_Jit.GetOffSite(stateNew)
+            offscnew = MC_JIT.GetOffSite(stateNew, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
 
             self.KMC_Jit.updateState(state, OffSiteCount, siteA, siteB)
 
