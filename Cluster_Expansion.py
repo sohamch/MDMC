@@ -55,6 +55,7 @@ class VectorClusterExpansion(object):
             end1 = time.time()
             print("Built {} clusters:{:.4f} seconds".format(len([cl for clist in self.SpecClusters for cl in clist])
                                                                , end1 - start), flush=True)
+            print("Translating clusters in supercell:", flush=True)
             self.SiteSpecInteractIds, self.Id2InteractionDict, self.Interaction2IdDict,\
             self.clust2InteractId, self.InteractionId2ClusId, self.maxinteractions = self.generateSiteSpecInteracts()
             print("Built interaction Data:{:.4f} seconds".format(time.time() - end1), flush=True)
