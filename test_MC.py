@@ -1108,9 +1108,6 @@ class Test_KMC(DataClass):
             self.assertAlmostEqual(delE_KRA_newTrans[revJumpInd], InitE_KRA[forwardJumpInd])
             print(delE_KRA_newTrans[revJumpInd], InitE_KRA[forwardJumpInd])
 
-            # Next, we want to calculate the KRA energies explicitly.
-
-
 # class test_shells(Test_Make_Arrays):
 #
 #     def test_ShellBuild(self):
