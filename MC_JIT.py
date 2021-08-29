@@ -118,7 +118,6 @@ class MCSamplerClass(object):
         Example input array[10, 501]- 10 species 0 atoms and 501 specis 1 atoms.
         :param OffSiteCount: interaction off site counts for the current state
         :param TransOffSiteCount: transition state interaction off site counts
-        :param SwapTrials: An array to store which trials were attempted to analyze later on
         :param beta: 1/kT
         :param randLogarr: log of random numbers for acceptance criterion
         :param Nswaptrials: How many site swaps we want to attempt
@@ -146,7 +145,7 @@ class MCSamplerClass(object):
         count = 0  # to keep a steady count of accepted moves
         swapcount = 0
         NonVacLabels = np.arange(N_nonVacSpecs.shape[0])
-        while swapcount < Nswaptrials:
+        for swapcount in range(Nswaptrials):
 
             # first select two random species to swap
             NonVacLabels = np.random.permutation(NonVacLabels)
