@@ -77,6 +77,7 @@ MonteCarloSamplerSpec = [
     ("numTSInteractsInPtGroups", int64[:, :]),
     ("JumpInteracts", int64[:, :, :]),
     ("Jump2KRAEng", float64[:, :, :]),
+    ("KRASpecConstants", float64[:]),
     ("mobOcc", int64[:]),
     ("vacSiteInd", int64),
     ("Nsites", int64),
@@ -93,7 +94,7 @@ class MCSamplerClass(object):
 
     def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numInteractsSiteSpec, SiteSpecInterArray,
                  numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
-                 FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng):
+                 FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, KRASpecConstants):
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numInteractsSiteSpec,\
         self.SiteSpecInterArray = \
@@ -106,6 +107,9 @@ class MCSamplerClass(object):
         self.JumpInteracts, self.Jump2KRAEng = \
             jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, \
             JumpInteracts, Jump2KRAEng
+
+        self.KRASpecConstants = KRASpecConstants  # a constant to be added to KRA energies depending on which species jumps
+        # This can be kept to just zero if not required
 
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
@@ -266,7 +270,7 @@ class MCSamplerClass(object):
             siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
             transInd = self.FinSiteFinSpecJumpInd[siteB, specB]
             # First, work on getting the KRA energy for the jump
-            delEKRA = 0.0
+            delEKRA = self.KRASpecConstants[specB]  # Start with the constant term for the jumping species.
             # We need to go through every point group for this jump
             for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
                 for interactInd in range(self.numTSInteractsInPtGroups[transInd, tsPtGpInd]):
@@ -504,7 +508,7 @@ class MCSamplerClass(object):
             statesTrans[jumpInd, siteA] = state[siteB]
 
             # First, work on getting the KRA energy for the jump
-            delEKRA = 0.0
+            delEKRA = self.KRASpecConstants[specB]
             # We need to go through every point group for this jump
             for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
                 for interactInd in range(self.numTSInteractsInPtGroups[transInd, tsPtGpInd]):
@@ -580,7 +584,7 @@ class KMC_JIT(object):
 
     def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,numInteractsSiteSpec, SiteSpecInterArray,
                  numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
-                 FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng,
+                 FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, KRASpecConstants,
                  siteIndtoR, RtoSiteInd, N_unit):
 
         self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numInteractsSiteSpec,\
@@ -595,10 +599,18 @@ class KMC_JIT(object):
             jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, \
             JumpInteracts, Jump2KRAEng
 
+        self.KRASpecConstants = KRASpecConstants
+
         self.RtoSiteInd = RtoSiteInd
         self.siteIndtoR = siteIndtoR
 
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
+        try:
+            assert KRASpecConstants.shape[0] == numInteractsSiteSpec.shape[0]
+
+        except AssertionError:
+            raise TypeError("KRA species constants array, {}, does not have the"
+                            "same length as the number of species?".format(KRASpecConstants))
 
         self.N_unit = N_unit
 
