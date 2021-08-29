@@ -143,7 +143,7 @@ class MCSamplerClass(object):
             specMemberCounts[spec] = specMemIdx
 
         count = 0  # to keep a steady count of accepted moves
-        swapcount = 0
+
         NonVacLabels = np.arange(N_nonVacSpecs.shape[0])
         for swapcount in range(Nswaptrials):
 
