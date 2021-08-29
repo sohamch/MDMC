@@ -110,7 +110,7 @@ class MCSamplerClass(object):
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
 
     def makeMCsweep(self, state, N_nonVacSpecs, OffSiteCount, TransOffSiteCount,
-                    beta, randLogarr, Nswaptrials, vacSiteInd=0):
+                    beta, randLogarr, Nswaptrials, vacSiteInd):
         """
 
         :param state: the starting state

@@ -166,9 +166,12 @@ class Test_MC(Test_Make_Arrays):
 
         TSOffSiteCount = np.zeros(len(self.numSitesTSInteracts), dtype=int)
         beta = 1.0
+
+        # args in order:
+        # state, N_nonVacSpecs, OffSiteCount, TransOffSiteCount, beta, randLogarr, Nswaptrials, vacSiteInd
         SpecsOnSites, acceptCount =\
             MCSampler_Jit.makeMCsweep(initJit, N_nonvacSpec, offscjit, TSOffSiteCount,
-                                      beta, randLogarr, Nswaptrials, vacSiteInd=self.vacsiteInd)
+                                      beta, randLogarr, Nswaptrials, self.vacsiteInd)
 
         # Get the energy for the swapped state - will determine if move is calculated correctly or not
         # swap the occupancies
