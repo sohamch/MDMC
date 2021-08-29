@@ -14,6 +14,8 @@ warnings.filterwarnings('error', category=RuntimeWarning)
 
 np.seterr(all='raise')
 
+__FCC__ = True
+
 class Test_Make_Arrays(unittest.TestCase):
 
     def setUp(self):
@@ -49,7 +51,7 @@ class Test_Make_Arrays(unittest.TestCase):
                             for (key, TSptGroups) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
 
         self.MakeJITs()
-        print("Done setting up")
+        print("Done setting up BCC data")
 
     def MakeJITs(self):
         # First, the chemical data
@@ -107,7 +109,46 @@ class Test_Make_Arrays(unittest.TestCase):
             FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng
         )
 
-class Test_MC(Test_Make_Arrays):
+class Test_Make_Arrays_FCC(Test_Make_Arrays):
+
+    def setUp(self):
+        self.NSpec = 3
+        self.KRACounterSpec = 1
+        self.Nvac = 1
+        self.MaxOrder = 3
+        self.MaxOrderTrans = 3
+        a0 = 1.0
+        self.a0 = a0
+        self.crys = crystal.Crystal.FCC(a0, chemistry="A")
+        self.chem = 0
+        self.jnetFCC = self.crys.jumpnetwork(0, 1.01 * a0 / np.sqrt(2))
+        self.superlatt = 8 * np.eye(3, dtype=int)
+        self.superFCC = supercell.ClusterSupercell(self.crys, self.superlatt)
+        # get the number of sites in the supercell - should be 8x8x8
+        numSites = len(self.superFCC.mobilepos)
+        self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
+        self.vacsiteInd = self.superFCC.index(np.zeros(3, dtype=int), (0, 0))[0]
+        self.clusexp = cluster.makeclusters(self.crys, 1.01 * a0, self.MaxOrder)
+
+        TScombShellRange = 1  # upto 1nn combined shell
+        TSnnRange = 4
+        TScutoff = np.sqrt(2) * a0  # 4th nn cutoff
+
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superFCC, self.clusexp, TScutoff, TScombShellRange, TSnnRange,
+                                                                 self.jnetFCC, self.NSpec, self.vacsite, self.MaxOrder)
+
+        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
+        self.KRAEnergies = [np.random.rand(len(TSptGroups))
+                            for (key, TSptGroups) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
+
+        self.MakeJITs()
+        print("Done setting up FCC data.")
+
+DataClass = Test_Make_Arrays
+if __FCC__:
+    DataClass = Test_Make_Arrays_FCC
+
+class Test_MC(DataClass):
 
     def test_MC_step(self):
         # First, create a random state
@@ -120,7 +161,13 @@ class Test_MC(Test_Make_Arrays):
         MCSampler_Jit = self.MCSampler_Jit
 
         Nswaptrials = 1  # We are only testing a single step here
-        randLogarr = np.log(np.random.rand(Nswaptrials))
+        # randLogarr = np.log(np.random.rand(Nswaptrials))
+
+        # If we want to ensure acceptance, we keep it really small
+        randLogarr = np.ones(Nswaptrials)*-1000.0
+
+        # If we want to ensure rejection, we keep it really big
+        # randLogarr = np.ones(Nswaptrials) * 1000.0
 
         # Put in tests for Jit calculations
         # make the offsite counts
@@ -327,7 +374,7 @@ class Test_MC(Test_Make_Arrays):
         # Get the MC samplers
         MCSampler_Jit = self.MCSampler_Jit
 
-        Nswaptrials = 100
+        Nswaptrials = 1000
         randLogarr = np.log(np.random.rand(Nswaptrials))
 
         # Put in tests for Jit calculations
@@ -795,7 +842,7 @@ class Test_MC(Test_Make_Arrays):
     #     self.assertTrue(np.allclose(Bbar, Bbar_test))
 
 
-class Test_KMC(Test_Make_Arrays):
+class Test_KMC(DataClass):
 
     def test_translation(self):
         initState = self.initState
@@ -1130,4 +1177,4 @@ class Test_KMC(Test_Make_Arrays):
 #
 #         # Check that all jumps have been accounted for including diagonal elements
 #         for key, item in exitcounts.items():
-#             self.assertEqual(item, ijList.shape[0]+1)
+#             self.assertEqual(item, ijList.shape[0]
