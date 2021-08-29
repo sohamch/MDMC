@@ -53,14 +53,12 @@ class VectorClusterExpansion(object):
             self.SpecClusters = self.recalcClusters()
             self.IndexClusters()  # assign integer integer IDs to each cluster
             end1 = time.time()
-            print("\t built {} clusters:{:.4f} seconds".format(len([cl for clist in self.SpecClusters for cl in clist])
-                                                               , end1 - start))
+            print("Built {} clusters:{:.4f} seconds".format(len([cl for clist in self.SpecClusters for cl in clist])
+                                                               , end1 - start), flush=True)
             self.SiteSpecInteractIds, self.Id2InteractionDict, self.Interaction2IdDict,\
             self.clust2InteractId, self.InteractionId2ClusId, self.maxinteractions = self.generateSiteSpecInteracts()
-            print("\t built interactions:{:.4f} seconds".format(time.time() - end1))
+            print("Built interaction Data:{:.4f} seconds".format(time.time() - end1), flush=True)
             # add a small check here - maybe we'll remove this later
-
-        print("Built Species Clusters : {:.4f} seconds".format(time.time() - start))
 
         start = time.time()
         self.vecClus, self.vecVec, self.clus2LenVecClus = self.genVecClustBasis(self.SpecClusters)
