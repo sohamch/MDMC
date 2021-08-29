@@ -83,6 +83,7 @@ MonteCarloSamplerSpec = [
     ("Nspecs", int64),
     ("OffSiteCount", int64[:]),
     ("delEArray", float64[:]),
+    ("delETotal", float64),
     ("FinSiteFinSpecJumpInd", int64[:, :])
 ]
 
@@ -124,10 +125,12 @@ class MCSamplerClass(object):
         :param vacSiteInd: where the vacancy is
         """
         acceptCount = 0
+        self.delETotal = 0.0
         self.delEArray = np.zeros(Nswaptrials)
 
-        Nsites = len(state)
+        Nsites = state.shape[0]
         MaxCount = np.max(N_nonVacSpecs)
+        # print(N_nonVacSpecs)
         # Next, fill up where the atoms are located
         specMemberCounts = np.zeros_like(N_nonVacSpecs, dtype=int64)
         SpecLocations = np.full((N_nonVacSpecs.shape[0], MaxCount), -1, dtype=int64)
@@ -200,6 +203,7 @@ class MCSamplerClass(object):
             # do the selection test
             if -beta*delE > randLogarr[swapcount]:
                 # swap the sites to get to the next state
+                self.delETotal += delE
                 state[siteA] = specB
                 state[siteB] = specA
 
