@@ -210,8 +210,8 @@ class KRA3bodyInteractions():
             FinSiteFinSpecJumpInd[Jumpkey[1], Jumpkey[2]] = jumpInd
             numJumpPointGroups[jumpInd] = len(interactGroupList)
 
-            for interactGroupInd, interactGroup in enumerate(interactGroupList):
-                clusterList = interactGroupList[interactGroup]
+            for interactGroupInd, nnType in enumerate(interactGroupList):
+                clusterList = interactGroupList[nnType]
                 numTSInteractsInPtGroups[jumpInd, interactGroupInd] = len(clusterList)
                 for interactInd, site3 in enumerate(clusterList):
                     TSInteract = tuple([(Jumpkey[0], self.vacSpec), (Jumpkey[1], Jumpkey[2]),
