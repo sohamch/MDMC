@@ -51,7 +51,6 @@ class VectorClusterExpansion(object):
             self.clust2InteractId, self.maxinteractions = self.InteractsOrigVac()
         else:
             self.SpecClusters = self.recalcClusters()
-            self.IndexClusters()  # assign integer integer IDs to each cluster
             end1 = time.time()
             print("Built {} clusters:{:.4f} seconds".format(len([cl for clist in self.SpecClusters for cl in clist])
                                                                , end1 - start), flush=True)
@@ -71,8 +70,7 @@ class VectorClusterExpansion(object):
         print("Built KRA expander : {:.4f}".format(time.time() - start))
 
         start = time.time()
-        # self.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
-        # self.indexClustertoVecClus()  # Index where in the vector cluster list a cluster is present
+        self.IndexClusters()  # assign integer integer IDs to each cluster
         self.indexClustertoSpecClus()  # Index clusters to symmetry groups
         print("Built Indexing : {:.4f}".format(time.time() - start))
 
