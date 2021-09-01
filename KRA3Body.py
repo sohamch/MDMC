@@ -119,9 +119,9 @@ class KRA3bodyInteractions():
                             siteBnn.add(siteBvec)
 
                     if nn == 0:  # for first nearest neighbor we need intersection
-                        nnGroups[nn + 1] = siteAnn.intersection(siteBnn)
+                        nnGroups[nn + 1] = list(siteAnn.intersection(siteBnn))
                     else: # for the second nearest neighbor onwards, union
-                        nnGroups[nn + 1] = siteAnn.union(siteBnn)
+                        nnGroups[nn + 1] = list(siteAnn.union(siteBnn))
 
                 Trans2NNGroups[(siteA, siteB)] = nnGroups
 
