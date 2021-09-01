@@ -80,7 +80,7 @@ class VectorClusterExpansion(object):
         """
         allClusts = set()
         symClusterList = []
-        self.SpecClust2Clus = {}
+        # self.SpecClust2Clus = {}
         for clSetInd, clSet in enumerate(self.clusexp):
             for clust in list(clSet):
                 Nsites = len(clust.sites)
@@ -108,7 +108,7 @@ class VectorClusterExpansion(object):
 
                     allClusts.update(newSymSet)
                     newList = list(newSymSet)
-                    self.SpecClust2Clus[len(symClusterList)] = clSetInd
+                    # self.SpecClust2Clus[len(symClusterList)] = clSetInd
                     symClusterList.append(newList)
 
         return symClusterList
