@@ -626,9 +626,9 @@ class KMC_JIT(object):
 
         delEKRA = np.zeros(ijList.shape[0], dtype=float64)
         for jumpInd in range(ijList.shape[0]):
-            delE = 0.0
             # Get the transition index
             siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
+            delE = self.KRASpecConstants[specB]
             transInd = self.FinSiteFinSpecJumpInd[siteB, specB]
             # We need to go through every point group for this jump
             for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
