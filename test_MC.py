@@ -45,6 +45,7 @@ class Test_Make_Arrays(unittest.TestCase):
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, TScutoff, TScombShellRange, TSnnRange,
                                                                  self.jnetBCC, self.NSpec, self.vacsite, self.MaxOrder)
 
+        self.VclusExp.generateSiteSpecInteracts()
         self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
         self.VclusExp.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
         self.VclusExp.indexClustertoVecClus()
@@ -155,6 +156,8 @@ class Test_Make_Arrays_FCC(Test_Make_Arrays):
 
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superFCC, self.clusexp, TScutoff, TScombShellRange, TSnnRange,
                                                                  self.jnetFCC, self.NSpec, self.vacsite, self.MaxOrder)
+
+        self.VclusExp.generateSiteSpecInteracts()
 
         self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
         self.VclusExp.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
