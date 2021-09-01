@@ -201,19 +201,19 @@ class KRA3bodyInteractions():
         Jump2KRAEng = np.zeros((len(self.clusterSpeciesJumps), maxInteractGroups, maxInteractsInGroups))
         # Fill up the arrays
         count = 0  # to keep track of the integer assigned to each TS interaction.
-        for (Jumpkey, interactGroupList) in self.clusterSpeciesJumps.items():
+        for (Jumpkey, interactGroupListSet) in self.clusterSpeciesJumps.items():
 
             jumpInd = self.jump2Index[Jumpkey]
 
             jumpFinSites[jumpInd] = Jumpkey[1]
             jumpFinSpec[jumpInd] = Jumpkey[2]
             FinSiteFinSpecJumpInd[Jumpkey[1], Jumpkey[2]] = jumpInd
-            numJumpPointGroups[jumpInd] = len(interactGroupList)
+            numJumpPointGroups[jumpInd] = len(interactGroupListSet)
 
-            for nnType, clusterSiteSet_site3 in interactGroupList.items():
+            for nnType, clusterSiteList_site3 in interactGroupListSet.items():
                 interactGroupInd = nnType - 1
-                numTSInteractsInPtGroups[jumpInd, interactGroupInd] = len(clusterSiteSet_site3)
-                for interactInd, site3 in enumerate(clusterSiteSet_site3):
+                numTSInteractsInPtGroups[jumpInd, interactGroupInd] = len(clusterSiteList_site3)
+                for interactInd, site3 in enumerate(clusterSiteList_site3):
                     TSInteract = tuple([(Jumpkey[0], self.vacSpec), (Jumpkey[1], Jumpkey[2]),
                                   (self.sup.index(site3.R, site3.ci)[0], counterSpec)])
 
