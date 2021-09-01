@@ -45,6 +45,10 @@ class Test_Make_Arrays(unittest.TestCase):
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, TScutoff, TScombShellRange, TSnnRange,
                                                                  self.jnetBCC, self.NSpec, self.vacsite, self.MaxOrder)
 
+        self.TScombShellRange = TScombShellRange
+        self.TSnnRange = TSnnRange
+        self.TScutoff = TScutoff
+
         self.VclusExp.generateSiteSpecInteracts()
         self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
         self.VclusExp.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
@@ -116,9 +120,9 @@ class Test_Make_Arrays(unittest.TestCase):
         )
 
     def make3bodyKRAEnergies(self):
-        KRASpecConstants = np.array([1., 2.])
-        En0Jumps = np.array([4, 3, 2, 1])
-        En1Jumps = En0Jumps * 2
+        KRASpecConstants = np.random.rand(self.NSpec-1)
+        En0Jumps = np.random.rand(self.TSnnRange)
+        En1Jumps = np.random.rand(self.TSnnRange)
         Energies = []
         for jumpInd in range(len(self.VclusExp.KRAexpander.jump2Index)):
             jumpkey = self.VclusExp.KRAexpander.Index2Jump[jumpInd]
@@ -156,6 +160,10 @@ class Test_Make_Arrays_FCC(Test_Make_Arrays):
 
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superFCC, self.clusexp, TScutoff, TScombShellRange, TSnnRange,
                                                                  self.jnetFCC, self.NSpec, self.vacsite, self.MaxOrder)
+
+        self.TScombShellRange = TScombShellRange
+        self.TSnnRange = TSnnRange
+        self.TScutoff = TScutoff
 
         self.VclusExp.generateSiteSpecInteracts()
 
@@ -1065,7 +1073,46 @@ class Test_KMC(DataClass):
             self.assertTrue(np.array_equal(state, stateNew))
             self.assertTrue(np.array_equal(offscnew, OffSiteCount))
 
-    def test_KRA3body3Spec(self):
+    def test_KRA3body3Spec_values(self):
+        warnings.warn("Make sure this test is being run for FCC 3 body KRA with the Ni-Re paper parameters.")
+        if self.NSpec != 3:
+            raise ValueError("This test is only valid for 3-body interactions")
+
+        # Let's get the KRA energies of a state from the code
+        jmpFinSiteList = np.array(self.VclusExp.KRAexpander.jList)
+        state = self.initState.copy()
+        self.assertEqual(state[self.vacsiteInd], self.NSpec-1)
+        initTSoffsc = MC_JIT.GetTSOffSite(state, self.numSitesTSInteracts,
+                                          self.TSInteractSites, self.TSInteractSpecs)
+
+        InitE_KRA = self.KMC_Jit.getKRAEnergies(state, initTSoffsc, jmpFinSiteList)
+
+        # Now for each jump, let's calculate the energies from the TS cluster expansion
+        for jNum in range(jmpFinSiteList.shape[0]):
+            # Get the final site and the final spec
+            siteB, specB = jmpFinSiteList[jNum], state[jmpFinSiteList[jNum]]
+            jumpKey = (self.vacsiteInd, siteB, specB)
+
+            # Get the energies for the different group of this transition
+            JumpPlaceInEnArray = self.VclusExp.KRAexpander.jump2Index[jumpKey]
+            EnGroups = self.KRAEnergies[JumpPlaceInEnArray]
+
+            # Now go through each of the third sites
+            TsPtGrpDict = self.VclusExp.KRAexpander.clusterSpeciesJumps[jumpKey]
+            delEKRA = self.KRASpecConstants[specB]
+            for type, site3List in TsPtGrpDict.items():
+                GroupIndex = type - 1
+                for site3 in site3List:
+                    site3Ind = self.VclusExp.sup.index(site3.R, site3.ci)[0]
+                    if state[site3Ind] == self.KRACounterSpec:
+                        delEKRA += EnGroups[GroupIndex]
+
+            self.assertAlmostEqual(InitE_KRA[jNum], delEKRA)
+            print(InitE_KRA[jNum], " ", delEKRA, " ", siteB)
+
+        print(jmpFinSiteList)
+
+    def test_KRA3body3SpecDetBal(self):
         # test that the KRA energies satisfy detailed balance
         warnings.warn("Make sure this test is being run for FCC 3 body KRA with the Ni-Re paper parameters.")
         if self.NSpec != 3:
