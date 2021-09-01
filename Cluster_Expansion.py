@@ -61,9 +61,9 @@ class VectorClusterExpansion(object):
             print("Built interaction Data:{:.4f} seconds".format(time.time() - end1), flush=True)
             # add a small check here - maybe we'll remove this later
 
-        start = time.time()
-        self.vecClus, self.vecVec, self.clus2LenVecClus = self.genVecClustBasis(self.SpecClusters)
-        print("Built vector bases for clusters : {:.4f}".format(time.time() - start))
+        # start = time.time()
+        # self.genVecClustBasis(self.SpecClusters)
+        # print("Built vector bases for clusters : {:.4f}".format(time.time() - start))
 
         start = time.time()
         if TclusExp is None:
@@ -72,8 +72,8 @@ class VectorClusterExpansion(object):
         print("Built KRA expander : {:.4f}".format(time.time() - start))
 
         start = time.time()
-        self.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
-        self.indexClustertoVecClus()  # Index where in the vector cluster list a cluster is present
+        # self.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
+        # self.indexClustertoVecClus()  # Index where in the vector cluster list a cluster is present
         self.indexClustertoSpecClus()  # Index clusters to symmetry groups
         print("Built Indexing : {:.4f}".format(time.time() - start))
 
@@ -161,7 +161,7 @@ class VectorClusterExpansion(object):
                 vecClustList.append(newClustList)
                 vecVecList.append(newVecList)
 
-        return vecClustList, vecVecList, clus2LenVecClus
+        self.vecClus, self.vecVec, self.clus2LenVecClus = vecClustList, vecVecList, clus2LenVecClus
 
     def indexVclus2Clus(self):
 
