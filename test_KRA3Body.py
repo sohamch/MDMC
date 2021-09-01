@@ -145,6 +145,7 @@ class testKRA3bodyFCC(unittest.TestCase):
 
             # Check that in for each point group, the correct interactions are stored.
             for type, TSinteractDict in TSptGrps.items():
+                self.assertTrue(type>=1)
                 TsPtGpInd = type-1
                 self.assertEqual(numTSInteractsInPtGroups[jumpInd, TsPtGpInd], len(TSinteractDict))
                 for interactInd, site3 in enumerate(TSinteractDict):
