@@ -144,9 +144,10 @@ class testKRA3bodyFCC(unittest.TestCase):
             self.assertEqual(numJumpPointGroups[jumpInd], NptGrp)
 
             # Check that in for each point group, the correct interactions are stored.
-            for TsPtGpInd, (type, TSinteractList) in zip(itertools.count(), TSptGrps.items()):
-                self.assertEqual(numTSInteractsInPtGroups[jumpInd, TsPtGpInd], len(TSinteractList))
-                for interactInd, site3 in enumerate(TSinteractList):
+            for type, TSinteractDict in TSptGrps.items():
+                TsPtGpInd = type-1
+                self.assertEqual(numTSInteractsInPtGroups[jumpInd, TsPtGpInd], len(TSinteractDict))
+                for interactInd, site3 in enumerate(TSinteractDict):
                     site3Ind = self.KRAexpander.sup.index(site3.R, site3.ci)[0]
                     interact = tuple([(jumpkey[0], self.KRAexpander.vacSpec), (jumpkey[1], jumpkey[2]),
                                       (site3Ind, CounterSpec)])
