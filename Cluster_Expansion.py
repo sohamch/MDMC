@@ -14,7 +14,7 @@ class VectorClusterExpansion(object):
     class to expand velocities and rates in vector cluster functions.
     """
     def __init__(self, sup, clusexp, TScutoff, TScombShellRange, TSnnRange, jumpnetwork, NSpec, vacSite, maxorder,
-                 TclusExp=None, maxOrderTrans=None, zeroClusts=True, OrigVac=False):
+                 MadeSpecClusts=None, TclusExp=None, maxOrderTrans=None, zeroClusts=True, OrigVac=False):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
@@ -24,6 +24,7 @@ class VectorClusterExpansion(object):
         :param vacSite: Index of the vacancy site (used in MC sampling and JIT construction)
         :param vacSite: the site of the vacancy as a clusterSite object. This does not change during the simulation.
         :param maxorder: the maximum order of a cluster in clusexp.
+        :param MadeSpecClusts: an optional pre-made species cluster group list.
         :param zeroClusts: Same as parameter "zero" of ClusterSpecies class - whether to bring a cluster's centroid to zero or not.
         :param OrigVac: only vacancy-atom pairs with the vacancy at the centre will be considered. This will not use clusexp.
         In this type of simulations, we consider a solid with a single wyckoff set on which atoms are arranged.
@@ -50,7 +51,10 @@ class VectorClusterExpansion(object):
             self.SpecClusters, self.SiteSpecInteractIds, self.InteractionIdDict,\
             self.clust2InteractId, self.maxinteractions = self.InteractsOrigVac()
         else:
-            self.SpecClusters = self.recalcClusters()
+            if MadeSpecClusts is not None:
+                self.SpecClusters = MadeSpecClusts
+            else:
+                self.SpecClusters = self.recalcClusters()
             end1 = time.time()
             print("Built {} clusters:{:.4f} seconds".format(len([cl for clist in self.SpecClusters for cl in clist])
                                                                , end1 - start), flush=True)
