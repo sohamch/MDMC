@@ -79,7 +79,6 @@ MonteCarloSamplerSpec = [
     ("Jump2KRAEng", float64[:, :, :]),
     ("KRASpecConstants", float64[:]),
     ("mobOcc", int64[:]),
-    ("vacSiteInd", int64),
     ("Nsites", int64),
     ("Nspecs", int64),
     ("OffSiteCount", int64[:]),
