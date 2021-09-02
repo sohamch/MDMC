@@ -734,7 +734,7 @@ class KMC_JIT(object):
 
             # Translate the states so that vacancy is taken from vacIndnow to vacSiteFix
             stateTrans = self.TranslateState(state, vacSiteFix, vacIndNow)
-            TSoffsc = self.GetTSOffSite(stateTrans)
+            TSoffsc = GetTSOffSite(stateTrans, self.numSitesTSInteracts, self.TSInteractSites, self.TSInteractSpecs)
 
             delEKRA = self.getKRAEnergies(stateTrans, TSoffsc, jumpFinSiteList)
 
