@@ -581,6 +581,7 @@ KMC_additional_spec = [
 
 @jitclass(MonteCarloSamplerSpec+KMC_additional_spec)
 class KMC_JIT(object):
+    # TODO: Implement periodic boundary conditions for non-diag primitive supercells
 
     def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,numInteractsSiteSpec, SiteSpecInterArray,
                  numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
