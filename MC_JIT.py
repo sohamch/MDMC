@@ -621,6 +621,13 @@ class KMC_JIT(object):
             stateTrans[siteIndNew] = state[siteInd]
         return stateTrans
 
+    def getJumpVibfreq(self, state, SpecVibFreq, jmpFinSiteListTrans):
+        freqs = np.zeros(jmpFinSiteListTrans.shape)
+        for jmpInd in range(jmpFinSiteListTrans.shape[0]):
+            siteB = jmpFinSiteListTrans[jmpInd]
+            specB = state[siteB]
+            freqs[jmpInd] = SpecVibFreq[specB]
+        return freqs
 
     def getKRAEnergies(self, state, TSOffSiteCount, ijList):
 
@@ -719,7 +726,7 @@ class KMC_JIT(object):
         state[siteA] = state[siteB]
         state[siteB] = temp
 
-    def getTraj(self, state, offsc, vacSiteFix, jumpFinSiteList, dxList, NSpec, Nsteps, beta):
+    def getTraj(self, state, offsc, vacSiteFix, jumpFinSiteList, dxList, NSpec, SpecVibFreq, Nsteps, beta):
 
         X = np.zeros((NSpec, 3), dtype=float64)
         t = 0.
@@ -745,7 +752,7 @@ class KMC_JIT(object):
                 jumpFinSiteListTrans[jmp] = self.RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
 
             delE = self.getEnergyChangeJumps(state, offsc, vacIndNow, jumpFinSiteListTrans)
-
+            frq = self.getJumpVibfreq(state, SpecVibFreq, jumpFinSiteListTrans)
             rates = np.exp(-(0.5 * delE + delEKRA) * beta)
             rateTot = np.sum(rates)
             t += 1.0/rateTot
