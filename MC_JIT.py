@@ -753,7 +753,8 @@ class KMC_JIT(object):
 
             delE = self.getEnergyChangeJumps(state, offsc, vacIndNow, jumpFinSiteListTrans)
             frq = self.getJumpVibfreq(state, SpecVibFreq, jumpFinSiteListTrans)
-            rates = np.exp(-(0.5 * delE + delEKRA) * beta)
+
+            rates = frq*np.exp(-(0.5 * delE + delEKRA) * beta)
             rateTot = np.sum(rates)
             t += 1.0/rateTot
 
