@@ -733,6 +733,7 @@ class KMC_JIT(object):
 
         X_steps = np.zeros((Nsteps, NSpec, 3), dtype=float64)
         t_steps = np.zeros(Nsteps, dtype=float64)
+        jmpSelectArray = np.zeros(Nsteps, dtype=int64)
 
         jumpFinSiteListTrans = np.zeros_like(jumpFinSiteList, dtype=int64)
         vacIndNow = vacSiteFix
@@ -762,7 +763,7 @@ class KMC_JIT(object):
             rates_cm = np.cumsum(rates)
             rn = np.random.rand()
             jmpSelect = np.searchsorted(rates_cm, rn)
-
+            jmpSelectArray[step] = jmpSelect
             vacIndNext = jumpFinSiteListTrans[jmpSelect]
 
             X[NSpec - 1, :] += dxList[jmpSelect]
@@ -776,4 +777,4 @@ class KMC_JIT(object):
 
             vacIndNow = vacIndNext
 
-        return X_steps, t_steps
+        return X_steps, t_steps, jmpSelectArray
