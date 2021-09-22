@@ -746,6 +746,16 @@ class KMC_JIT(object):
         AtomPos2AtomId = np.zeros((Nsites), dtype=int64)
         AtomIdtoAtomDisp = np.full((NSpec, np.max(SpecCounts), 3), -1, dtype=int64)
 
+        # Now assign IDs to each atom
+        spIDcounts = np.zeros(NSpec, dtype=int64)  # to track the ID of each atom of each species
+        for siteInd in range(Nsites):
+            sp = state[siteInd]
+            AtomID = spIDcounts[sp]
+
+            # Store the site this atom is present in
+            AtomId2AtomPos[sp, AtomID] = siteInd
+            AtomPos2Atomtype[siteInd] = sp
+            AtomPos2AtomId[siteInd] = AtomID
 
 
         for step in range(Nsteps):
