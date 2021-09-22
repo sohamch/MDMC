@@ -739,9 +739,14 @@ class KMC_JIT(object):
         vacIndNow = vacSiteFix
 
         # track displacements of individual atoms
+        Nsites = state.shape[0]
         Specs, SpecCounts = np.unique(state, return_counts=True)
-        AtomIdtoAtomPos = np.full((NSpec, np.max(SpecCounts)), -1, dtype=int64)
+        AtomId2AtomPos = np.full((NSpec, np.max(SpecCounts)), -1, dtype=int64)
+        AtomPos2Atomtype = np.zeros((Nsites), dtype=int64)
+        AtomPos2AtomId = np.zeros((Nsites), dtype=int64)
         AtomIdtoAtomDisp = np.full((NSpec, np.max(SpecCounts), 3), -1, dtype=int64)
+
+
 
         for step in range(Nsteps):
 
