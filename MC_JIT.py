@@ -742,7 +742,6 @@ class KMC_JIT(object):
         Nsites = state.shape[0]
         Specs, SpecCounts = np.unique(state, return_counts=True)
         AtomId2AtomPos = np.full((NSpec, np.max(SpecCounts)), -1, dtype=int64)
-        AtomPos2Atomtype = np.zeros((Nsites), dtype=int64)
         AtomPos2AtomId = np.zeros((Nsites), dtype=int64)
         AtomIdtoAtomDisp = np.full((NSpec, np.max(SpecCounts), 3), -1, dtype=int64)
 
@@ -751,12 +750,9 @@ class KMC_JIT(object):
         for siteInd in range(Nsites):
             sp = state[siteInd]
             AtomID = spIDcounts[sp]
-
             # Store the site this atom is present in
             AtomId2AtomPos[sp, AtomID] = siteInd
-            AtomPos2Atomtype[siteInd] = sp
             AtomPos2AtomId[siteInd] = AtomID
-
             # Increment the index
             spIDcounts[sp] += 1
 
@@ -793,7 +789,13 @@ class KMC_JIT(object):
             X[specB, :] -= dxList[jmpSelect]
 
             # Now get the ID of this atom
-            # specBID =
+            specBID = AtomPos2AtomId[vacIndNext]
+            # Update the displacement of this atom
+            AtomIdtoAtomDisp[specB, specBID, :] -= dxList[jmpSelect]
+
+            # Exchange the atom Ids at the two sites
+            AtomPos2AtomId[vacIndNext] = AtomPos2AtomId[vacIndNow]  # the vacancy ID update
+            AtomPos2AtomId[vacIndNow] = specBID
 
             X_steps[step, :, :] = X.copy()
             t_steps[step] = t
