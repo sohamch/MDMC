@@ -744,6 +744,7 @@ class KMC_JIT(object):
         AtomId2AtomPos = np.full((NSpec, np.max(SpecCounts)), -1, dtype=int64)
         AtomPos2AtomId = np.zeros((Nsites), dtype=int64)
         AtomIdtoAtomDisp = np.full((NSpec, np.max(SpecCounts), 3), -1, dtype=int64)
+        AtomIdtoAtomDispSq = np.full((NSpec, np.max(SpecCounts)), -1, dtype=int64)
 
         # Now assign IDs to each atom
         spIDcounts = np.zeros(NSpec, dtype=int64)  # to track the ID of each atom of each species
@@ -755,6 +756,8 @@ class KMC_JIT(object):
             AtomPos2AtomId[siteInd] = AtomID
             # Increment the index
             spIDcounts[sp] += 1
+
+        assert np.array_equal(spIDcounts, SpecCounts)
 
         for step in range(Nsteps):
 
@@ -803,5 +806,11 @@ class KMC_JIT(object):
             self.updateState(state, offsc, vacIndNow, vacIndNext)
 
             vacIndNow = vacIndNext
+
+        # After all steps are complete, get the squared displacement of every atom
+        for spec in range(NSpec):
+            for spId in range(SpecCounts[spec]):
+                specX = AtomIdtoAtomDisp[spec, spId, :]
+                AtomIdtoAtomDispSq[spec, spId] = np.dot(specX, specX)
 
         return X_steps, t_steps, jmpSelectArray
