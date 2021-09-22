@@ -738,6 +738,11 @@ class KMC_JIT(object):
         jumpFinSiteListTrans = np.zeros_like(jumpFinSiteList, dtype=int64)
         vacIndNow = vacSiteFix
 
+        # track displacements of individual atoms
+        Specs, SpecCounts = np.unique(state, return_counts=True)
+        AtomIdtoAtomPos = np.full((NSpec, np.max(SpecCounts)), -1, dtype=int64)
+        AtomIdtoAtomDisp = np.full((NSpec, np.max(SpecCounts), 3), -1, dtype=int64)
+
         for step in range(Nsteps):
 
             # Translate the states so that vacancy is taken from vacIndnow to vacSiteFix
