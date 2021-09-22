@@ -740,11 +740,15 @@ class KMC_JIT(object):
 
         # track displacements of individual atoms
         Nsites = state.shape[0]
-        Specs, SpecCounts = np.unique(state, return_counts=True)
+        SpecCounts = np.zeros(NSpec, dtype=int64)
+        for siteInd in range(state.shape[0]):
+            sp = state[siteInd]
+            SpecCounts[sp] += 1
+
         AtomId2AtomPos = np.full((NSpec, np.max(SpecCounts)), -1, dtype=int64)
         AtomPos2AtomId = np.zeros((Nsites), dtype=int64)
-        AtomIdtoAtomDisp = np.full((NSpec, np.max(SpecCounts), 3), -1, dtype=int64)
-        AtomIdtoAtomDispSq = np.full((NSpec, np.max(SpecCounts)), -1, dtype=int64)
+        AtomIdtoAtomDisp = np.full((NSpec, np.max(SpecCounts), Nsteps, 3), -1, dtype=int64)
+        AtomIdtoAtomDispSq = np.full((NSpec, np.max(SpecCounts), Nsteps), -1, dtype=int64)
 
         # Now assign IDs to each atom
         spIDcounts = np.zeros(NSpec, dtype=int64)  # to track the ID of each atom of each species
@@ -796,7 +800,11 @@ class KMC_JIT(object):
             # Now get the ID of this atom
             specBID = AtomPos2AtomId[vacIndNext]
             # Update the displacement of this atom
-            AtomIdtoAtomDisp[specB, specBID, :] -= dxList[jmpSelect]
+            AtomIdtoAtomDisp[specB, specBID, step, :] -= dxList[jmpSelect]
+            for spec in range(NSpec):
+                for spId in range(SpecCounts[spec]):
+                    specX = AtomIdtoAtomDisp[spec, spId, step, :]
+                    AtomIdtoAtomDispSq[spec, spId, step] = np.dot(specX, specX)
 
             # Exchange the atom Ids at the two sites
             AtomPos2AtomId[vacIndNext] = AtomPos2AtomId[vacIndNow]  # the vacancy ID update
@@ -808,11 +816,5 @@ class KMC_JIT(object):
             self.updateState(state, offsc, vacIndNow, vacIndNext)
 
             vacIndNow = vacIndNext
-
-        # After all steps are complete, get the squared displacement of every atom
-        for spec in range(NSpec):
-            for spId in range(SpecCounts[spec]):
-                specX = AtomIdtoAtomDisp[spec, spId, :]
-                AtomIdtoAtomDispSq[spec, spId] = np.dot(specX, specX)
 
         return X_steps, t_steps, jmpSelectArray, AtomIdtoAtomDisp, AtomIdtoAtomDispSq
