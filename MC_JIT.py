@@ -757,6 +757,8 @@ class KMC_JIT(object):
             AtomPos2Atomtype[siteInd] = sp
             AtomPos2AtomId[siteInd] = AtomID
 
+            # Increment the index
+            spIDcounts[sp] += 1
 
         for step in range(Nsteps):
 
@@ -789,6 +791,9 @@ class KMC_JIT(object):
             X[NSpec - 1, :] += dxList[jmpSelect]
             specB = state[vacIndNext]
             X[specB, :] -= dxList[jmpSelect]
+
+            # Now get the ID of this atom
+            # specBID =
 
             X_steps[step, :, :] = X.copy()
             t_steps[step] = t
