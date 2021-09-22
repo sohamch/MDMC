@@ -747,8 +747,8 @@ class KMC_JIT(object):
 
         AtomId2AtomPos = np.full((NSpec, np.max(SpecCounts)), -1, dtype=int64)
         AtomPos2AtomId = np.zeros((Nsites), dtype=int64)
-        AtomIdtoAtomDisp = np.full((NSpec, np.max(SpecCounts), Nsteps, 3), -1, dtype=int64)
-        AtomIdtoAtomDispSq = np.full((NSpec, np.max(SpecCounts), Nsteps), -1, dtype=int64)
+        AtomIdtoAtomDisp = np.zeros((NSpec, np.max(SpecCounts), Nsteps, 3), dtype=float64)
+        AtomIdtoAtomDispSq = np.zeros((NSpec, np.max(SpecCounts), Nsteps), dtype=float64)
 
         # Now assign IDs to each atom
         spIDcounts = np.zeros(NSpec, dtype=int64)  # to track the ID of each atom of each species
