@@ -757,10 +757,12 @@ class KMC_JIT(object):
             # Increment the index
             spIDcounts[sp] += 1
 
-        assert np.array_equal(spIDcounts, SpecCounts)
+        for i in range(NSpec):
+            assert spIDcounts[i] == SpecCounts[i]
+
+        assert AtomPos2AtomId[vacIndNow] == SpecCounts[NSpec-1]
 
         for step in range(Nsteps):
-
             # Translate the states so that vacancy is taken from vacIndnow to vacSiteFix
             stateTrans = self.TranslateState(state, vacSiteFix, vacIndNow)
             TSoffsc = GetTSOffSite(stateTrans, self.numSitesTSInteracts, self.TSInteractSites, self.TSInteractSpecs)
@@ -813,4 +815,4 @@ class KMC_JIT(object):
                 specX = AtomIdtoAtomDisp[spec, spId, :]
                 AtomIdtoAtomDispSq[spec, spId] = np.dot(specX, specX)
 
-        return X_steps, t_steps, jmpSelectArray
+        return X_steps, t_steps, jmpSelectArray, AtomIdtoAtomDisp, AtomIdtoAtomDispSq
