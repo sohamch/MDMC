@@ -747,8 +747,8 @@ class KMC_JIT(object):
 
         AtomId2AtomPos = np.full((NSpec, np.max(SpecCounts)), -1, dtype=int64)
         AtomPos2AtomId = np.zeros((Nsites), dtype=int64)
-        AtomIdtoAtomDisp = np.zeros((NSpec, np.max(SpecCounts), Nsteps, 3), dtype=float64)
-        AtomIdtoAtomDispSq = np.zeros((NSpec, np.max(SpecCounts), Nsteps), dtype=float64)
+        AtomIdtoAtomDisp = np.zeros((NSpec, np.max(SpecCounts), 3), dtype=float64)
+        AtomIdtoAtomDispSq = np.zeros((NSpec, np.max(SpecCounts)), dtype=float64)
 
         # Now assign IDs to each atom
         spIDcounts = np.zeros(NSpec, dtype=int64)  # to track the ID of each atom of each species
@@ -800,11 +800,11 @@ class KMC_JIT(object):
             # Now get the ID of this atom
             specBID = AtomPos2AtomId[vacIndNext]
             # Update the displacement of this atom
-            AtomIdtoAtomDisp[specB, specBID, step, :] -= dxList[jmpSelect]
+            AtomIdtoAtomDisp[specB, specBID, :] -= dxList[jmpSelect]
             for spec in range(NSpec):
                 for spId in range(SpecCounts[spec]):
-                    specX = AtomIdtoAtomDisp[spec, spId, step, :]
-                    AtomIdtoAtomDispSq[spec, spId, step] = np.dot(specX, specX)
+                    specX = AtomIdtoAtomDisp[spec, spId, :]
+                    AtomIdtoAtomDispSq[spec, spId] = np.dot(specX, specX)
 
             # Exchange the atom Ids at the two sites
             AtomPos2AtomId[vacIndNext] = AtomPos2AtomId[vacIndNow]  # the vacancy ID update
