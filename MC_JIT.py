@@ -764,7 +764,7 @@ class KMC_JIT(object):
         for i in range(NSpec):
             assert spIDcounts[i] == SpecCounts[i]
 
-        assert AtomPos2AtomId[vacIndNow] == SpecCounts[NSpec-1]
+        assert AtomPos2AtomId[vacIndNow] == SpecCounts[NSpec-1], "{} {}".format(AtomPos2AtomId[vacIndNow], SpecCounts[NSpec-1])
 
         for step in range(Nsteps):
             # Translate the states so that vacancy is taken from vacIndnow to vacSiteFix
@@ -801,10 +801,6 @@ class KMC_JIT(object):
             specBID = AtomPos2AtomId[vacIndNext]
             # Update the displacement of this atom
             AtomIdtoAtomDisp[specB, specBID, :] -= dxList[jmpSelect]
-            for spec in range(NSpec):
-                for spId in range(SpecCounts[spec]):
-                    specX = AtomIdtoAtomDisp[spec, spId, :]
-                    AtomIdtoAtomDispSq[spec, spId] = np.dot(specX, specX)
 
             # Exchange the atom Ids at the two sites
             AtomPos2AtomId[vacIndNext] = AtomPos2AtomId[vacIndNow]  # the vacancy ID update
@@ -816,5 +812,10 @@ class KMC_JIT(object):
             self.updateState(state, offsc, vacIndNow, vacIndNext)
 
             vacIndNow = vacIndNext
+
+        for spec in range(NSpec):
+            for spId in range(SpecCounts[spec]):
+                specX = AtomIdtoAtomDisp[spec, spId, :]
+                AtomIdtoAtomDispSq[spec, spId] = np.dot(specX, specX)
 
         return X_steps, t_steps, jmpSelectArray, AtomIdtoAtomDisp, AtomIdtoAtomDispSq
