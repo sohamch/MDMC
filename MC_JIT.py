@@ -764,7 +764,7 @@ class KMC_JIT(object):
         for i in range(NSpec):
             assert spIDcounts[i] == SpecCounts[i]
 
-        assert AtomPos2AtomId[vacIndNow] == SpecCounts[NSpec-1], "{} {}".format(AtomPos2AtomId[vacIndNow], SpecCounts[NSpec-1])
+        assert AtomPos2AtomId[vacIndNow] == 0, "{} {}".format(AtomPos2AtomId[vacIndNow], SpecCounts[NSpec-1])
 
         for step in range(Nsteps):
             # Translate the states so that vacancy is taken from vacIndnow to vacSiteFix
