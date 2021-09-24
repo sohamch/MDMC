@@ -799,8 +799,10 @@ class KMC_JIT(object):
 
             # Now get the ID of this atom
             specBID = AtomPos2AtomId[vacIndNext]
+            assert AtomPos2AtomId[vacIndNow] == 0
             # Update the displacement of this atom
             AtomIdtoAtomDisp[specB, specBID, :] -= dxList[jmpSelect]
+            AtomIdtoAtomDisp[NSpec - 1, 0, :] += dxList[jmpSelect]
 
             # Exchange the atom Ids at the two sites
             AtomPos2AtomId[vacIndNext] = AtomPos2AtomId[vacIndNow]  # the vacancy ID update
@@ -818,4 +820,4 @@ class KMC_JIT(object):
                 specX = AtomIdtoAtomDisp[spec, spId, :]
                 AtomIdtoAtomDispSq[spec, spId] = np.dot(specX, specX)
 
-        return X_steps, t_steps, jmpSelectArray, AtomIdtoAtomDisp, AtomIdtoAtomDispSq
+        return X_steps, t_steps, jmpSelectArray, AtomIdtoAtomDisp, AtomIdtoAtomDispSq, AtomPos2AtomId
