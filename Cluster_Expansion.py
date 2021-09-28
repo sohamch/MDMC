@@ -343,7 +343,7 @@ class VectorClusterExpansion(object):
             for interactNum, interactId in enumerate(interactIdList):
                 SiteSpecInterArray[keySite, keySpec, interactNum] = interactId
 
-        print("Done Indexing interactions")
+        # print("Done Indexing interactions")
         # Now that we have integers assigned to all the interactions, let's store their data as numpy arrays
         numInteracts = len(self.Id2InteractionDict)
 
@@ -363,7 +363,7 @@ class VectorClusterExpansion(object):
                 SupSitesInteracts[key, idx] = interactSite
                 SpecOnInteractSites[key, idx] = interactSpec
 
-        print("Done chemical data of interactions ")
+        # print("Done chemical data of interactions ")
 
         # 2. Store energy data and vector data
         Interaction2En = np.zeros(numInteracts, dtype=float)
@@ -372,7 +372,7 @@ class VectorClusterExpansion(object):
             for idx in interactionList:
             # get the energy index here
                 Interaction2En[idx] = Energies[self.clust2SpecClus[repClus][0]]
-        print("Done energy data for interactions")
+        # print("Done energy data for interactions")
 
         return numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,\
                numInteractsSiteSpec, SiteSpecInterArray
@@ -396,7 +396,7 @@ class VectorClusterExpansion(object):
                 for vecidx, tup in enumerate(vecList):
                     VecsInteracts[idx, vecidx, :] = self.vecVec[tup[0]][tup[1]].copy()
                     VecGroupInteracts[idx, vecidx] = tup[0]
-        print("Done Vector data for interactions")
+        # print("Done Vector data for interactions")
         return numVecsInteracts, VecsInteracts, VecGroupInteracts
 
     def makeSiteIndToSite(self):
