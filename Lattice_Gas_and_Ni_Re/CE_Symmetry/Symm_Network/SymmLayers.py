@@ -154,29 +154,6 @@ class R3Conv(nn.Module):
             out = pt.sum(out*self.SiteShellWeights, dim=2)/NSites
             return out
 
-class R3ConvSites(R3Conv):
-    
-    def forward(self, In):
-        
-        NSites, GnnPerms, NNsites = self.NSites, self.GnnPerms, self.NNsites
-        
-        Nbatch = In.shape[0]
-        Ng = GnnPerms.shape[0]
-        
-        self.RotateParams(GnnPerms)
-        out = self.RearrangeInput(In, NNsites, Ng)
-        
-        # Finally, do the R3 convolution
-        out = pt.matmul(self.wtVC_repeat_transf, out).view(Nbatch, Ng, self.dim, NSites)
-        
-        # Then group average
-        out = pt.sum(out, dim=1)/Ng
-        
-#         # Then site average with shell weights
-#         out = pt.sum(out*self.SiteShellWeights, dim=2)/NSites
-        
-        return out
-
 class GAvg(nn.Module):
     def __init__(self):
         super().__init__()
