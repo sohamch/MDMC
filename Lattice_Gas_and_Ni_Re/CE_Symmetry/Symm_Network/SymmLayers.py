@@ -129,7 +129,7 @@ class R3Conv(nn.Module):
         NNRepeat = NNsites.unsqueeze(0).repeat(In.shape[0], Nch, 1)
         return pt.gather(In, 2, NNRepeat)
     
-    def forward(self, In):
+    def forward(self, In, sites=False):
         
         NSites, GnnPerms, NNsites = self.NSites, self.GnnPerms, self.NNsites
         
@@ -145,10 +145,14 @@ class R3Conv(nn.Module):
         # Then group average
         out = pt.sum(out, dim=1)/Ng
         
-        # Then site average with shell weights
-        out = pt.sum(out*self.SiteShellWeights, dim=2)/NSites
+        if sites:
+            # return site wise results if requested
+            return out
         
-        return out
+        else:
+            # Site average with shell weights
+            out = pt.sum(out*self.SiteShellWeights, dim=2)/NSites
+            return out
 
 class R3ConvSites(R3Conv):
     
