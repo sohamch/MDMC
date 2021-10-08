@@ -144,15 +144,10 @@ class R3Conv(nn.Module):
         
         # Then group average
         out = pt.sum(out, dim=1)/Ng
-        
-        if sites:
-            # return site wise results if requested
-            return out
-        
-        else:
-            # Site average with shell weights
-            out = pt.sum(out*self.SiteShellWeights, dim=2)/NSites
-            return out
+
+        # Site average with shell weights
+        out = pt.sum(out*self.SiteShellWeights, dim=2)/NSites
+        return out
 
 class GAvg(nn.Module):
     def __init__(self):
