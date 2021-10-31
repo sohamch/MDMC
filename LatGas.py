@@ -202,7 +202,9 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
 
             siteB = jmpFinSiteList[jmpSelect]
             specB = state[siteB]
+            AtomID = PosToAtomId[siteB]
             X[specB, :] -= dxList[jmpSelect]
+            AtomDisp[AtomID, :] -= dxList[jmpSelect]
 
             dR = siteIndtoR[siteB] - siteIndtoR[vacSiteInit]
 
@@ -217,6 +219,10 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
             temp = state[vacSiteNow]
             state[vacSiteNow] = specB
             state[siteB] = temp
+
+            # Then update atom positions
+            AtomIdToPos[AtomID] = vacSiteNow
+            PosToAtomId[vacSiteNow] = AtomID
 
             vacSiteNow = siteB
 
