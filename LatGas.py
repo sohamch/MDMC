@@ -175,7 +175,7 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
 
     # Make arrays to store every atom's information
     AtomDisp = np.zeros((Nsites, 3))
-    DispSq_AtomAvg_steps = np.zeros((NSpec, Nsteps + 1))
+    DispSq_AtomAvg_steps = np.zeros((NSpec - 1, Nsteps + 1))
     PosToAtomId = np.arange(Nsites)
 
     for step in range(Nsteps):
