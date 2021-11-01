@@ -169,6 +169,7 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
 
     # Make arrays to store every atom's information
     AtomDisp = np.zeros((Nsites, 3))
+    DispSqby6t_steps = np.zeros((NSpec, Nsteps))
     PosToAtomId = np.arange(Nsites)
 
     for step in range(Nsteps):
@@ -226,7 +227,14 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
 
             vacSiteNow = siteB
 
+            for spec in range(NSpec):
+                specLocs = np.where(state == spec)[0]
+                specIds = PosToAtomId[specLocs]
+                Disps = AtomDisp[specIds]
+                XSqby6t = np.linalg.norm(Disps, axis=1)**2/(6*t)
+                DispSqby6t_steps[spec, step] = np.mean(XSqby6t)
+
         X_steps[step, :, :] = X.copy()
         t_steps[step] = t
 
-    return X_steps, t_steps, jmpSelectSteps, jmpFinSiteList, AtomDisp
+    return X_steps, t_steps, jmpSelectSteps, jmpFinSiteList, DispSqby6t_steps
