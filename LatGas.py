@@ -241,16 +241,6 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
             R2_Now = R2_prev - R2Atom_prev + R2Atom_Now
             DispSq_AtomAvg_steps[specB, step+1] = R2_Now/(1.0*counts[specB])
 
-            # for spec in range(NSpec-1):
-            #     specLocs = np.where(state == spec)[0]
-            #     specIds = PosToAtomId[specLocs]
-            #     Disps = AtomDisp[specIds]
-            #     XSqby6t = np.zeros(Disps.shape[0])
-            #     for atom in range(Disps.shape[0]):
-            #         X_atom = Disps[atom]
-            #         XSqby6t[atom] = np.linalg.norm(X_atom)**2/(6*t)
-            #     DispSqby6t_steps[spec, step] = np.mean(XSqby6t)
-
         X_steps[step, :, :] = X.copy()
         t_steps[step] = t
 
