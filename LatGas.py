@@ -172,12 +172,13 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
     vacSiteNow = vacSiteInit
 
     jmpSelectSteps = np.zeros(Nsteps, dtype=int64)  # To store which jump was selected in each step
+    jumpAtomID = np.zeros(Nsteps, dtype=int64)
 
     # Make arrays to store every atom's information
-    AtomDisp = np.zeros((Nsites, 3))
-    DispSq_AtomAvg_steps = np.zeros((NSpec - 1, Nsteps + 1))
+    AtomDisp = np.zeros((Nsites, 3), dtype=float64)
+    DispSq_AtomAvg_steps = np.zeros((NSpec - 1, Nsteps + 1), dtype=float64)
     PosToAtomId = np.arange(Nsites)
-
+    PosToAtomId_Init = PosToAtomId.copy()
     for step in range(Nsteps):
 
         # first get the exit rates out of this state
@@ -209,7 +210,22 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
             siteB = jmpFinSiteList[jmpSelect]
             specB = state[siteB]
             AtomID = PosToAtomId[siteB]
+            jumpAtomID[step] = AtomID
             X[specB, :] -= dxList[jmpSelect]
+
+            # Species that has jumped - specB
+            # Id of the atom - AtomId
+            R2_prev = DispSq_AtomAvg_steps[specB, step] * (1.0*counts[specB])
+            R2Atom_prev = np.dot(AtomDisp[AtomID, :], AtomDisp[AtomID, :])
+            AtomDisp[AtomID, :] -= dxList[jmpSelect]
+            R2Atom_Now = np.dot(AtomDisp[AtomID, :], AtomDisp[AtomID, :])
+            R2_Now = R2_prev - R2Atom_prev + R2Atom_Now
+
+            # Copy over all squared displacements to next step
+            DispSq_AtomAvg_steps[:, step + 1] = DispSq_AtomAvg_steps[:, step]
+
+            # Update the value for the species that has moved
+            DispSq_AtomAvg_steps[specB, step + 1] = R2_Now / (1.0 * counts[specB])
 
             dR = siteIndtoR[siteB] - siteIndtoR[vacSiteInit]
 
@@ -222,26 +238,21 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
 
             # Next, do the site swap to update the state
             temp = state[vacSiteNow]
+            assert temp == NSpec - 1
             state[vacSiteNow] = specB
             state[siteB] = temp
 
             # Then update atom positions
             temp = PosToAtomId[vacSiteNow]
+            assert temp == 0
             PosToAtomId[vacSiteNow] = AtomID
             PosToAtomId[siteB] = temp
 
             vacSiteNow = siteB
 
-            # Species that has jumped - specB
-            # Id of the atom - AtomId
-            R2_prev = DispSq_AtomAvg_steps[specB, step] * counts[specB]
-            R2Atom_prev = np.linalg.norm(AtomDisp[AtomID, :])**2
-            AtomDisp[AtomID, :] -= dxList[jmpSelect]
-            R2Atom_Now = np.linalg.norm(AtomDisp[AtomID, :])**2
-            R2_Now = R2_prev - R2Atom_prev + R2Atom_Now
-            DispSq_AtomAvg_steps[specB, step+1] = R2_Now/(1.0*counts[specB])
-
         X_steps[step, :, :] = X.copy()
         t_steps[step] = t
 
     return X_steps, t_steps, jmpSelectSteps, jmpFinSiteList, DispSq_AtomAvg_steps[:, 1:]
+# AtomDisp,\
+#            counts, PosToAtomId_Init, PosToAtomId, jumpAtomID
