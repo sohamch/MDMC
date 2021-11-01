@@ -153,7 +153,13 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
     jmpFinSites - The exit site index list for the vacancy out of the final state - for testing.
     """
     NSpec = SpecRates.shape[0] + 1
+
+    counts = np.zeros(NSpec, dtype=int64)
     Nsites = state.shape[0]
+    for siteInd in range(Nsites):
+        spec = state[siteInd]
+        counts[spec] += 1
+
     X = np.zeros((NSpec, 3))
     t = 0.
 
@@ -169,7 +175,7 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
 
     # Make arrays to store every atom's information
     AtomDisp = np.zeros((Nsites, 3))
-    DispSqby6t_steps = np.zeros((NSpec, Nsteps))
+    DispSq_AtomAvg_steps = np.zeros((NSpec, Nsteps + 1))
     PosToAtomId = np.arange(Nsites)
 
     for step in range(Nsteps):
@@ -204,7 +210,6 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
             specB = state[siteB]
             AtomID = PosToAtomId[siteB]
             X[specB, :] -= dxList[jmpSelect]
-            AtomDisp[AtomID, :] -= dxList[jmpSelect]
 
             dR = siteIndtoR[siteB] - siteIndtoR[vacSiteInit]
 
@@ -227,15 +232,24 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
 
             vacSiteNow = siteB
 
-            for spec in range(NSpec):
-                specLocs = np.where(state == spec)[0]
-                specIds = PosToAtomId[specLocs]
-                Disps = AtomDisp[specIds]
-                XSqby6t = np.zeros(Disps.shape[0])
-                for atom in range(Disps.shape[0]):
-                    X_atom = Disps[atom]
-                    XSqby6t[atom] = np.linalg.norm(X_atom)**2/(6*t)
-                DispSqby6t_steps[spec, step] = np.mean(XSqby6t)
+            # Species that has jumped - specB
+            # Id of the atom - AtomId
+            R2_prev = DispSq_AtomAvg_steps[specB, step] * counts[specB]
+            R2Atom_prev = np.linalg.norm(AtomDisp[AtomID, :])**2
+            AtomDisp[AtomID, :] -= dxList[jmpSelect]
+            R2Atom_Now = np.linalg.norm(AtomDisp[AtomID, :])**2
+            R2_Now = R2_prev - R2Atom_prev + R2Atom_Now
+            DispSq_AtomAvg_steps[specB, step+1] = R2_Now/(1.0*counts[specB])
+
+            # for spec in range(NSpec-1):
+            #     specLocs = np.where(state == spec)[0]
+            #     specIds = PosToAtomId[specLocs]
+            #     Disps = AtomDisp[specIds]
+            #     XSqby6t = np.zeros(Disps.shape[0])
+            #     for atom in range(Disps.shape[0]):
+            #         X_atom = Disps[atom]
+            #         XSqby6t[atom] = np.linalg.norm(X_atom)**2/(6*t)
+            #     DispSqby6t_steps[spec, step] = np.mean(XSqby6t)
 
         X_steps[step, :, :] = X.copy()
         t_steps[step] = t
