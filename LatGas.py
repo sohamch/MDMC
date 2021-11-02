@@ -253,6 +253,6 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
         X_steps[step, :, :] = X.copy()
         t_steps[step] = t
 
-    return X_steps, t_steps, jmpSelectSteps, jmpFinSiteList, DispSq_AtomAvg_steps[:, 1:]
+    return X_steps, t_steps, jmpSelectSteps, jmpFinSiteList, DispSq_AtomAvg_steps[:, 1:], AtomDisp
 # AtomDisp,\
 #            counts, PosToAtomId_Init, PosToAtomId, jumpAtomID
