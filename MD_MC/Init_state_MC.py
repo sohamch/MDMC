@@ -21,7 +21,7 @@ N_proc = int(args[5]) # No. of procs to parallelize over
 N_samples = int(args[6]) # How many samples we want to draw from this run
 jobID = int(args[7])
 
-__test__ = False
+__test__ = True
 
 # Create an FCC primitive unit cell
 a = 3.59
@@ -64,15 +64,10 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
     cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs,jobID)
     N_accept = 0
     N_total = 0
-    if __test__:
-        cond = N_total < 1
-    else:
-        cond = N_accept < SwapRun
-
+    cond=True
     while cond:
         # write the supercell as a lammps file
         write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
-
         if __test__:
             write_lammps_data("inp_MC_init_{0}.data".format(jobID), ASE_Super, specorder=elems)
 
@@ -122,7 +117,6 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
         if rn < np.exp(-de/(kB*T)):
             # Then accept the move
             N_accept += 1
-            continue
         else:
             # reject the move by reverting the occupancies
             tmp = ASE_Super[site1].symbol
@@ -130,6 +124,10 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
             ASE_Super[site2].symbol = tmp
 
         N_total += 1
+        if __test__:
+            cond = N_total < 1
+        else:
+            cond = N_accept < SwapRun
 
     return N_total
 
