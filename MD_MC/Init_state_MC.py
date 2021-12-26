@@ -64,9 +64,17 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
     cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs,jobID)
     N_accept = 0
     N_total = 0
-    while N_accept < SwapRun:
+    if __test__:
+        cond = N_total < 1
+    else:
+        cond = N_accept < SwapRun
+
+    while cond:
         # write the supercell as a lammps file
         write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
+
+        if __test__:
+            write_lammps_data("inp_MC_init_{0}.data".format(jobID), ASE_Super, specorder=elems)
 
         # evaluate the energy
         cmd = subprocess.Popen(cmdString, shell=True)
@@ -84,6 +92,8 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
         while site1 == site2:
             site1 = np.random.randint(0, Natoms)
             site2 = np.random.randint(0, Natoms)
+        if __test__:
+            print(site1, site2)
 
         # change the occupancies
         tmp = ASE_Super[site1].symbol
@@ -92,6 +102,8 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
 
         # write the supercell again as a lammps file
         write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
+        if __test__:
+            write_lammps_data("inp_MC_final_{0}.data".format(jobID), ASE_Super, specorder=elems)
 
         # evaluate the energy
         cmd = subprocess.Popen(cmdString, shell=True)
@@ -115,6 +127,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
             ASE_Super[site2].symbol = tmp
 
         N_total += 1
+
     return N_total
 
 # First thermalize the starting state
