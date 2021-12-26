@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 # coding: utf-8
-
-
 import numpy as np
 import subprocess
 import pickle
@@ -16,19 +14,20 @@ kB = physical_constants["Boltzmann constant in eV/K"][0]
 
 args = list(sys.argv)
 T = float(args[1])
-N_therm = int(args[2]) # thermalization steps
-N_swaps = int(args[3]) # intervals to draw samples from after thermalization
+N_therm = int(args[2]) # thermalization steps (until this many moves accepted)
+N_swaps = int(args[3]) # intervals to draw samples from after thermalization (until this many moves accepted)
 N_units = int(args[4]) # dimensions of unit cell
 N_proc = int(args[5]) # No. of procs to parallelize over
 N_samples = int(args[6]) # How many samples we want to draw from this run
 jobID = int(args[7])
 
+__test__ = False
+
 # Create an FCC primitive unit cell
 a = 3.59
-fcc = crystal('Ni', [(0,0,0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=True)
+fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=True)
 
 # Form a supercell with a vacancy at the centre
-N_units = 8
 superlatt = np.identity(3)*N_units
 superFCC = make_supercell(fcc, superlatt)
 Nsites = len(superFCC.get_positions())
@@ -61,7 +60,7 @@ with open("superInitial_{}.pkl".format(jobID),"wb") as fl:
 write_lammps_data("lammpsCoords.txt", superFCC, specorder=elems)
 
 # Next, we write the MC loop
-def MC_Run(SwapRun, ASE_Super, Nprocs, slurm_cmd=True):
+def MC_Run(SwapRun, ASE_Super, Nprocs):
     cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs,jobID)
     N_accept = 0
     N_total = 0
@@ -129,7 +128,7 @@ accept_ratios = np.zeros(N_samples)
 start = time.time()
 for smp in range(N_samples):
     # Update the state
-    N_accept = MC_Run(N_swaps, superFCC)
+    N_accept = MC_Run(N_swaps, superFCC, N_proc)
     accept_ratios[smp] = (1.0*N_accept)/N_swaps
     # store the occupancies
     for at in superFCC:
