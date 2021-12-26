@@ -116,7 +116,10 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
 
         # make decision
         de = e2 - e1
-        if np.random.rand() < np.exp(-de/(kB*T)):
+        rn = np.random.rand()
+        if __test__:
+            print(rn)
+        if rn < np.exp(-de/(kB*T)):
             # Then accept the move
             N_accept += 1
             continue
