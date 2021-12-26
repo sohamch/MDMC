@@ -137,4 +137,4 @@ for smp in range(N_samples):
         occs[smp, idx+1] = elemsToNum[at.symbol]
 end = time.time()
 np.save("Occs_{0}.npy".format(jobID))
-print("{} samples drawn with {} swaps. Time: {:.4f} minutes".format(Nsamples, N_swaps, (end-start)/60.))
+print("{} samples drawn with {} swaps. Time: {:.4f} minutes".format(N_samples, N_swaps, (end-start)/60.))
