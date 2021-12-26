@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
-
 
 import numpy as np
 import subprocess
@@ -11,19 +9,11 @@ import time
 from ase.spacegroup import crystal
 from ase.build import make_supercell
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
-
-
-# In[ ]:
-
-
+import sys
 from scipy.constants import physical_constants
+
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 
-
-# In[ ]:
-
-
-import sys
 args = list(sys.argv)
 T = float(args[1])
 N_therm = int(args[2]) # thermalization steps
@@ -32,10 +22,6 @@ N_units = int(args[4]) # dimensions of unit cell
 N_proc = int(args[5]) # No. of procs to parallelize over
 N_samples = int(args[6]) # How many samples we want to draw from this run
 jobID = int(args[7])
-
-
-# In[ ]:
-
 
 # Create an FCC primitive unit cell
 a = 3.59
@@ -75,9 +61,11 @@ with open("superInitial_{}.pkl".format(jobID),"wb") as fl:
 write_lammps_data("lammpsCoords.txt", superFCC, specorder=elems)
 
 # Next, we write the MC loop
-def MC_Run(SwapRun, ASE_super, Nprocs, slurm_cmd=True):
-    cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs,jobID) 
-    for swap in range(SwapRun):
+def MC_Run(SwapRun, ASE_Super, Nprocs, slurm_cmd=True):
+    cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs,jobID)
+    N_accept = 0
+    N_total = 0
+    while N_accept < SwapRun:
         # write the supercell as a lammps file
         write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
 
@@ -126,18 +114,20 @@ def MC_Run(SwapRun, ASE_super, Nprocs, slurm_cmd=True):
             tmp = ASE_Super[site1].symbol
             ASE_Super[site1].symbol = ASE_Super[site2].symbol
             ASE_Super[site2].symbol = tmp
-    return N_accept
+
+        N_total += 1
+    return N_total
 
 # First thermalize the starting state
-N_accept = MC_Run(N_therm, superFCC, N_proc)
-print("Thermalization Run acceptance ratio : {}".format(N_accept))
+N_total = MC_Run(N_therm, superFCC, N_proc)
+print("Thermalization Run acceptance ratio : {}".format(N_therm/N_total))
 
-occs = np.zeros((Nsamples, Nsites), dtype=np.int16)
+occs = np.zeros((N_samples, Nsites), dtype=np.int16)
 occs[:, 0] = -1
-accept_ratios = np.zeros(Nsamples)
+accept_ratios = np.zeros(N_samples)
 # Now draw samples
 start = time.time()
-for smp in range(Nsamples):    
+for smp in range(N_samples):
     # Update the state
     N_accept = MC_Run(N_swaps, superFCC)
     accept_ratios[smp] = (1.0*N_accept)/N_swaps
