@@ -137,19 +137,20 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
 N_total = MC_Run(N_therm, superFCC, N_proc)
 print("Thermalization Run acceptance ratio : {}".format(N_therm/N_total))
 
-occs = np.zeros((N_samples, Nsites), dtype=np.int16)
-occs[:, 0] = -1
-accept_ratios = np.zeros(N_samples)
-# Now draw samples
-start = time.time()
-for smp in range(N_samples):
-    # Update the state
-    N_accept = MC_Run(N_swaps, superFCC, N_proc)
-    accept_ratios[smp] = (1.0*N_accept)/N_swaps
-    # store the occupancies
-    for at in superFCC:
-        idx = at.index
-        occs[smp, idx+1] = elemsToNum[at.symbol]
-end = time.time()
-np.save("Occs_{0}.npy".format(jobID))
-print("{} samples drawn with {} swaps. Time: {:.4f} minutes".format(N_samples, N_swaps, (end-start)/60.))
+if not __test__:
+    occs = np.zeros((N_samples, Nsites), dtype=np.int16)
+    occs[:, 0] = -1
+    accept_ratios = np.zeros(N_samples)
+    # Now draw samples
+    start = time.time()
+    for smp in range(N_samples):
+        # Update the state
+        N_total = MC_Run(N_swaps, superFCC, N_proc)
+        accept_ratios[smp] = (1.0*N_swaps)/N_total
+        # store the occupancies
+        for at in superFCC:
+            idx = at.index
+            occs[smp, idx+1] = elemsToNum[at.symbol]
+    end = time.time()
+    np.save("Occs_{0}.npy".format(jobID))
+    print("{} samples drawn with {} swaps. Time: {:.4f} minutes".format(N_samples, N_swaps, (end-start)/60.))
