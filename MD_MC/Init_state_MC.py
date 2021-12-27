@@ -31,7 +31,6 @@ fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], 
 superlatt = np.identity(3)*N_units
 superFCC = make_supercell(fcc, superlatt)
 Nsites = len(superFCC.get_positions())
-print(Nsites)
 # randomize occupancies of the sites
 Nperm = 10
 Indices = np.arange(Nsites)
@@ -80,11 +79,12 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
         with open("Eng_{0}.txt".format(jobID), "r") as fl:
             e1 = fl.readline().split()[0]
             e1 = float(e1)
-
+        if __test__:
+            print("e1: {}".format(e1))
         # Now randomize the atomic occupancies
         site1 = np.random.randint(0, Natoms)
         site2 = np.random.randint(0, Natoms)
-        while site1 == site2:
+        while ASE_Super[site1].symbol == ASE_Super[site2].symbol:
             site1 = np.random.randint(0, Natoms)
             site2 = np.random.randint(0, Natoms)
         if __test__:
@@ -111,9 +111,14 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
 
         # make decision
         de = e2 - e1
+        if __test__:
+            print("e2: {}".format(e2))
+            print("de: {}".format(de))
         rn = np.random.rand()
         if __test__:
-            print(rn)
+            print("random number: {}".format(rn))
+            print("relative prob (e2:e1): {}".format(np.exp(-de/(kB*T))))
+
         if rn < np.exp(-de/(kB*T)):
             # Then accept the move
             N_accept += 1
@@ -123,17 +128,20 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
             ASE_Super[site1].symbol = ASE_Super[site2].symbol
             ASE_Super[site2].symbol = tmp
 
+        if __test__:
+            write_lammps_data("Result_{0}.data".format(jobID), ASE_Super, specorder=elems)
+
         N_total += 1
         if __test__:
             cond = N_total < 1
         else:
-            cond = N_accept < SwapRun
+            cond = N_accept <= SwapRun
 
-    return N_total
+    return N_total, N_accept
 
 # First thermalize the starting state
-N_total = MC_Run(N_therm, superFCC, N_proc)
-print("Thermalization Run acceptance ratio : {}".format(N_therm/N_total))
+N_total, N_accept = MC_Run(N_therm, superFCC, N_proc)
+print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
 
 if not __test__:
     occs = np.zeros((N_samples, Nsites), dtype=np.int16)
@@ -143,8 +151,8 @@ if not __test__:
     start = time.time()
     for smp in range(N_samples):
         # Update the state
-        N_total = MC_Run(N_swaps, superFCC, N_proc)
-        accept_ratios[smp] = (1.0*N_swaps)/N_total
+        N_total, N_accept = MC_Run(N_swaps, superFCC, N_proc)
+        accept_ratios[smp] = (1.0*N_accept)/N_total
         # store the occupancies
         for at in superFCC:
             idx = at.index
