@@ -55,8 +55,6 @@ Natoms = len(superFCC)
 # save the supercell: will be useful for getting site positions
 with open("superInitial_{}.pkl".format(jobID),"wb") as fl:
     pickle.dump(superFCC, fl)
-# Write the supercell as a lammps file
-write_lammps_data("lammpsCoords.txt", superFCC, specorder=elems)
 
 # First, we write a lammps input script for this run
 def write_lammps_input():
