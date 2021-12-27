@@ -21,7 +21,7 @@ N_proc = int(args[5]) # No. of procs to parallelize over
 N_samples = int(args[6]) # How many samples we want to draw from this run
 jobID = int(args[7])
 
-__test__ = True
+__test__ = False
 
 # Create an FCC primitive unit cell
 a = 3.59
