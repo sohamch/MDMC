@@ -59,6 +59,26 @@ with open("superInitial_{}.pkl".format(jobID),"wb") as fl:
 write_lammps_data("lammpsCoords.txt", superFCC, specorder=elems)
 
 # First, we write a lammps input script for this run
+def write_lammps_input():
+    seed = np.random.randint(0, 10000)
+    st = "units \t metal\n"
+    st += "atom_style \t atomic\n"
+    st += "atom_modify \t map array\n"
+    st += "boundary \t p p p\n"
+    st += "atom_modify \t sort 0 0.0\n"
+    st += "read_data \t inp_MC_{0}.data\n".format(jobID)
+    st += "pair_style \t meam\n"
+    st += "pair_coeff \t * * ../pot/library.meam Co Ni Cr Fe Mn ../pot/params.meam Co Ni Cr Fe Mn\n"
+    st += "neighbor \t 0.3 bin\n"
+    st += "neigh_modify \t delay 0 every 1 check yes\n"
+    st += "variable x equal pe\n"
+    st += "displace_atoms all random 0.1 0.1 0.1 {0}\n".format(seed)
+    st += "minimize	\t 1e-5 0.0 1000 10000\n"
+    st += "run 0\n"
+    st += "print \"$x\" file Eng_{0}.txt".format(jobID)
+    with open("in_{0}.minim".format(jobID), "w") as fl:
+        fl.write(st)
+
 
 # Next, we write the MC loop
 def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
