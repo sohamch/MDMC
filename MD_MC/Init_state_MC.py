@@ -90,6 +90,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
         while ASE_Super[site1].symbol == ASE_Super[site2].symbol:
             site1 = np.random.randint(0, Natoms)
             site2 = np.random.randint(0, Natoms)
+
         if __test__:
             print(site1, site2)
 
