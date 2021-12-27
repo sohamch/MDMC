@@ -60,7 +60,7 @@ write_lammps_data("lammpsCoords.txt", superFCC, specorder=elems)
 
 # Next, we write the MC loop
 def MC_Run(SwapRun, ASE_Super, Nprocs):
-    cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs,jobID)
+    cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs, jobID)
     N_accept = 0
     N_total = 0
     cond=True
