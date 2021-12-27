@@ -61,8 +61,12 @@ write_lammps_data("lammpsCoords.txt", superFCC, specorder=elems)
 # First, we write a lammps input script for this run
 
 # Next, we write the MC loop
-def MC_Run(SwapRun, ASE_Super, Nprocs):
-    cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs, jobID)
+def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
+    if serial:
+        cmdString = "$LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
+    else:
+        cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs, jobID)
+
     N_accept = 0
     N_total = 0
     cond=True
@@ -153,7 +157,7 @@ print("Thermalization Time Per iteration : {}".format((end-start)/N_total))
 
 if not __test__:
     occs = np.zeros((N_samples, Nsites), dtype=np.int16)
-    occs[:, 0] = -1
+    occs[:, 0] = -1 # The vacancy is always at 0,0,0
     accept_ratios = np.zeros(N_samples)
     # Now draw samples
     start = time.time()
