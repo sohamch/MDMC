@@ -169,6 +169,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
     return N_total, N_accept
 
 # First thermalize the starting state
+write_lammps_input()
 start = time.time()
 N_total, N_accept = MC_Run(N_therm, superFCC, N_proc)
 end = time.time()
