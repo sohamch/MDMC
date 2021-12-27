@@ -21,7 +21,7 @@ N_proc = int(args[5]) # No. of procs to parallelize over
 N_samples = int(args[6]) # How many samples we want to draw from this run
 jobID = int(args[7])
 
-__test__ = False
+__test__ = True
 
 # Create an FCC primitive unit cell
 a = 3.59
@@ -86,7 +86,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
 
     while cond:
         if __test__:
-            write_lammps_data("inp_MC_init_{0}.data".format(jobID), ASE_Super, specorder=elems)
+            write_lammps_data("inp_MC_init_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
             print("e1: {}".format(e1))
         # Now randomize the atomic occupancies
         site1 = np.random.randint(0, Natoms)
@@ -138,11 +138,11 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
             ASE_Super[site2].symbol = tmp
 
         if __test__:
-            write_lammps_data("Result_{0}.data".format(jobID), ASE_Super, specorder=elems)
+            write_lammps_data("Result_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
 
         N_total += 1
         if __test__:
-            cond = N_total < 1
+            cond = N_total < 2
         else:
             cond = N_accept <= SwapRun
 
