@@ -69,7 +69,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
 
     N_accept = 0
     N_total = 0
-    cond=True
+    cond = True # condition for loop termination
 
     # write the supercell as a lammps file
     write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
@@ -130,7 +130,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
         if rn < np.exp(-de/(kB*T)):
             # Then accept the move
             N_accept += 1
-            e1 = e2
+            e1 = e2  # set the next initial state energy to the current final energy
         else:
             # reject the move by reverting the occupancies
             tmp = ASE_Super[site1].symbol
