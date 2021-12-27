@@ -66,22 +66,23 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
     N_accept = 0
     N_total = 0
     cond=True
+
+    # write the supercell as a lammps file
+    write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
+
+    # evaluate the energy
+    cmd = subprocess.Popen(cmdString, shell=True)
+    rt = cmd.wait()
+    assert rt == 0
+
+    # read the energy
+    with open("Eng_{0}.txt".format(jobID), "r") as fl_en:
+        e1 = fl_en.readline().split()[0]
+        e1 = float(e1)
+
     while cond:
-        # write the supercell as a lammps file
-        write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
         if __test__:
             write_lammps_data("inp_MC_init_{0}.data".format(jobID), ASE_Super, specorder=elems)
-
-        # evaluate the energy
-        cmd = subprocess.Popen(cmdString, shell=True)
-        rt = cmd.wait()
-        assert rt == 0
-        
-        # read the energy
-        with open("Eng_{0}.txt".format(jobID), "r") as fl:
-            e1 = fl.readline().split()[0]
-            e1 = float(e1)
-        if __test__:
             print("e1: {}".format(e1))
         # Now randomize the atomic occupancies
         site1 = np.random.randint(0, Natoms)
@@ -107,8 +108,8 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
         rt = cmd.wait()
         assert rt == 0
         # read the energy
-        with open("Eng_{0}.txt".format(jobID), "r") as fl:
-            e2 = fl.readline().split()[0]
+        with open("Eng_{0}.txt".format(jobID), "r") as fl_en:
+            e2 = fl_en.readline().split()[0]
             e2 = float(e2)
 
         # make decision
@@ -124,6 +125,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
         if rn < np.exp(-de/(kB*T)):
             # Then accept the move
             N_accept += 1
+            e1 = e2
         else:
             # reject the move by reverting the occupancies
             tmp = ASE_Super[site1].symbol
