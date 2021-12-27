@@ -21,7 +21,7 @@ N_proc = int(args[5]) # No. of procs to parallelize over
 N_samples = int(args[6]) # How many samples we want to draw from this run
 jobID = int(args[7])
 
-__test__ = True
+__test__ = False
 
 # Create an FCC primitive unit cell
 a = 3.59
@@ -57,6 +57,8 @@ with open("superInitial_{}.pkl".format(jobID),"wb") as fl:
     pickle.dump(superFCC, fl)
 # Write the supercell as a lammps file
 write_lammps_data("lammpsCoords.txt", superFCC, specorder=elems)
+
+# First, we write a lammps input script for this run
 
 # Next, we write the MC loop
 def MC_Run(SwapRun, ASE_Super, Nprocs):
@@ -161,5 +163,5 @@ if not __test__:
             idx = at.index
             occs[smp, idx+1] = elemsToNum[at.symbol]
     end = time.time()
-    np.save("Occs_{0}.npy".format(jobID))
+    np.save("Occs_{0}.npy".format(jobID), occs)
     print("{} samples drawn with {} swaps. Time: {:.4f} minutes".format(N_samples, N_swaps, (end-start)/60.))
