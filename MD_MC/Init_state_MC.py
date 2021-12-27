@@ -140,8 +140,11 @@ def MC_Run(SwapRun, ASE_Super, Nprocs):
     return N_total, N_accept
 
 # First thermalize the starting state
+start = time.time()
 N_total, N_accept = MC_Run(N_therm, superFCC, N_proc)
+end = time.time()
 print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
+print("Thermalization Time Per iteration : {}".format((end-start)/N_total))
 
 if not __test__:
     occs = np.zeros((N_samples, Nsites), dtype=np.int16)
