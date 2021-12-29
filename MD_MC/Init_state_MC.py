@@ -189,5 +189,5 @@ if not __test__:
             idx = at.index
             occs[smp, idx+1] = elemsToNum[at.symbol]
     end = time.time()
-    np.save("Occs_{0}.npy".format(jobID), occs)
+    np.save("SiteIndToSpec_{0}.npy".format(jobID), occs)
     print("{} samples drawn with {} swaps. Time: {:.4f} minutes".format(N_samples, N_swaps, (end-start)/60.))
