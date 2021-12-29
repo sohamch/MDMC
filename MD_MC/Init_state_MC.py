@@ -150,7 +150,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
             N_accept += 1
             e1 = e2  # set the next initial state energy to the current final energy
         else:
-            # reject the move by reverting the occupancies
+            # reject the move by reverting the occupancies to initial state values
             tmp = ASE_Super[site1].symbol
             ASE_Super[site1].symbol = ASE_Super[site2].symbol
             ASE_Super[site2].symbol = tmp
