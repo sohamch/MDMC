@@ -22,11 +22,6 @@ NProc = int(args[4])
 NImage = int(args[5])
 ProcPerImage = 1
 
-# if len(args) == 6:
-#     ProcPerImage = 1
-# else:
-#     ProcPerImage = int(args[6])
-
 if NProc%(NImage*ProcPerImage) != 0:
     raise ValueError("Processors cannot be divided integrally across trajectories")
 
@@ -35,6 +30,43 @@ Ntraj = NProc//(NImage*ProcPerImage)
     
 print("Running {0} steps at {1}K".format(Nsteps, T))
 print("Segments at every {}th step".format(Nseg))
+
+with open("lammpsBox.txt","r") as fl:
+    Initlines = fl.readlines()
+
+def write_input_files():
+    pass
+
+def write_init_states(SiteIndToSpec, vacSiteInd):
+    Ntraj = vacSiteInd.shape[0]
+    for traj in range(Ntraj):
+        with open("initial_{}.data".format(traj), "w") as fl:
+            fl.writelines(Initlines[:12])
+            counter = 1
+            for idx in range(SiteIndToSpec.shape[1]):
+                spec = SiteIndToSpec[traj, idx]
+                if spec == -1:
+                    assert idx == vacSiteInd[traj]
+                    continue
+                pos = SiteIndToPos[idx]
+                fl.write("{} {} {} {} {}\n".format(counter, spec, pos[0], pos[1], pos[2]))
+                counter += 1
+
+def write_final_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, jumpSiteInd):
+    Ntraj = vacSiteInd.shape[0]
+    for traj in range(Ntraj):
+        with open("final_{}.data".format(traj), "w") as fl:
+            fl.write("{}\n".format(SiteIndToPos.shape[1] - 1))
+            counter = 1
+            for siteInd in range(len(SiteIndToPos)):
+                if siteInd == vacSiteInd[traj]:
+                    continue
+                if siteInd == jumpSiteInd:  # the jumping atom will have vac site as the new position
+                    pos = SiteIndToPos[vacSiteInd[traj]]
+                else:
+                    pos = SiteIndToPos[siteInd]
+                fl.write("{} {} {} {}\n".format(counter, pos[0], pos[1], pos[2]))
+                counter += 1
 
 @jit(nopython=True)
 def getJumpSelects(rates):
@@ -53,7 +85,7 @@ def getJumpSelects(rates):
 def updateStates(SiteIndToNgb, Nspec, SiteIndToSpec, vacSiteInd, jumpID, dxList):
     Ntraj = jumpID.shape[0]
     jumpAtomSelectArray = np.zeros(Ntraj, dtype=int64)
-    X = np.zeros(Ntraj, Nspec, 3)
+    X = np.zeros((Ntraj, Nspec, 3))
     for tr in range(Ntraj):
         jumpSiteSelect = SiteIndToNgb[vacSiteInd[tr], jumpID[tr]]
         jumpAtomSelect = SiteIndToSpec[tr, jumpSiteSelect]
@@ -70,8 +102,6 @@ with open("CrysDat/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
 dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 print(dxList)
-
-vacSiteInd = 0 # initially the vacancy is at site 0 by design
 
 cmd = [
     "mpirun -np {0} $LMPPATH/lmp -p {1}x{2} -in in.neb > out.txt".format(NProc, NImage, ProcPerImage)
@@ -95,7 +125,7 @@ try:
     X_steps = np.load("X_steps.npy")
     t_steps = np.load("X_steps.npy")
     stepsLast = np.load("steps_last.npy")[0]
-except:    
+except:
     X_steps = np.zeros((Ntraj, Nspec, Nsteps + 1, 3)) # 0th position will store vacancy jumps
     t_steps = np.zeros(Ntraj, Nsteps + 1)
     stepsLast = 0
@@ -121,7 +151,7 @@ for step in range(Nsteps - stepsLast):
         
         # Then run lammps
         commands = [
-            "mpirun -np {0} $LMPPATH/lmp -p {1}x1 -in in.neb_{2} > out_{2}.txt".format(NProc, NImage, traj)
+            "mpirun -np {0} $LMPPATH/lmp -p {0}x1 -in in.neb_{1} > out_{1}.txt".format(NImage, traj)
             for traj in range(Ntraj)
         ]
         cmdList = [subprocess.Popen(cmd, shell=True)]
@@ -147,9 +177,9 @@ for step in range(Nsteps - stepsLast):
     jumpAtomSelectArray, X_traj = updateStates(SiteIndToNgb, SiteIndToSpec, vacSiteInd, jumpID, dxList)
         
     # Note the displacements and the time
-    X_steps[:, :, step + stepLast + 1, :] = X_traj[:, :, :]
-    t_steps[step + stepLast + 1] = time_step
-    stepCount[0] = step + stepLast
+    X_steps[:, :, step + stepsLast + 1, :] = X_traj[:, :, :]
+    t_steps[step + stepsLast + 1] = time_step
+    stepCount[0] = step + stepsLast
     
     # save arrays for next step
     np.save("SiteIndToSpec.npy", SiteIndToSpec)
