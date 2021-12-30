@@ -69,7 +69,7 @@ def write_init_states(SiteIndToSpec, vacSiteInd):
                 fl.write("{} {} {} {} {}\n".format(counter, spec, pos[0], pos[1], pos[2]))
                 counter += 1
 
-def write_final_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, jumpSiteInd):
+def write_final_states(SiteIndToPos, vacSiteInd, jumpSiteInd):
     Ntraj = vacSiteInd.shape[0]
     for traj in range(Ntraj):
         with open("final_{}.data".format(traj), "w") as fl:
@@ -142,35 +142,28 @@ except:
     stepsLast = 0
     
 stepCount = np.zeros(1, dtype=int)
-
+# Before starting, write the lammps input files
+write_input_files()
 for step in range(Nsteps - stepsLast):
     # Write the initial states from last accepted state
-    write_cmd = subprocess.Popen(
-            "mpirun -np {0} python write_init_states.py".format(Ntraj),
-            shell=True
-        )
-    write_cmd.wait()
-    
+    write_init_states(SiteIndToSpec, vacSiteInd)
+
     rates = np.zeros(Ntraj, SiteIndToNgb.shape[1])
     for jumpInd in enumerate(SiteIndToNgb.shape[1]):
         # Write the final states in NEB format for lammps
-        write_cmd = subprocess.Popen(
-            ["mpirun -np {0} python write_final_state.py {1}".format(Ntraj, jumpInd)],
-            shell=True
-        )
-        write_cmd.wait()
-        
+        write_final_states(SiteIndToPos, vacSiteInd, jumpInd)
+
         # Then run lammps
         commands = [
             "mpirun -np {0} $LMPPATH/lmp -p {0}x1 -in in.neb_{1} > out_{1}.txt".format(NImage, traj)
             for traj in range(Ntraj)
         ]
-        cmdList = [subprocess.Popen(cmd, shell=True)]
+        cmdList = [subprocess.Popen(cmd, shell=True) for cmd in commands]
         
         # wait for the lammps commands to complete
         for c in cmdList:
             rt_code = c.wait()
-            assert rt_code == 0 # check for system errors
+            assert rt_code == 0  # check for system errors
         
         # Then read the forward barrier -> ebf
         for traj in range(Ntraj):
