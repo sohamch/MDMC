@@ -31,7 +31,7 @@ Ntraj = NProc//(NImage*ProcPerImage)
 print("Running {0} steps at {1}K".format(Nsteps, T))
 print("Segments at every {}th step".format(Nseg))
 
-with open("lammpsBox.txt","r") as fl:
+with open("lammpsBox.txt", "r") as fl:
     Initlines = fl.readlines()
 
 # Load the lammps cartesian positions and neighborhoods - pre-prepared
