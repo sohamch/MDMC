@@ -35,7 +35,20 @@ with open("lammpsBox.txt","r") as fl:
     Initlines = fl.readlines()
 
 def write_input_files():
-    pass
+    for traj in range(Ntraj):
+        with open("in.neb_{1}", "w") as fl:
+            fl.write("units \t metal\n")
+            fl.write("atom_style \t atomic\n")
+            fl.write("atom_modify \t map array\n")
+            fl.write("boundary \t p p p\n")
+            fl.write("atom_modify \t sort 0 0.0\n")
+            fl.write("read_data \t initial_{0}.data\n".format(traj))
+            fl.write("pair_style \t meam\n")
+            fl.write("pair_coeff \t * * pot/library.meam Co Ni Cr Fe Mn pot/params.meam Co Ni Cr Fe Mn\n")
+            fl.write("fix \t 1 all neb 1.0\n")
+            fl.write("timestep \t 0.01\n")
+            fl.write("min_style \t quickmin")
+            fl.write("neb \t 1e-5 0.0 500 500 10 final final_{0}.neb".format(traj))
 
 def write_init_states(SiteIndToSpec, vacSiteInd):
     Ntraj = vacSiteInd.shape[0]
@@ -102,10 +115,6 @@ with open("CrysDat/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
 dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 print(dxList)
-
-cmd = [
-    "mpirun -np {0} $LMPPATH/lmp -p {1}x{2} -in in.neb > out.txt".format(NProc, NImage, ProcPerImage)
-]
 
 start = time.time()
 neb_Time = 0.
