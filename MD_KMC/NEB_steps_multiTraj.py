@@ -144,6 +144,7 @@ except:
 stepCount = np.zeros(1, dtype=int)
 # Before starting, write the lammps input files
 write_input_files()
+__test__ = False
 for step in range(Nsteps - stepsLast):
     # Write the initial states from last accepted state
     write_init_states(SiteIndToSpec, vacSiteInd)
@@ -186,8 +187,16 @@ for step in range(Nsteps - stepsLast):
     stepCount[0] = step + stepsLast
     
     # save arrays for next step
-    np.save("SiteIndToSpec.npy", SiteIndToSpec)
-    np.save("vacSiteInd.npy", vacSiteInd)
-    np.save("X_steps.npy", X_steps)
-    np.save("t_steps.npy", t_steps)
-    np.save("steps_last.npy", stepCount)
+    if not __test__:
+        np.save("SiteIndToSpec.npy", SiteIndToSpec)
+        np.save("vacSiteInd.npy", vacSiteInd)
+        np.save("X_steps.npy", X_steps)
+        np.save("t_steps.npy", t_steps)
+        np.save("steps_last.npy", stepCount)
+    else:
+        np.save("SiteIndToSpec_{}.npy".format(step), SiteIndToSpec)
+        np.save("vacSiteInd_{}.npy".format(step), vacSiteInd)
+        np.save("JumpSelects_{}.npy".format(step), jumpAtomSelectArray)
+        np.save("X_steps.npy", X_steps)
+        np.save("t_steps.npy", t_steps)
+        np.save("steps_last.npy", stepCount)
