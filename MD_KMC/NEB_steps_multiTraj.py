@@ -34,9 +34,13 @@ print("Segments at every {}th step".format(Nseg))
 with open("lammpsBox.txt","r") as fl:
     Initlines = fl.readlines()
 
+# Load the lammps cartesian positions and neighborhoods - pre-prepared
+SiteIndToPos = np.load("SiteIndToLmpCartPos.npy")  # lammps pos of sites
+SiteIndToNgb = np.load("siteIndtoNgbSiteInd.npy")  # Nsites x z array of site neighbors
+
 def write_input_files():
     for traj in range(Ntraj):
-        with open("in.neb_{1}", "w") as fl:
+        with open("in.neb_{0}".format(traj), "w") as fl:
             fl.write("units \t metal\n")
             fl.write("atom_style \t atomic\n")
             fl.write("atom_modify \t map array\n")
@@ -124,8 +128,6 @@ print("Running {} trajectories on {} processors".format(Ntraj, NProc))
 
 # Load the starting data for the trajectories
 SiteIndToSpec = np.load("SiteIndToSpec.npy") # Ntraj x Nsites array of occupancies
-SiteIndToPos = np.load("SiteIndToLmpCartPos.npy") # lammps pos of sites
-SiteIndToNgb = np.load("siteIndtoNgbSiteInd.npy") # Nsites x z array of site neighbors
 vacSiteInd = np.load("vacSiteInd.npy") # Ntraj size array: contains where the vac is in each traj.
 specs, counts = np.unique(SiteIndToSpec[0], return_counts=True)
 Nspec = len(specs)
