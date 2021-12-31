@@ -50,7 +50,7 @@ for atMain in superFCC:
         for at in superFCC:
             if np.allclose(at.position, posInCell):
                 foundCount += 1
-                atIndex = at.index + 1
+                atIndex = at.index
         assert foundCount == 1, "{} {}".format(dxR, dxNgb)
         assert atIndex is not None
         siteIndtoNgbSiteInd[CurrentSiteId, ngbInd] = atIndex
@@ -59,4 +59,4 @@ for atMain in superFCC:
 # Either way, one confirms the other
 NNsites = np.load("CrysDat/NNsites_sitewise.npy")
 for i in range(Nsites):
-    assert np.array_equal(NNsites[1:, i], siteIndtoNgbSiteInd[i, :])
+    assert np.array_equal(np.sort(NNsites[1:, i]), np.sort(siteIndtoNgbSiteInd[i, :])), "{}\n{}".format(NNsites[1:, i], siteIndtoNgbSiteInd[i, :])
