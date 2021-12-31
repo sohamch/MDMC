@@ -103,7 +103,7 @@ def getJumpSelects(rates):
 def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList):
     Ntraj = jumpID.shape[0]
     jumpAtomSelectArray = np.zeros(Ntraj, dtype=int64)
-    X = np.zeros((Ntraj, Nspec, 3))
+    X_traj = np.zeros((Ntraj, Nspec, 3), dtype=float64)
     for tr in range(Ntraj):
         jumpSiteSelect = SiteIndToNgb[vacSiteInd[tr], jumpID[tr]]
         jumpAtomSelect = SiteIndToSpec[tr, jumpSiteSelect]
