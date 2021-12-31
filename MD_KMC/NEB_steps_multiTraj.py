@@ -18,7 +18,10 @@ args = list(sys.argv)
 T = float(args[1])
 Nsteps = int(args[2])
 NImage = int(args[3])
+TestCode = bool(int(args[4]))
 ProcPerImage = 1
+
+__test__ = TestCode
 
 with open("lammpsBox.txt", "r") as fl:
     Initlines = fl.readlines()
@@ -134,7 +137,6 @@ except FileNotFoundError:
 stepCount = np.zeros(1, dtype=int)
 # Before starting, write the lammps input files
 write_input_files(Ntraj)
-__test__ = True
 print("Running {0} steps at {1} K on {2} trajectories".format(Nsteps, T, Ntraj))
 start = time.time()
 if __test__:
