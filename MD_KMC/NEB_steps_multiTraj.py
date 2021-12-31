@@ -84,12 +84,15 @@ def write_final_states(SiteIndToPos, vacSiteInd, siteIndToNgb, jInd):
                 fl.write("{} {} {} {}\n".format(counter, pos[0], pos[1], pos[2]))
                 counter += 1
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def getJumpSelects(rates):
     Ntraj = rates.shape[0]
     timeStep = 1./np.sum(rates, axis=1)
     ratesProb = rates*timeStep.reshape(Ntraj, 1)
-    ratesProbSum = np.cumsum(ratesProb, axis=1)
+    ratesProbSum = np.zeros(Ntraj, dtype=float) #np.cumsum(ratesProb, axis=1)
+    for tr in range(Ntraj):
+        ratesProbSum[tr] = np.cumsum(ratesProb[tr])
+
     rn = np.random.rand(Ntraj)
     jumpID = np.zeros(Ntraj, dtype=int)
     for tr in range(Ntraj):
@@ -97,11 +100,11 @@ def getJumpSelects(rates):
         jumpID[tr] = jSelect
     return jumpID, timeStep
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList):
     Ntraj = jumpID.shape[0]
-    jumpAtomSelectArray = np.zeros(Ntraj, dtype=int64)
-    X = np.zeros((Ntraj, Nspec, 3), dtype=float64)
+    jumpAtomSelectArray = np.zeros(Ntraj, dtype=int)
+    X = np.zeros((Ntraj, Nspec, 3), dtype=float)
     for tr in range(Ntraj):
         jumpSiteSelect = SiteIndToNgb[vacSiteInd[tr], jumpID[tr]]
         jumpAtomSelect = SiteIndToSpec[tr, jumpSiteSelect]
