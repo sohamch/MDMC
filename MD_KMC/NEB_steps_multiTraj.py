@@ -20,8 +20,6 @@ Nsteps = int(args[2])
 NImage = int(args[3])
 ProcPerImage = 1
 
-print("Running {0} steps at {1}K".format(Nsteps, T))
-
 with open("lammpsBox.txt", "r") as fl:
     Initlines = fl.readlines()
 
@@ -82,10 +80,7 @@ def getJumpSelects(rates):
     Ntraj = rates.shape[0]
     timeStep = 1./np.sum(rates, axis=1)
     ratesProb = rates*timeStep.reshape(Ntraj, 1)
-    ratesProbSum = np.zeros(Ntraj, dtype=float) #np.cumsum(ratesProb, axis=1)
-    for tr in range(Ntraj):
-        ratesProbSum[tr] = np.cumsum(ratesProb[tr])
-
+    ratesProbSum = np.cumsum(ratesProb, axis=1)
     rn = np.random.rand(Ntraj)
     jumpID = np.zeros(Ntraj, dtype=int)
     for tr in range(Ntraj):
@@ -139,8 +134,8 @@ except FileNotFoundError:
 stepCount = np.zeros(1, dtype=int)
 # Before starting, write the lammps input files
 write_input_files(Ntraj)
-__test__ = False
-
+__test__ = True
+print("Running {0} steps at {1} K on {2} trajectories".format(Nsteps, T, Ntraj))
 start = time.time()
 for step in range(Nsteps - stepsLast):
     # Write the initial states from last accepted state
@@ -171,7 +166,8 @@ for step in range(Nsteps - stepsLast):
             ebfLine = line.split()
             ebf = float(ebfLine[6])
             rates[traj, jumpInd] = np.exp(-ebf/(kB*T))
-    
+    if __test__:
+        print(rates)
     # Then do selection 
     jumpID, time_step = getJumpSelects(rates)
     
