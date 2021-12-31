@@ -13,5 +13,6 @@ for traj in range(Ntraj):
     SiteIndToSpec[traj, 0] = -1
     SiteIndToSpec[traj, 1:] = np.random.randint(1, NSpec+1, Nsites-1)[:]
     SiteIndToSpec[traj, :] = np.random.permutation(SiteIndToSpec[traj, :])
-
+vacSiteInd = np.zeros(Ntraj, dtype=int)
 np.save("SiteIndToSpec.npy", SiteIndToSpec)
+np.save("vacSiteInd.npy", vacSiteInd)
