@@ -61,7 +61,7 @@ def write_init_states(SiteIndToSpec, vacSiteInd):
             for idx in range(SiteIndToSpec.shape[1]):
                 spec = SiteIndToSpec[traj, idx]
                 if spec == -1:
-                    assert idx == vacSiteInd[traj]
+                    assert idx == vacSiteInd[traj], "{} {}".format(idx, SiteIndToSpec[traj, idx])
                     continue
                 pos = SiteIndToPos[idx]
                 fl.write("{} {} {} {} {}\n".format(counter, spec, pos[0], pos[1], pos[2]))
