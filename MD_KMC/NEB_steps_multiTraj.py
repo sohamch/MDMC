@@ -27,8 +27,8 @@ with open("lammpsBox.txt", "r") as fl:
 SiteIndToPos = np.load("SiteIndToLmpCartPos.npy")  # lammps pos of sites
 SiteIndToNgb = np.load("siteIndtoNgbSiteInd.npy")  # Nsites x z array of site neighbors
 
-def write_input_files(Ntraj):
-    for traj in range(Ntraj):
+def write_input_files(Ntr):
+    for traj in range(Ntr):
         with open("in.neb_{0}".format(traj), "w") as fl:
             fl.write("units \t metal\n")
             fl.write("atom_style \t atomic\n")
@@ -44,8 +44,8 @@ def write_input_files(Ntraj):
             fl.write("neb \t 1e-5 0.0 500 500 10 final final_{0}.data".format(traj))
 
 def write_init_states(SiteIndToSpec, vacSiteInd, TopLines):
-    Ntraj = vacSiteInd.shape[0]
-    for traj in range(Ntraj):
+    Ntr = vacSiteInd.shape[0]
+    for traj in range(Ntr):
         with open("initial_{}.data".format(traj), "w") as fl:
             fl.writelines(TopLines[:12])
             counter = 1
@@ -59,8 +59,8 @@ def write_init_states(SiteIndToSpec, vacSiteInd, TopLines):
                 counter += 1
 
 def write_final_states(SiteIndToPos, vacSiteInd, siteIndToNgb, jInd):
-    Ntraj = vacSiteInd.shape[0]
-    for traj in range(Ntraj):
+    Ntr = vacSiteInd.shape[0]
+    for traj in range(Ntr):
         with open("final_{}.data".format(traj), "w") as fl:
             fl.write("{}\n".format(SiteIndToPos.shape[0] - 1))
             counter = 1
@@ -77,13 +77,13 @@ def write_final_states(SiteIndToPos, vacSiteInd, siteIndToNgb, jInd):
 
 # @jit(nopython=True)
 def getJumpSelects(rates):
-    Ntraj = rates.shape[0]
+    Ntr = rates.shape[0]
     timeStep = 1./np.sum(rates, axis=1)
-    ratesProb = rates*timeStep.reshape(Ntraj, 1)
+    ratesProb = rates*timeStep.reshape(Ntr, 1)
     ratesProbSum = np.cumsum(ratesProb, axis=1)
-    rn = np.random.rand(Ntraj)
-    jumpID = np.zeros(Ntraj, dtype=int)
-    for tr in range(Ntraj):
+    rn = np.random.rand(Ntr)
+    jumpID = np.zeros(Ntr, dtype=int)
+    for tr in range(Ntr):
         jSelect = np.searchsorted(ratesProbSum[tr, :], rn[tr])
         jumpID[tr] = jSelect
     return jumpID, timeStep
