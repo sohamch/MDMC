@@ -134,9 +134,9 @@ try:
     X_steps = np.load("X_steps.npy")
     t_steps = np.load("X_steps.npy")
     stepsLast = np.load("steps_last.npy")[0]
-except:
+except FileNotFoundError:
     X_steps = np.zeros((Ntraj, Nspec, Nsteps + 1, 3)) # 0th position will store vacancy jumps
-    t_steps = np.zeros(Ntraj, Nsteps + 1)
+    t_steps = np.zeros((Ntraj, Nsteps + 1))
     stepsLast = 0
     
 stepCount = np.zeros(1, dtype=int)
