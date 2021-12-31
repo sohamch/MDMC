@@ -149,7 +149,7 @@ for step in range(Nsteps - stepsLast):
     # Write the initial states from last accepted state
     write_init_states(SiteIndToSpec, vacSiteInd)
 
-    rates = np.zeros(Ntraj, SiteIndToNgb.shape[1])
+    rates = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
     for jumpInd in range(SiteIndToNgb.shape[1]):
         # Write the final states in NEB format for lammps
         write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd)
