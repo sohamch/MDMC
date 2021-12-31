@@ -69,7 +69,7 @@ def write_init_states(SiteIndToSpec, vacSiteInd):
                 fl.write("{} {} {} {} {}\n".format(counter, spec, pos[0], pos[1], pos[2]))
                 counter += 1
 
-def write_final_states(SiteIndToPos, vacSiteInd, jumpSiteInd):
+def write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd):
     Ntraj = vacSiteInd.shape[0]
     for traj in range(Ntraj):
         with open("final_{}.data".format(traj), "w") as fl:
@@ -78,7 +78,8 @@ def write_final_states(SiteIndToPos, vacSiteInd, jumpSiteInd):
             for siteInd in range(len(SiteIndToPos)):
                 if siteInd == vacSiteInd[traj]:
                     continue
-                if siteInd == jumpSiteInd:  # the jumping atom will have vac site as the new position
+                # the jumping atom will have vac site as the new position
+                if siteInd == SiteIndToNgb[vacSiteInd[traj], jumpInd]:
                     pos = SiteIndToPos[vacSiteInd[traj]]
                 else:
                     pos = SiteIndToPos[siteInd]
@@ -150,9 +151,9 @@ for step in range(Nsteps - stepsLast):
     write_init_states(SiteIndToSpec, vacSiteInd)
 
     rates = np.zeros(Ntraj, SiteIndToNgb.shape[1])
-    for jumpInd in enumerate(SiteIndToNgb.shape[1]):
+    for jumpInd in range(SiteIndToNgb.shape[1]):
         # Write the final states in NEB format for lammps
-        write_final_states(SiteIndToPos, vacSiteInd, jumpInd)
+        write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd)
 
         # Then run lammps
         commands = [
