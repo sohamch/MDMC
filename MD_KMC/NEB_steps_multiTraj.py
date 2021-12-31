@@ -100,8 +100,7 @@ def getJumpSelects(rates):
     return jumpID, timeStep
 
 @jit(nopython=True)
-def updateStates(SiteIndToNgb, SiteIndToSpec, vacSiteInd, jumpID, dxList):
-    Nspec = np.unique(SiteIndToSpec).shape[0] - 1
+def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList):
     Ntraj = jumpID.shape[0]
     jumpAtomSelectArray = np.zeros(Ntraj, dtype=int64)
     X = np.zeros((Ntraj, Nspec, 3))
@@ -132,7 +131,7 @@ print("Running {} trajectories on {} processors".format(Ntraj, NProc))
 SiteIndToSpec = np.load("SiteIndToSpec.npy") # Ntraj x Nsites array of occupancies
 vacSiteInd = np.load("vacSiteInd.npy") # Ntraj size array: contains where the vac is in each traj.
 specs, counts = np.unique(SiteIndToSpec[0], return_counts=True)
-Nspec = len(specs)
+Nspec = len(specs) # including the vacancy
 
 try:
     X_steps = np.load("X_steps.npy")
@@ -181,8 +180,8 @@ for step in range(Nsteps - stepsLast):
     jumpID, time_step = getJumpSelects(rates)
     
     # Then do the final exchange
-    jumpAtomSelectArray, X_traj = updateStates(SiteIndToNgb, SiteIndToSpec, vacSiteInd, jumpID, dxList)
-        
+    jumpAtomSelectArray, X_traj = updateStates(SiteIndToNgb, Nspec, SiteIndToSpec, vacSiteInd, jumpID, dxList)
+    # def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList):
     # Note the displacements and the time
     X_steps[:, :, step + stepsLast + 1, :] = X_traj[:, :, :]
     t_steps[step + stepsLast + 1] = time_step
