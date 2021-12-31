@@ -49,8 +49,8 @@ def write_input_files():
             fl.write("pair_coeff \t * * pot/library.meam Co Ni Cr Fe Mn pot/params.meam Co Ni Cr Fe Mn\n")
             fl.write("fix \t 1 all neb 1.0\n")
             fl.write("timestep \t 0.01\n")
-            fl.write("min_style \t quickmin")
-            fl.write("neb \t 1e-5 0.0 500 500 10 final final_{0}.neb".format(traj))
+            fl.write("min_style \t quickmin\n")
+            fl.write("neb \t 1e-5 0.0 500 500 10 final final_{0}.data".format(traj))
 
 def write_init_states(SiteIndToSpec, vacSiteInd, TopLines):
     Ntraj = vacSiteInd.shape[0]
