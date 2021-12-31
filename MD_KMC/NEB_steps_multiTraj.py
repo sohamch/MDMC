@@ -117,7 +117,6 @@ def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList
 with open("CrysDat/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
 dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
-print(dxList)
 
 start = time.time()
 neb_Time = 0.
@@ -157,7 +156,7 @@ for step in range(Nsteps - stepsLast):
 
         # Then run lammps
         commands = [
-            "mpirun -np {0} $LMPPATH/lmp -p {0}x1 -in in.neb_{1} > out_{1}.txt".format(NImage, traj)
+            "mpirun -np {0} --oversubscribe $LMPPATH/lmp -p {0}x1 -in in.neb_{1} > out_{1}.txt".format(NImage, traj)
             for traj in range(Ntraj)
         ]
         cmdList = [subprocess.Popen(cmd, shell=True) for cmd in commands]
