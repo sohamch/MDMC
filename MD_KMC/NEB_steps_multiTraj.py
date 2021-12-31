@@ -114,11 +114,6 @@ with open("CrysDat/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
 dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 
-start = time.time()
-neb_Time = 0.
-neb_count = 0
-
-print("Running {} trajectories on {} processors".format(Ntraj, NProc))
 
 # Load the starting data for the trajectories
 SiteIndToSpec = np.load("SiteIndToSpec.npy") # Ntraj x Nsites array of occupancies
@@ -143,7 +138,7 @@ except FileNotFoundError:
     
 stepCount = np.zeros(1, dtype=int)
 # Before starting, write the lammps input files
-write_input_files()
+write_input_files(Ntraj)
 __test__ = False
 
 start = time.time()
