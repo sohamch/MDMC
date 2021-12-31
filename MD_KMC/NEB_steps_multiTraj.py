@@ -52,11 +52,11 @@ def write_input_files():
             fl.write("min_style \t quickmin")
             fl.write("neb \t 1e-5 0.0 500 500 10 final final_{0}.neb".format(traj))
 
-def write_init_states(SiteIndToSpec, vacSiteInd):
+def write_init_states(SiteIndToSpec, vacSiteInd, TopLines):
     Ntraj = vacSiteInd.shape[0]
     for traj in range(Ntraj):
         with open("initial_{}.data".format(traj), "w") as fl:
-            fl.writelines(Initlines[:12])
+            fl.writelines(TopLines[:12])
             counter = 1
             for idx in range(SiteIndToSpec.shape[1]):
                 spec = SiteIndToSpec[traj, idx]
@@ -128,7 +128,12 @@ print("Running {} trajectories on {} processors".format(Ntraj, NProc))
 SiteIndToSpec = np.load("SiteIndToSpec.npy") # Ntraj x Nsites array of occupancies
 vacSiteInd = np.load("vacSiteInd.npy") # Ntraj size array: contains where the vac is in each traj.
 specs, counts = np.unique(SiteIndToSpec[0], return_counts=True)
-Nspec = len(specs) # including the vacancy
+Nspec = len(specs)  # including the vacancy
+
+Nsites = SiteIndToSpec.shape[1]
+
+Initlines[2] = "{} \t atoms\n".format(Nsites - 1)
+Initlines[3] = "{} atom types\n".format(Nspec-1)
 
 try:
     X_steps = np.load("X_steps.npy")
@@ -147,7 +152,7 @@ __test__ = False
 start = time.time()
 for step in range(Nsteps - stepsLast):
     # Write the initial states from last accepted state
-    write_init_states(SiteIndToSpec, vacSiteInd)
+    write_init_states(SiteIndToSpec, vacSiteInd, Initlines)
 
     rates = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
     for jumpInd in range(SiteIndToNgb.shape[1]):
