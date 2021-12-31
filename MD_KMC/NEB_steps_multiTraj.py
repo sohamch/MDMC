@@ -17,7 +17,7 @@ kB = physical_constants["Boltzmann constant in eV/K"][0]
 args = list(sys.argv)
 T = float(args[1])
 Nsteps = int(args[2])
-NImage = int(args[4])
+NImage = int(args[3])
 ProcPerImage = 1
 
 print("Running {0} steps at {1}K".format(Nsteps, T))
