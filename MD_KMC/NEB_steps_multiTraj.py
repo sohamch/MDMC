@@ -187,9 +187,9 @@ for step in range(Nsteps - stepsLast):
         np.save("t_steps.npy", t_steps)
         np.save("steps_last.npy", stepCount)
     else:
-        np.save("SiteIndToSpec_{}.npy".format(step), SiteIndToSpec)
-        np.save("vacSiteInd_{}.npy".format(step), vacSiteInd)
-        np.save("JumpSelects_{}.npy".format(step), jumpAtomSelectArray)
+        np.save("SiteIndToSpec_{}.npy".format(step + stepsLast + 1), SiteIndToSpec)
+        np.save("vacSiteInd_{}.npy".format(step + stepsLast + 1), vacSiteInd)
+        np.save("JumpSelects_{}.npy".format(step + stepsLast + 1), jumpAtomSelectArray)
         np.save("X_steps.npy", X_steps)
         np.save("t_steps.npy", t_steps)
         np.save("steps_last.npy", stepCount)
