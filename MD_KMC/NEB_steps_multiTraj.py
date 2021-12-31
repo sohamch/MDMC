@@ -100,7 +100,8 @@ def getJumpSelects(rates):
     return jumpID, timeStep
 
 @jit(nopython=True)
-def updateStates(SiteIndToNgb, Nspec, SiteIndToSpec, vacSiteInd, jumpID, dxList):
+def updateStates(SiteIndToNgb, SiteIndToSpec, vacSiteInd, jumpID, dxList):
+    Nspec = np.unique(SiteIndToSpec).shape[0] - 1
     Ntraj = jumpID.shape[0]
     jumpAtomSelectArray = np.zeros(Ntraj, dtype=int64)
     X = np.zeros((Ntraj, Nspec, 3))
