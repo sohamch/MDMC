@@ -31,7 +31,7 @@ Sup_lammps_unrelax_coords = read_lammps_data("lammpsBox.txt", style="atomic")
 SiteIndToCartPos = np.zeros((Nsites, 3))
 for i in range(Nsites):
     SiteIndToCartPos[i, :] = Sup_lammps_unrelax_coords[i-1].position[:]
-np.save("SiteIndToLmpCartPos.npy", data=SiteIndToCartPos)
+np.save("SiteIndToLmpCartPos.npy", SiteIndToCartPos)
 
 # Next, save the neighborhood of each site
 
