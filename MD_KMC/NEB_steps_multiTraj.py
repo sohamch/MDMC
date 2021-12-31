@@ -69,7 +69,7 @@ def write_init_states(SiteIndToSpec, vacSiteInd):
                 fl.write("{} {} {} {} {}\n".format(counter, spec, pos[0], pos[1], pos[2]))
                 counter += 1
 
-def write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd):
+def write_final_states(SiteIndToPos, vacSiteInd, siteIndToNgb, jInd):
     Ntraj = vacSiteInd.shape[0]
     for traj in range(Ntraj):
         with open("final_{}.data".format(traj), "w") as fl:
@@ -79,7 +79,7 @@ def write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd):
                 if siteInd == vacSiteInd[traj]:
                     continue
                 # the jumping atom will have vac site as the new position
-                if siteInd == SiteIndToNgb[vacSiteInd[traj], jumpInd]:
+                if siteInd == siteIndToNgb[vacSiteInd[traj], jInd]:
                     pos = SiteIndToPos[vacSiteInd[traj]]
                 else:
                     pos = SiteIndToPos[siteInd]
