@@ -17,16 +17,9 @@ kB = physical_constants["Boltzmann constant in eV/K"][0]
 args = list(sys.argv)
 T = float(args[1])
 Nsteps = int(args[2])
-NProc = int(args[3])
 NImage = int(args[4])
 ProcPerImage = 1
 
-if NProc%(NImage*ProcPerImage) != 0:
-    raise ValueError("Processors cannot be divided integrally across trajectories")
-
-# Processors per trajectory = NImage*ProcPerImage
-Ntraj = NProc//(NImage*ProcPerImage)
-    
 print("Running {0} steps at {1}K".format(Nsteps, T))
 
 with open("lammpsBox.txt", "r") as fl:
@@ -36,7 +29,7 @@ with open("lammpsBox.txt", "r") as fl:
 SiteIndToPos = np.load("SiteIndToLmpCartPos.npy")  # lammps pos of sites
 SiteIndToNgb = np.load("siteIndtoNgbSiteInd.npy")  # Nsites x z array of site neighbors
 
-def write_input_files():
+def write_input_files(Ntraj):
     for traj in range(Ntraj):
         with open("in.neb_{0}".format(traj), "w") as fl:
             fl.write("units \t metal\n")
@@ -132,6 +125,7 @@ SiteIndToSpec = np.load("SiteIndToSpec.npy") # Ntraj x Nsites array of occupanci
 vacSiteInd = np.load("vacSiteInd.npy") # Ntraj size array: contains where the vac is in each traj.
 specs, counts = np.unique(SiteIndToSpec[0], return_counts=True)
 Nspec = len(specs)  # including the vacancy
+Ntraj = SiteIndToSpec.shape[0]
 
 Nsites = SiteIndToSpec.shape[1]
 
