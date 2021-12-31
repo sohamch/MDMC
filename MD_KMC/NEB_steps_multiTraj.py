@@ -144,6 +144,8 @@ stepCount = np.zeros(1, dtype=int)
 # Before starting, write the lammps input files
 write_input_files()
 __test__ = False
+
+start = time.time()
 for step in range(Nsteps - stepsLast):
     # Write the initial states from last accepted state
     write_init_states(SiteIndToSpec, vacSiteInd)
@@ -199,3 +201,6 @@ for step in range(Nsteps - stepsLast):
         np.save("X_steps.npy", X_steps)
         np.save("t_steps.npy", t_steps)
         np.save("steps_last.npy", stepCount)
+
+end = time.time()
+print("Time Per Step: {:.4f} seconds".format(end - start))
