@@ -60,3 +60,6 @@ for atMain in superFCC:
 NNsites = np.load("CrysDat/NNsites_sitewise.npy")
 for i in range(Nsites):
     assert np.array_equal(np.sort(NNsites[1:, i]), np.sort(siteIndtoNgbSiteInd[i, :])), "{}\n{}".format(NNsites[1:, i], siteIndtoNgbSiteInd[i, :])
+
+# save the neighborhood
+np.save("siteIndtoNgbSiteInd.npy", siteIndtoNgbSiteInd)
