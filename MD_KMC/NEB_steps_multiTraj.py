@@ -103,7 +103,7 @@ def getJumpSelects(rates):
 def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList):
     Ntraj = jumpID.shape[0]
     jumpAtomSelectArray = np.zeros(Ntraj, dtype=int64)
-    X_traj = np.zeros((Ntraj, Nspec, 3), dtype=float64)
+    X = np.zeros((Ntraj, Nspec, 3), dtype=float64)
     for tr in range(Ntraj):
         jumpSiteSelect = SiteIndToNgb[vacSiteInd[tr], jumpID[tr]]
         jumpAtomSelect = SiteIndToSpec[tr, jumpSiteSelect]
@@ -111,10 +111,10 @@ def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList
         SiteIndToSpec[tr, vacSiteInd] = jumpAtomSelect
         SiteIndToSpec[tr, jumpSiteSelect] = -1 # The next vacancy site
         vacSiteInd[tr] = jumpSiteSelect
-        X_traj[tr, 0, :] = dxList[jumpID[tr]]
-        X_traj[tr, jumpAtomSelect, :] = -dxList[jumpID[tr]]
+        X[tr, 0, :] = dxList[jumpID[tr]]
+        X[tr, jumpAtomSelect, :] = -dxList[jumpID[tr]]
         
-    return jumpAtomSelectArray, X_traj
+    return jumpAtomSelectArray, X
 
 with open("CrysDat/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
