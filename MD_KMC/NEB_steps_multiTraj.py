@@ -138,6 +138,8 @@ stepCount = np.zeros(1, dtype=int)
 # Before starting, write the lammps input files
 write_input_files(Ntraj)
 print("Running {0} steps at {1} K on {2} trajectories".format(Nsteps, T, Ntraj))
+print("Previously Done : {} steps".format(stepsLast))
+print("Testing : {}".format(__test__))
 start = time.time()
 if __test__:
     rates_steps = np.zeros((Nsteps, Ntraj, SiteIndToNgb.shape[1]))
@@ -175,6 +177,9 @@ for step in range(Nsteps - stepsLast):
             if __test__:
                 barrier_steps[step, traj, jumpInd] = ebf
                 rates_steps[step, traj, jumpInd] = rates[traj, jumpInd]
+
+    if __test__:
+        print(rates)
 
     # Then do selection 
     jumpID, time_step = getJumpSelects(rates)
