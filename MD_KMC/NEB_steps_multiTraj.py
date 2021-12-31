@@ -137,6 +137,10 @@ write_input_files(Ntraj)
 __test__ = True
 print("Running {0} steps at {1} K on {2} trajectories".format(Nsteps, T, Ntraj))
 start = time.time()
+if __test__:
+    rates_steps = np.zeros((Nsteps, Ntraj, SiteIndToNgb.shape[1]))
+    barrier_steps = np.zeros((Nsteps, Ntraj, SiteIndToNgb.shape[1]))
+
 for step in range(Nsteps - stepsLast):
     # Write the initial states from last accepted state
     write_init_states(SiteIndToSpec, vacSiteInd, Initlines)
@@ -166,8 +170,10 @@ for step in range(Nsteps - stepsLast):
             ebfLine = line.split()
             ebf = float(ebfLine[6])
             rates[traj, jumpInd] = np.exp(-ebf/(kB*T))
-    if __test__:
-        print(rates)
+            if __test__:
+                barrier_steps[step, traj, jumpInd] = ebf
+                rates_steps[step, traj, jumpInd] = rates[traj, jumpInd]
+
     # Then do selection 
     jumpID, time_step = getJumpSelects(rates)
     
@@ -195,4 +201,8 @@ for step in range(Nsteps - stepsLast):
         np.save("steps_last.npy", stepCount)
 
 end = time.time()
+if __test__:
+    np.save("Rates_steps_test.npy", rates_steps)
+    np.save("Barriers_steps_test.npy", barrier_steps)
+
 print("Time Per Step: {:.4f} seconds".format(end - start))
