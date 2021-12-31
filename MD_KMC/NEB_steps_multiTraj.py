@@ -71,7 +71,7 @@ def write_final_states(SiteIndToPos, vacSiteInd, siteIndToNgb, jInd):
     Ntraj = vacSiteInd.shape[0]
     for traj in range(Ntraj):
         with open("final_{}.data".format(traj), "w") as fl:
-            fl.write("{}\n".format(SiteIndToPos.shape[1] - 1))
+            fl.write("{}\n".format(SiteIndToPos.shape[0] - 1))
             counter = 1
             for siteInd in range(len(SiteIndToPos)):
                 if siteInd == vacSiteInd[traj]:
