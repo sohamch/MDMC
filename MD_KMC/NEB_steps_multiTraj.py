@@ -17,7 +17,6 @@ kB = physical_constants["Boltzmann constant in eV/K"][0]
 args = list(sys.argv)
 T = float(args[1])
 Nsteps = int(args[2])
-Nseg = int(args[3])
 NProc = int(args[4])
 NImage = int(args[5])
 ProcPerImage = 1
@@ -29,7 +28,6 @@ if NProc%(NImage*ProcPerImage) != 0:
 Ntraj = NProc//(NImage*ProcPerImage)
     
 print("Running {0} steps at {1}K".format(Nsteps, T))
-print("Segments at every {}th step".format(Nseg))
 
 with open("lammpsBox.txt", "r") as fl:
     Initlines = fl.readlines()
