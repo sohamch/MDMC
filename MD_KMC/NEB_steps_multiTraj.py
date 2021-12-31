@@ -176,7 +176,7 @@ for step in range(Nsteps - stepsLast):
     # def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList):
     # Note the displacements and the time
     X_steps[:, :, step + stepsLast + 1, :] = X_traj[:, :, :]
-    t_steps[step + stepsLast + 1] = time_step
+    t_steps[:, step + stepsLast + 1] = time_step
     stepCount[0] = step + stepsLast + 1
     
     # save arrays for next step
