@@ -106,7 +106,7 @@ def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList
         jumpSiteSelect = SiteIndToNgb[vacSiteInd[tr], jumpID[tr]]
         jumpAtomSelect = SiteIndToSpec[tr, jumpSiteSelect]
         jumpAtomSelectArray[tr] = jumpAtomSelect
-        SiteIndToSpec[tr, vacSiteInd] = jumpAtomSelect
+        SiteIndToSpec[tr, vacSiteInd[tr]] = jumpAtomSelect
         SiteIndToSpec[tr, jumpSiteSelect] = -1 # The next vacancy site
         vacSiteInd[tr] = jumpSiteSelect
         X[tr, 0, :] = dxList[jumpID[tr]]
