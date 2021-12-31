@@ -17,8 +17,8 @@ kB = physical_constants["Boltzmann constant in eV/K"][0]
 args = list(sys.argv)
 T = float(args[1])
 Nsteps = int(args[2])
-NProc = int(args[4])
-NImage = int(args[5])
+NProc = int(args[3])
+NImage = int(args[4])
 ProcPerImage = 1
 
 if NProc%(NImage*ProcPerImage) != 0:
