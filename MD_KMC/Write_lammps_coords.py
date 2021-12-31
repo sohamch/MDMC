@@ -25,7 +25,7 @@ with open("CrysDat/jnetFCC.pkl", "rb") as fl:
 
 # multiply by "a" to get the jump vectors.
 jumpsFCC = [dx*a for (i, j), dx in jnetFCC[0]]
-Sup_lammps_unrelax_coords = read_lammps_data("ForlammpsCoord.txt", style="atomic")
+Sup_lammps_unrelax_coords = read_lammps_data("lammpsBox.txt", style="atomic")
 
 # Save the lammps-basis coordinate of each site
 SiteIndToCartPos = np.zeros((Nsites, 3))
