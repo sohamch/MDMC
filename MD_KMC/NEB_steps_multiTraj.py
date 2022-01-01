@@ -153,6 +153,12 @@ for step in range(Nsteps - stepsLast):
     for jumpInd in range(SiteIndToNgb.shape[1]):
         # Write the final states in NEB format for lammps
         write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd)
+        if __test__:
+            # Store the final data for each traj, at each step and for each jump
+            for traj in range(Ntraj):
+                cmd = subprocess.Popen("cp final_{0}.data final_{0}_{1}_{2}.data".format(traj, step, jumpInd), shell=True)
+                rt = cmd.wait()
+                assert rt == 0
 
         # Then run lammps
         commands = [
@@ -178,9 +184,6 @@ for step in range(Nsteps - stepsLast):
                 barrier_steps[step, traj, jumpInd] = ebf
                 rates_steps[step, traj, jumpInd] = rates[traj, jumpInd]
 
-    if __test__:
-        print(rates)
-
     # Then do selection 
     jumpID, time_step = getJumpSelects(rates)
     
@@ -200,6 +203,13 @@ for step in range(Nsteps - stepsLast):
         np.save("t_steps.npy", t_steps)
         np.save("steps_last.npy", stepCount)
     else:
+        print(rates)
+        # Store the initial state for each traj, at each step
+        for traj in range(Ntraj):
+            cmd = subprocess.Popen("cp initial_{0}.data initial_{0}_{1}.data".format(traj, step))
+            rt = cmd.wait()
+            assert rt == 0
+
         np.save("SiteIndToSpec_{}.npy".format(step + stepsLast + 1), SiteIndToSpec)
         np.save("vacSiteInd_{}.npy".format(step + stepsLast + 1), vacSiteInd)
         np.save("JumpSelects_{}.npy".format(step + stepsLast + 1), jumpAtomSelectArray)
