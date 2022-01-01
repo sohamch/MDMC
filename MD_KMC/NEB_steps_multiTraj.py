@@ -206,7 +206,7 @@ for step in range(Nsteps - stepsLast):
         print(rates)
         # Store the initial state for each traj, at each step
         for traj in range(Ntraj):
-            cmd = subprocess.Popen("cp initial_{0}.data initial_{0}_{1}.data".format(traj, step))
+            cmd = subprocess.Popen("cp initial_{0}.data initial_{0}_{1}.data".format(traj, step), shell=True)
             rt = cmd.wait()
             assert rt == 0
 
