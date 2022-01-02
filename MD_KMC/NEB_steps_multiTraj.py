@@ -212,10 +212,10 @@ for step in range(Nsteps - stepsLast):
             cmd = subprocess.Popen("cp initial_{0}.data initial_{0}_{1}.data".format(traj, step), shell=True)
             rt = cmd.wait()
             assert rt == 0
-        barrier_steps[step + stepsLast + 1, :, :] = barriers[:, :]
-        rates_steps[step + stepsLast + 1, :, :] = rates[:, :]
-        rateProb_steps[step + stepsLast + 1, : , :] = rateProbs[:, :]
-        rateCsum_steps[step + stepsLast + 1, :, :] = ratesCsum[:, :]
+        barrier_steps[step, :, :] = barriers[:, :]
+        rates_steps[step, :, :] = rates[:, :]
+        rateProb_steps[step, : , :] = rateProbs[:, :]
+        rateCsum_steps[step, :, :] = ratesCsum[:, :]
         randNums_steps[step, :] = rndNums[:]
         np.save("SiteIndToSpec_{}.npy".format(step + stepsLast + 1), SiteIndToSpec)
         np.save("vacSiteInd_{}.npy".format(step + stepsLast + 1), vacSiteInd)
