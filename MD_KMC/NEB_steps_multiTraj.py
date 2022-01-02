@@ -145,12 +145,16 @@ start = time.time()
 if __test__:
     rates_steps = np.zeros((Nsteps, Ntraj, SiteIndToNgb.shape[1]))
     barrier_steps = np.zeros((Nsteps, Ntraj, SiteIndToNgb.shape[1]))
+    rateProb_steps = np.zeros((Nsteps, Ntraj, SiteIndToNgb.shape[1]))
+    rateCsum_steps = np.zeros((Nsteps, Ntraj, SiteIndToNgb.shape[1]))
+    randNums_steps = np.zeros((Nsteps, Ntraj))
 
 for step in range(Nsteps - stepsLast):
     # Write the initial states from last accepted state
     write_init_states(SiteIndToSpec, vacSiteInd, Initlines)
 
     rates = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
+    barriers = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
     for jumpInd in range(SiteIndToNgb.shape[1]):
         # Write the final states in NEB format for lammps
         write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd)
@@ -181,12 +185,10 @@ for step in range(Nsteps - stepsLast):
             ebfLine = line.split()
             ebf = float(ebfLine[6])
             rates[traj, jumpInd] = np.exp(-ebf/(kB*T))
-            if __test__:
-                barrier_steps[step, traj, jumpInd] = ebf
-                rates_steps[step, traj, jumpInd] = rates[traj, jumpInd]
+            barriers[traj, jumpInd] = ebf
 
     # Then do selection
-    jumpID, rateProbs, ratesCum, rndNums, time_step = getJumpSelects(rates)
+    jumpID, rateProbs, ratesCsum, rndNums, time_step = getJumpSelects(rates)
     
     # Then do the final exchange
     jumpAtomSelectArray, X_traj = updateStates(SiteIndToNgb, Nspec, SiteIndToSpec, vacSiteInd, jumpID, dxList)
@@ -210,7 +212,11 @@ for step in range(Nsteps - stepsLast):
             cmd = subprocess.Popen("cp initial_{0}.data initial_{0}_{1}.data".format(traj, step), shell=True)
             rt = cmd.wait()
             assert rt == 0
-
+        barrier_steps[step + stepsLast + 1, :, :] = barriers[:, :]
+        rates_steps[step + stepsLast + 1, :, :] = rates[:, :]
+        rateProb_steps[step + stepsLast + 1, : , :] = rateProbs[:, :]
+        rateCsum_steps[step + stepsLast + 1, :, :] = ratesCsum[:, :]
+        randNums_steps[step, :] = rndNums[:]
         np.save("SiteIndToSpec_{}.npy".format(step + stepsLast + 1), SiteIndToSpec)
         np.save("vacSiteInd_{}.npy".format(step + stepsLast + 1), vacSiteInd)
         np.save("JumpSelects_{}.npy".format(step + stepsLast + 1), jumpAtomSelectArray)
@@ -222,5 +228,8 @@ end = time.time()
 if __test__:
     np.save("Rates_steps_test.npy", rates_steps)
     np.save("Barriers_steps_test.npy", barrier_steps)
+    np.save("rateProb_steps.npy", rateProb_steps)
+    np.save("rateCumulSum_steps.npy", rateCsum_steps)
+    np.save("randNums_test.npy", randNums_steps)
 
 print("Time Per Step: {:.4f} seconds".format(end - start))
