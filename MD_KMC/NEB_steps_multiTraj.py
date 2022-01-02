@@ -128,7 +128,7 @@ Initlines[3] = "{} atom types\n".format(Nspec-1)
 
 try:
     X_steps = np.load("X_steps.npy")
-    t_steps = np.load("X_steps.npy")
+    t_steps = np.load("t_steps.npy")
     stepsLast = np.load("steps_last.npy")[0]
 except FileNotFoundError:
     X_steps = np.zeros((Ntraj, Nspec, Nsteps + 1, 3)) # 0th position will store vacancy jumps
