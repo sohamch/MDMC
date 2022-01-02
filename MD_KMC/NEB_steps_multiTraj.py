@@ -89,7 +89,8 @@ def getJumpSelects(rates):
     for tr in range(Ntr):
         jSelect = np.searchsorted(ratesProbSum[tr, :], rn[tr])
         jumpID[tr] = jSelect
-    return jumpID, timeStep
+    # jumpID, rateProbs, ratesCum, rndNums, time_step
+    return jumpID, ratesProb, ratesProbSum, rn, timeStep
 
 # @jit(nopython=True)
 def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList):
@@ -101,7 +102,7 @@ def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList
         jumpAtomSelect = SiteIndToSpec[tr, jumpSiteSelect]
         jumpAtomSelectArray[tr] = jumpAtomSelect
         SiteIndToSpec[tr, vacSiteInd[tr]] = jumpAtomSelect
-        SiteIndToSpec[tr, jumpSiteSelect] = -1 # The next vacancy site
+        SiteIndToSpec[tr, jumpSiteSelect] = -1  # The next vacancy site
         vacSiteInd[tr] = jumpSiteSelect
         X[tr, 0, :] = dxList[jumpID[tr]]
         X[tr, jumpAtomSelect, :] = -dxList[jumpID[tr]]
@@ -184,8 +185,8 @@ for step in range(Nsteps - stepsLast):
                 barrier_steps[step, traj, jumpInd] = ebf
                 rates_steps[step, traj, jumpInd] = rates[traj, jumpInd]
 
-    # Then do selection 
-    jumpID, time_step = getJumpSelects(rates)
+    # Then do selection
+    jumpID, rateProbs, ratesCum, rndNums, time_step = getJumpSelects(rates)
     
     # Then do the final exchange
     jumpAtomSelectArray, X_traj = updateStates(SiteIndToNgb, Nspec, SiteIndToSpec, vacSiteInd, jumpID, dxList)
