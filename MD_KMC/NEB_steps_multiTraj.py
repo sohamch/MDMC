@@ -219,7 +219,8 @@ for step in range(Nsteps - stepsLast):
         randNums_steps[step, :] = rndNums[:]
         np.save("SiteIndToSpec_{}.npy".format(step + stepsLast + 1), SiteIndToSpec)
         np.save("vacSiteInd_{}.npy".format(step + stepsLast + 1), vacSiteInd)
-        np.save("JumpSelects_{}.npy".format(step + stepsLast + 1), jumpAtomSelectArray)
+        np.save("JumpSelects_{}.npy".format(step + stepsLast + 1), jumpID)
+        np.save("JumpAtomSelects_{}.npy".format(step + stepsLast + 1), jumpAtomSelectArray)
         np.save("X_steps.npy", X_steps)
         np.save("t_steps.npy", t_steps)
         np.save("steps_last.npy", stepCount)
