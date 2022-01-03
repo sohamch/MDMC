@@ -150,7 +150,7 @@ if __test__:
     rateProb_steps = np.zeros((Nsteps, Ntraj, SiteIndToNgb.shape[1]))
     rateCsum_steps = np.zeros((Nsteps, Ntraj, SiteIndToNgb.shape[1]))
     randNums_steps = np.zeros((Nsteps, Ntraj))
-    Barriers_Spec = collections.defaultdict(list)
+Barriers_Spec = collections.defaultdict(list)
 
 for step in range(Nsteps - stepsLast):
     # Write the initial states from last accepted state
@@ -190,12 +190,11 @@ for step in range(Nsteps - stepsLast):
             rates[traj, jumpInd] = np.exp(-ebf/(kB*T))
             barriers[traj, jumpInd] = ebf
 
-            # get the jumping species
-            if __test__:
-                vInd = vacSiteInd[traj]
-                vacNgb = SiteIndToNgb[vInd, jumpInd]
-                jAtom = SiteIndToSpec[traj, vacNgb]
-                Barriers_Spec[jAtom].append(ebf)
+            # get the jumping species and store the barrier for later use
+            vInd = vacSiteInd[traj]
+            vacNgb = SiteIndToNgb[vInd, jumpInd]
+            jAtom = SiteIndToSpec[traj, vacNgb]
+            Barriers_Spec[jAtom].append(ebf)
 
     # Then do selection
     jumpID, rateProbs, ratesCsum, rndNums, time_step = getJumpSelects(rates)
@@ -242,6 +241,6 @@ if __test__:
     np.save("rateProb_steps.npy", rateProb_steps)
     np.save("rateCumulSum_steps.npy", rateCsum_steps)
     np.save("randNums_test.npy", randNums_steps)
-    with open("SpecBarriers.pkl", "wb") as fl:
-        pickle.dump(Barriers_Spec, fl)
+with open("SpecBarriers.pkl", "wb") as fl:
+    pickle.dump(Barriers_Spec, fl)
 print("Time Per Step: {:.4f} seconds".format(end - start))
