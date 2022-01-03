@@ -9,6 +9,7 @@ import subprocess
 import sys
 import time
 import collections
+import pickle
 from numba import jit, float64, int64
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 from scipy.constants import physical_constants
@@ -241,5 +242,6 @@ if __test__:
     np.save("rateProb_steps.npy", rateProb_steps)
     np.save("rateCumulSum_steps.npy", rateCsum_steps)
     np.save("randNums_test.npy", randNums_steps)
-
+    with open("SpecBarriers.pkl", "wb") as fl:
+        pickle.dump(Barriers_Spec, fl)
 print("Time Per Step: {:.4f} seconds".format(end - start))
