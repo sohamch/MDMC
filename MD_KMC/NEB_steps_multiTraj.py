@@ -8,6 +8,7 @@ import h5py
 import subprocess
 import sys
 import time
+import collections
 from numba import jit, float64, int64
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 from scipy.constants import physical_constants
@@ -148,6 +149,7 @@ if __test__:
     rateProb_steps = np.zeros((Nsteps, Ntraj, SiteIndToNgb.shape[1]))
     rateCsum_steps = np.zeros((Nsteps, Ntraj, SiteIndToNgb.shape[1]))
     randNums_steps = np.zeros((Nsteps, Ntraj))
+    Barriers_Spec = collections.defaultdict(list)
 
 for step in range(Nsteps - stepsLast):
     # Write the initial states from last accepted state
@@ -186,6 +188,13 @@ for step in range(Nsteps - stepsLast):
             ebf = float(ebfLine[6])
             rates[traj, jumpInd] = np.exp(-ebf/(kB*T))
             barriers[traj, jumpInd] = ebf
+
+            # get the jumping species
+            if __test__:
+                vInd = vacSiteInd[traj]
+                vacNgb = SiteIndToNgb[vInd, jumpInd]
+                jAtom = SiteIndToSpec[traj, vacNgb]
+                Barriers_Spec[jAtom].append(ebf)
 
     # Then do selection
     jumpID, rateProbs, ratesCsum, rndNums, time_step = getJumpSelects(rates)
