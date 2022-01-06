@@ -188,7 +188,7 @@ if not __test__:
     start = time.time()
     for smp in range(N_samples):
         # Update the state
-        N_total, N_accept = MC_Run(N_swaps, superFCC, N_proc)
+        N_total, N_accept, _ = MC_Run(N_swaps, superFCC, N_proc)
         accept_ratios[smp] = (1.0*N_accept)/N_total
         # store the occupancies
         for at in superFCC:
