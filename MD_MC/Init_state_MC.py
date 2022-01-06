@@ -27,6 +27,10 @@ __test__ = False
 a = 3.59
 fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=True)
 
+chk_cmd = subprocess.Popen("mkdir chkpt", shell=True)
+rt = chk_cmd.wait()
+assert rt == 0
+
 # Form a supercell with a vacancy at the centre
 superlatt = np.identity(3)*N_units
 superFCC = make_supercell(fcc, superlatt)
@@ -165,6 +169,8 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
             with open("timing.txt", "a") as fl:
                 t_now = time.time()
                 fl.write("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
+            with open("chkpt/supercell_{}".format(N_accept), "wb") as fl:
+                pickle.dump(ASE_Super, fl)
 
         if __test__:
             cond = N_total < 2
