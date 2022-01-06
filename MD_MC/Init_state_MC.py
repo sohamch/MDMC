@@ -169,7 +169,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
             with open("timing.txt", "a") as fl:
                 t_now = time.time()
                 fl.write("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
-            with open("chkpt/supercell_{}".format(N_accept), "wb") as fl:
+            with open("chkpt/supercell_{}.pkl".format(N_accept), "wb") as fl:
                 pickle.dump(ASE_Super, fl)
 
         if __test__:
