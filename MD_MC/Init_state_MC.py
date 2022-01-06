@@ -161,7 +161,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
 
         N_total += 1
 
-        if N_total%100==0:
+        if N_total%10==0:
             with open("timing.txt", "a") as fl:
                 t_now = time.time()
                 fl.write("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
