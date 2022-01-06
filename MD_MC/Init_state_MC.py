@@ -81,28 +81,29 @@ def write_lammps_input():
 # Next, we write the MC loop
 def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
     if serial:
-        cmdString = "$LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
+        cmdString = "mpirun -np 1 $LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
     else:
         cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs, jobID)
 
     N_accept = 0
     N_total = 0
     cond = True # condition for loop termination
-
+    Eng_steps = []
     # write the supercell as a lammps file
     write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
 
     # evaluate the energy
     cmd = subprocess.Popen(cmdString, shell=True)
     rt = cmd.wait()
-    assert rt == 0
-
+    assert rt == 0, "job ID : {}".format(jobID)
+    start_time = time.time()
     # read the energy
     with open("Eng_{0}.txt".format(jobID), "r") as fl_en:
         e1 = fl_en.readline().split()[0]
         e1 = float(e1)
 
     while cond:
+        Eng_steps.append(e1)
         if __test__:
             write_lammps_data("inp_MC_init_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
             print("e1: {}".format(e1))
@@ -159,21 +160,26 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
             write_lammps_data("Result_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
 
         N_total += 1
+
+        if N_total%100==0:
+            with open("timing.txt", "a") as fl:
+                t_now = time.time()
+                fl.wrtie("Time Per step ({0} steps): {1}\n\n".format(N_total, (t_now-start_time)/N_total)
         if __test__:
             cond = N_total < 2
         else:
             cond = N_accept <= SwapRun
 
-    return N_total, N_accept
+    return N_total, N_accept, Eng_steps
 
 # First thermalize the starting state
 write_lammps_input()
 start = time.time()
-N_total, N_accept = MC_Run(N_therm, superFCC, N_proc)
+N_total, N_accept , Eng_steps = MC_Run(N_therm, superFCC, N_proc)
 end = time.time()
 print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
 print("Thermalization Time Per iteration : {}".format((end-start)/N_total))
-
+np.save("Eng_steps_therm.npy", np.array(Eng_steps))
 if not __test__:
     occs = np.zeros((N_samples, Nsites), dtype=np.int16)
     occs[:, 0] = -1 # The vacancy is always at 0,0,0
