@@ -164,7 +164,8 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
         if N_total%100==0:
             with open("timing.txt", "a") as fl:
                 t_now = time.time()
-                fl.wrtie("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
+                fl.write("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
+
         if __test__:
             cond = N_total < 2
         else:
