@@ -21,7 +21,7 @@ N_proc = int(args[5]) # No. of procs to parallelize over
 N_samples = int(args[6]) # How many samples we want to draw from this run
 jobID = int(args[7])
 
-__test__ = False
+__test__ = True
 
 # Create an FCC primitive unit cell
 a = 3.59
@@ -79,7 +79,7 @@ def write_lammps_input():
 
 
 # Next, we write the MC loop
-def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True, at_perm=100):
+def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True, at_perm=10):
     if serial:
         cmdString = "$LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
     else:
