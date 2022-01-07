@@ -79,7 +79,7 @@ def write_lammps_input():
 
 
 # Next, we write the MC loop
-def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
+def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True, at_perm=100):
     if serial:
         cmdString = "$LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
     else:
@@ -107,19 +107,21 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
             write_lammps_data("inp_MC_init_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
             print("e1: {}".format(e1))
         # Now randomize the atomic occupancies
-        site1 = np.random.randint(0, Natoms)
-        site2 = np.random.randint(0, Natoms)
-        while ASE_Super[site1].symbol == ASE_Super[site2].symbol:
-            site1 = np.random.randint(0, Natoms)
-            site2 = np.random.randint(0, Natoms)
+        site1 = np.random.randint(0, Natoms, at_perm)
+        site2 = np.random.randint(0, Natoms, at_perm)
+
+        while any([ASE_Super[site1[at_in]].symbol == ASE_Super[site2[at_in]].symbol for at_in in range(at_perm)]):
+            site1 = np.random.randint(0, Natoms, at_perm)
+            site2 = np.random.randint(0, Natoms, at_perm)
 
         if __test__:
             print(site1, site2)
 
         # change the occupancies
-        tmp = ASE_Super[site1].symbol
-        ASE_Super[site1].symbol = ASE_Super[site2].symbol
-        ASE_Super[site2].symbol = tmp
+        for at_in in range(at_perm):
+            tmp = ASE_Super[site1[at_in]].symbol
+            ASE_Super[site1[at_in]].symbol = ASE_Super[site2[at_in]].symbol
+            ASE_Super[site2[at_in]].symbol = tmp
 
         # write the supercell again as a lammps file
         write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
