@@ -177,7 +177,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
         if __test__:
             cond = N_total < 2
         else:
-            cond = N_accept <= SwapRun
+            cond = N_total <= SwapRun
 
     return N_total, N_accept, Eng_steps
 
@@ -187,6 +187,8 @@ start = time.time()
 N_total, N_accept , Eng_steps = MC_Run(N_therm, superFCC, N_proc)
 end = time.time()
 print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
+print("Thermalization Run accepted moves : {}".format(N_accept))
+print("Thermalization Run total moves : {}".format(N_total))
 print("Thermalization Time Per iteration : {}".format((end-start)/N_total))
 np.save("Eng_steps_therm.npy", np.array(Eng_steps))
 if not __test__:
