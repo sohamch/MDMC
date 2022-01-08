@@ -106,7 +106,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
     with open("Eng_{0}.txt".format(jobID), "r") as fl_en:
         e1 = fl_en.readline().split()[0]
         e1 = float(e1)
-
+    Eng_steps.append(e1)
     while cond:
         if __test__:
             write_lammps_data("inp_MC_init_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
@@ -177,7 +177,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
         if __test__:
             cond = N_total < 2
         else:
-            cond = N_total <= SwapRun
+            cond = N_accept <= SwapRun
 
     return N_total, N_accept, Eng_steps
 
