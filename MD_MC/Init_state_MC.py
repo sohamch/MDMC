@@ -107,7 +107,6 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
         e1 = float(e1)
 
     while cond:
-        Eng_steps.append(e1)
         if __test__:
             write_lammps_data("inp_MC_init_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
             print("e1: {}".format(e1))
@@ -154,6 +153,8 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
             # Then accept the move
             N_accept += 1
             e1 = e2  # set the next initial state energy to the current final energy
+            Eng_steps.append(e1)
+
         else:
             # reject the move by reverting the occupancies to initial state values
             tmp = ASE_Super[site1].symbol
@@ -175,7 +176,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
         if __test__:
             cond = N_total < 2
         else:
-            cond = N_accept <= SwapRun
+            cond = N_total <= SwapRun
 
     return N_total, N_accept, Eng_steps
 
