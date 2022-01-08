@@ -85,7 +85,7 @@ def write_lammps_input():
 # Next, we write the MC loop
 def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
     if serial:
-        cmdString = "mpirun --use-hwthreads-cpus -np 1 $LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
+        cmdString = "mpirun --use-hwthread-cpus -np 1 $LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
     else:
         cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs, jobID)
 
