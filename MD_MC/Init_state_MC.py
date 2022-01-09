@@ -23,13 +23,14 @@ jobID = int(args[7])
 
 __test__ = False
 
+chk_cmd = subprocess.Popen("mkdir chkpt", shell=True)
+rt = chk_cmd.wait()
+assert rt == 0
+
 # Create an FCC primitive unit cell
 a = 3.59
 fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=True)
 
-chk_cmd = subprocess.Popen("mkdir chkpt", shell=True)
-rt = chk_cmd.wait()
-assert rt == 0
 
 # Form a supercell with a vacancy at the centre
 superlatt = np.identity(3)*N_units
@@ -171,10 +172,13 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
             with open("timing.txt", "a") as fl:
                 t_now = time.time()
                 fl.write("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
+
+        if if N_accept >=2000 and N_accept%200 == 0:
             with open("chkpt/supercell_{}.pkl".format(N_accept), "wb") as fl:
                 pickle.dump(ASE_Super, fl)
             with open("chkpt/counter.txt", "w") as fl:
                 fl.write("last step saved\n{}".format(N_accept))
+
         if __test__:
             cond = N_total < 2
         else:
