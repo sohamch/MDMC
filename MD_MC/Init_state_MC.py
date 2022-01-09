@@ -71,7 +71,7 @@ def write_lammps_input():
     st += "atom_modify \t sort 0 0.0\n"
     st += "read_data \t inp_MC_{0}.data\n".format(jobID)
     st += "pair_style \t meam\n"
-    st += "pair_coeff \t * * ../pot/library.meam Co Ni Cr Fe Mn ../pot/params.meam Co Ni Cr Fe Mn\n"
+    st += "pair_coeff \t * * ../../pot/library.meam Co Ni Cr Fe Mn ../../pot/params.meam Co Ni Cr Fe Mn\n"
     st += "neighbor \t 0.3 bin\n"
     st += "neigh_modify \t delay 0 every 1 check yes\n"
     st += "variable x equal pe\n"
