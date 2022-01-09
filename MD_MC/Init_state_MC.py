@@ -173,7 +173,8 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
                 fl.write("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
             with open("chkpt/supercell_{}.pkl".format(N_accept), "wb") as fl:
                 pickle.dump(ASE_Super, fl)
-
+            with open("chkpt/counter.txt", "w") as fl:
+                fl.write("last step saved\n{}".format(N_accept))
         if __test__:
             cond = N_total < 2
         else:
@@ -191,6 +192,8 @@ print("Thermalization Run accepted moves : {}".format(N_accept))
 print("Thermalization Run total moves : {}".format(N_total))
 print("Thermalization Time Per iteration : {}".format((end-start)/N_total))
 np.save("Eng_steps_therm.npy", np.array(Eng_steps))
+with open("superFCC_therm.pkl","wb") as fl:
+    pickle.dump(superFCC, fl)
 if not __test__:
     occs = np.zeros((N_samples, Nsites), dtype=np.int16)
     occs[:, 0] = -1 # The vacancy is always at 0,0,0
