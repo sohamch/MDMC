@@ -15,11 +15,9 @@ kB = physical_constants["Boltzmann constant in eV/K"][0]
 args = list(sys.argv)
 T = float(args[1])
 N_therm = int(args[2]) # thermalization steps (until this many moves accepted)
-N_swaps = int(args[3]) # intervals to draw samples from after thermalization (until this many moves accepted)
-N_units = int(args[4]) # dimensions of unit cell
-N_proc = int(args[5]) # No. of procs to parallelize over
-N_samples = int(args[6]) # How many samples we want to draw from this run
-jobID = int(args[7])
+N_units = int(args[3]) # dimensions of unit cell
+N_proc = int(args[4]) # No. of procs to parallelize over
+jobID = int(args[5])
 
 __test__ = False
 
@@ -173,7 +171,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
                 t_now = time.time()
                 fl.write("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
 
-        if if N_accept >=2000 and N_accept%200 == 0:
+        if N_accept >=2000 and N_accept%200 == 0:
             with open("chkpt/supercell_{}.pkl".format(N_accept), "wb") as fl:
                 pickle.dump(ASE_Super, fl)
             with open("chkpt/counter.txt", "w") as fl:
@@ -198,20 +196,20 @@ print("Thermalization Time Per iteration : {}".format((end-start)/N_total))
 np.save("Eng_steps_therm.npy", np.array(Eng_steps))
 with open("superFCC_therm.pkl","wb") as fl:
     pickle.dump(superFCC, fl)
-if not __test__:
-    occs = np.zeros((N_samples, Nsites), dtype=np.int16)
-    occs[:, 0] = -1 # The vacancy is always at 0,0,0
-    accept_ratios = np.zeros(N_samples)
-    # Now draw samples
-    start = time.time()
-    for smp in range(N_samples):
-        # Update the state
-        N_total, N_accept, _ = MC_Run(N_swaps, superFCC, N_proc)
-        accept_ratios[smp] = (1.0*N_accept)/N_total
-        # store the occupancies
-        for at in superFCC:
-            idx = at.index
-            occs[smp, idx+1] = elemsToNum[at.symbol]
-    end = time.time()
-    np.save("SiteIndToSpec_{0}.npy".format(jobID), occs)
-    print("{} samples drawn with {} swaps. Time: {:.4f} minutes".format(N_samples, N_swaps, (end-start)/60.))
+#if not __test__:
+#    occs = np.zeros((N_samples, Nsites), dtype=np.int16)
+#    occs[:, 0] = -1 # The vacancy is always at 0,0,0
+#    accept_ratios = np.zeros(N_samples)
+#    # Now draw samples
+#    start = time.time()
+#    for smp in range(N_samples):
+#        # Update the state
+#        N_total, N_accept, _ = MC_Run(N_swaps, superFCC, N_proc)
+#        accept_ratios[smp] = (1.0*N_accept)/N_total
+#        # store the occupancies
+#        for at in superFCC:
+#            idx = at.index
+#            occs[smp, idx+1] = elemsToNum[at.symbol]
+#    end = time.time()
+#    np.save("SiteIndToSpec_{0}.npy".format(jobID), occs)
+#    print("{} samples drawn with {} swaps. Time: {:.4f} minutes".format(N_samples, N_swaps, (end-start)/60.))
