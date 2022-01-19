@@ -82,7 +82,7 @@ def write_lammps_input():
 
 
 # Next, we write the MC loop
-def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
+def MC_Run(SwapRun, ASE_Super, Nprocs, N_therm=2000, N_save=200, serial=True):
     if serial:
         # cmdString = "mpirun -np 1 $LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
         cmdString = "$LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
@@ -166,21 +166,21 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
 
         N_total += 1
 
-        if N_total%10==0:
+        if N_total%N_save == 0:
             with open("timing.txt", "w") as fl:
                 t_now = time.time()
                 fl.write("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
 
-        if N_accept >=2000 and N_accept%200 == 0:
-            with open("chkpt/supercell_{}.pkl".format(N_accept), "wb") as fl:
-                pickle.dump(ASE_Super, fl)
-            with open("chkpt/counter.txt", "w") as fl:
-                fl.write("last step saved\n{}".format(N_accept))
+            if N_total >=2000:
+                with open("chkpt/supercell_{}.pkl".format(N_total), "wb") as fl:
+                    pickle.dump(ASE_Super, fl)
+                with open("chkpt/counter.txt", "w") as fl:
+                    fl.write("last step saved\n{}".format(N_total))
 
         if __test__:
             cond = N_total < 2
         else:
-            cond = N_total <= SwapRun
+            cond = N_total <= SwapRun + 1
 
     return N_total, N_accept, Eng_steps
 
@@ -196,20 +196,3 @@ print("Thermalization Time Per iteration : {}".format((end-start)/N_total))
 np.save("Eng_steps_therm.npy", np.array(Eng_steps))
 with open("superFCC_therm.pkl","wb") as fl:
     pickle.dump(superFCC, fl)
-#if not __test__:
-#    occs = np.zeros((N_samples, Nsites), dtype=np.int16)
-#    occs[:, 0] = -1 # The vacancy is always at 0,0,0
-#    accept_ratios = np.zeros(N_samples)
-#    # Now draw samples
-#    start = time.time()
-#    for smp in range(N_samples):
-#        # Update the state
-#        N_total, N_accept, _ = MC_Run(N_swaps, superFCC, N_proc)
-#        accept_ratios[smp] = (1.0*N_accept)/N_total
-#        # store the occupancies
-#        for at in superFCC:
-#            idx = at.index
-#            occs[smp, idx+1] = elemsToNum[at.symbol]
-#    end = time.time()
-#    np.save("SiteIndToSpec_{0}.npy".format(jobID), occs)
-#    print("{} samples drawn with {} swaps. Time: {:.4f} minutes".format(N_samples, N_swaps, (end-start)/60.))
