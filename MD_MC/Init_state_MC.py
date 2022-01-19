@@ -171,7 +171,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, N_therm=2000, N_save=200, serial=True):
                 t_now = time.time()
                 fl.write("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
 
-            if N_total >=2000:
+            if N_total >=N_therm:
                 with open("chkpt/supercell_{}.pkl".format(N_total), "wb") as fl:
                     pickle.dump(ASE_Super, fl)
                 with open("chkpt/counter.txt", "w") as fl:
