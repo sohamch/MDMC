@@ -17,10 +17,16 @@ from scipy.constants import physical_constants
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 
 args = list(sys.argv)
-T = float(args[1])
-NImage = int(args[3])
-TestCode = bool(int(args[4]))
+T = int(args[1])
+Ntraj = int(args[2]) # how many trajectories we want to simulate
+startIndex = int(args[3])
+batchSize = int(args[4]) # we'll evaluate the single-step trajectories in batches
+NImage = int(args[5])
+TestCode = bool(int(args[6]))
 ProcPerImage = 1
+
+if Ntraj%batchSize != 0:
+    raise ValueError("batchSize does not divide Ntraj integrally.")
 
 __test__ = TestCode
 
@@ -116,45 +122,41 @@ dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 
 
 # Load the starting data for the trajectories
-SiteIndToSpec = np.load("SiteIndToSpec.npy") # Ntraj x Nsites array of occupancies
-vacSiteInd = np.load("vacSiteInd.npy") # Ntraj size array: contains where the vac is in each traj.
-specs, counts = np.unique(SiteIndToSpec[0], return_counts=True)
+SiteIndToSpec = np.load("states_{}.npy".format(T))[startIndex : startIndex + Ntraj].astype(np.int16) # Ntraj x Nsites array of occupancies
+assert np.all(SiteIndToSpecAll[:, 0] == 0) # check that the vacancy is always at the 0th site in the initial states
+vacSiteIndAll = np.zeros(Ntraj, dtype=int) # Ntraj size array: contains where the vac is in each traj.
+SiteIndToSpecAll[:, 0] = -1 # set vacancy occupancy to -1 to match the functions
+
+specs, counts = np.unique(SiteIndToSpecAll[0], return_counts=True)
 Nspec = len(specs)  # including the vacancy
-Ntraj = SiteIndToSpec.shape[0]
 
 Nsites = SiteIndToSpec.shape[1]
 
 Initlines[2] = "{} \t atoms\n".format(Nsites - 1)
 Initlines[3] = "{} atom types\n".format(Nspec-1)
 
-try:
-    X_steps = np.load("X_steps.npy")
-    t_steps = np.load("t_steps.npy")
-    stepsLast = np.load("steps_last.npy")[0]
-except FileNotFoundError:
-    X_steps = np.zeros((Ntraj, Nspec, Nsteps + 1, 3)) # 0th position will store vacancy jumps
-    t_steps = np.zeros((Ntraj, Nsteps + 1))
-    stepsLast = 0
-    
-stepCount = np.zeros(1, dtype=int)
-# Before starting, write the lammps input files
-write_input_files(Ntraj)
-print("Running {0} steps at {1} K on {2} trajectories".format(Nsteps, T, Ntraj))
-print("Previously Done : {} steps".format(stepsLast))
-print("Testing : {}".format(__test__))
+FinalStates = np.zeros_like(SiteIndToSpecAll).astype(np.int16)
+FinalVacSites = np.zeros(Ntraj).astype(np.int16)
+SpecDisps = np.zeros((Ntraj, Nspec, 3))
+tarr = np.zeros(Ntraj)
+JumpSelects = np.zeros(Ntraj, dtype=np.int8) # which jump is chosen for each trajectory
+
+# rates will be stored for the first batch for testing
+TestRates = np.zeros((batchSize, 12)) # store all the rates to be tested
+TestBarriers = np.zeros((batchSize, 12)) # store all the barriers to be tested
+randomNums = np.zeros(batchSize) # store the random numbers used in the test trajectories
+
+# write the input file
+Inputs = write_input_files(batchSize)
+Nbatch = Ntraj//batchSize
 start = time.time()
-if __test__:
-    rates_steps = np.zeros((Nsteps, Ntraj, SiteIndToNgb.shape[1]))
-    barrier_steps = np.zeros((Nsteps, Ntraj, SiteIndToNgb.shape[1]))
-    rateProb_steps = np.zeros((Nsteps, Ntraj, SiteIndToNgb.shape[1]))
-    rateCsum_steps = np.zeros((Nsteps, Ntraj, SiteIndToNgb.shape[1]))
-    randNums_steps = np.zeros((Nsteps, Ntraj))
-Barriers_Spec = collections.defaultdict(list)
 
-for step in range(Nsteps - stepsLast):
+for batch in range(Nbatch):
     # Write the initial states from last accepted state
+    SiteIndToSpec = SiteIndToSpecAll[batch*batchSize : (batch + 1)*batchSize]
+    vacSiteInd = vacSiteIndAll[batch*batchSize : (batch + 1)*batchSize]
     write_init_states(SiteIndToSpec, vacSiteInd, Initlines)
-
+    
     rates = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
     barriers = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
     for jumpInd in range(SiteIndToNgb.shape[1]):
