@@ -150,6 +150,8 @@ Inputs = write_input_files(batchSize)
 Nbatch = Ntraj//batchSize
 start = time.time()
 
+Barriers_Spec = collections.defaultdict(list)
+
 for batch in range(Nbatch):
     # Write the initial states from last accepted state
     SiteIndToSpec = SiteIndToSpecAll[batch*batchSize : (batch + 1)*batchSize]
@@ -161,12 +163,14 @@ for batch in range(Nbatch):
     for jumpInd in range(SiteIndToNgb.shape[1]):
         # Write the final states in NEB format for lammps
         write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd)
-        #if __test__:
-        #    # Store the final data for each traj, at each step and for each jump
-        #    for traj in range(Ntraj):
-        #        cmd = subprocess.Popen("cp final_{0}.data final_{0}_{1}_{2}.data".format(traj, step, jumpInd), shell=True)
-        #        rt = cmd.wait()
-        #        assert rt == 0
+
+        # store the final lammps files for the first batch of states
+        if __test__ and batch == 0:
+            # Store the final data for each traj, at each step and for each jump
+            for traj in range(batchSize):
+                cmd = subprocess.Popen("cp final_{0}.data final_{0}_{1}.data".format(traj, jumpInd), shell=True)
+                rt = cmd.wait()
+                assert rt == 0
 
         # Then run lammps
         commands = [
@@ -181,7 +185,7 @@ for batch in range(Nbatch):
             assert rt_code == 0  # check for system errors
         
         # Then read the forward barrier -> ebf
-        for traj in range(Ntraj):
+        for traj in range(batchSize):
             with open("out_{0}.txt".format(traj), "r") as fl:
                 for line in fl:
                     continue
