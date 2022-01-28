@@ -143,18 +143,19 @@ TestBarriers = np.zeros((batchSize, 12)) # store all the barriers to be tested
 TestRandomNums = np.zeros(batchSize) # store the random numbers used in the test trajectories
 
 # write the input file
-Inputs = write_input_files(batchSize)
 Nbatch = Ntraj//batchSize
-start = time.time()
 
 Barriers_Spec = collections.defaultdict(list)
 
+write_input_files(batchSize)
+start_timer = time.time()
 for batch in range(Nbatch):
     # Write the initial states from last accepted state
     sampleStart = batch*batchSize
     sampleEnd = (batch+1)*batchSize
     SiteIndToSpec = SiteIndToSpecAll[sampleStart : sampleEnd].copy()
     vacSiteInd = vacSiteIndAll[sampleStart : sampleEnd].copy()
+    
     write_init_states(SiteIndToSpec, vacSiteInd, Initlines)
     
     rates = np.zeros((batchSize, SiteIndToNgb.shape[1]))
@@ -173,8 +174,8 @@ for batch in range(Nbatch):
 
         # Then run lammps
         commands = [
-            "mpirun -np {0} --oversubscribe $LMPPATH/lmp -p {0}x1 -in in.neb_{1} > out_{1}.txt".format(NImage, traj)
-            for traj in range(Ntraj)
+            "mpirun -np {0} $LMPPATH/lmp -p {0}x1 -in in.neb_{1} > out_{1}.txt".format(NImage, traj)
+            for traj in range(batchSize)
         ]
         cmdList = [subprocess.Popen(cmd, shell=True) for cmd in commands]
         
@@ -221,7 +222,7 @@ for batch in range(Nbatch):
     SpecDisps[sampleStart:sampleEnd, :, :] = X_traj[:, :, :]
     tarr[sampleStart:sampleEnd] = time_step[:]
 
-end = time.time()
+end_timer = time.time()
 with open("SpecBarriers.pkl", "wb") as fl:
     pickle.dump(Barriers_Spec, fl)
 
@@ -234,3 +235,5 @@ with h5py.File("data_{0}_{1}.h5".format(T, startIndex), "w") as fl:
     fl.create_dataset("TestRandNums", data=TestRandomNums)
     fl.create_dataset("TestRates", data=TestRates)
     fl.create_dataset("TestBarriers", data=TestBarriers)
+
+print("Execution time: {}".format(end_timer-start_timer))
