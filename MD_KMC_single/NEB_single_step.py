@@ -158,8 +158,8 @@ for batch in range(Nbatch):
     vacSiteInd = vacSiteIndAll[batch*batchSize : (batch + 1)*batchSize]
     write_init_states(SiteIndToSpec, vacSiteInd, Initlines)
     
-    rates = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
-    barriers = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
+    rates = np.zeros((batchSize, SiteIndToNgb.shape[1]))
+    barriers = np.zeros((batchSize, SiteIndToNgb.shape[1]))
     for jumpInd in range(SiteIndToNgb.shape[1]):
         # Write the final states in NEB format for lammps
         write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd)
@@ -200,9 +200,19 @@ for batch in range(Nbatch):
             jAtom = SiteIndToSpec[traj, vacNgb]
             Barriers_Spec[jAtom].append(ebf)
 
+    if batch == 0:
+        TestRates[:, :] = rates[:, :]
+        TestBarriers[:, :] = barriers[:, :]
+
     # Then do selection
     jumpID, rateProbs, ratesCsum, rndNums, time_step = getJumpSelects(rates)
-    
+    # store the selected jumps
+    JumpSelects[batch*batchSize : (batch+1)*batchSize] = jumpID[:]
+
+    # store the random numbers for the first set of jump
+    if batch == 0:
+        randomNums[:] = rndNums[:]
+
     # Then do the final exchange
     jumpAtomSelectArray, X_traj = updateStates(SiteIndToNgb, Nspec, SiteIndToSpec, vacSiteInd, jumpID, dxList)
     # def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList):
