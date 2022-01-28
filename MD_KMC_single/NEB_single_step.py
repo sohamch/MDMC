@@ -100,10 +100,10 @@ def getJumpSelects(rates):
 
 # @jit(nopython=True)
 def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList):
-    Ntraj = jumpID.shape[0]
-    jumpAtomSelectArray = np.zeros(Ntraj, dtype=int)
-    X = np.zeros((Ntraj, Nspec, 3), dtype=float)
-    for tr in range(Ntraj):
+    Ntr = jumpID.shape[0]
+    jumpAtomSelectArray = np.zeros(Ntr, dtype=int)
+    X = np.zeros((Ntr, Nspec, 3), dtype=float)
+    for tr in range(Ntr):
         jumpSiteSelect = SiteIndToNgb[vacSiteInd[tr], jumpID[tr]]
         jumpAtomSelect = SiteIndToSpec[tr, jumpSiteSelect]
         jumpAtomSelectArray[tr] = jumpAtomSelect
@@ -154,7 +154,7 @@ Barriers_Spec = collections.defaultdict(list)
 
 for batch in range(Nbatch):
     # Write the initial states from last accepted state
-    SiteIndToSpec = SiteIndToSpecAll[batch*batchSize : (batch + 1)*batchSize]
+    SiteIndToSpec = SiteIndToSpecAll[batch*batchSize : (batch + 1)*batchSize].copy()
     vacSiteInd = vacSiteIndAll[batch*batchSize : (batch + 1)*batchSize]
     write_init_states(SiteIndToSpec, vacSiteInd, Initlines)
     
@@ -221,29 +221,13 @@ for batch in range(Nbatch):
     t_steps[:, step + stepsLast + 1] = time_step
     stepCount[0] = step + stepsLast + 1
     
-    # save arrays for next step
+    # save final states, displacements and times
+    FinalStates[batch*batchSize : (batch+1)*batchSize, :] = SiteIndToSpec[:, :]
+    SpecDisps
+
     if not __test__:
         np.save("SiteIndToSpec.npy", SiteIndToSpec)
         np.save("vacSiteInd.npy", vacSiteInd)
-        np.save("X_steps.npy", X_steps)
-        np.save("t_steps.npy", t_steps)
-        np.save("steps_last.npy", stepCount)
-    else:
-        print(rates)
-        # Store the initial state for each traj, at each step
-        for traj in range(Ntraj):
-            cmd = subprocess.Popen("cp initial_{0}.data initial_{0}_{1}.data".format(traj, step), shell=True)
-            rt = cmd.wait()
-            assert rt == 0
-        barrier_steps[step, :, :] = barriers[:, :]
-        rates_steps[step, :, :] = rates[:, :]
-        rateProb_steps[step, : , :] = rateProbs[:, :]
-        rateCsum_steps[step, :, :] = ratesCsum[:, :]
-        randNums_steps[step, :] = rndNums[:]
-        np.save("SiteIndToSpec_{}.npy".format(step + stepsLast + 1), SiteIndToSpec)
-        np.save("vacSiteInd_{}.npy".format(step + stepsLast + 1), vacSiteInd)
-        np.save("JumpSelects_{}.npy".format(step + stepsLast + 1), jumpID)
-        np.save("JumpAtomSelects_{}.npy".format(step + stepsLast + 1), jumpAtomSelectArray)
         np.save("X_steps.npy", X_steps)
         np.save("t_steps.npy", t_steps)
         np.save("steps_last.npy", stepCount)
