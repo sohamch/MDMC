@@ -161,12 +161,12 @@ for batch in range(Nbatch):
     for jumpInd in range(SiteIndToNgb.shape[1]):
         # Write the final states in NEB format for lammps
         write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd)
-        if __test__:
-            # Store the final data for each traj, at each step and for each jump
-            for traj in range(Ntraj):
-                cmd = subprocess.Popen("cp final_{0}.data final_{0}_{1}_{2}.data".format(traj, step, jumpInd), shell=True)
-                rt = cmd.wait()
-                assert rt == 0
+        #if __test__:
+        #    # Store the final data for each traj, at each step and for each jump
+        #    for traj in range(Ntraj):
+        #        cmd = subprocess.Popen("cp final_{0}.data final_{0}_{1}_{2}.data".format(traj, step, jumpInd), shell=True)
+        #        rt = cmd.wait()
+        #        assert rt == 0
 
         # Then run lammps
         commands = [
