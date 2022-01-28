@@ -221,6 +221,8 @@ for batch in range(Nbatch):
     FinalStates[sampleStart : sampleEnd, :] = SiteIndToSpec[:, :]
     SpecDisps[sampleStart:sampleEnd, :, :] = X_traj[:, :, :]
     tarr[sampleStart:sampleEnd] = time_step[:]
+    with open("BatchTiming.txt", "a") as fl:
+        fl.write("batch {0} of {1} completed in : {2} seconds\n".format(batch+1, Nbatch, time.time()-start_timer))
 
 end_timer = time.time()
 with open("SpecBarriers.pkl", "wb") as fl:
