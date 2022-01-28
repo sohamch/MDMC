@@ -21,13 +21,10 @@ Ntraj = int(args[2]) # how many trajectories we want to simulate
 startIndex = int(args[3])
 batchSize = int(args[4]) # we'll evaluate the single-step trajectories in batches
 NImage = int(args[5])
-TestCode = bool(int(args[6]))
 ProcPerImage = 1
 
 if Ntraj%batchSize != 0:
     raise ValueError("batchSize does not divide Ntraj integrally.")
-
-__test__ = TestCode
 
 with open("lammpsBox.txt", "r") as fl:
     Initlines = fl.readlines()
@@ -167,7 +164,7 @@ for batch in range(Nbatch):
         write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd)
 
         # store the final lammps files for the first batch of states
-        if __test__ and batch == 0:
+        if batch == 0:
             # Store the final data for each traj, at each step and for each jump
             for traj in range(batchSize):
                 cmd = subprocess.Popen("cp final_{0}.data final_{0}_{1}.data".format(traj, jumpInd), shell=True)
