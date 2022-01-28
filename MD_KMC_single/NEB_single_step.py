@@ -143,7 +143,7 @@ JumpSelects = np.zeros(Ntraj, dtype=np.int8) # which jump is chosen for each tra
 # rates will be stored for the first batch for testing
 TestRates = np.zeros((batchSize, 12)) # store all the rates to be tested
 TestBarriers = np.zeros((batchSize, 12)) # store all the barriers to be tested
-randomNums = np.zeros(batchSize) # store the random numbers used in the test trajectories
+TestRandomNums = np.zeros(batchSize) # store the random numbers used in the test trajectories
 
 # write the input file
 Inputs = write_input_files(batchSize)
@@ -154,8 +154,10 @@ Barriers_Spec = collections.defaultdict(list)
 
 for batch in range(Nbatch):
     # Write the initial states from last accepted state
-    SiteIndToSpec = SiteIndToSpecAll[batch*batchSize : (batch + 1)*batchSize].copy()
-    vacSiteInd = vacSiteIndAll[batch*batchSize : (batch + 1)*batchSize]
+    sampleStart = batch*batchSize
+    sampleEnd = (batch+1)*batchSize
+    SiteIndToSpec = SiteIndToSpecAll[sampleStart : sampleEnd].copy()
+    vacSiteInd = vacSiteIndAll[sampleStart : sampleEnd].copy()
     write_init_states(SiteIndToSpec, vacSiteInd, Initlines)
     
     rates = np.zeros((batchSize, SiteIndToNgb.shape[1]))
@@ -207,38 +209,31 @@ for batch in range(Nbatch):
     # Then do selection
     jumpID, rateProbs, ratesCsum, rndNums, time_step = getJumpSelects(rates)
     # store the selected jumps
-    JumpSelects[batch*batchSize : (batch+1)*batchSize] = jumpID[:]
+    JumpSelects[sampleStart : sampleEnd] = jumpID[:]
 
     # store the random numbers for the first set of jump
     if batch == 0:
-        randomNums[:] = rndNums[:]
+        TestRandomNums[:] = rndNums[:]
 
     # Then do the final exchange
     jumpAtomSelectArray, X_traj = updateStates(SiteIndToNgb, Nspec, SiteIndToSpec, vacSiteInd, jumpID, dxList)
     # def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList):
-    # Note the displacements and the time
-    X_steps[:, :, step + stepsLast + 1, :] = X_traj[:, :, :]
-    t_steps[:, step + stepsLast + 1] = time_step
-    stepCount[0] = step + stepsLast + 1
     
     # save final states, displacements and times
-    FinalStates[batch*batchSize : (batch+1)*batchSize, :] = SiteIndToSpec[:, :]
-    SpecDisps
-
-    if not __test__:
-        np.save("SiteIndToSpec.npy", SiteIndToSpec)
-        np.save("vacSiteInd.npy", vacSiteInd)
-        np.save("X_steps.npy", X_steps)
-        np.save("t_steps.npy", t_steps)
-        np.save("steps_last.npy", stepCount)
+    FinalStates[sampleStart : sampleEnd, :] = SiteIndToSpec[:, :]
+    SpecDisps[sampleStart:sampleEnd, :, :] = X_traj[:, :, :]
+    tarr[sampleStart:sampleEnd] = time_step[:]
 
 end = time.time()
-if __test__:
-    np.save("Rates_steps_test.npy", rates_steps)
-    np.save("Barriers_steps_test.npy", barrier_steps)
-    np.save("rateProb_steps.npy", rateProb_steps)
-    np.save("rateCumulSum_steps.npy", rateCsum_steps)
-    np.save("randNums_test.npy", randNums_steps)
 with open("SpecBarriers.pkl", "wb") as fl:
     pickle.dump(Barriers_Spec, fl)
-print("Time Per Step: {:.4f} seconds".format(end - start))
+
+# Next, save all the arrays in an hdf5 file
+with h5py.File("data_{0}_{1}.h5".format(T, startIndex), "w") as fl:
+    fl.create_dataset("FinalStates", data=FinalStates)
+    fl.create_dataset("SpecDisps", data=SpecDisps)
+    fl.create_dataset("times", data=tarr)
+    fl.create_dataset("JumpSelects", data=JumpSelects)
+    fl.create_dataset("TestRandNums", data=TestRandomNums)
+    fl.create_dataset("TestRates", data=TestRates)
+    fl.create_dataset("TestBarriers", data=TestBarriers)
