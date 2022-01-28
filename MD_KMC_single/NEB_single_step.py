@@ -118,7 +118,7 @@ dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 
 
 # Load the starting data for the trajectories
-SiteIndToSpec = np.load("states_{}.npy".format(T))[startIndex : startIndex + Ntraj].astype(np.int16) # Ntraj x Nsites array of occupancies
+SiteIndToSpecAll = np.load("states_{}.npy".format(T))[startIndex : startIndex + Ntraj].astype(np.int16) # Ntraj x Nsites array of occupancies
 assert np.all(SiteIndToSpecAll[:, 0] == 0) # check that the vacancy is always at the 0th site in the initial states
 vacSiteIndAll = np.zeros(Ntraj, dtype=int) # Ntraj size array: contains where the vac is in each traj.
 SiteIndToSpecAll[:, 0] = -1 # set vacancy occupancy to -1 to match the functions
@@ -126,7 +126,7 @@ SiteIndToSpecAll[:, 0] = -1 # set vacancy occupancy to -1 to match the functions
 specs, counts = np.unique(SiteIndToSpecAll[0], return_counts=True)
 Nspec = len(specs)  # including the vacancy
 
-Nsites = SiteIndToSpec.shape[1]
+Nsites = SiteIndToSpecAll.shape[1]
 
 Initlines[2] = "{} \t atoms\n".format(Nsites - 1)
 Initlines[3] = "{} atom types\n".format(Nspec-1)
