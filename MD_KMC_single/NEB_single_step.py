@@ -118,7 +118,8 @@ dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 
 
 # Load the starting data for the trajectories
-SiteIndToSpecAll = np.load("states_{}.npy".format(T))[startIndex : startIndex + Ntraj].astype(np.int16) # Ntraj x Nsites array of occupancies
+statePath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC_single/"
+SiteIndToSpecAll = np.load(statePath + "states_{}.npy".format(T))[startIndex : startIndex + Ntraj].astype(np.int16) # Ntraj x Nsites array of occupancies
 assert np.all(SiteIndToSpecAll[:, 0] == 0) # check that the vacancy is always at the 0th site in the initial states
 vacSiteIndAll = np.zeros(Ntraj, dtype=int) # Ntraj size array: contains where the vac is in each traj.
 SiteIndToSpecAll[:, 0] = -1 # set vacancy occupancy to -1 to match the functions
