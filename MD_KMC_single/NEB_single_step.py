@@ -11,7 +11,6 @@ import time
 import collections
 import pickle
 from numba import jit, float64, int64
-from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 from scipy.constants import physical_constants
 
 kB = physical_constants["Boltzmann constant in eV/K"][0]
