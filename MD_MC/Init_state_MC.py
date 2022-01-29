@@ -10,57 +10,8 @@ from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 import sys
 from scipy.constants import physical_constants
 
-kB = physical_constants["Boltzmann constant in eV/K"][0]
-
-args = list(sys.argv)
-T = float(args[1])
-N_therm = int(args[2]) # thermalization steps (until this many moves accepted)
-N_units = int(args[3]) # dimensions of unit cell
-N_proc = int(args[4]) # No. of procs to parallelize over
-jobID = int(args[5])
-
-__test__ = False
-
-chk_cmd = subprocess.Popen("mkdir chkpt", shell=True)
-rt = chk_cmd.wait()
-assert rt == 0
-
-# Create an FCC primitive unit cell
-a = 3.59
-fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=True)
-
-
-# Form a supercell with a vacancy at the centre
-superlatt = np.identity(3)*N_units
-superFCC = make_supercell(fcc, superlatt)
-Nsites = len(superFCC.get_positions())
-# randomize occupancies of the sites
-Nperm = 10
-Indices = np.arange(Nsites)
-for i in range(Nperm):
-    Indices = np.random.permutation(Indices)
-
-NSpec = 5
-partition = Nsites//NSpec
-
-elems = ["Co", "Ni", "Cr", "Fe", "Mn"]
-elemsToNum = {}
-for elemInd, el in enumerate(elems):
-    elemsToNum[el] = elemInd + 1
-    
-for i in range(NSpec):
-    for at_Ind in range(i*partition, (i+1)*partition):
-        permInd = Indices[at_Ind]
-        superFCC[permInd].symbol = elems[i]
-del(superFCC[0])
-Natoms = len(superFCC)
-
-# save the supercell: will be useful for getting site positions
-with open("superInitial_{}.pkl".format(jobID),"wb") as fl:
-    pickle.dump(superFCC, fl)
-
 # First, we write a lammps input script for this run
-def write_lammps_input():
+def write_lammps_input(jobID):
     seed = np.random.randint(0, 10000)
     st = "units \t metal\n"
     st += "atom_style \t atomic\n"
@@ -82,7 +33,7 @@ def write_lammps_input():
 
 
 # Next, we write the MC loop
-def MC_Run(SwapRun, ASE_Super, Nprocs, N_therm=2000, N_save=200, serial=True):
+def MC_Run(SwapRun, ASE_Super, Nprocs, N_therm=2000, N_save=200, serial=True, __test__=False):
     if serial:
         # cmdString = "mpirun -np 1 $LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
         cmdString = "$LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
@@ -184,15 +135,62 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, N_therm=2000, N_save=200, serial=True):
 
     return N_total, N_accept, Eng_steps
 
-# First thermalize the starting state
-write_lammps_input()
-start = time.time()
-N_total, N_accept , Eng_steps = MC_Run(N_therm, superFCC, N_proc)
-end = time.time()
-print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
-print("Thermalization Run accepted moves : {}".format(N_accept))
-print("Thermalization Run total moves : {}".format(N_total))
-print("Thermalization Time Per iteration : {}".format((end-start)/N_total))
-np.save("Eng_steps_therm.npy", np.array(Eng_steps))
-with open("superFCC_therm.pkl","wb") as fl:
-    pickle.dump(superFCC, fl)
+if __name__ == "__main__":
+    kB = physical_constants["Boltzmann constant in eV/K"][0]
+    args = list(sys.argv)
+    T = float(args[1])
+    N_therm = int(args[2])  # thermalization steps (until this many moves accepted)
+    N_units = int(args[3])  # dimensions of unit cell
+    N_proc = int(args[4])  # No. of procs to parallelize over
+    jobID = int(args[5])
+
+    __test__ = False
+    chk_cmd = subprocess.Popen("mkdir chkpt", shell=True)
+    rt = chk_cmd.wait()
+    assert rt == 0
+
+    # Create an FCC primitive unit cell
+    a = 3.59
+    fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=True)
+
+    # Form a supercell with a vacancy at the centre
+    superlatt = np.identity(3) * N_units
+    superFCC = make_supercell(fcc, superlatt)
+    Nsites = len(superFCC.get_positions())
+    # randomize occupancies of the sites
+    Nperm = 10
+    Indices = np.arange(Nsites)
+    for i in range(Nperm):
+        Indices = np.random.permutation(Indices)
+
+    NSpec = 5
+    partition = Nsites // NSpec
+
+    elems = ["Co", "Ni", "Cr", "Fe", "Mn"]
+    elemsToNum = {}
+    for elemInd, el in enumerate(elems):
+        elemsToNum[el] = elemInd + 1
+
+    for i in range(NSpec):
+        for at_Ind in range(i * partition, (i + 1) * partition):
+            permInd = Indices[at_Ind]
+            superFCC[permInd].symbol = elems[i]
+    del (superFCC[0])
+    Natoms = len(superFCC)
+
+    # save the supercell: will be useful for getting site positions
+    with open("superInitial_{}.pkl".format(jobID), "wb") as fl:
+        pickle.dump(superFCC, fl)
+
+    # First thermalize the starting state
+    write_lammps_input(jobID)
+    start = time.time()
+    N_total, N_accept , Eng_steps = MC_Run(N_therm, superFCC, N_proc, __test__=__test__)
+    end = time.time()
+    print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
+    print("Thermalization Run accepted moves : {}".format(N_accept))
+    print("Thermalization Run total moves : {}".format(N_total))
+    print("Thermalization Time Per iteration : {}".format((end-start)/N_total))
+    np.save("Eng_steps_therm.npy", np.array(Eng_steps))
+    with open("superFCC_therm.pkl","wb") as fl:
+        pickle.dump(superFCC, fl)
