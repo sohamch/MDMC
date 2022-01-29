@@ -116,15 +116,16 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
         N_total += 1
 
         if N_total%N_save == 0:
-            with open("timing.txt", "w") as fl:
+            with open("timing.txt", "w") as fl_timer:
                 t_now = time.time()
-                fl.write("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
+                fl_timer.write("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
 
-            if N_total >=N_therm:
-                with open("chkpt/supercell_{}.pkl".format(N_total), "wb") as fl:
-                    pickle.dump(ASE_Super, fl)
-                with open("chkpt/counter.txt", "w") as fl:
-                    fl.write("last step saved\n{}".format(N_total))
+            if N_total >= N_therm:
+                with open("chkpt/supercell_{}.pkl".format(N_total), "wb") as fl_sup:
+                    pickle.dump(ASE_Super, fl_sup)
+
+                with open("chkpt/counter.txt", "w") as fl_counter:
+                    fl_counter.write("last step saved\n{}".format(N_total))
 
         if __test__:
             write_lammps_data("Result_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
