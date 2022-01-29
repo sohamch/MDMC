@@ -33,17 +33,22 @@ def write_lammps_input(jobID):
 
 
 # Next, we write the MC loop
-def MC_Run(SwapRun, ASE_Super, Nprocs, N_therm=2000, N_save=200, serial=True, __test__=False):
+def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, N_therm=2000, N_save=200, serial=True, __test__=False):
     if serial:
         # cmdString = "mpirun -np 1 $LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
         cmdString = "$LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
     else:
         cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs, jobID)
 
+    if __test__:
+        N_therm = 1
+        N_save = 1
+
     N_accept = 0
     N_total = 0
-    cond = True # condition for loop termination
     Eng_steps = []
+    rand_steps = []
+    swap_steps = []
     # write the supercell as a lammps file
     write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
 
@@ -57,6 +62,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, N_therm=2000, N_save=200, serial=True, __
         e1 = fl_en.readline().split()[0]
         e1 = float(e1)
     Eng_steps.append(e1)
+    cond = True  # condition for loop termination
     while cond:
         if __test__:
             write_lammps_data("inp_MC_init_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
@@ -92,13 +98,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, N_therm=2000, N_save=200, serial=True, __
 
         # make decision
         de = e2 - e1
-        if __test__:
-            print("e2: {}".format(e2))
-            print("de: {}".format(de))
         rn = np.random.rand()
-        if __test__:
-            print("random number: {}".format(rn))
-            print("relative prob (e2:e1): {}".format(np.exp(-de/(kB*T))))
 
         if rn < np.exp(-de/(kB*T)):
             # Then accept the move
@@ -111,9 +111,6 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, N_therm=2000, N_save=200, serial=True, __
             tmp = ASE_Super[site1].symbol
             ASE_Super[site1].symbol = ASE_Super[site2].symbol
             ASE_Super[site2].symbol = tmp
-
-        if __test__:
-            write_lammps_data("Result_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
 
         N_total += 1
 
@@ -129,11 +126,16 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, N_therm=2000, N_save=200, serial=True, __
                     fl.write("last step saved\n{}".format(N_total))
 
         if __test__:
+            write_lammps_data("Result_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
+            rand_steps.append(rn)
+            swap_steps.append([site1, site2])
             cond = N_total < 2
+
         else:
             cond = N_total <= SwapRun + 1
 
-    return N_total, N_accept, Eng_steps
+    return N_total, N_accept, Eng_steps, rand_steps
+
 
 if __name__ == "__main__":
     kB = physical_constants["Boltzmann constant in eV/K"][0]
@@ -185,7 +187,7 @@ if __name__ == "__main__":
     # First thermalize the starting state
     write_lammps_input(jobID)
     start = time.time()
-    N_total, N_accept , Eng_steps = MC_Run(N_therm, superFCC, N_proc, __test__=__test__)
+    N_total, N_accept, Eng_steps, _ = MC_Run(N_therm, superFCC, N_proc, jobID, __test__=__test__)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
