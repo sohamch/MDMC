@@ -47,7 +47,9 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
 
     N_accept = 0
     N_total = 0
-    Eng_steps = []
+    Eng_steps_accept = []
+    Eng_steps_all = []
+
     rand_steps = []
     swap_steps = []
     # write the supercell as a lammps file
@@ -62,12 +64,13 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
     with open("Eng_{0}.txt".format(jobID), "r") as fl_en:
         e1 = fl_en.readline().split()[0]
         e1 = float(e1)
-    Eng_steps.append(e1)
+    Eng_steps_accept.append(e1)
     cond = True  # condition for loop termination
     while cond:
+        Eng_steps_all.append(e1)
         if __test__:
             write_lammps_data("inp_MC_init_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
-            print("e1: {}".format(e1))
+
         # Now randomize the atomic occupancies
         site1 = np.random.randint(0, Natoms)
         site2 = np.random.randint(0, Natoms)
@@ -105,7 +108,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
             # Then accept the move
             N_accept += 1
             e1 = e2  # set the next initial state energy to the current final energy
-            Eng_steps.append(e1)
+            Eng_steps_accept.append(e1)
 
         else:
             # reject the move by reverting the occupancies to initial state values
@@ -137,7 +140,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
         else:
             cond = N_total <= SwapRun + 1
 
-    return N_total, N_accept, Eng_steps, rand_steps, swap_steps
+    return N_total, N_accept, Eng_steps_accept, Eng_steps_all, rand_steps, swap_steps
 
 
 if __name__ == "__main__":
@@ -190,7 +193,7 @@ if __name__ == "__main__":
     # First thermalize the starting state
     write_lammps_input(jobID)
     start = time.time()
-    N_total, N_accept, Eng_steps, _, _ = MC_Run(N_therm, superFCC, N_proc, jobID, elems, __test__=__test__)
+    N_total, N_accept, Eng_steps, _, _, _ = MC_Run(N_therm, superFCC, N_proc, jobID, elems, __test__=__test__)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
