@@ -15,17 +15,20 @@ kB = physical_constants["Boltzmann constant in eV/K"][0]
 args = list(sys.argv)
 T = float(args[1])
 N_therm = int(args[2]) # thermalization steps (until this many moves accepted)
-N_swaps = int(args[3]) # intervals to draw samples from after thermalization (until this many moves accepted)
-N_units = int(args[4]) # dimensions of unit cell
-N_proc = int(args[5]) # No. of procs to parallelize over
-N_samples = int(args[6]) # How many samples we want to draw from this run
-jobID = int(args[7])
+N_units = int(args[3]) # dimensions of unit cell
+N_proc = int(args[4]) # No. of procs to parallelize over
+jobID = int(args[5])
 
 __test__ = False
+
+chk_cmd = subprocess.Popen("mkdir chkpt", shell=True)
+rt = chk_cmd.wait()
+assert rt == 0
 
 # Create an FCC primitive unit cell
 a = 3.59
 fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=True)
+
 
 # Form a supercell with a vacancy at the centre
 superlatt = np.identity(3)*N_units
@@ -66,7 +69,7 @@ def write_lammps_input():
     st += "atom_modify \t sort 0 0.0\n"
     st += "read_data \t inp_MC_{0}.data\n".format(jobID)
     st += "pair_style \t meam\n"
-    st += "pair_coeff \t * * ../pot/library.meam Co Ni Cr Fe Mn ../pot/params.meam Co Ni Cr Fe Mn\n"
+    st += "pair_coeff \t * * ../../pot/library.meam Co Ni Cr Fe Mn ../../pot/params.meam Co Ni Cr Fe Mn\n"
     st += "neighbor \t 0.3 bin\n"
     st += "neigh_modify \t delay 0 every 1 check yes\n"
     st += "variable x equal pe\n"
@@ -79,8 +82,9 @@ def write_lammps_input():
 
 
 # Next, we write the MC loop
-def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
+def MC_Run(SwapRun, ASE_Super, Nprocs, N_therm=2000, N_save=200, serial=True):
     if serial:
+        # cmdString = "mpirun -np 1 $LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
         cmdString = "$LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
     else:
         cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs, jobID)
@@ -88,20 +92,20 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
     N_accept = 0
     N_total = 0
     cond = True # condition for loop termination
-
+    Eng_steps = []
     # write the supercell as a lammps file
     write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
 
     # evaluate the energy
     cmd = subprocess.Popen(cmdString, shell=True)
     rt = cmd.wait()
-    assert rt == 0
-
+    assert rt == 0, "job ID : {}".format(jobID)
+    start_time = time.time()
     # read the energy
     with open("Eng_{0}.txt".format(jobID), "r") as fl_en:
         e1 = fl_en.readline().split()[0]
         e1 = float(e1)
-
+    Eng_steps.append(e1)
     while cond:
         if __test__:
             write_lammps_data("inp_MC_init_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
@@ -149,6 +153,8 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
             # Then accept the move
             N_accept += 1
             e1 = e2  # set the next initial state energy to the current final energy
+            Eng_steps.append(e1)
+
         else:
             # reject the move by reverting the occupancies to initial state values
             tmp = ASE_Super[site1].symbol
@@ -159,35 +165,34 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, serial=True):
             write_lammps_data("Result_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
 
         N_total += 1
+
+        if N_total%N_save == 0:
+            with open("timing.txt", "w") as fl:
+                t_now = time.time()
+                fl.write("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
+
+            if N_total >=N_therm:
+                with open("chkpt/supercell_{}.pkl".format(N_total), "wb") as fl:
+                    pickle.dump(ASE_Super, fl)
+                with open("chkpt/counter.txt", "w") as fl:
+                    fl.write("last step saved\n{}".format(N_total))
+
         if __test__:
             cond = N_total < 2
         else:
-            cond = N_accept <= SwapRun
+            cond = N_total <= SwapRun + 1
 
-    return N_total, N_accept
+    return N_total, N_accept, Eng_steps
 
 # First thermalize the starting state
 write_lammps_input()
 start = time.time()
-N_total, N_accept = MC_Run(N_therm, superFCC, N_proc)
+N_total, N_accept , Eng_steps = MC_Run(N_therm, superFCC, N_proc)
 end = time.time()
 print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
+print("Thermalization Run accepted moves : {}".format(N_accept))
+print("Thermalization Run total moves : {}".format(N_total))
 print("Thermalization Time Per iteration : {}".format((end-start)/N_total))
-
-if not __test__:
-    occs = np.zeros((N_samples, Nsites), dtype=np.int16)
-    occs[:, 0] = -1 # The vacancy is always at 0,0,0
-    accept_ratios = np.zeros(N_samples)
-    # Now draw samples
-    start = time.time()
-    for smp in range(N_samples):
-        # Update the state
-        N_total, N_accept = MC_Run(N_swaps, superFCC, N_proc)
-        accept_ratios[smp] = (1.0*N_accept)/N_total
-        # store the occupancies
-        for at in superFCC:
-            idx = at.index
-            occs[smp, idx+1] = elemsToNum[at.symbol]
-    end = time.time()
-    np.save("SiteIndToSpec_{0}.npy".format(jobID), occs)
-    print("{} samples drawn with {} swaps. Time: {:.4f} minutes".format(N_samples, N_swaps, (end-start)/60.))
+np.save("Eng_steps_therm.npy", np.array(Eng_steps))
+with open("superFCC_therm.pkl","wb") as fl:
+    pickle.dump(superFCC, fl)
