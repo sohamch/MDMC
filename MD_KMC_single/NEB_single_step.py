@@ -39,37 +39,6 @@ with open(MainPath+"lammpsBox.txt", "r") as fl:
 SiteIndToPos = np.load(MainPath+"SiteIndToLmpCartPos.npy")  # lammps pos of sites
 SiteIndToNgb = np.load(MainPath+"siteIndtoNgbSiteInd.npy")  # Nsites x z array of site neighbors
 
-# @jit(nopython=True)
-def getJumpSelects(rates):
-    Ntr = rates.shape[0]
-    timeStep = 1./np.sum(rates, axis=1)
-    ratesProb = rates*timeStep.reshape(Ntr, 1)
-    ratesProbSum = np.cumsum(ratesProb, axis=1)
-    rn = np.random.rand(Ntr)
-    jumpID = np.zeros(Ntr, dtype=int)
-    for tr in range(Ntr):
-        jSelect = np.searchsorted(ratesProbSum[tr, :], rn[tr])
-        jumpID[tr] = jSelect
-    # jumpID, rateProbs, ratesCum, rndNums, time_step
-    return jumpID, ratesProb, ratesProbSum, rn, timeStep
-
-# @jit(nopython=True)
-def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList):
-    Ntr = jumpID.shape[0]
-    jumpAtomSelectArray = np.zeros(Ntr, dtype=int)
-    X = np.zeros((Ntr, Nspec, 3), dtype=float)
-    for tr in range(Ntr):
-        jumpSiteSelect = SiteIndToNgb[vacSiteInd[tr], jumpID[tr]]
-        jumpAtomSelect = SiteIndToSpec[tr, jumpSiteSelect]
-        jumpAtomSelectArray[tr] = jumpAtomSelect
-        SiteIndToSpec[tr, vacSiteInd[tr]] = jumpAtomSelect
-        SiteIndToSpec[tr, jumpSiteSelect] = -1  # The next vacancy site
-        vacSiteInd[tr] = jumpSiteSelect
-        X[tr, 0, :] = dxList[jumpID[tr]]
-        X[tr, jumpAtomSelect, :] = -dxList[jumpID[tr]]
-        
-    return jumpAtomSelectArray, X
-
 with open(MainPath+"CrysDat/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
 dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
