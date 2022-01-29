@@ -22,6 +22,10 @@ Ntraj = int(args[2]) # how many trajectories we want to simulate
 startIndex = int(args[3])
 batchSize = int(args[4]) # we'll evaluate the single-step trajectories in batches
 NImage = int(args[5])
+
+if len(args) == 7:
+    MainPath = args[7]
+
 ProcPerImage = 1
 
 if Ntraj%batchSize != 0:
