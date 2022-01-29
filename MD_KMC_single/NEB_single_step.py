@@ -11,10 +11,14 @@ import time
 import collections
 import pickle
 from numba import jit, float64, int64
-from scipy.constants import physical_constants
-from MD_KMC.KMC_funcs import *
 
+import sys
+sys.path.append("../MD_KMC/")
+from KMC_funcs import *
+
+from scipy.constants import physical_constants
 kB = physical_constants["Boltzmann constant in eV/K"][0]
+
 MainPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC_single/"
 
 args = list(sys.argv)
