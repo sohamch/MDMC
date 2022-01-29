@@ -129,12 +129,13 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, N_therm=2000, N_save=200, serial=T
             write_lammps_data("Result_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
             rand_steps.append(rn)
             swap_steps.append([site1, site2])
+
             cond = N_total < 2
 
         else:
             cond = N_total <= SwapRun + 1
 
-    return N_total, N_accept, Eng_steps, rand_steps
+    return N_total, N_accept, Eng_steps, rand_steps, swap_steps
 
 
 if __name__ == "__main__":
@@ -187,7 +188,7 @@ if __name__ == "__main__":
     # First thermalize the starting state
     write_lammps_input(jobID)
     start = time.time()
-    N_total, N_accept, Eng_steps, _ = MC_Run(N_therm, superFCC, N_proc, jobID, __test__=__test__)
+    N_total, N_accept, Eng_steps, _, _ = MC_Run(N_therm, superFCC, N_proc, jobID, __test__=__test__)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
