@@ -14,6 +14,7 @@ from numba import jit, float64, int64
 from scipy.constants import physical_constants
 
 kB = physical_constants["Boltzmann constant in eV/K"][0]
+MainPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC_single/"
 
 args = list(sys.argv)
 T = int(args[1])
@@ -26,12 +27,12 @@ ProcPerImage = 1
 if Ntraj%batchSize != 0:
     raise ValueError("batchSize does not divide Ntraj integrally.")
 
-with open("lammpsBox.txt", "r") as fl:
+with open(MainPath+"lammpsBox.txt", "r") as fl:
     Initlines = fl.readlines()
 
 # Load the lammps cartesian positions and neighborhoods - pre-prepared
-SiteIndToPos = np.load("SiteIndToLmpCartPos.npy")  # lammps pos of sites
-SiteIndToNgb = np.load("siteIndtoNgbSiteInd.npy")  # Nsites x z array of site neighbors
+SiteIndToPos = np.load(MainPath+"SiteIndToLmpCartPos.npy")  # lammps pos of sites
+SiteIndToNgb = np.load(MainPath+"siteIndtoNgbSiteInd.npy")  # Nsites x z array of site neighbors
 
 def write_input_files(Ntr):
     for traj in range(Ntr):
@@ -43,7 +44,7 @@ def write_input_files(Ntr):
             fl.write("atom_modify \t sort 0 0.0\n")
             fl.write("read_data \t initial_{0}.data\n".format(traj))
             fl.write("pair_style \t meam\n")
-            fl.write("pair_coeff \t * * pot/library.meam Co Ni Cr Fe Mn pot/params.meam Co Ni Cr Fe Mn\n")
+            fl.write("pair_coeff \t * * "+MainPath+"pot/library.meam Co Ni Cr Fe Mn "+MainPath+"pot/params.meam Co Ni Cr Fe Mn\n")
             fl.write("fix \t 1 all neb 1.0\n")
             fl.write("timestep \t 0.01\n")
             fl.write("min_style \t quickmin\n")
@@ -112,13 +113,13 @@ def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList
         
     return jumpAtomSelectArray, X
 
-with open("CrysDat/jnetFCC.pkl", "rb") as fl:
+with open(MainPath+"CrysDat/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
 dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 
 
 # Load the starting data for the trajectories
-SiteIndToSpec = np.load("states_{}.npy".format(T))[startIndex : startIndex + Ntraj].astype(np.int16) # Ntraj x Nsites array of occupancies
+SiteIndToSpecAll = np.load(MainPath + "states_{}.npy".format(T))[startIndex : startIndex + Ntraj].astype(np.int16) # Ntraj x Nsites array of occupancies
 assert np.all(SiteIndToSpecAll[:, 0] == 0) # check that the vacancy is always at the 0th site in the initial states
 vacSiteIndAll = np.zeros(Ntraj, dtype=int) # Ntraj size array: contains where the vac is in each traj.
 SiteIndToSpecAll[:, 0] = -1 # set vacancy occupancy to -1 to match the functions
@@ -126,7 +127,7 @@ SiteIndToSpecAll[:, 0] = -1 # set vacancy occupancy to -1 to match the functions
 specs, counts = np.unique(SiteIndToSpecAll[0], return_counts=True)
 Nspec = len(specs)  # including the vacancy
 
-Nsites = SiteIndToSpec.shape[1]
+Nsites = SiteIndToSpecAll.shape[1]
 
 Initlines[2] = "{} \t atoms\n".format(Nsites - 1)
 Initlines[3] = "{} atom types\n".format(Nspec-1)
@@ -221,6 +222,8 @@ for batch in range(Nbatch):
     FinalStates[sampleStart : sampleEnd, :] = SiteIndToSpec[:, :]
     SpecDisps[sampleStart:sampleEnd, :, :] = X_traj[:, :, :]
     tarr[sampleStart:sampleEnd] = time_step[:]
+    with open("BatchTiming.txt", "a") as fl:
+        fl.write("batch {0} of {1} completed in : {2} seconds\n".format(batch+1, Nbatch, time.time()-start_timer))
 
 end_timer = time.time()
 with open("SpecBarriers.pkl", "wb") as fl:
