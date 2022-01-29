@@ -200,5 +200,5 @@ if __name__ == "__main__":
     print("Thermalization Run total moves : {}".format(N_total))
     print("Thermalization Time Per iteration : {}".format((end-start)/N_total))
     np.save("Eng_steps_therm.npy", np.array(Eng_steps))
-    with open("superFCC_therm.pkl","wb") as fl:
+    with open("superFCC_therm.pkl", "wb") as fl:
         pickle.dump(superFCC, fl)
