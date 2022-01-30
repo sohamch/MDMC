@@ -83,7 +83,7 @@ Nbatch = Ntraj//batchSize
 
 Barriers_Spec = collections.defaultdict(list)
 
-write_input_files(batchSize, MainPath)
+write_input_files(batchSize, potPath=MainPath)
 start_timer = time.time()
 for batch in range(Nbatch):
     # Write the initial states from last accepted state
