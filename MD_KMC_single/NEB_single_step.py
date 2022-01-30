@@ -12,14 +12,12 @@ import collections
 import pickle
 from numba import jit, float64, int64
 
-import sys
-sys.path.append("../MD_KMC/")
-from KMC_funcs import *
 
 from scipy.constants import physical_constants
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 
 MainPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC_single/"
+KMC_funcs_path = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC/"
 
 args = list(sys.argv)
 T = int(args[1])
@@ -30,6 +28,13 @@ NImage = int(args[5])
 
 if len(args) == 7:
     MainPath = args[7]
+
+if len(args) == 8:
+    KMC_funcs_path = args[8]
+
+import sys
+sys.path.append(KMC_funcs_path)
+from KMC_funcs import *
 
 ProcPerImage = 1
 
