@@ -1,6 +1,6 @@
 import numpy as np
 
-def write_input_files(Ntr):
+def write_input_files(Ntr, potPath=None):
     for traj in range(Ntr):
         with open("in.neb_{0}".format(traj), "w") as fl:
             fl.write("units \t metal\n")
@@ -10,7 +10,11 @@ def write_input_files(Ntr):
             fl.write("atom_modify \t sort 0 0.0\n")
             fl.write("read_data \t initial_{0}.data\n".format(traj))
             fl.write("pair_style \t meam\n")
-            fl.write("pair_coeff \t * * pot/library.meam Co Ni Cr Fe Mn pot/params.meam Co Ni Cr Fe Mn\n")
+            if potPath is None:
+                fl.write("pair_coeff \t * * pot/library.meam Co Ni Cr Fe Mn pot/params.meam Co Ni Cr Fe Mn\n")
+            else:
+                fl.write("pair_coeff \t * * "+ potPath + "pot/library.meam Co Ni Cr Fe Mn " +
+                         potPath + "pot/params.meam Co Ni Cr Fe Mn\n")
             fl.write("fix \t 1 all neb 1.0\n")
             fl.write("timestep \t 0.01\n")
             fl.write("min_style \t quickmin\n")
