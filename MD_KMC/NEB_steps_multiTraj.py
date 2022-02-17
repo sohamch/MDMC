@@ -72,8 +72,9 @@ t_steps = np.zeros((Ntraj, Nsteps))
 JumpSelection = np.zeros((Ntraj, Nsteps), dtype=np.int8)
 
 if storeRates:
-    rates = np.zeros((Ntraj, Nsteps, SiteIndToNgb.shape[1]))
-    randNums = np.zeros((Ntraj, Nsteps))
+    ratesTest = np.zeros((Ntraj, Nsteps, SiteIndToNgb.shape[1]))
+    barriersTest = np.zeros((Ntraj, Nsteps, SiteIndToNgb.shape[1]))
+    randNumsTest = np.zeros((Ntraj, Nsteps))
 
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 # Before starting, write the lammps input files
@@ -120,13 +121,19 @@ for step in range(Nsteps - stepsLast):
 
     # Then do selection
     jumpID, rateProbs, ratesCsum, rndNums, time_step = getJumpSelects(rates)
-    
+    # store the selected jump
+    JumpSelection[:, step] = jumpID[:]
     # Then do the final exchange
     jumpAtomSelectArray, X_traj = updateStates(SiteIndToNgb, Nspec, SiteIndToSpec, vacSiteInd, jumpID, dxList)
     # updateStates args : (SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList)
     # Note the displacements and the time
     X_steps[:, :, step, :] = X_traj[:, :, :]
     t_steps[:, step] = time_step
+
+    if storeRates:
+        ratesTest[:, step, :] = rates[:, :]
+        barriersTest[:, step, :] = barriers[:, :]
+        randNumsTest[:, step] = rndNums[:]
 
 end = time.time()
 
@@ -135,6 +142,8 @@ np.save("StatesEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), SiteIndToSp
 np.save("vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), vacSiteInd)
 np.save("Xsteps_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), X_steps)
 np.save("tsteps_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), t_steps)
+np.save("JumpSelects.npy", JumpSelection)
 if storeRates:
-    np.save("rates_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), rates)
-    np.save("randNums_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), randNums)
+    np.save("rates_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), ratesTest)
+    np.save("randNums_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), randNumsTest)
+    np.save("barriers_{}_{}.npy".format(SampleStart, stepsLast + Nsteps), barriersTest)
