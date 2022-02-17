@@ -23,6 +23,7 @@ Nsteps = int(args[3])
 SampleStart = int(args[4])
 batchSize = int(args[5])
 storeRates = bool(int(args[6])) # store the rates? 0 if False.
+potPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC/"
 
 # Need to get rid of these argument
 NImage = 3

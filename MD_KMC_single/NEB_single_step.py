@@ -17,6 +17,7 @@ from scipy.constants import physical_constants
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 
 MainPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC_single/"
+potPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC/"
 KMC_funcs_path = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC/"
 
 args = list(sys.argv)
@@ -82,7 +83,7 @@ Nbatch = Ntraj//batchSize
 
 Barriers_Spec = collections.defaultdict(list)
 
-write_input_files(batchSize, potPath=MainPath)
+write_input_files(batchSize, potPath=potPath)
 start_timer = time.time()
 for batch in range(Nbatch):
     # Write the initial states from last accepted state
