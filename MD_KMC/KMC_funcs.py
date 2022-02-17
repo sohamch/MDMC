@@ -76,11 +76,12 @@ def updateStates(SiteIndToNgb, Nspec, SiteIndToSpec, vacSiteInd, jumpID, dxList)
     jumpAtomSelectArray = np.zeros(Ntraj, dtype=int)
     X = np.zeros((Ntraj, Nspec, 3), dtype=float)
     for tr in range(Ntraj):
+        assert SiteIndToSpec[tr, vacSiteInd[tr]] == 0
         jumpSiteSelect = SiteIndToNgb[vacSiteInd[tr], jumpID[tr]]
         jumpAtomSelect = SiteIndToSpec[tr, jumpSiteSelect]
         jumpAtomSelectArray[tr] = jumpAtomSelect
         SiteIndToSpec[tr, vacSiteInd[tr]] = jumpAtomSelect
-        SiteIndToSpec[tr, jumpSiteSelect] = -1  # The next vacancy site
+        SiteIndToSpec[tr, jumpSiteSelect] = 0  # The next vacancy site
         vacSiteInd[tr] = jumpSiteSelect
         X[tr, 0, :] = dxList[jumpID[tr]]
         X[tr, jumpAtomSelect, :] = -dxList[jumpID[tr]]
