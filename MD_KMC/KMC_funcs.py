@@ -29,7 +29,7 @@ def write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, TopLines):
             counter = 1
             for idx in range(SiteIndToSpec.shape[1]):
                 spec = SiteIndToSpec[traj, idx]
-                if spec == -1:
+                if spec == 0:  # if the site is vacant
                     assert idx == vacSiteInd[traj], "{} {}".format(idx, SiteIndToSpec[traj, idx])
                     continue
                 pos = SiteIndToPos[idx]
