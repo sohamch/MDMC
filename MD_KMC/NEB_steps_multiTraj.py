@@ -10,6 +10,7 @@ import sys
 import time
 import collections
 import pickle
+import h5py
 from numba import jit, float64, int64
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 from scipy.constants import physical_constants
@@ -20,11 +21,14 @@ kB = physical_constants["Boltzmann constant in eV/K"][0]
 args = list(sys.argv)
 T = float(args[1])
 Nsteps = int(args[2])
-NImage = int(args[3])
-TestCode = bool(int(args[4]))
+SampleStart = int(args[3])
+batchSize = int(args[4])
+
+# Need to get rid of these argument
+NImage = 3
 ProcPerImage = 1
 
-__test__ = TestCode
+__test__ = False
 
 with open("lammpsBox.txt", "r") as fl:
     Initlines = fl.readlines()
@@ -38,7 +42,8 @@ with open("CrysDat/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
 dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 
-
+# load the data
+allStates = np.load("states_{}.npy".format(T))
 # Load the starting data for the trajectories
 SiteIndToSpec = np.load("SiteIndToSpec.npy") # Ntraj x Nsites array of occupancies
 vacSiteInd = np.load("vacSiteInd.npy") # Ntraj size array: contains where the vac is in each traj.
