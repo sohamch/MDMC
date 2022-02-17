@@ -18,9 +18,11 @@ from KMC_funcs import  *
 
 args = list(sys.argv)
 T = float(args[1])
-Nsteps = int(args[2])
-SampleStart = int(args[3])
-batchSize = int(args[4])
+stepsLast = int(args[2])
+Nsteps = int(args[3])
+SampleStart = int(args[4])
+batchSize = int(args[5])
+storeRates = bool(int(args[6])) # store the rates? 0 if False.
 
 # Need to get rid of these argument
 NImage = 3
@@ -35,45 +37,49 @@ with open("lammpsBox.txt", "r") as fl:
 SiteIndToPos = np.load("SiteIndToLmpCartPos.npy")  # lammps pos of sites
 SiteIndToNgb = np.load("siteIndtoNgbSiteInd.npy")  # Nsites x z array of site neighbors
 
-
 with open("CrysDat/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
 dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 
 # load the data
-allStates = np.load("states_{}.npy".format(T))
-perm = np.load("perm_{}.npy".format(T))
-# Load the starting data for the trajectories
-SiteIndToSpec = allStates[perm][SampleStart: SampleStart + batchSize]
-vacSiteInd = np.load("vacSiteInd.npy")[perm][SampleStart: SampleStart + batchSize]
+try:
+    SiteIndToSpec = np.load("StatesEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps))
+    vacSiteInd = np.load("vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps))
+except:
+    print("checkpoint not found or last step zero indicated. Starting from step zero.")
+    allStates = np.load("states_{}.npy".format(T))
+    perm = np.load("perm_{}.npy".format(T))
+    # Load the starting data for the trajectories
+    SiteIndToSpec = allStates[perm][SampleStart: SampleStart + batchSize]
+    vacSiteInd = np.load("vacSiteInd.npy")[perm][SampleStart: SampleStart + batchSize]
+
 specs, counts = np.unique(SiteIndToSpec[0], return_counts=True)
 Nspec = len(specs)  # including the vacancy
 Ntraj = SiteIndToSpec.shape[0]
 
 # save the starting states for this set
 np.save("StatesStart_{}.npy".format(SampleStart))
-np.save("vacSiteInd_{}.npy".format(SampleStart))
+np.save("vacSiteIndStart_{}.npy".format(SampleStart))
 
 Nsites = SiteIndToSpec.shape[1]
 
 Initlines[2] = "{} \t atoms\n".format(Nsites - 1)
 Initlines[3] = "{} atom types\n".format(Nspec-1)
 
-try:
-    X_steps = np.load("X_steps.npy")
-    t_steps = np.load("t_steps.npy")
-    stepsLast = np.load("steps_last.npy")[0]
-except FileNotFoundError:
-    X_steps = np.zeros((Ntraj, Nspec, Nsteps + 1, 3)) # 0th position will store vacancy jumps
-    t_steps = np.zeros((Ntraj, Nsteps + 1))
-    stepsLast = 0
-    
-stepCount = np.zeros(1, dtype=int)
+
+X_steps = np.zeros((Ntraj, Nspec, Nsteps, 3)) # 0th position will store vacancy jumps
+t_steps = np.zeros((Ntraj, Nsteps))
+JumpSelection = np.zeros((Ntraj, Nsteps), dtype=np.int8)
+
+if storeRates:
+    rates = np.zeros((Ntraj, Nsteps, SiteIndToNgb.shape[1]))
+    randNums = np.zeros((Ntraj, Nsteps))
+
+kB = physical_constants["Boltzmann constant in eV/K"][0]
 # Before starting, write the lammps input files
 write_input_files(Ntraj)
 
 start = time.time()
-kB = physical_constants["Boltzmann constant in eV/K"][0]
 
 for step in range(Nsteps - stepsLast):
     # Write the initial states from last accepted state
@@ -119,8 +125,16 @@ for step in range(Nsteps - stepsLast):
     jumpAtomSelectArray, X_traj = updateStates(SiteIndToNgb, Nspec, SiteIndToSpec, vacSiteInd, jumpID, dxList)
     # updateStates args : (SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList)
     # Note the displacements and the time
-    X_steps[:, :, step + stepsLast + 1, :] = X_traj[:, :, :]
-    t_steps[:, step + stepsLast + 1] = time_step
-    stepCount[0] = step + stepsLast + 1
+    X_steps[:, :, step, :] = X_traj[:, :, :]
+    t_steps[:, step] = time_step
 
 end = time.time()
+
+# save the states for checkpointing.
+np.save("StatesEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), SiteIndToSpec)
+np.save("vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), vacSiteInd)
+np.save("Xsteps_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), X_steps)
+np.save("tsteps_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), t_steps)
+if storeRates:
+    np.save("rates_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), rates)
+    np.save("randNums_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), randNums)
