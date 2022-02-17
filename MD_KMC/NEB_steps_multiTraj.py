@@ -45,6 +45,7 @@ dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 try:
     SiteIndToSpec = np.load("StatesEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps))
     vacSiteInd = np.load("vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps))
+
 except:
     print("checkpoint not found or last step zero indicated. Starting from step zero.")
     allStates = np.load("states_{}.npy".format(T))
@@ -52,6 +53,8 @@ except:
     # Load the starting data for the trajectories
     SiteIndToSpec = allStates[perm][SampleStart: SampleStart + batchSize]
     vacSiteInd = np.load("vacSiteInd.npy")[perm][SampleStart: SampleStart + batchSize]
+    assert np.all(vacSiteInd == 0)  # check the all states' vacancy is at the 0th site.
+    assert np.all(SiteIndToSpec[:, 0] == 0)
 
 specs, counts = np.unique(SiteIndToSpec[0], return_counts=True)
 Nspec = len(specs)  # including the vacancy
@@ -137,7 +140,7 @@ for step in range(Nsteps - stepsLast):
 
 end = time.time()
 
-# save the states for checkpointing.
+# save the end results.
 np.save("StatesEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), SiteIndToSpec)
 np.save("vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), vacSiteInd)
 np.save("Xsteps_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), X_steps)
