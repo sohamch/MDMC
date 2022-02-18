@@ -15,9 +15,10 @@ from numba import jit, float64, int64
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 from scipy.constants import physical_constants
 from KMC_funcs import  *
+import os
 
 args = list(sys.argv)
-T = float(args[1])
+T = int(args[1])
 stepsLast = int(args[2])
 Nsteps = int(args[3])
 SampleStart = int(args[4])
@@ -25,14 +26,15 @@ batchSize = int(args[5])
 storeRates = bool(int(args[6])) # store the rates? 0 if False.
 if len(args) > 7:
     MainPath = args[7]
-    RunPath = args[8]
 else:
     MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
-    RunPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC/"
 
+InitPath = MainPath+"MD_KMC/" 
 # Need to get rid of these argument
 NImage = 3
 ProcPerImage = 1
+RunPath = os.getcwd()+'/'
+print("Running from : " + RunPath + "\n")
 
 __test__ = False
 
@@ -49,13 +51,13 @@ dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 
 # load the data
 try:
-    SiteIndToSpec = np.load(RunPath + "StatesEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps))
-    vacSiteInd = np.load(RunPath + "vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps))
+    SiteIndToSpec = np.load(RunPath + "StatesEnd_{}_{}.npy".format(SampleStart, stepsLast))
+    vacSiteInd = np.load(RunPath + "vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast))
 
 except:
     print("checkpoint not found or last step zero indicated. Starting from step zero.")
-    allStates = np.load(RunPath + "states_{}.npy".format(T))
-    perm = np.load(RunPath + "perm_{}.npy".format(T))
+    allStates = np.load(InitPath + "states_{}.npy".format(T))
+    perm = np.load(InitPath + "perm_{}.npy".format(T))
     # Load the starting data for the trajectories
     SiteIndToSpec = allStates[perm][SampleStart: SampleStart + batchSize]
     vacSiteInd = np.zeros(SiteIndToSpec.shape[0], dtype = int)
@@ -101,11 +103,11 @@ for step in range(Nsteps):
             for traj in range(Ntraj)
         ]
         cmdList = [subprocess.Popen(cmd, shell=True) for cmd in commands]
-        NEB_count += Ntraj
         # wait for the lammps commands to complete
         for c in cmdList:
             rt_code = c.wait()
             assert rt_code == 0  # check for system errors
+        NEB_count += Ntraj
         
         # Then read the forward barrier -> ebf
         for traj in range(Ntraj):
@@ -143,12 +145,12 @@ print("time per step : {:.4f} seconds".format((end-start)/Nsteps))
 print("time per NEB calculation : {:.4f} seconds".format((end-start)/NEB_count))
 
 # save the end results.
-np.save("StatesEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), SiteIndToSpec)
-np.save("vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), vacSiteInd)
-np.save("Xsteps_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), X_steps)
-np.save("tsteps_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), t_steps)
-np.save("JumpSelects.npy", JumpSelection)
+np.save(RunPath + "StatesEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), SiteIndToSpec)
+np.save(RunPath + "vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), vacSiteInd)
+np.save(RunPath + "Xsteps_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), X_steps)
+np.save(RunPath + "tsteps_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), t_steps)
+np.save(RunPath + "JumpSelects.npy", JumpSelection)
 if storeRates:
-    np.save("ratesTest_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), ratesTest)
-    np.save("randNumsTest_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), randNumsTest)
-    np.save("barriersTest_{}_{}.npy".format(SampleStart, stepsLast + Nsteps), barriersTest)
+    np.save(RunPath + "ratesTest_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), ratesTest)
+    np.save(RunPath + "randNumsTest_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), randNumsTest)
+    np.save(RunPath + "barriersTest_{}_{}.npy".format(SampleStart, stepsLast + Nsteps), barriersTest)
