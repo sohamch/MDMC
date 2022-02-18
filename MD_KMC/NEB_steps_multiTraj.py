@@ -34,7 +34,7 @@ InitPath = MainPath+"MD_KMC/"
 NImage = 3
 ProcPerImage = 1
 RunPath = os.getcwd()+'/'
-print("Running from : " + RunPath + "\n")
+print("Running from : " + RunPath)
 
 __test__ = False
 
@@ -154,3 +154,4 @@ if storeRates:
     np.save(RunPath + "ratesTest_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), ratesTest)
     np.save(RunPath + "randNumsTest_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), randNumsTest)
     np.save(RunPath + "barriersTest_{}_{}.npy".format(SampleStart, stepsLast + Nsteps), barriersTest)
+print()
