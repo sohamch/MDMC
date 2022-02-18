@@ -23,7 +23,7 @@ Nsteps = int(args[3])
 SampleStart = int(args[4])
 batchSize = int(args[5])
 storeRates = bool(int(args[6])) # store the rates? 0 if False.
-potPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC/"
+MainPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC/"
 
 # Need to get rid of these argument
 NImage = 3
@@ -49,8 +49,8 @@ try:
 
 except:
     print("checkpoint not found or last step zero indicated. Starting from step zero.")
-    allStates = np.load("states_{}.npy".format(T))
-    perm = np.load("perm_{}.npy".format(T))
+    allStates = np.load(MainPath + "states_{}.npy".format(T))
+    perm = np.load(MainPath + "perm_{}.npy".format(T))
     # Load the starting data for the trajectories
     SiteIndToSpec = allStates[perm][SampleStart: SampleStart + batchSize]
     vacSiteInd = np.load("vacSiteInd.npy")[perm][SampleStart: SampleStart + batchSize]
@@ -82,10 +82,10 @@ if storeRates:
 
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 # Before starting, write the lammps input files
-write_input_files(Ntraj, potPath=potPath)
+write_input_files(Ntraj, potPath=MainPath)
 
 start = time.time()
-
+NEB_count = 0
 for step in range(Nsteps - stepsLast):
     # Write the initial states from last accepted state
     write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, Initlines)
@@ -102,7 +102,7 @@ for step in range(Nsteps - stepsLast):
             for traj in range(Ntraj)
         ]
         cmdList = [subprocess.Popen(cmd, shell=True) for cmd in commands]
-        
+        NEB_count += Ntraj
         # wait for the lammps commands to complete
         for c in cmdList:
             rt_code = c.wait()
@@ -140,6 +140,8 @@ for step in range(Nsteps - stepsLast):
         randNumsTest[:, step] = rndNums[:]
 
 end = time.time()
+print("time per step : {:.4f} seconds".format((end-start)/Nsteps))
+print("time per NEB calculation : {:.4f} seconds".format((end-start)/NEB_count))
 
 # save the end results.
 np.save("StatesEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), SiteIndToSpec)
