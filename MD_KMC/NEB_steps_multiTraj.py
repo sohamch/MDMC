@@ -134,6 +134,10 @@ for step in range(Nsteps):
     # Note the displacements and the time
     X_steps[:, :, step, :] = X_traj[:, :, :]
     t_steps[:, step] = time_step
+    
+    if (step+1)%10 == 0:
+        with open("timing_{}.txt".format(SampleStart), "a") as fl:
+            fl.write("Time for {} steps : {:.4f} seconds\n".format(step+1, time.time()-start))
 
     if storeRates:
         ratesTest[:, step, :] = rates[:, :]
