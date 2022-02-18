@@ -53,7 +53,7 @@ dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 try:
     SiteIndToSpec = np.load(RunPath + "StatesEnd_{}_{}.npy".format(SampleStart, stepsLast))
     vacSiteInd = np.load(RunPath + "vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast))
-
+    print("Starting from checkpointed step {}".format(stepsLast))
 except:
     print("checkpoint not found or last step zero indicated. Starting from step zero.")
     allStates = np.load(InitPath + "states_{}.npy".format(T))
@@ -149,7 +149,7 @@ np.save(RunPath + "StatesEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), S
 np.save(RunPath + "vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), vacSiteInd)
 np.save(RunPath + "Xsteps_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), X_steps)
 np.save(RunPath + "tsteps_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), t_steps)
-np.save(RunPath + "JumpSelects.npy", JumpSelection)
+np.save(RunPath + "JumpSelects.npy_{}_{}".format(SampleStart, stepsLast+Nsteps), JumpSelection)
 if storeRates:
     np.save(RunPath + "ratesTest_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), ratesTest)
     np.save(RunPath + "randNumsTest_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), randNumsTest)
