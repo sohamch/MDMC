@@ -82,7 +82,7 @@ if storeRates:
 
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 # Before starting, write the lammps input files
-write_input_files(Ntraj)
+write_input_files(Ntraj, potPath=potPath)
 
 start = time.time()
 
