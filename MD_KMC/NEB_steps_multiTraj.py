@@ -23,7 +23,12 @@ Nsteps = int(args[3])
 SampleStart = int(args[4])
 batchSize = int(args[5])
 storeRates = bool(int(args[6])) # store the rates? 0 if False.
-MainPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC/"
+if len(args) > 7:
+    MainPath = args[7]
+    RunPath = args[8]
+else:
+    MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
+    RunPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC/"
 
 # Need to get rid of these argument
 NImage = 3
@@ -31,30 +36,29 @@ ProcPerImage = 1
 
 __test__ = False
 
-with open("lammpsBox.txt", "r") as fl:
+with open(MainPath + "lammpsBox.txt", "r") as fl:
     Initlines = fl.readlines()
 
 # Load the lammps cartesian positions and neighborhoods - pre-prepared
-SiteIndToPos = np.load("SiteIndToLmpCartPos.npy")  # lammps pos of sites
-SiteIndToNgb = np.load("siteIndtoNgbSiteInd.npy")  # Nsites x z array of site neighbors
+SiteIndToPos = np.load(MainPath + "SiteIndToLmpCartPos.npy")  # lammps pos of sites
+SiteIndToNgb = np.load(MainPath + "siteIndtoNgbSiteInd.npy")  # Nsites x z array of site neighbors
 
-with open("CrysDat/jnetFCC.pkl", "rb") as fl:
+with open(MainPath + "CrysDat/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
 dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 
 # load the data
 try:
-    SiteIndToSpec = np.load("StatesEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps))
-    vacSiteInd = np.load("vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps))
+    SiteIndToSpec = np.load(RunPath + "StatesEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps))
+    vacSiteInd = np.load(RunPath + "vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps))
 
 except:
     print("checkpoint not found or last step zero indicated. Starting from step zero.")
-    allStates = np.load(MainPath + "states_{}.npy".format(T))
-    perm = np.load(MainPath + "perm_{}.npy".format(T))
+    allStates = np.load(RunPath + "states_{}.npy".format(T))
+    perm = np.load(RunPath + "perm_{}.npy".format(T))
     # Load the starting data for the trajectories
     SiteIndToSpec = allStates[perm][SampleStart: SampleStart + batchSize]
-    vacSiteInd = np.load("vacSiteInd.npy")[perm][SampleStart: SampleStart + batchSize]
-    assert np.all(vacSiteInd == 0)  # check the all states' vacancy is at the 0th site.
+    vacSiteInd = np.zeros(SiteIndToSpec.shape[0], dtype = int)
     assert np.all(SiteIndToSpec[:, 0] == 0)
 
 specs, counts = np.unique(SiteIndToSpec[0], return_counts=True)
@@ -150,6 +154,6 @@ np.save("Xsteps_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), X_steps)
 np.save("tsteps_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), t_steps)
 np.save("JumpSelects.npy", JumpSelection)
 if storeRates:
-    np.save("rates_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), ratesTest)
-    np.save("randNums_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), randNumsTest)
-    np.save("barriers_{}_{}.npy".format(SampleStart, stepsLast + Nsteps), barriersTest)
+    np.save("ratesTest_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), ratesTest)
+    np.save("randNumsTest_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), randNumsTest)
+    np.save("barriersTest_{}_{}.npy".format(SampleStart, stepsLast + Nsteps), barriersTest)
