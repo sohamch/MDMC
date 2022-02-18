@@ -70,7 +70,6 @@ Nsites = SiteIndToSpec.shape[1]
 Initlines[2] = "{} \t atoms\n".format(Nsites - 1)
 Initlines[3] = "{} atom types\n".format(Nspec-1)
 
-
 X_steps = np.zeros((Ntraj, Nspec, Nsteps, 3)) # 0th position will store vacancy jumps
 t_steps = np.zeros((Ntraj, Nsteps))
 JumpSelection = np.zeros((Ntraj, Nsteps), dtype=np.int8)
@@ -86,7 +85,7 @@ write_input_files(Ntraj, potPath=MainPath)
 
 start = time.time()
 NEB_count = 0
-for step in range(Nsteps - stepsLast):
+for step in range(Nsteps):
     # Write the initial states from last accepted state
     write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, Initlines)
 
