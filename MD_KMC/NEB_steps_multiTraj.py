@@ -65,10 +65,6 @@ specs, counts = np.unique(SiteIndToSpec[0], return_counts=True)
 Nspec = len(specs)  # including the vacancy
 Ntraj = SiteIndToSpec.shape[0]
 
-# save the starting states for this set
-np.save("StatesStart_{}.npy".format(SampleStart))
-np.save("vacSiteIndStart_{}.npy".format(SampleStart))
-
 Nsites = SiteIndToSpec.shape[1]
 
 Initlines[2] = "{} \t atoms\n".format(Nsites - 1)
