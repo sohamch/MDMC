@@ -16,15 +16,16 @@ from numba import jit, float64, int64
 from scipy.constants import physical_constants
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 
-MainPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC_single/"
-potPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC/"
+import os
+MainPath = os.getcwd() + "/" #/home/sohamc2/HEA_FCC/MDMC/MD_KMC_single/"
+potPath = "/home/sohamc2/HEA_FCC/MDMC/" # path to MEAM pot and Crystal data
 KMC_funcs_path = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC/"
 
 args = list(sys.argv)
 T = int(args[1])
-startStep = int(args[2])
+startStep = int(args[2]) # which step's states to load as initial
 Ntraj = int(args[3]) # how many trajectories we want to simulate
-startIndex = int(args[4])
+startIndex = int(args[4]) # which is the state to start with among those loaded
 batchSize = int(args[5]) # we'll evaluate the single-step trajectories in batches
 NImage = int(args[6])
 
@@ -50,7 +51,7 @@ with open(MainPath+"lammpsBox.txt", "r") as fl:
 SiteIndToPos = np.load(MainPath+"SiteIndToLmpCartPos.npy")  # lammps pos of sites
 SiteIndToNgb = np.load(MainPath+"siteIndtoNgbSiteInd.npy")  # Nsites x z array of site neighbors
 
-with open(MainPath+"CrysDat/jnetFCC.pkl", "rb") as fl:
+with open(potPath+"CrysDat/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
 dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 
