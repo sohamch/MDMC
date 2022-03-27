@@ -171,7 +171,7 @@ with open("SpecBarriers.pkl", "wb") as fl:
     pickle.dump(Barriers_Spec, fl)
 
 # Next, save all the arrays in an hdf5 file
-with h5py.File("data_{0}_{1}.h5".format(T, startIndex), "w") as fl:
+with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep, startIndex), "w") as fl:
     fl.create_dataset("FinalStates", data=FinalStates)
     fl.create_dataset("SpecDisps", data=SpecDisps)
     fl.create_dataset("times", data=tarr)
