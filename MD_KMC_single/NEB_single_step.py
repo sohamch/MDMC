@@ -22,10 +22,11 @@ KMC_funcs_path = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC/"
 
 args = list(sys.argv)
 T = int(args[1])
-Ntraj = int(args[2]) # how many trajectories we want to simulate
-startIndex = int(args[3])
-batchSize = int(args[4]) # we'll evaluate the single-step trajectories in batches
-NImage = int(args[5])
+startStep = int(args[2])
+Ntraj = int(args[3]) # how many trajectories we want to simulate
+startIndex = int(args[4])
+batchSize = int(args[5]) # we'll evaluate the single-step trajectories in batches
+NImage = int(args[6])
 
 if len(args) == 7:
     MainPath = args[7]
@@ -55,7 +56,8 @@ dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 
 
 # Load the starting data for the trajectories
-SiteIndToSpecAll = np.load(MainPath + "states_{}.npy".format(T))[startIndex : startIndex + Ntraj].astype(np.int16) # Ntraj x Nsites array of occupancies
+SiteIndToSpecAll = np.load(MainPath + "states_{}_{}.npy".format(T, startStep))[startIndex : startIndex + Ntraj].astype(np.int16)
+# Ntraj x Nsites array of occupancies
 assert np.all(SiteIndToSpecAll[:, 0] == 0) # check that the vacancy is always at the 0th site in the initial states
 vacSiteIndAll = np.zeros(Ntraj, dtype=int) # Ntraj size array: contains where the vac is in each traj.
 
@@ -70,6 +72,7 @@ Initlines[3] = "{} atom types\n".format(Nspec-1)
 FinalStates = np.zeros_like(SiteIndToSpecAll).astype(np.int16)
 FinalVacSites = np.zeros(Ntraj).astype(np.int16)
 SpecDisps = np.zeros((Ntraj, Nspec, 3))
+AllJumpRates = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
 tarr = np.zeros(Ntraj)
 JumpSelects = np.zeros(Ntraj, dtype=np.int8) # which jump is chosen for each trajectory
 
@@ -135,7 +138,9 @@ for batch in range(Nbatch):
             vacNgb = SiteIndToNgb[vInd, jumpInd]
             jAtom = SiteIndToSpec[traj, vacNgb]
             Barriers_Spec[jAtom].append(ebf)
+    
 
+    AllJumpRates[sampleStart:sampleEnd] = rates[:, :]
     if batch == 0:
         TestRates[:, :] = rates[:, :]
         TestBarriers[:, :] = barriers[:, :]
