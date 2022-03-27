@@ -29,10 +29,10 @@ startIndex = int(args[4]) # which is the state to start with among those loaded
 batchSize = int(args[5]) # we'll evaluate the single-step trajectories in batches
 NImage = int(args[6])
 
-if len(args) == 7:
+if len(args) == 8:
     MainPath = args[7]
 
-if len(args) == 8:
+if len(args) == 9:
     KMC_funcs_path = args[8]
 
 import sys
