@@ -16,8 +16,7 @@ from numba import jit, float64, int64
 from scipy.constants import physical_constants
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 
-import os
-MainPath = os.getcwd() + "/" #/home/sohamc2/HEA_FCC/MDMC/MD_KMC_single/"
+MainPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC_single/"
 potPath = "/home/sohamc2/HEA_FCC/MDMC/" # path to MEAM pot and Crystal data
 KMC_funcs_path = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC/"
 
