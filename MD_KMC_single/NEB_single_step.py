@@ -139,11 +139,8 @@ for batch in range(Nbatch):
             jAtom = SiteIndToSpec[traj, vacNgb]
             Barriers_Spec[jAtom].append(ebf)
     
-
+    # store all the rates
     AllJumpRates[sampleStart:sampleEnd] = rates[:, :]
-    if batch == 0:
-        TestRates[:, :] = rates[:, :]
-        TestBarriers[:, :] = barriers[:, :]
 
     # Then do selection
     jumpID, rateProbs, ratesCsum, rndNums, time_step = getJumpSelects(rates)
@@ -152,6 +149,8 @@ for batch in range(Nbatch):
 
     # store the random numbers for the first set of jump
     if batch == 0:
+        TestRates[:, :] = rates[:, :]
+        TestBarriers[:, :] = barriers[:, :]
         TestRandomNums[:] = rndNums[:]
 
     # Then do the final exchange
@@ -174,6 +173,7 @@ with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep, startIndex), "w") as f
     fl.create_dataset("FinalStates", data=FinalStates)
     fl.create_dataset("SpecDisps", data=SpecDisps)
     fl.create_dataset("times", data=tarr)
+    fl.create_dataset("AllJumpRates", data=AllJumpRates)
     fl.create_dataset("JumpSelects", data=JumpSelects)
     fl.create_dataset("TestRandNums", data=TestRandomNums)
     fl.create_dataset("TestRates", data=TestRates)
