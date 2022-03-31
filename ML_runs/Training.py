@@ -42,7 +42,7 @@ def Load_Data():
         jmpSelects = np.array(fl["JumpSelects"]).astype(np.int8)
     return state1List, state2List, dispList, rateList, AllJumpRates, jmpSelects, AtomMarkers
 
-def MakeComputeData(state1List, state2List, dispList, specsToTrain, rateList,
+def MakeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
         AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False):
 
     # make the input tensors
@@ -89,15 +89,15 @@ def MakeComputeData(state1List, state2List, dispList, specsToTrain, rateList,
                 State1_occs[samp, spec1-1, site] = 1
                 State2_occs[samp, spec2-1, site] = 1
             
-            dispData[samp, 0, :] = dispList[samp, 0, :]
-            dispData[samp, 1, :] sum(dispList[samp, spec, :] for spec in specsToTrain)
+            dispData[samp, 0, :] = dispList[samp, VacSpec, :]
+            dispData[samp, 1, :] = sum(dispList[samp, spec, :] for spec in specsToTrain)
 
             rateData[samp] = rateList[samp]
     
     # Make the numpy tensor to indicate "on" sites (i.e, those whose y vectors will be collected)
     OnSites_state1 = None
     OnSites_state2 = None
-    if specsToTrain != [NSpec + 1]:
+    if specsToTrain != [VacSpec]:
         OnSites_state1 = np.zeros((Nsamples, Nsites), dtype=np.int8)
         OnSites_state2 = np.zeros((Nsamples, Nsites), dtype=np.int8)
     
@@ -106,7 +106,6 @@ def MakeComputeData(state1List, state2List, dispList, specsToTrain, rateList,
             OnSites_state2 += State2_occs[:, spec-1, :]
 
     return State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2
-
 
 class GCNet(nn.Module):
     def __init__(self, GnnPerms, NNsites, SitesToShells,
@@ -142,10 +141,29 @@ gNet = GCNet(GnnPerms, NNsites, SitesToShells,
 """## Write the training loop"""
 N_train = Nsamples//2
 
-def Train(T, dirPath, State1_Occs, State2_Occs, rateData, dispData, SpecsToTrain,
-        start_ep, end_ep, interval, N_train, gNet,
-        lRate=0.001, scratch_if_no_init=True):
-     
+def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
+        rates, disps, SpecsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
+        gNet, lRate=0.001, scratch_if_no_init=True):
+    
+    Ndim = disps.shape[2]
+    # Convert compute data to pytorch tensors
+    state1Data = pt.tensor(State1_Occs[:N_train]).double().to(device)
+    state2Data = pt.tensor(state2_Occs[:N_train]).double().to(device)
+    rateData = pt.tensor(rates[:N_train]).double().to(device)
+    if SpecsToTrain == [VacSpec]:
+        assert OnSites_st1 == OnSites_st2 == None
+        dispData = pt.tensor(disps[:N_train, 0, :]).double().to(device)
+
+    else:
+        dispData = pt.tensor(disps[:N_train, 1, :]).double().to(device) 
+        On_st1 = pt.tensor(OnSites_st1[:N_train]).long()
+        On_st1 = On_st1.repeat_interleave(Ndim, dim=0)
+        On_st1 = On_st1.view(-1, Ndim, Nsites).to(device)
+
+        On_st2 = pt.tensor(OnSites_st2[:N_train]).long()
+        On_st2 = On_st2.repeat_interleave(Ndim, dim=0)
+        On_st2 = On_st2.view(-1, Ndim, Nsites).to(device)
+
     N_batch = 128
     try:
         gNet.load_state_dict(pt.load(dirPath + "/{1}ep.pt".format(T, start_ep)))
@@ -157,8 +175,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, rateData, dispData, SpecsToTrain
             raise ValueError("No saved network found in {} at epoch {}".format(dirPath, start_ep))
 
     optimizer = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
-
-
+    
     for epoch in range(start_ep, end_ep + 1):
         
         ## checkpoint
@@ -180,9 +197,16 @@ def Train(T, dirPath, State1_Occs, State2_Occs, rateData, dispData, SpecsToTrain
             y2 = gNet(state2Batch)
             
             # sum up everything except the vacancy site
+            if SpecsToTrain=[VacSpec]:
+                y1 = pt.sum(y1[:, :, 1:], dim=2)
+                y2 = pt.sum(y2[:, :, 1:], dim=2)
+            
+            else:
+                On_st1Batch = On_st1[batch : end]
+                On_st2Batch = On_st2[batch : end]
+                y1 = pt.sum(y1*On_st1Batch, dim=2)
+                y2 = pt.sum(y2*On_st2Batch, dim=2)
 
-            y1 = pt.sum(y1[:, :, 1:], dim=2)
-            y2 = pt.sum(y2[:, :, 1:], dim=2)
 
             dy = y1 - y2
 
@@ -203,12 +227,13 @@ def main(args):
     scratch_if_no_init = str(args(4))
     nLayers = int(args[5])
     specTrain = int(args[6])
+    VacSpec = int(args[7])
     Mode = args[8] # train mode or eval mode
     AllJumps = args[9] # whether to train all jumps out of the samples or just stochastically selected one
     N_train = int(args[10]) # How many INITIAL STATES to consider for training
-    interval = args[9] # for train mode, interval to save and for eval mode, interval to load
+    interval = args[11] # for train mode, interval to save and for eval mode, interval to load
 
-    learning_Rate = float(args[10]) if len(args)==11 else 0.001
+    learning_Rate = float(args[12]) if len(args)==13 else 0.001
     
     # Load data
     state1List, state2List, dispList, rateList, jmpSelects = Load_Data()
@@ -225,7 +250,7 @@ def main(args):
     specsToTrain = sorted(specsToTrain)
     
     direcString=""
-    if specsToTrain == [NSpec + 1]:
+    if specsToTrain == [VacSpec]:
         direcString = "vac"
     else:
         for spec in specsToTrain:
@@ -270,9 +295,9 @@ def main(args):
             dim=Ndim, N_ngb=N_ngb,
             mean=0.03, std=0.02, b=1.0, nl=nl).double().to(device)
 
-    # Make the sample tensors here
+    # Call MakeComputeData here
 
-    # Write the training loop here
+    # Call Training or evaluating or y-evaluating function here
 
 
 if __name__ == "main":
