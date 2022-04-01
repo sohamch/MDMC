@@ -49,7 +49,7 @@ class GCNet(nn.Module):
 
 
 def Load_crysDats():
-"""## load the crystal data files"""
+    ## load the crystal data files
     GpermNNIdx = np.load(CrysDatPath + "GroupNNpermutations.npy")
     NNsiteList = np.load(CrysDatPath + "NNsites_sitewise.npy")
     siteShellIndices = np.load(CrysDatPath + "SitesToShells.npy")
