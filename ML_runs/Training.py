@@ -21,6 +21,33 @@ if pt.cuda.is_available():
 else:
     device = pt.device("cpu")
 
+
+class GCNet(nn.Module):
+    def __init__(self, GnnPerms, NNsites, SitesToShells,
+                dim, N_ngb, mean, std, b=1.0, nl=3):
+        
+        super().__init__()
+        modules = []
+        modules += [GConv(NSpec, 8, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
+                nn.Softplus(beta=b), Gavg()]
+
+        for i in range(nl):
+            modules += [GConv(8, 8, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
+                    nn.Softplus(beta=b), Gavg()]
+
+        modules += [GConv(8, 1, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
+                nn.Softplus(beta=b), Gavg()]
+
+        modules += [R3ConvSites(SitesToShells, GnnPerms, gdiags, NNsites, N_ngb, 
+            dim, mean=mean, std=std)]
+        
+        self.net = nn.Sequential(*modules)
+    
+    def forward(self, InState):
+        y = self.net(InState)
+        return y
+
+
 def Load_crysDats():
 """## load the crystal data files"""
     GpermNNIdx = np.load(CrysDatPath + "GroupNNpermutations.npy")
@@ -32,6 +59,7 @@ def Load_crysDats():
         GIndtoGDict = pickle.load(fl)
     return GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites
 
+
 def Load_Data():
     with h5py.File(DataPath + "singleStep_{}.h5".format(T), "r") as fl:
         state1List = np.array(fl["InitStates"])
@@ -40,7 +68,9 @@ def Load_Data():
         rateList = np.array(fl["rates"])
         AllJumpRates = np.array(fl["AllJumpRates"])
         jmpSelects = np.array(fl["JumpSelects"]).astype(np.int8)
+    
     return state1List, state2List, dispList, rateList, AllJumpRates, jmpSelects, AtomMarkers
+
 
 def MakeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
         AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False):
@@ -107,64 +137,36 @@ def MakeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
 
     return State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2
 
-class GCNet(nn.Module):
-    def __init__(self, GnnPerms, NNsites, SitesToShells,
-                dim, N_ngb, mean, std, b=1.0, nl=3):
-        
-        super().__init__()
-        modules = []
-        modules += [GConv(NSpec, 8, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
-                nn.Softplus(beta=b), Gavg()]
 
-        for i in range(nl):
-            modules += [GConv(8, 8, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
-                    nn.Softplus(beta=b), Gavg()]
+def makeProdTensor(OnSites):
+    Onst = pt.tensor(OnSites_st1)
+    Onst = Onst.repeat_interleave(Ndim, dim=0)
+    Onst = Onst.view(-1, Ndim, Nsites)
+    return Onst
 
-        modules += [GConv(8, 1, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
-                nn.Softplus(beta=b), Gavg()]
-
-        modules += [R3ConvSites(SitesToShells, GnnPerms, gdiags, NNsites, N_ngb, 
-            dim, mean=mean, std=std)]
-        
-        self.net = nn.Sequential(*modules)
-    
-    def forward(self, InState):
-        y = self.net(InState)
-        return y
-
-
-# test for correctness of indexing
-gNet = GCNet(GnnPerms, NNsites, SitesToShells,
-             dim=Ndim, N_ngb=N_ngb,
-             mean=0.03, std=0.02).double().to(device)
 
 """## Write the training loop"""
-N_train = Nsamples//2
-
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
         gNet, lRate=0.001, scratch_if_no_init=True):
     
     Ndim = disps.shape[2]
+    N_batch = 128
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs[:N_train]).double().to(device)
     state2Data = pt.tensor(state2_Occs[:N_train]).double().to(device)
     rateData = pt.tensor(rates[:N_train]).double().to(device)
+    On_st1 = None 
+    On_st2 = None    
+    
     if SpecsToTrain == [VacSpec]:
         assert OnSites_st1 == OnSites_st2 == None
         dispData = pt.tensor(disps[:N_train, 0, :]).double().to(device)
-
     else:
         dispData = pt.tensor(disps[:N_train, 1, :]).double().to(device) 
-        On_st1 = pt.tensor(OnSites_st1[:N_train]).long()
-        On_st1 = On_st1.repeat_interleave(Ndim, dim=0)
-        On_st1 = On_st1.view(-1, Ndim, Nsites).to(device)
+        On_st1 = makeProdTensor(OnSites_st1[:N_train]).long().to(device)
+        On_st2 = makeProdTensor(OnSites_st2[:N_train]).long().to(device)
 
-        On_st2 = pt.tensor(OnSites_st2[:N_train]).long()
-        On_st2 = On_st2.repeat_interleave(Ndim, dim=0)
-        On_st2 = On_st2.view(-1, Ndim, Nsites).to(device)
-
-    N_batch = 128
     try:
         gNet.load_state_dict(pt.load(dirPath + "/{1}ep.pt".format(T, start_ep)))
         print("Starting from epoch {}".format(start_ep), flush=True)
@@ -197,9 +199,9 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             y2 = gNet(state2Batch)
             
             # sum up everything except the vacancy site
-            if SpecsToTrain=[VacSpec]:
-                y1 = pt.sum(y1[:, :, 1:], dim=2)
-                y2 = pt.sum(y2[:, :, 1:], dim=2)
+            if SpecsToTrain==[VacSpec]:
+                y1 = -pt.sum(y1[:, :, 1:], dim=2)
+                y2 = -pt.sum(y2[:, :, 1:], dim=2)
             
             else:
                 On_st1Batch = On_st1[batch : end]
@@ -208,13 +210,12 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                 y2 = pt.sum(y2*On_st2Batch, dim=2)
 
 
-            dy = y1 - y2
+            dy = y2 - y1
 
             loss = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/6.
             
             loss.backward()
             optimizer.step()
-
 
 def main(args):
     print("Running at : "+RunPath+"\n")
