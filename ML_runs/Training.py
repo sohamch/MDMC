@@ -59,7 +59,7 @@ def Load_crysDats():
         GIndtoGDict = pickle.load(fl)
     return GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps
 
-def Load_Data():
+def Load_DataT(T):
     with h5py.File(DataPath + "singleStep_{}.h5".format(T), "r") as fl:
         state1List = np.array(fl["InitStates"])
         state2List = np.array(fl["FinStates"])
@@ -280,9 +280,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     return train_diff, test_diff
 
 
-def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
-        rates, disps, SpecsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
-        gNet):
+def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, epoch, gNet):
     
     Ndim = disps.shape[2]
     N_batch = 512
@@ -290,15 +288,12 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     state1Data = pt.tensor(State1_Occs).double().to(device)
     Nsamples = state1Data.shape[0]
     state2Data = pt.tensor(state2_Occs).double().to(device)
-    rateData = pt.tensor(rates).double().to(device)
     On_st1 = None
     On_st2 = None 
     
     if SpecsToTrain == [VacSpec]:
         assert OnSites_st1 == OnSites_st2 == None
-        dispData = pt.tensor(disps[:, 0, :]).double().to(device)
     else:
-        dispData = pt.tensor(disps[:, 1, :]).double().to(device) 
         On_st1 = makeProdTensor(OnSites_st1).long().to(device)
         On_st2 = makeProdTensor(OnSites_st2).long().to(device)
 
@@ -306,35 +301,34 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     y2Vecs = np.zeros((Nsamples, 3))
 
     with pt.no_grad():
-        for epoch in range(start_ep, start_ep + 1):
-            ## load checkpoint
-            gNet.load_state_dict(pt.load(dirPath + "/{1}ep.pt".format(T, epoch), map_location=device))
-                    
-            for batch in range(0, Nsamples, N_batch):
-                end = min(batch + N_batch, Nsamples)
+        ## load checkpoint
+        gNet.load_state_dict(pt.load(dirPath + "/{1}ep.pt".format(T, epoch), map_location=device))
+                
+        for batch in range(0, Nsamples, N_batch):
+            end = min(batch + N_batch, Nsamples)
 
-                state1Batch = state1Data[batch : end]
-                state2Batch = state2Data[batch : end]
-                
-                rateBatch = rateData[batch : end]
-                dispBatch = dispData[batch : end]
-                
-                y1 = gNet(state1Batch)
-                y2 = gNet(state2Batch)
-                
-                # sum up everything except the vacancy site if vacancy is indicated
-                if SpecsToTrain == [VacSpec]:
-                    y1 = -pt.sum(y1[:, :, 1:], dim=2)
-                    y2 = -pt.sum(y2[:, :, 1:], dim=2)
-                
-                else:
-                    On_st1Batch = On_st1[batch : end]
-                    On_st2Batch = On_st2[batch : end]
-                    y1 = pt.sum(y1*On_st1Batch, dim=2)
-                    y2 = pt.sum(y2*On_st2Batch, dim=2)
-                
-                y1Vecs[batch : end] = y1.cpu().numpy()[:, :]
-                y2Vecs[batch : end] = y2.cpu().numpy()[:, :]
+            state1Batch = state1Data[batch : end]
+            state2Batch = state2Data[batch : end]
+            
+            rateBatch = rateData[batch : end]
+            dispBatch = dispData[batch : end]
+            
+            y1 = gNet(state1Batch)
+            y2 = gNet(state2Batch)
+            
+            # sum up everything except the vacancy site if vacancy is indicated
+            if SpecsToTrain == [VacSpec]:
+                y1 = -pt.sum(y1[:, :, 1:], dim=2)
+                y2 = -pt.sum(y2[:, :, 1:], dim=2)
+            
+            else:
+                On_st1Batch = On_st1[batch : end]
+                On_st2Batch = On_st2[batch : end]
+                y1 = pt.sum(y1*On_st1Batch, dim=2)
+                y2 = pt.sum(y2*On_st2Batch, dim=2)
+            
+            y1Vecs[batch : end] = y1.cpu().numpy()[:, :]
+            y2Vecs[batch : end] = y2.cpu().numpy()[:, :]
 
     return y1Vecs, y2Vecs
 
@@ -345,8 +339,21 @@ def main(args):
     # Get run parameters
     # Replace all of this with argparse after learning about it
     count=1
+     
+    Mode = args[count] # "train" mode or "eval" mode or "getY" mode
+    count += 1
+
+    nLayers = int(args[count])
+    count += 1
+    
+    scratch_if_no_init = bool(int(args[count]))
+    count += 1
+    
     T_data = int(args[count]) # temperature to load data from
     # Note : for binary random alloys, this should is the training composition instead of temperature
+    count += 1
+    
+    T_net = int(args[count]) # must be same as T_data if "train", can be different if "getY" or "eval"
     count += 1
     
     start_ep = int(args[count])
@@ -355,22 +362,11 @@ def main(args):
     end_ep = int(args[count])
     count += 1
     
-    scratch_if_no_init = bool(int(args[count]))
-    count += 1
-    
-    nLayers = int(args[count])
-    count += 1
-    
-    specTrain = int(args[count]) # which species to train collectively as a string : eg - "123" for species 1, 2 and 3
+    specTrain = int(args[count]) # which species to train collectively: eg - 123 for species 1, 2 and 3
+    # The entry is order independent as it is sorted later
     count += 1
     
     VacSpec = int(args[count]) # integer label for vacancy species
-    count += 1
-    
-    Mode = args[count] # "train" mode or "eval" mode or "getY" mode
-    count += 1
-    
-    T_net = int(args[count]) # must be same as T_data if "train" or "eval", can be different if "getY"
     count += 1
     
     AllJumps = bool(int(args[count])) # whether to train all jumps out of the samples or just stochastically selected one
@@ -385,12 +381,15 @@ def main(args):
     
     learning_Rate = float(args[count]) if len(args)==count+1 else 0.001
     
+    if not (Mode == "train" or Mode == "eval" or Mode == "getY"):
+        raise ValueError("Mode needs to be train, eval or getY and not : {}".format(Mode))
+
     if Mode == "train" or Mode == "eval":
         if T_data != T_net:
             raise ValueError("Training and Testing condition must be the same")
 
     # Load data
-    state1List, state2List, dispList, rateList, AllJumpRates, jmpSelects = Load_Data()
+    state1List, state2List, dispList, rateList, AllJumpRates, jmpSelects = Load_Data(T_data)
     
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
@@ -454,9 +453,21 @@ def main(args):
             specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps)
     # Call Training or evaluating or y-evaluating function here
     if Mode == "train":
-        Train(T, dirPath, State1_Occs, State2_Occs, OnSites_state1, OnSites_state2,
+        Train(T_data, dirPath, State1_Occs, State2_Occs, OnSites_state1, OnSites_state2,
                 rateData, dispData, specsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
                 gNet, lRate=learning_rate, scratch_if_no_init=scratch_if_no_init)
+
+    elif Mode == "eval":
+        train_diff, valid_diff = Evaluate(T_net, dirPath, State1_Occs, State2_Occs,
+                OnSites_st1, OnSites_st2, rates, disps,
+                SpecsToTrain, VacSpec, start_ep, end_ep,
+                interval, N_train, gNet)
+        np.save("training_{0}_{1}_n{2}c8.npy".format(T_data, T_net, nLayers), train_diff)
+        np.save("validation_{0}_{1}_n{2}c8.npy".format(T_data, T_net, nLayers), valid_diff)
+
+    elif Mode == "getY":
+        y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_Occs, State2_Occs,
+                OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, epoch, gNet)
 
 
 if __name__ == "main":
