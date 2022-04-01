@@ -70,7 +70,7 @@ def Load_DataT(T):
     
     return state1List, state2List, dispList, rateList, AllJumpRates, jmpSelects
 
-def MakeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
+def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
         AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False):
 
     # make the input tensors
@@ -449,7 +449,7 @@ def main(args):
             mean=0.03, std=0.02, b=1.0, nl=nLayers).double().to(device)
 
     # Call MakeComputeData here
-    State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2 = MakeComputeData(state1List, state2List, dispList,
+    State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2 = makeComputeData(state1List, state2List, dispList,
             specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps)
     # Call Training or evaluating or y-evaluating function here
     if Mode == "train":
