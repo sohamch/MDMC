@@ -1,6 +1,10 @@
+import os
+import sys
+RunPath = os.getcwd() + "/"
 CrysDatPath = "/home/sohamc2/HEA_FCC/CrysDat/"
 DataPath = "/home/sohamc2/HEA_FCC/MDMC/ML_runs/DataSets/"
 ModulePath = "/home/sohamc2/VKMC/SymNetworkRuns/CE_Symmetry/Symm_Network/"
+sys.path.append(ModulePath)
 
 import numpy as np
 import torch as pt
@@ -10,10 +14,6 @@ import h5py
 import pickle
 import matplotlib.pyplot as plt
 from SymmLayers import GConv, R3Conv, R3ConvSites, GAvg
-import os
-import sys
-sys.path.append(ModulePath)
-RunPath = os.getcwd() + "/"
 
 device=None
 if pt.cuda.is_available():
