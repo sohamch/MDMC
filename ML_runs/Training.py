@@ -57,8 +57,7 @@ def Load_crysDats():
     dxJumps = np.load(CrysDatPath + "dxList.npy")
     with open(CrysDatPath + "GroupCartIndices.pkl", "rb") as fl:
         GIndtoGDict = pickle.load(fl)
-    return GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites
-
+    return GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps
 
 def Load_Data():
     with h5py.File(DataPath + "singleStep_{}.h5".format(T), "r") as fl:
@@ -69,8 +68,7 @@ def Load_Data():
         AllJumpRates = np.array(fl["AllJumpRates"])
         jmpSelects = np.array(fl["JumpSelects"]).astype(np.int8)
     
-    return state1List, state2List, dispList, rateList, AllJumpRates, jmpSelects, AtomMarkers
-
+    return state1List, state2List, dispList, rateList, AllJumpRates, jmpSelects
 
 def MakeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
         AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False):
@@ -217,7 +215,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
-        gNet, scratch_if_no_init=True):
+        gNet):
     
     Ndim = disps.shape[2]
     N_batch = 512
@@ -226,7 +224,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     state2Data = pt.tensor(state2_Occs).double().to(device)
     rateData = pt.tensor(rates).double().to(device)
     On_st1 = None
-    On_st2 = None    
+    On_st2 = None
     
     if SpecsToTrain == [VacSpec]:
         assert OnSites_st1 == OnSites_st2 == None
@@ -235,15 +233,6 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         dispData = pt.tensor(disps[:, 1, :]).double().to(device) 
         On_st1 = makeProdTensor(OnSites_st1).long().to(device)
         On_st2 = makeProdTensor(OnSites_st2).long().to(device)
-
-    try:
-        gNet.load_state_dict(pt.load(dirPath + "/{1}ep.pt".format(T, start_ep)))
-        print("Starting from epoch {}".format(start_ep), flush=True)
-    except:
-        if scratch_if_no_init:
-            print("No Network found. Starting from scratch", flush=True)
-        else:
-            raise ValueError("No saved network found in {} at epoch {}".format(dirPath, start_ep))
 
     def compute(startSample, endSample):
         diff_epochs = []
@@ -293,7 +282,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
-        gNet, lRate=0.001, scratch_if_no_init=True):
+        gNet):
     
     Ndim = disps.shape[2]
     N_batch = 512
@@ -303,7 +292,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     state2Data = pt.tensor(state2_Occs).double().to(device)
     rateData = pt.tensor(rates).double().to(device)
     On_st1 = None
-    On_st2 = None    
+    On_st2 = None 
     
     if SpecsToTrain == [VacSpec]:
         assert OnSites_st1 == OnSites_st2 == None
@@ -312,15 +301,6 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         dispData = pt.tensor(disps[:, 1, :]).double().to(device) 
         On_st1 = makeProdTensor(OnSites_st1).long().to(device)
         On_st2 = makeProdTensor(OnSites_st2).long().to(device)
-
-    try:
-        gNet.load_state_dict(pt.load(dirPath + "/{1}ep.pt".format(T, start_ep)))
-        print("Starting from epoch {}".format(start_ep), flush=True)
-    except:
-        if scratch_if_no_init:
-            print("No Network found. Starting from scratch", flush=True)
-        else:
-            raise ValueError("No saved network found in {} at epoch {}".format(dirPath, start_ep))
 
     y1Vecs = np.zeros((Nsamples, 3))
     y2Vecs = np.zeros((Nsamples, 3))
@@ -343,7 +323,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                 y2 = gNet(state2Batch)
                 
                 # sum up everything except the vacancy site if vacancy is indicated
-                if SpecsToTrain==[VacSpec]:
+                if SpecsToTrain == [VacSpec]:
                     y1 = -pt.sum(y1[:, :, 1:], dim=2)
                     y2 = -pt.sum(y2[:, :, 1:], dim=2)
                 
@@ -364,22 +344,53 @@ def main(args):
 
     # Get run parameters
     # Replace all of this with argparse after learning about it
-    T = int(args[1])
-    start_ep = int(args[2])
-    end_ep = int(args[3])
-    scratch_if_no_init = str(args(4))
-    nLayers = int(args[5])
-    specTrain = int(args[6])
-    VacSpec = int(args[7])
-    Mode = args[8] # train mode or eval mode
-    AllJumps = args[9] # whether to train all jumps out of the samples or just stochastically selected one
-    N_train = int(args[10]) # How many INITIAL STATES to consider for training
-    interval = args[11] # for train mode, interval to save and for eval mode, interval to load
-
-    learning_Rate = float(args[12]) if len(args)==13 else 0.001
+    count=1
+    T_data = int(args[count]) # temperature to load data from
+    # Note : for binary random alloys, this should is the training composition instead of temperature
+    count += 1
     
+    start_ep = int(args[count])
+    count += 1
+    
+    end_ep = int(args[count])
+    count += 1
+    
+    scratch_if_no_init = bool(int(args[count]))
+    count += 1
+    
+    nLayers = int(args[count])
+    count += 1
+    
+    specTrain = int(args[count]) # which species to train collectively as a string : eg - "123" for species 1, 2 and 3
+    count += 1
+    
+    VacSpec = int(args[count]) # integer label for vacancy species
+    count += 1
+    
+    Mode = args[count] # "train" mode or "eval" mode or "getY" mode
+    count += 1
+    
+    T_net = int(args[count]) # must be same as T_data if "train" or "eval", can be different if "getY"
+    count += 1
+    
+    AllJumps = bool(int(args[count])) # whether to train all jumps out of the samples or just stochastically selected one
+    # False if 0, otherwise True
+    count += 1
+    
+    N_train = int(args[count]) # How many INITIAL STATES to consider for training
+    count += 1
+    
+    interval = args[count] # for train mode, interval to save and for eval mode, interval to load
+    count += 1
+    
+    learning_Rate = float(args[count]) if len(args)==count+1 else 0.001
+    
+    if Mode == "train" or Mode == "eval":
+        if T_data != T_net:
+            raise ValueError("Training and Testing condition must be the same")
+
     # Load data
-    state1List, state2List, dispList, rateList, jmpSelects = Load_Data()
+    state1List, state2List, dispList, rateList, AllJumpRates, jmpSelects = Load_Data()
     
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
@@ -417,7 +428,7 @@ def main(args):
     print(pt.cuda.get_device_name())
     
     # Load crystal parameters
-    GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites = Load_crysDats()
+    GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats()
     N_ngb = NNsiteList.shape[0]
     Nsites = NNsiteList.shape[1]
     SitesToShells = pt.tensor(siteShellIndices).long().to(device)
@@ -436,11 +447,16 @@ def main(args):
     # Make a network to either train from scratch or load saved state into
     gNet = GCNet(GnnPerms, NNsites, SitesToShells,
             dim=Ndim, N_ngb=N_ngb,
-            mean=0.03, std=0.02, b=1.0, nl=nl).double().to(device)
+            mean=0.03, std=0.02, b=1.0, nl=nLayers).double().to(device)
 
     # Call MakeComputeData here
-
+    State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2 = MakeComputeData(state1List, state2List, dispList,
+            specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps)
     # Call Training or evaluating or y-evaluating function here
+    if Mode == "train":
+        Train(T, dirPath, State1_Occs, State2_Occs, OnSites_state1, OnSites_state2,
+                rateData, dispData, specsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
+                gNet, lRate=learning_rate, scratch_if_no_init=scratch_if_no_init)
 
 
 if __name__ == "main":
