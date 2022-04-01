@@ -217,7 +217,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
-        gNet, lRate=0.001, scratch_if_no_init=True):
+        gNet, scratch_if_no_init=True):
     
     Ndim = disps.shape[2]
     N_batch = 512
@@ -248,14 +248,13 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     def compute(startSample, endSample):
         diff_epochs = []
         with pt.no_grad():
-            for epoch in range(start_ep, end_ep + 1):
-                diff_ep = 0 
-                ## checkpoint
-                if epoch%interval==0:
-                    pt.save(gNet.state_dict(), dirPath + "/{1}ep.pt".format(T, epoch))
+            for epoch in range(start_ep, end_ep + 1, interval):
+                ## load checkpoint
+                gNet.load_state_dict(pt.load(dirPath + "/{1}ep.pt".format(T, epoch), map_location=device))
                     
+                diff_ep = 0 
                 for batch in range(startSample, endSample, N_batch):
-                    end = min(batch + N_batch, N_train)
+                    end = min(batch + N_batch, endSample)
 
                     state1Batch = state1Data[batch : end]
                     state2Batch = state2Data[batch : end]
@@ -284,11 +283,80 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                 diff_epochs.append(diff_ep)
 
         return np.array(diff_ep)
+    
     Nsamples = state1Data.shape[0]
     train_diff = compute(0, N_train)/(1.0*N_train)
     test_diff = compute(N_train, Nsamples - N_train)/(1.0*(Nsamples - N_train))
 
     return train_diff, test_diff
+
+
+def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
+        rates, disps, SpecsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
+        gNet, lRate=0.001, scratch_if_no_init=True):
+    
+    Ndim = disps.shape[2]
+    N_batch = 512
+    # Convert compute data to pytorch tensors
+    state1Data = pt.tensor(State1_Occs).double().to(device)
+    Nsamples = state1Data.shape[0]
+    state2Data = pt.tensor(state2_Occs).double().to(device)
+    rateData = pt.tensor(rates).double().to(device)
+    On_st1 = None
+    On_st2 = None    
+    
+    if SpecsToTrain == [VacSpec]:
+        assert OnSites_st1 == OnSites_st2 == None
+        dispData = pt.tensor(disps[:, 0, :]).double().to(device)
+    else:
+        dispData = pt.tensor(disps[:, 1, :]).double().to(device) 
+        On_st1 = makeProdTensor(OnSites_st1).long().to(device)
+        On_st2 = makeProdTensor(OnSites_st2).long().to(device)
+
+    try:
+        gNet.load_state_dict(pt.load(dirPath + "/{1}ep.pt".format(T, start_ep)))
+        print("Starting from epoch {}".format(start_ep), flush=True)
+    except:
+        if scratch_if_no_init:
+            print("No Network found. Starting from scratch", flush=True)
+        else:
+            raise ValueError("No saved network found in {} at epoch {}".format(dirPath, start_ep))
+
+    y1Vecs = np.zeros((Nsamples, 3))
+    y2Vecs = np.zeros((Nsamples, 3))
+
+    with pt.no_grad():
+        for epoch in range(start_ep, start_ep + 1):
+            ## load checkpoint
+            gNet.load_state_dict(pt.load(dirPath + "/{1}ep.pt".format(T, epoch), map_location=device))
+                    
+            for batch in range(0, Nsamples, N_batch):
+                end = min(batch + N_batch, Nsamples)
+
+                state1Batch = state1Data[batch : end]
+                state2Batch = state2Data[batch : end]
+                
+                rateBatch = rateData[batch : end]
+                dispBatch = dispData[batch : end]
+                
+                y1 = gNet(state1Batch)
+                y2 = gNet(state2Batch)
+                
+                # sum up everything except the vacancy site if vacancy is indicated
+                if SpecsToTrain==[VacSpec]:
+                    y1 = -pt.sum(y1[:, :, 1:], dim=2)
+                    y2 = -pt.sum(y2[:, :, 1:], dim=2)
+                
+                else:
+                    On_st1Batch = On_st1[batch : end]
+                    On_st2Batch = On_st2[batch : end]
+                    y1 = pt.sum(y1*On_st1Batch, dim=2)
+                    y2 = pt.sum(y2*On_st2Batch, dim=2)
+                
+                y1Vecs[batch : end] = y1.cpu().numpy()[:, :]
+                y2Vecs[batch : end] = y2.cpu().numpy()[:, :]
+
+    return y1Vecs, y2Vecs
 
 
 def main(args):
