@@ -142,7 +142,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
 
 
 def makeProdTensor(OnSites, Ndim):
-    Onst = pt.tensor(OnSites_st1)
+    Onst = pt.tensor(OnSites)
     Onst = Onst.repeat_interleave(Ndim, dim=0)
     Onst = Onst.view(-1, Ndim, Nsites)
     return Onst
