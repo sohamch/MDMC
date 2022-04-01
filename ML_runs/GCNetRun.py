@@ -141,7 +141,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     return State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2
 
 
-def makeProdTensor(OnSites):
+def makeProdTensor(OnSites, Ndim):
     Onst = pt.tensor(OnSites_st1)
     Onst = Onst.repeat_interleave(Ndim, dim=0)
     Onst = Onst.view(-1, Ndim, Nsites)
@@ -167,8 +167,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         dispData = pt.tensor(disps[:N_train, 0, :]).double().to(device)
     else:
         dispData = pt.tensor(disps[:N_train, 1, :]).double().to(device) 
-        On_st1 = makeProdTensor(OnSites_st1[:N_train]).long().to(device)
-        On_st2 = makeProdTensor(OnSites_st2[:N_train]).long().to(device)
+        On_st1 = makeProdTensor(OnSites_st1[:N_train], Ndim).long().to(device)
+        On_st2 = makeProdTensor(OnSites_st2[:N_train], Ndim).long().to(device)
 
     try:
         gNet.load_state_dict(pt.load(dirPath + "/{1}ep.pt".format(T, start_ep)))
@@ -236,8 +236,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         dispData = pt.tensor(disps[:, 0, :]).double().to(device)
     else:
         dispData = pt.tensor(disps[:, 1, :]).double().to(device) 
-        On_st1 = makeProdTensor(OnSites_st1).long().to(device)
-        On_st2 = makeProdTensor(OnSites_st2).long().to(device)
+        On_st1 = makeProdTensor(OnSites_st1, Ndim).long().to(device)
+        On_st2 = makeProdTensor(OnSites_st2, Ndim).long().to(device)
 
     def compute(startSample, endSample):
         diff_epochs = []
@@ -299,8 +299,8 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, Spe
     if SpecsToTrain == [VacSpec]:
         assert OnSites_st1 == OnSites_st2 == None
     else:
-        On_st1 = makeProdTensor(OnSites_st1).long().to(device)
-        On_st2 = makeProdTensor(OnSites_st2).long().to(device)
+        On_st1 = makeProdTensor(OnSites_st1, Ndim).long().to(device)
+        On_st2 = makeProdTensor(OnSites_st2, Ndim).long().to(device)
 
     y1Vecs = np.zeros((Nsamples, 3))
     y2Vecs = np.zeros((Nsamples, 3))
