@@ -90,7 +90,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     rateData = np.zeros(Nsamples)
     
     # Make the multichannel occupancies
-    for samp in range(Nsamples):
+    for samp in range(2*N_train):
         state1 = state1List[samp]
         if AllJumps:
             for jInd in range(AllJumpRates.shape[1]):
