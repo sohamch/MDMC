@@ -59,7 +59,7 @@ def Load_crysDats():
         GIndtoGDict = pickle.load(fl)
     return GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps
 
-def Load_DataT(T):
+def Load_Data(T):
     with h5py.File(DataPath + "singleStep_{}.h5".format(T), "r") as fl:
         state1List = np.array(fl["InitStates"])
         state2List = np.array(fl["FinStates"])
