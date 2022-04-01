@@ -4,6 +4,11 @@ RunPath = os.getcwd() + "/"
 CrysDatPath = "/home/sohamc2/HEA_FCC/CrysDat/"
 DataPath = "/home/sohamc2/HEA_FCC/MDMC/ML_runs/DataSets/"
 ModulePath = "/home/sohamc2/VKMC/SymNetworkRuns/CE_Symmetry/Symm_Network/"
+
+#CrysDatPath = "CrysDat/"
+#DataPath = "MD_KMC_single/"
+#ModulePath = "/mnt/FCDEB3C5DEB3768C/UIUC/Research/KMC_ML/VKMC/SymNetworkRuns/CE_Symmetry/Symm_Network"
+
 sys.path.append(ModulePath)
 
 import numpy as np
