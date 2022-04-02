@@ -389,7 +389,7 @@ def main(args):
     if not (Mode == "train" or Mode == "eval" or Mode == "getY"):
         raise ValueError("Mode needs to be train, eval or getY and not : {}".format(Mode))
 
-    if Mode == "train" or Mode == "eval":
+    if Mode == "train":
         if T_data != T_net:
             raise ValueError("Training and Testing condition must be the same")
 
@@ -475,5 +475,5 @@ def main(args):
                 OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, epoch, gNet)
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     main(list(sys.argv))
