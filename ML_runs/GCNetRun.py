@@ -65,8 +65,8 @@ def Load_crysDats():
         GIndtoGDict = pickle.load(fl)
     return GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps
 
-def Load_Data(T):
-    with h5py.File(DataPath + "singleStep_{}.h5".format(T), "r") as fl:
+def Load_Data(FileName):
+    with h5py.File(DataPath + FileName, "r") as fl:
         state1List = np.array(fl["InitStates"])
         state2List = np.array(fl["FinStates"])
         dispList = np.array(fl["SpecDisps"])
@@ -348,6 +348,8 @@ def main(args):
     # Get run parameters
     # Replace all of this with argparse after learning about it
     count=1
+    FileName = args[count] # Name of data file to train on
+    count += 1
      
     Mode = args[count] # "train" mode or "eval" mode or "getY" mode
     count += 1
@@ -398,7 +400,7 @@ def main(args):
             raise ValueError("Training and Testing condition must be the same")
 
     # Load data
-    state1List, state2List, dispList, rateList, AllJumpRates, jmpSelects = Load_Data(T_data)
+    state1List, state2List, dispList, rateList, AllJumpRates, jmpSelects = Load_Data(FileName)
     
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
