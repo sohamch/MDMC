@@ -227,7 +227,9 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     N_batch = 512
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs).double()
-    state2Data = pt.tensor(state2_Occs).double()
+    Nsamples = state1Data.shape[0]
+    print("Samples: {}, Training: {}, Validation: {}".format(Nsamples, N_train, Nsamples-N_train))
+    state2Data = pt.tensor(State2_Occs).double()
     rateData = pt.tensor(rates).double().to(device)
     On_st1 = None
     On_st2 = None
@@ -247,7 +249,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                 ## load checkpoint
                 gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, epoch), map_location=device))
                     
-                diff_ep = 0 
+                diff = 0 
                 for batch in range(startSample, endSample, N_batch):
                     end = min(batch + N_batch, endSample)
 
@@ -273,15 +275,14 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
                     dy = y2 - y1
                     loss = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/6.
-                    diff_ep += loss.item()
+                    diff += loss.item()
 
                 diff_epochs.append(diff_ep)
 
-        return np.array(diff_ep)
+        return np.array(diff_epochs)
     
-    Nsamples = state1Data.shape[0]
     train_diff = compute(0, N_train)/(1.0*N_train)
-    test_diff = compute(N_train, Nsamples - N_train)/(1.0*(Nsamples - N_train))
+    test_diff = compute(N_train, Nsamples)/(1.0*(Nsamples - N_train))
 
     return train_diff, test_diff
 
@@ -293,7 +294,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, Spe
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs).double()
     Nsamples = state1Data.shape[0]
-    state2Data = pt.tensor(state2_Occs).double()
+    state2Data = pt.tensor(State2_Occs).double()
     On_st1 = None
     On_st2 = None 
     
@@ -466,15 +467,15 @@ def main(args):
 
     elif Mode == "eval":
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_Occs, State2_Occs,
-                OnSites_st1, OnSites_st2, rates, disps,
-                SpecsToTrain, VacSpec, start_ep, end_ep,
+                OnSites_state1, OnSites_state2, rateData, dispData,
+                specsToTrain, VacSpec, start_ep, end_ep,
                 interval, N_train, gNet)
         np.save("training_{0}_{1}_n{2}c8.npy".format(T_data, T_net, nLayers), train_diff)
         np.save("validation_{0}_{1}_n{2}c8.npy".format(T_data, T_net, nLayers), valid_diff)
 
     elif Mode == "getY":
         y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_Occs, State2_Occs,
-                OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, epoch, gNet)
+                OnSites_state1, OnSites_state2, specsToTrain, VacSpec, start_ep, gNet)
 
 
 if __name__ == "__main__":
