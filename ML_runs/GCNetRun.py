@@ -17,6 +17,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import h5py
 import pickle
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 from SymmLayers import GConv, R3Conv, R3ConvSites, GAvg
 
@@ -95,7 +96,8 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     rateData = np.zeros(Nsamples)
     
     # Make the multichannel occupancies
-    for samp in range(2*N_train):
+    print("Building Occupancy Tensors")
+    for samp in tqdm(range(2*N_train), position=0, leave=True):
         state1 = state1List[samp]
         if AllJumps:
             for jInd in range(AllJumpRates.shape[1]):
@@ -181,8 +183,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             raise ValueError("No saved network found in {} at epoch {}".format(dirPath, start_ep))
 
     optimizer = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
-    
-    for epoch in range(start_ep, end_ep + 1):
+    print("Starting Training loop") 
+    for epoch in tqdm(range(start_ep, end_ep + 1), position=0, leave=True):
         
         ## checkpoint
         if epoch%interval==0:
@@ -454,7 +456,6 @@ def main(args):
             mean=0.03, std=0.02, b=1.0, nl=nLayers).double().to(device)
 
     # Call MakeComputeData here
-    print("Creating occupancy tensors")
     State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2 = makeComputeData(state1List, state2List, dispList,
             specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps)
     print("Done Creating occupancy tensors")
