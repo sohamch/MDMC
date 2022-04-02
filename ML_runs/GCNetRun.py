@@ -471,12 +471,14 @@ def main(args):
                 OnSites_state1, OnSites_state2, rateData, dispData,
                 specsToTrain, VacSpec, start_ep, end_ep,
                 interval, N_train_jumps, gNet)
-        np.save("training_{0}_{1}_n{2}c8.npy".format(T_data, T_net, nLayers), train_diff/(1.0*N_train))
-        np.save("validation_{0}_{1}_n{2}c8.npy".format(T_data, T_net, nLayers), valid_diff/(1.0*(stateData.shape[0] - N_train)))
+        np.save("tr_{4}_{0}_{1}_n{2}c8_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString), train_diff/(1.0*N_train))
+        np.save("val_{4}_{0}_{1}_n{2}c8_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString), valid_diff/(1.0*N_train))
 
     elif Mode == "getY":
         y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_Occs, State2_Occs,
                 OnSites_state1, OnSites_state2, specsToTrain, VacSpec, start_ep, gNet)
+        np.save("y1_{4}_{0}_{1}_n{2}c8_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString), y1Vecs)
+        np.save("y2_{4}_{0}_{1}_n{2}c8_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString), y2Vecs)
 
 
 if __name__ == "__main__":
