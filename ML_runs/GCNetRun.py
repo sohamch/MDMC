@@ -281,8 +281,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
         return np.array(diff_epochs)
     
-    train_diff = compute(0, N_train)/(1.0*N_train)
-    test_diff = compute(N_train, Nsamples)/(1.0*(Nsamples - N_train))
+    train_diff = compute(0, N_train)#/(1.0*N_train)
+    test_diff = compute(N_train, Nsamples)#/(1.0*(Nsamples - N_train))
 
     return train_diff, test_diff
 
@@ -417,7 +417,7 @@ def main(args):
             direcString += "{}".format(spec)
     
     # This is where networks will be saved to and loaded from
-    dirNameNets = "epochs_T_{0}_{1}_n{2}c8".format(T_net, direcString, nLayers)
+    dirNameNets = "ep_T_{0}_{1}_n{2}c8_all_{3}".format(T_net, direcString, nLayers, int(AllJumps))
     
     # check if a run directory exists
     dirPath = RunPath + dirNameNets
@@ -460,18 +460,19 @@ def main(args):
     print("Done Creating occupancy tensors")
 
     # Call Training or evaluating or y-evaluating function here
+    N_train_jumps = 12*N_train if AllJumps else N_train
     if Mode == "train":
         Train(T_data, dirPath, State1_Occs, State2_Occs, OnSites_state1, OnSites_state2,
-                rateData, dispData, specsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
+                rateData, dispData, specsToTrain, VacSpec, start_ep, end_ep, interval, N_train_jumps,
                 gNet, lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init)
 
     elif Mode == "eval":
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_Occs, State2_Occs,
                 OnSites_state1, OnSites_state2, rateData, dispData,
                 specsToTrain, VacSpec, start_ep, end_ep,
-                interval, N_train, gNet)
-        np.save("training_{0}_{1}_n{2}c8.npy".format(T_data, T_net, nLayers), train_diff)
-        np.save("validation_{0}_{1}_n{2}c8.npy".format(T_data, T_net, nLayers), valid_diff)
+                interval, N_train_jumps, gNet)
+        np.save("training_{0}_{1}_n{2}c8.npy".format(T_data, T_net, nLayers), train_diff/(1.0*N_train))
+        np.save("validation_{0}_{1}_n{2}c8.npy".format(T_data, T_net, nLayers), valid_diff/(1.0*(stateData.shape[0] - N_train)))
 
     elif Mode == "getY":
         y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_Occs, State2_Occs,
