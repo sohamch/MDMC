@@ -277,7 +277,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                     loss = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/6.
                     diff += loss.item()
 
-                diff_epochs.append(diff_ep)
+                diff_epochs.append(diff)
 
         return np.array(diff_epochs)
     
