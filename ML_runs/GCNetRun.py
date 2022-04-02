@@ -156,8 +156,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     Ndim = disps.shape[2]
     N_batch = 128
     # Convert compute data to pytorch tensors
-    state1Data = pt.tensor(State1_Occs[:N_train]).double().to(device)
-    state2Data = pt.tensor(state2_Occs[:N_train]).double().to(device)
+    state1Data = pt.tensor(State1_Occs[:N_train]).double()
+    state2Data = pt.tensor(state2_Occs[:N_train]).double()
     rateData = pt.tensor(rates[:N_train]).double().to(device)
     On_st1 = None 
     On_st2 = None    
@@ -167,8 +167,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         dispData = pt.tensor(disps[:N_train, 0, :]).double().to(device)
     else:
         dispData = pt.tensor(disps[:N_train, 1, :]).double().to(device) 
-        On_st1 = makeProdTensor(OnSites_st1[:N_train], Ndim).long().to(device)
-        On_st2 = makeProdTensor(OnSites_st2[:N_train], Ndim).long().to(device)
+        On_st1 = makeProdTensor(OnSites_st1[:N_train], Ndim).long()
+        On_st2 = makeProdTensor(OnSites_st2[:N_train], Ndim).long()
 
     try:
         gNet.load_state_dict(pt.load(dirPath + "/{1}ep.pt".format(T, start_ep)))
@@ -192,8 +192,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             
             end = min(batch + N_batch, N_train)
 
-            state1Batch = state1Data[batch : end]
-            state2Batch = state2Data[batch : end]
+            state1Batch = state1Data[batch : end].to(device)
+            state2Batch = state2Data[batch : end].to(device)
             
             rateBatch = rateData[batch : end]
             dispBatch = dispData[batch : end]
@@ -207,8 +207,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                 y2 = -pt.sum(y2[:, :, 1:], dim=2)
             
             else:
-                On_st1Batch = On_st1[batch : end]
-                On_st2Batch = On_st2[batch : end]
+                On_st1Batch = On_st1[batch : end].to(device)
+                On_st2Batch = On_st2[batch : end].to(device)
                 y1 = pt.sum(y1*On_st1Batch, dim=2)
                 y2 = pt.sum(y2*On_st2Batch, dim=2)
 
@@ -225,8 +225,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     Ndim = disps.shape[2]
     N_batch = 512
     # Convert compute data to pytorch tensors
-    state1Data = pt.tensor(State1_Occs).double().to(device)
-    state2Data = pt.tensor(state2_Occs).double().to(device)
+    state1Data = pt.tensor(State1_Occs).double()
+    state2Data = pt.tensor(state2_Occs).double()
     rateData = pt.tensor(rates).double().to(device)
     On_st1 = None
     On_st2 = None
@@ -236,8 +236,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         dispData = pt.tensor(disps[:, 0, :]).double().to(device)
     else:
         dispData = pt.tensor(disps[:, 1, :]).double().to(device) 
-        On_st1 = makeProdTensor(OnSites_st1, Ndim).long().to(device)
-        On_st2 = makeProdTensor(OnSites_st2, Ndim).long().to(device)
+        On_st1 = makeProdTensor(OnSites_st1, Ndim).long()
+        On_st2 = makeProdTensor(OnSites_st2, Ndim).long()
 
     def compute(startSample, endSample):
         diff_epochs = []
@@ -250,8 +250,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                 for batch in range(startSample, endSample, N_batch):
                     end = min(batch + N_batch, endSample)
 
-                    state1Batch = state1Data[batch : end]
-                    state2Batch = state2Data[batch : end]
+                    state1Batch = state1Data[batch : end].to(device)
+                    state2Batch = state2Data[batch : end].to(device)
                     
                     rateBatch = rateData[batch : end]
                     dispBatch = dispData[batch : end]
@@ -265,8 +265,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                         y2 = -pt.sum(y2[:, :, 1:], dim=2)
                     
                     else:
-                        On_st1Batch = On_st1[batch : end]
-                        On_st2Batch = On_st2[batch : end]
+                        On_st1Batch = On_st1[batch : end].to(device)
+                        On_st2Batch = On_st2[batch : end].to(device)
                         y1 = pt.sum(y1*On_st1Batch, dim=2)
                         y2 = pt.sum(y2*On_st2Batch, dim=2)
 
@@ -290,17 +290,17 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, Spe
     Ndim = disps.shape[2]
     N_batch = 512
     # Convert compute data to pytorch tensors
-    state1Data = pt.tensor(State1_Occs).double().to(device)
+    state1Data = pt.tensor(State1_Occs).double()
     Nsamples = state1Data.shape[0]
-    state2Data = pt.tensor(state2_Occs).double().to(device)
+    state2Data = pt.tensor(state2_Occs).double()
     On_st1 = None
     On_st2 = None 
     
     if SpecsToTrain == [VacSpec]:
         assert OnSites_st1 == OnSites_st2 == None
     else:
-        On_st1 = makeProdTensor(OnSites_st1, Ndim).long().to(device)
-        On_st2 = makeProdTensor(OnSites_st2, Ndim).long().to(device)
+        On_st1 = makeProdTensor(OnSites_st1, Ndim).long()
+        On_st2 = makeProdTensor(OnSites_st2, Ndim).long()
 
     y1Vecs = np.zeros((Nsamples, 3))
     y2Vecs = np.zeros((Nsamples, 3))
@@ -312,8 +312,8 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, Spe
         for batch in range(0, Nsamples, N_batch):
             end = min(batch + N_batch, Nsamples)
 
-            state1Batch = state1Data[batch : end]
-            state2Batch = state2Data[batch : end]
+            state1Batch = state1Data[batch : end].to(device)
+            state2Batch = state2Data[batch : end].to(device)
             
             rateBatch = rateData[batch : end]
             dispBatch = dispData[batch : end]
@@ -327,8 +327,8 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, Spe
                 y2 = -pt.sum(y2[:, :, 1:], dim=2)
             
             else:
-                On_st1Batch = On_st1[batch : end]
-                On_st2Batch = On_st2[batch : end]
+                On_st1Batch = On_st1[batch : end].to(device)
+                On_st2Batch = On_st2[batch : end].to(device)
                 y1 = pt.sum(y1*On_st1Batch, dim=2)
                 y2 = pt.sum(y2*On_st2Batch, dim=2)
             
