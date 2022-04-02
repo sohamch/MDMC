@@ -28,20 +28,20 @@ else:
 
 
 class GCNet(nn.Module):
-    def __init__(self, GnnPerms, NNsites, SitesToShells,
-                dim, N_ngb, mean, std, b=1.0, nl=3):
+    def __init__(self, GnnPerms, gdiags, NNsites, SitesToShells,
+                dim, N_ngb, NSpec, mean=0.0, std=0.1, b=1.0, nl=3):
         
         super().__init__()
         modules = []
         modules += [GConv(NSpec, 8, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
-                nn.Softplus(beta=b), Gavg()]
+                nn.Softplus(beta=b), GAvg()]
 
         for i in range(nl):
             modules += [GConv(8, 8, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
-                    nn.Softplus(beta=b), Gavg()]
+                    nn.Softplus(beta=b), GAvg()]
 
         modules += [GConv(8, 1, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
-                nn.Softplus(beta=b), Gavg()]
+                nn.Softplus(beta=b), GAvg()]
 
         modules += [R3ConvSites(SitesToShells, GnnPerms, gdiags, NNsites, N_ngb, 
             dim, mean=mean, std=std)]
@@ -157,21 +157,22 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     N_batch = 128
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs[:N_train]).double()
-    state2Data = pt.tensor(state2_Occs[:N_train]).double()
+    state2Data = pt.tensor(State2_Occs[:N_train]).double()
     rateData = pt.tensor(rates[:N_train]).double().to(device)
     On_st1 = None 
     On_st2 = None    
-    
     if SpecsToTrain == [VacSpec]:
         assert OnSites_st1 == OnSites_st2 == None
+        print("Training on Vacancy".format(SpecsToTrain)) 
         dispData = pt.tensor(disps[:N_train, 0, :]).double().to(device)
     else:
+        print("Training Species : {}".format(SpecsToTrain)) 
         dispData = pt.tensor(disps[:N_train, 1, :]).double().to(device) 
         On_st1 = makeProdTensor(OnSites_st1[:N_train], Ndim).long()
         On_st2 = makeProdTensor(OnSites_st2[:N_train], Ndim).long()
 
     try:
-        gNet.load_state_dict(pt.load(dirPath + "/{1}ep.pt".format(T, start_ep)))
+        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep)))
         print("Starting from epoch {}".format(start_ep), flush=True)
     except:
         if scratch_if_no_init:
@@ -185,7 +186,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         
         ## checkpoint
         if epoch%interval==0:
-            pt.save(gNet.state_dict(), dirPath + "/{1}ep.pt".format(T, epoch))
+            pt.save(gNet.state_dict(), dirPath + "/ep_{1}.pt".format(T, epoch))
             
         for batch in range(0, N_train, N_batch):
             optimizer.zero_grad()
@@ -244,7 +245,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         with pt.no_grad():
             for epoch in range(start_ep, end_ep + 1, interval):
                 ## load checkpoint
-                gNet.load_state_dict(pt.load(dirPath + "/{1}ep.pt".format(T, epoch), map_location=device))
+                gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, epoch), map_location=device))
                     
                 diff_ep = 0 
                 for batch in range(startSample, endSample, N_batch):
@@ -307,7 +308,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, Spe
 
     with pt.no_grad():
         ## load checkpoint
-        gNet.load_state_dict(pt.load(dirPath + "/{1}ep.pt".format(T, epoch), map_location=device))
+        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, epoch), map_location=device))
                 
         for batch in range(0, Nsamples, N_batch):
             end = min(batch + N_batch, Nsamples)
@@ -339,7 +340,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, Spe
 
 
 def main(args):
-    print("Running at : "+RunPath+"\n")
+    print("Running at : "+ RunPath)
 
     # Get run parameters
     # Replace all of this with argparse after learning about it
@@ -381,7 +382,7 @@ def main(args):
     N_train = int(args[count]) # How many INITIAL STATES to consider for training
     count += 1
     
-    interval = args[count] # for train mode, interval to save and for eval mode, interval to load
+    interval = int(args[count]) # for train mode, interval to save and for eval mode, interval to load
     count += 1
     
     learning_Rate = float(args[count]) if len(args)==count+1 else 0.001
@@ -413,10 +414,9 @@ def main(args):
     else:
         for spec in specsToTrain:
             direcString += "{}".format(spec)
-
-    dirNameNets = "epochs_T_{0}_{1}_n{2}c8".format(T, direcString, nLayers)
-
-    print("Training species: {}".format(specsToTrain), flush=True)
+    
+    # This is where networks will be saved to and loaded from
+    dirNameNets = "epochs_T_{0}_{1}_n{2}c8".format(T_net, direcString, nLayers)
     
     # check if a run directory exists
     dirPath = RunPath + dirNameNets
@@ -446,21 +446,23 @@ def main(args):
         rowStart = gInd * Ndim
         rowEnd = (gInd + 1) * Ndim
         gdiagsCpu[rowStart : rowEnd, rowStart : rowEnd] = pt.tensor(gCart)
-    gdiags = gdiagsCpu.to(device)
+    gdiags = gdiagsCpu#.to(device)
     
     # Make a network to either train from scratch or load saved state into
-    gNet = GCNet(GnnPerms, NNsites, SitesToShells,
-            dim=Ndim, N_ngb=N_ngb,
+    gNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
             mean=0.03, std=0.02, b=1.0, nl=nLayers).double().to(device)
 
     # Call MakeComputeData here
-    State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2 = makeComputeData(state1List, state2List, dispList,
+    print("Creating occupancy tensors")
+    State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2 = makeComputeData(state1List, state2List, dispList,
             specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps)
+    print("Done Creating occupancy tensors")
+
     # Call Training or evaluating or y-evaluating function here
     if Mode == "train":
         Train(T_data, dirPath, State1_Occs, State2_Occs, OnSites_state1, OnSites_state2,
                 rateData, dispData, specsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
-                gNet, lRate=learning_rate, scratch_if_no_init=scratch_if_no_init)
+                gNet, lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init)
 
     elif Mode == "eval":
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_Occs, State2_Occs,
