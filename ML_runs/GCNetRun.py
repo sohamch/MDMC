@@ -67,12 +67,18 @@ def Load_crysDats():
 
 def Load_Data(FileName):
     with h5py.File(DataPath + FileName, "r") as fl:
-        state1List = np.array(fl["InitStates"])
-        state2List = np.array(fl["FinStates"])
-        dispList = np.array(fl["SpecDisps"])
-        rateList = np.array(fl["rates"])
-        AllJumpRates = np.array(fl["AllJumpRates"])
-        jmpSelects = np.array(fl["JumpSelects"]).astype(np.int8)
+        try:
+            perm = fl["Permutation"]
+            print("found permuation")
+        except:        
+            perm = np.arange(len(fl["InitStates"]))
+
+        state1List = np.array(fl["InitStates"])[perm]
+        state2List = np.array(fl["FinStates"])[perm]
+        dispList = np.array(fl["SpecDisps"])[perm]
+        rateList = np.array(fl["rates"])[perm]
+        AllJumpRates = np.array(fl["AllJumpRates"])[perm]
+        jmpSelects = np.array(fl["JumpSelects"])[perm]
     
     return state1List, state2List, dispList, rateList, AllJumpRates, jmpSelects
 
@@ -96,7 +102,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     rateData = np.zeros(Nsamples)
     
     # Make the multichannel occupancies
-    print("Building Occupancy Tensors")
+    print("Building Occupancy Tensors for species : {}".format(specsToTrain))
     for samp in tqdm(range(2*N_train), position=0, leave=True):
         state1 = state1List[samp]
         if AllJumps:
