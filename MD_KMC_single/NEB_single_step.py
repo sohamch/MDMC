@@ -175,8 +175,8 @@ with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep, startIndex), "w") as f
     fl.create_dataset("times", data=tarr)
     fl.create_dataset("AllJumpRates", data=AllJumpRates)
     fl.create_dataset("JumpSelects", data=JumpSelects)
-    #fl.create_dataset("TestRandNums", data=TestRandomNums)
-    #fl.create_dataset("TestRates", data=TestRates)
-    #fl.create_dataset("TestBarriers", data=TestBarriers)
+    fl.create_dataset("TestRandNums", data=TestRandomNums)
+    fl.create_dataset("TestRates", data=TestRates)
+    fl.create_dataset("TestBarriers", data=TestBarriers)
 
 print("Execution time: {}".format(end_timer-start_timer))
