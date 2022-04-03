@@ -56,8 +56,8 @@ try:
     print("Starting from checkpointed step {}".format(stepsLast))
 except:
     print("checkpoint not found or last step zero indicated. Starting from step zero.")
-    allStates = np.load(InitPath + "states_{}.npy".format(T))
-    perm = np.load(InitPath + "perm_{}.npy".format(T))
+    allStates = np.load(InitPath + "states_{}_0.npy".format(T))
+    perm = np.arange(allStates.shape[0])
     # Load the starting data for the trajectories
     SiteIndToSpec = allStates[perm][SampleStart: SampleStart + batchSize]
     vacSiteInd = np.zeros(SiteIndToSpec.shape[0], dtype = int)
