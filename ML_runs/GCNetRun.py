@@ -237,8 +237,9 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     state1Data = pt.tensor(State1_Occs).double()
     Nsamples = state1Data.shape[0]
 
-    print("Evaluating network on species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
+    print("Evaluating species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
     print("Sample Jumps: {}, Training: {}, Validation: {}".format(Nsamples, N_train, Nsamples-N_train))
+    print("Evaluating with networks at: {}".format(dirPath))
     
     state2Data = pt.tensor(State2_Occs).double()
     rateData = pt.tensor(rates).double()
@@ -310,6 +311,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, Spe
     On_st2 = None 
     
     print("Evaluating network on species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
+    print("Network: {}".format(dirPath))
     if SpecsToTrain == [VacSpec]:
         assert OnSites_st1 == OnSites_st2 == None
     else:
@@ -388,7 +390,12 @@ def main(args):
     VacSpec = int(args[count]) # integer label for vacancy species
     count += 1
     
-    AllJumps = bool(int(args[count])) # whether to train all jumps out of the samples or just stochastically selected one
+    AllJumps = bool(int(args[count])) # whether to consider all jumps out of the samples or just stochastically selected one
+    # False if 0, otherwise True
+    count += 1
+    
+    AllJumps_net_type = bool(int(args[count])) # whether to use network trained on all jumps out of the samples or just stochastically selected one
+    # This is the directory to search for in "eval" or "getY" modes
     # False if 0, otherwise True
     count += 1
     
@@ -430,7 +437,13 @@ def main(args):
     
     # This is where networks will be saved to and loaded from
     dirNameNets = "ep_T_{0}_{1}_n{2}c8_all_{3}".format(T_net, direcString, nLayers, int(AllJumps))
+    if Mode == "eval" or Mode == "getY":
+        prepo = "saved at"
+        dirNameNets = "ep_T_{0}_{1}_n{2}c8_all_{3}".format(T_net, direcString, nLayers, int(AllJumps_net_type))
     
+    if Mode == "train":
+        prepo = "saving in"
+
     # check if a run directory exists
     dirPath = RunPath + dirNameNets
     exists = os.path.isdir(dirPath)
@@ -440,6 +453,8 @@ def main(args):
             os.mkdir(dirPath)
         elif start_ep > 0:
             raise ValueError("Training directory does not exist but start epoch greater than zero: {}\ndirectory given: {}".format(start_ep, dirPath))
+
+    print("Running in Mode {} with networks {} {}".format(Mode, prepo, dirPath))
 
     print(pt.__version__)
     print(pt.cuda.get_device_name())
