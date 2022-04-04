@@ -299,9 +299,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     return train_diff, test_diff
 
 
-def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, epoch, gNet):
+def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, epoch, gNeti, Ndim):
     
-    Ndim = disps.shape[2]
     N_batch = 512
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs).double()
@@ -468,7 +467,7 @@ def main(args):
     NNsites = pt.tensor(NNsiteList).long().to(device)
 
     Ng = GnnPerms.shape[0]
-    Ndim = 3
+    Ndim = dispList.shape[2]
     gdiagsCpu = pt.zeros(Ng*Ndim, Ng*Ndim).double()
     for gInd, gCart in GIndtoGDict.items():
         rowStart = gInd * Ndim
@@ -502,7 +501,7 @@ def main(args):
 
     elif Mode == "getY":
         y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_Occs, State2_Occs,
-                OnSites_state1, OnSites_state2, specsToTrain, VacSpec, start_ep, gNet)
+                OnSites_state1, OnSites_state2, specsToTrain, VacSpec, start_ep, gNet, Ndim)
         np.save("y1_{4}_{0}_{1}_n{2}c8_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString), y1Vecs)
         np.save("y2_{4}_{0}_{1}_n{2}c8_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString), y2Vecs)
 
