@@ -236,9 +236,12 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs).double()
     Nsamples = state1Data.shape[0]
-    print("Samples: {}, Training: {}, Validation: {}".format(Nsamples, N_train, Nsamples-N_train))
+
+    print("Evaluating network on species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
+    print("Sample Jumps: {}, Training: {}, Validation: {}".format(Nsamples, N_train, Nsamples-N_train))
+    
     state2Data = pt.tensor(State2_Occs).double()
-    rateData = pt.tensor(rates).double().to(device)
+    rateData = pt.tensor(rates).double()
     On_st1 = None
     On_st2 = None
     
@@ -246,7 +249,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         assert OnSites_st1 == OnSites_st2 == None
         dispData = pt.tensor(disps[:, 0, :]).double().to(device)
     else:
-        dispData = pt.tensor(disps[:, 1, :]).double().to(device) 
+        dispData = pt.tensor(disps[:, 1, :]).double() 
         On_st1 = makeProdTensor(OnSites_st1, Ndim).long()
         On_st2 = makeProdTensor(OnSites_st2, Ndim).long()
 
@@ -264,8 +267,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                     state1Batch = state1Data[batch : end].to(device)
                     state2Batch = state2Data[batch : end].to(device)
                     
-                    rateBatch = rateData[batch : end]
-                    dispBatch = dispData[batch : end]
+                    rateBatch = rateData[batch : end].to(device)
+                    dispBatch = dispData[batch : end].to(device)
                     
                     y1 = gNet(state1Batch)
                     y2 = gNet(state2Batch)
@@ -306,9 +309,11 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, Spe
     On_st1 = None
     On_st2 = None 
     
+    print("Evaluating network on species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
     if SpecsToTrain == [VacSpec]:
         assert OnSites_st1 == OnSites_st2 == None
     else:
+        assert OnSites_st1 != None and OnSites_st2 != None
         On_st1 = makeProdTensor(OnSites_st1, Ndim).long()
         On_st2 = makeProdTensor(OnSites_st2, Ndim).long()
 
@@ -324,9 +329,6 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, Spe
 
             state1Batch = state1Data[batch : end].to(device)
             state2Batch = state2Data[batch : end].to(device)
-            
-            rateBatch = rateData[batch : end]
-            dispBatch = dispData[batch : end]
             
             y1 = gNet(state1Batch)
             y2 = gNet(state2Batch)
@@ -437,7 +439,7 @@ def main(args):
         if start_ep == 0:
             os.mkdir(dirPath)
         elif start_ep > 0:
-            raise ValueError("Training directory does not exist but start epoch greater than zero: {}".format(start_ep))
+            raise ValueError("Training directory does not exist but start epoch greater than zero: {}\ndirectory given: {}".format(start_ep, dirPath))
 
     print(pt.__version__)
     print(pt.cuda.get_device_name())
@@ -461,7 +463,7 @@ def main(args):
     
     # Make a network to either train from scratch or load saved state into
     gNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-            mean=0.03, std=0.02, b=1.0, nl=nLayers).double().to(device)
+            mean=0.03, std=0.05, b=1.0, nl=nLayers).double().to(device)
 
     # Call MakeComputeData here
     State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2 = makeComputeData(state1List, state2List, dispList,
