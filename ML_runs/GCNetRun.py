@@ -299,7 +299,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     return train_diff, test_diff
 
 
-def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, epoch, gNeti, Ndim):
+def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, epoch, gNet, Ndim):
     
     N_batch = 512
     # Convert compute data to pytorch tensors
@@ -314,7 +314,6 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, Spe
     if SpecsToTrain == [VacSpec]:
         assert OnSites_st1 == OnSites_st2 == None
     else:
-        assert OnSites_st1 != None and OnSites_st2 != None
         On_st1 = makeProdTensor(OnSites_st1, Ndim).long()
         On_st2 = makeProdTensor(OnSites_st2, Ndim).long()
 
