@@ -301,7 +301,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, epoch, gNet, Ndim):
     
-    N_batch = 512
+    N_batch = 256
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs).double()
     Nsamples = state1Data.shape[0]
