@@ -103,7 +103,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     
     # Make the multichannel occupancies
     print("Building Occupancy Tensors for species : {}".format(specsToTrain))
-    for samp in tqdm(range(2*N_train), position=0, leave=True):
+    for samp in tqdm(range(min(state1List.shape[0], 2*N_train)), position=0, leave=True):
         state1 = state1List[samp]
         if AllJumps:
             for jInd in range(AllJumpRates.shape[1]):
@@ -309,8 +309,6 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, Spe
     On_st1 = None
     On_st2 = None 
     
-    print("Evaluating network on species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
-    print("Network: {}".format(dirPath))
     if SpecsToTrain == [VacSpec]:
         assert OnSites_st1 == OnSites_st2 == None
     else:
@@ -320,11 +318,13 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, Spe
     y1Vecs = np.zeros((Nsamples, 3))
     y2Vecs = np.zeros((Nsamples, 3))
 
+    print("Evaluating network on species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
+    print("Network: {}".format(dirPath))
     with pt.no_grad():
         ## load checkpoint
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, epoch), map_location=device))
                 
-        for batch in range(0, Nsamples, N_batch):
+        for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
             end = min(batch + N_batch, Nsamples)
 
             state1Batch = state1Data[batch : end].to(device)
@@ -344,8 +344,8 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, Spe
                 y1 = pt.sum(y1*On_st1Batch, dim=2)
                 y2 = pt.sum(y2*On_st2Batch, dim=2)
             
-            y1Vecs[batch : end] = y1.cpu().numpy()[:, :]
-            y2Vecs[batch : end] = y2.cpu().numpy()[:, :]
+            y1Vecs[batch : end] = y1.cpu().numpy()
+            y2Vecs[batch : end] = y2.cpu().numpy()
 
     return y1Vecs, y2Vecs
 
