@@ -476,7 +476,7 @@ def main(args):
     
     # Make a network to either train from scratch or load saved state into
     gNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-            mean=0.03, std=0.05, b=1.0, nl=nLayers).double().to(device)
+            mean=0.02, std=0.2, b=1.0, nl=nLayers).double().to(device)
 
     # Call MakeComputeData here
     State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2 = makeComputeData(state1List, state2List, dispList,
@@ -501,8 +501,8 @@ def main(args):
     elif Mode == "getY":
         y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_Occs, State2_Occs,
                 OnSites_state1, OnSites_state2, specsToTrain, VacSpec, start_ep, gNet, Ndim)
-        np.save("y1_{4}_{0}_{1}_n{2}c8_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString), y1Vecs)
-        np.save("y2_{4}_{0}_{1}_n{2}c8_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString), y2Vecs)
+        np.save("y1_{4}_{0}_{1}_n{2}c8_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep), y1Vecs)
+        np.save("y2_{4}_{0}_{1}_n{2}c8_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep), y2Vecs)
 
 
 if __name__ == "__main__":
