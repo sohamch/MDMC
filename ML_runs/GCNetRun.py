@@ -145,7 +145,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
         for spec in specsToTrain:
             OnSites_state1 += State1_occs[:, spec-1, :]
             OnSites_state2 += State2_occs[:, spec-1, :]
-
+    
     return State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2
 
 
@@ -248,7 +248,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     
     if SpecsToTrain == [VacSpec]:
         assert OnSites_st1 == OnSites_st2 == None
-        dispData = pt.tensor(disps[:, 0, :]).double().to(device)
+        dispData = pt.tensor(disps[:, 0, :]).double()
     else:
         dispData = pt.tensor(disps[:, 1, :]).double() 
         On_st1 = makeProdTensor(OnSites_st1, Ndim).long()
@@ -381,7 +381,7 @@ def main(args):
     end_ep = int(args[count])
     count += 1
     
-    specTrain = int(args[count]) # which species to train collectively: eg - 123 for species 1, 2 and 3
+    specTrain = args[count] # which species to train collectively: eg - 123 for species 1, 2 and 3
     # The entry is order independent as it is sorted later
     count += 1
     
@@ -419,11 +419,7 @@ def main(args):
     NSpec = specs.shape[0] - 1
     Nsites = state1List.shape[1]
      
-    specsToTrain = []
-    while specTrain > 0:
-        specsToTrain.append(specTrain%10)
-        specTrain = specTrain//10
-    
+    specsToTrain = [int(specTrain[i]) for i in range(len(specTrain))]
     specsToTrain = sorted(specsToTrain)
     
     direcString=""
@@ -432,7 +428,7 @@ def main(args):
     else:
         for spec in specsToTrain:
             direcString += "{}".format(spec)
-    
+
     # This is where networks will be saved to and loaded from
     dirNameNets = "ep_T_{0}_{1}_n{2}c8_all_{3}".format(T_net, direcString, nLayers, int(AllJumps))
     if Mode == "eval" or Mode == "getY":
