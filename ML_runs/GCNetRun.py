@@ -86,24 +86,25 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
         AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False):
 
     # make the input tensors
+    Nsamples = state1List.shape[0]
     if AllJumps:
-        Nsamples = N_train*2*AllJumpRates.shape[1]
+        NJumps = Nsamples*AllJumpRates.shape[1]
     else:
-        Nsamples = N_train*2
+        NJumps = Nsamples
     a = np.linalg.norm(dispList[0, 0, :])/np.linalg.norm(dxJumps[0]) 
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
     Nsites = state1List.shape[1]
     NNsvac = NNsiteList[1:, 0]
 
-    State1_occs = np.zeros((Nsamples, NSpec, Nsites), dtype=np.int8)
-    State2_occs = np.zeros((Nsamples, NSpec, Nsites), dtype=np.int8)
-    dispData = np.zeros((Nsamples, 2, 3)) # store 2 displacements - one for displacements, and one for all other species to be trained
-    rateData = np.zeros(Nsamples)
+    State1_occs = np.zeros((NJumps, NSpec, Nsites), dtype=np.int8)
+    State2_occs = np.zeros((NJumps, NSpec, Nsites), dtype=np.int8)
+    dispData = np.zeros((NJumps, 2, 3))
+    rateData = np.zeros(NJumps)
     
     # Make the multichannel occupancies
     print("Building Occupancy Tensors for species : {}".format(specsToTrain))
-    for samp in tqdm(range(min(state1List.shape[0], 2*N_train)), position=0, leave=True):
+    for samp in tqdm(range(Nsamples), position=0, leave=True):
         state1 = state1List[samp]
         if AllJumps:
             for jInd in range(AllJumpRates.shape[1]):
@@ -257,7 +258,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     def compute(startSample, endSample):
         diff_epochs = []
         with pt.no_grad():
-            for epoch in range(start_ep, end_ep + 1, interval):
+            for epoch in tqdm(range(start_ep, end_ep + 1, interval), position=0, leave=True):
                 ## load checkpoint
                 gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, epoch), map_location=device))
                     
