@@ -140,8 +140,8 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     OnSites_state1 = None
     OnSites_state2 = None
     if specsToTrain != [VacSpec]:
-        OnSites_state1 = np.zeros((Nsamples, Nsites), dtype=np.int8)
-        OnSites_state2 = np.zeros((Nsamples, Nsites), dtype=np.int8)
+        OnSites_state1 = np.zeros((NJumps, Nsites), dtype=np.int8)
+        OnSites_state2 = np.zeros((NJumps, Nsites), dtype=np.int8)
     
         for spec in specsToTrain:
             OnSites_state1 += State1_occs[:, spec-1, :]
