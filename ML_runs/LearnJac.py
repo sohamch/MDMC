@@ -75,7 +75,7 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         else:
             raise ValueError("No saved network found in {} at epoch {}".format(dirPath, start_ep))
     
-    optimizer = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
+    optimizer = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.001)
     print("Starting Training loop") 
     for epoch in tqdm(range(start_ep, end_ep + 1), position=0, leave=True):
         
