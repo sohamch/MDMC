@@ -1,36 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
-
-# In[1]:
-
-
-get_ipython().run_line_magic('config', 'Completer.use_jedi = False')
-
-
-# In[2]:
-
-
 CrysDatPath = "/home/sohamc2/HEA_FCC/CrysDat/"
 DataPath = "/home/sohamc2/HEA_FCC/MDMC/ML_runs/DataSets/"
-ModulePath = "/home/sohamc2/VKMC/SymNetworkRuns/CE_Symmetry/Symm_Network/"
-
-
-# In[ ]:
-
-
 import os
-import sys
 RunPath = os.getcwd() + "/"
-
-
-# In[6]:
-
-
+import sys
 from GCNetRun import Load_Data, Load_crysDats, makeComputeData, makeProdTensor
-
-
-# In[4]:
-
 
 import numpy as np
 import torch as pt
@@ -41,9 +16,6 @@ import pickle
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from SymmLayers import GConv, R3Conv, R3ConvSites, GAvg
-
-
-# In[5]:
 
 
 class GCNet(nn.Module):
@@ -70,10 +42,6 @@ class GCNet(nn.Module):
     def forward(self, InState):
         y = self.net(InState)
         return y
-
-
-# In[7]:
-
 
 """## Write the training function"""
 def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
@@ -147,9 +115,6 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             optimizer.step()
 
 
-# In[ ]:
-
-
 def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
              y1Target, y2Target, SpecsToTrain, VacSpec,
              start_ep, end_ep, interval, N_train, gNet):
@@ -220,9 +185,6 @@ def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     return train_diff/(2.0*N_train), test_diff/(2.0*(Nsamples - N_train))
 
 
-# In[ ]:
-
-
 def Gather_Y(dirPath, State1_Occs, State2_Occs,
                 OnSites_st1, OnSites_st2, SpecsToTrain,
                 VacSpec, epoch, gNet, Ndim):
@@ -274,9 +236,6 @@ def Gather_Y(dirPath, State1_Occs, State2_Occs,
             y2Vecs[batch : end] = y2.cpu().numpy()
 
     return y1Vecs, y2Vecs
-
-
-# In[ ]:
 
 
 def main(args):
@@ -394,7 +353,8 @@ def main(args):
             mean=0.02, std=0.2, b=1.0, nl=nLayers).double().to(device)
         
     # Call MakeComputeData here
-    State1_Occs, State2_Occs, _, _, OnSites_state1, OnSites_state2 =    makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, 
+    State1_Occs, State2_Occs, _, _, OnSites_state1, OnSites_state2 =\
+            makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, 
                     rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList,
                     N_train, AllJumps=AllJumps)
     print("Done Creating occupancy tensors")
@@ -412,10 +372,10 @@ def main(args):
                 specsToTrain, VacSpec, start_ep, end_ep,
                 interval, N_train, gNet)
         
-        np.save("tr_{3}_{0}_jac_{1}_n{2}c8_.npy".format(T_data, Jac_iter, nLayers, direcString),
+        np.save("tr_{3}_{0}_fity_jac{1}_n{2}c8.npy".format(T_data, Jac_iter, nLayers, direcString),
                 train_diff)
         
-        np.save("val_{3}_{0}_jac_{1}_n{2}c8_.npy".format(T_data, Jac_iter, nLayers, direcString),
+        np.save("val_{3}_{0}_fity_jac{1}_n{2}c8.npy".format(T_data, Jac_iter, nLayers, direcString),
                 valid_diff)
         
     elif Mode == "getY":
@@ -424,12 +384,11 @@ def main(args):
                                   OnSites_state1, OnSites_state2, specsToTrain,
                                   VacSpec, start_ep, gNet, Ndim)
         
-        np.save("y1_{3}_{0}_jac{1}_n{2}c8.npy".format(T_data, Jac_iter, nLayers,
+        np.save("y1_{3}_{0}_fit_jac{1}_n{2}c8.npy".format(T_data, Jac_iter, nLayers,
                                                       direcString), y1Vecs)
-        np.save("y2_{3}_{0}_jac{1}_n{2}c8.npy".format(T_data, Jac_iter, nLayers,
+        np.save("y2_{3}_{0}_fit_jac{1}_n{2}c8.npy".format(T_data, Jac_iter, nLayers,
                                                       direcString), y2Vecs)
 
 
 if __name__ == "__main__":
     main(list(sys.argv))
-
