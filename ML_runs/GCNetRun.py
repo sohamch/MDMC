@@ -23,6 +23,7 @@ from SymmLayers import GConv, R3Conv, R3ConvSites, GAvg
 
 device=None
 if pt.cuda.is_available():
+    print(pt.cuda.get_device_name())
     device = pt.device("cuda:0")
 else:
     device = pt.device("cpu")
@@ -86,7 +87,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
         AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False):
 
     # make the input tensors
-    Nsamples = state1List.shape[0]
+    Nsamples = min(state1List.shape[0], 2*N_train)
     if AllJumps:
         NJumps = Nsamples*AllJumpRates.shape[1]
     else:
@@ -452,7 +453,6 @@ def main(args):
     print("Running in Mode {} with networks {} {}".format(Mode, prepo, dirPath))
 
     print(pt.__version__)
-    print(pt.cuda.get_device_name())
     
     # Load crystal parameters
     GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats()
