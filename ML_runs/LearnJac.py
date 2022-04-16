@@ -18,6 +18,13 @@ import matplotlib.pyplot as plt
 from SymmLayers import GConv, R3Conv, R3ConvSites, GAvg
 
 
+device=None
+if pt.cuda.is_available():
+    print(pt.cuda.get_device_name())
+    device = pt.device("cuda:0")
+else:
+    device = pt.device("cpu")
+
 class GCNet(nn.Module):
     def __init__(self, GnnPerms, gdiags, NNsites, SitesToShells,
                 dim, N_ngb, NSpec, mean=0.0, std=0.1, b=1.0, nl=3):
@@ -48,7 +55,7 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
           y1Target, y2Target, SpecsToTrain, VacSpec, start_ep, end_ep,
           interval, N_train, gNet, lRate=0.001, scratch_if_no_init=True):
     
-    Ndim = disps.shape[2]
+    Ndim = y1Target.shape[1]
     N_batch = 128
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs[:N_train]).double()
@@ -67,21 +74,26 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         On_st2 = makeProdTensor(OnSites_st2[:N_train], Ndim).long()
     
     try:
-        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep)))
+        gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(start_ep)))
         print("Starting from epoch {}".format(start_ep), flush=True)
+        for layerInd in range(0, len(gNet.net)-1, 3):
+            gNet.net[layerInd].Psi.requires_grad = False
+            gNet.net[layerInd].bias.requires_grad = False
+
     except:
         if scratch_if_no_init:
             print("No Network found. Starting from scratch", flush=True)
         else:
-            raise ValueError("No saved network found in {} at epoch {}".format(dirPath, start_ep))
+            raise FileNotFoundError("No saved network found in {} at epoch {}".format(dirPath, start_ep))
     
-    optimizer = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.001)
+    # filter out with the method shown in the pytorch forum
+    optimizer = pt.optim.Adam(filter(lambda p : p.requires_grad, gNet.parameters()), lr=lRate, weight_decay=0.)
     print("Starting Training loop") 
     for epoch in tqdm(range(start_ep, end_ep + 1), position=0, leave=True):
         
         ## checkpoint
         if epoch%interval==0:
-            pt.save(gNet.state_dict(), dirPath + "/ep_{1}.pt".format(T, epoch))
+            pt.save(gNet.state_dict(), dirPath + "/ep_{0}.pt".format(epoch))
             
         for batch in range(0, N_train, N_batch):
             optimizer.zero_grad()
@@ -119,7 +131,7 @@ def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
              y1Target, y2Target, SpecsToTrain, VacSpec,
              start_ep, end_ep, interval, N_train, gNet):
     
-    Ndim = disps.shape[2]
+    Ndim = y1Target.shape[1]
     N_batch = 512
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs).double()
@@ -146,7 +158,7 @@ def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         with pt.no_grad():
             for epoch in tqdm(range(start_ep, end_ep + 1, interval), position=0, leave=True):
                 ## load checkpoint
-                gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(epoch), map_location=device))
+                gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
                 loss = 0 
                 for batch in range(startSample, endSample, N_batch):
                     end = min(batch + N_batch, endSample)
@@ -207,10 +219,10 @@ def Gather_Y(dirPath, State1_Occs, State2_Occs,
     y2Vecs = np.zeros((Nsamples, 3))
 
     print("Evaluating network on species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
-    print("Network: {}".format(dirPath) + "/ep_{1}.pt".format(T, epoch))
+    print("Network: {}".format(dirPath) + "/ep_{0}.pt".format(epoch))
     with pt.no_grad():
         ## load checkpoint
-        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(epoch), map_location=device))
+        gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
                 
         for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
             end = min(batch + N_batch, Nsamples)
@@ -306,10 +318,10 @@ def main(args):
             direcString += "{}".format(spec)
 
     # Load target jacobian data
-    y1Target = np.load("y1_{}".format(T)+"_"+direcString+"jac_{}.npy".format(Jac_iter))
-    y2Target = np.load("y2_{}".format(T)+"_"+direcString+"jac_{}.npy".format(Jac_iter))
+    y1Target = np.load("y1_{}".format(T_data)+"_"+direcString+"_jac_{}.npy".format(Jac_iter))
+    y2Target = np.load("y2_{}".format(T_data)+"_"+direcString+"_jac_{}.npy".format(Jac_iter))
     
-    dirNameNets = "ep_T_{0}_jac_{1}_n{2}c8".format(T_data, direcString, nLayers)
+    dirNameNets = "ep_T_{0}_{1}_jac_{3}_n{2}c8".format(T_data, direcString, nLayers, Jac_iter)
     if Mode == "eval" or Mode == "getY":
         prepo = "saved at"
     
@@ -322,7 +334,7 @@ def main(args):
     
     if not exists:
         if scratch_if_no_init == False:
-            raise FileNotFoundError("Target directory does not exist but looking for existing networks.")
+            raise FileNotFoundError("Target directory {} does not exist but looking for existing networks.".format(dirPath))
         else:
             if start_ep == 0:
                 os.mkdir(dirPath)
