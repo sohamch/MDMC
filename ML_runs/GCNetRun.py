@@ -435,10 +435,10 @@ def main(args):
             direcString += "{}".format(spec)
 
     # This is where networks will be saved to and loaded from
-    dirNameNets = "ep_T_{0}_{1}_n{2}c8_all_{3}".format(T_net, direcString, nLayers, int(AllJumps))
+    dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(T_net, direcString, nLayers, int(AllJumps), ch)
     if Mode == "eval" or Mode == "getY":
         prepo = "saved at"
-        dirNameNets = "ep_T_{0}_{1}_n{2}c8_all_{3}".format(T_net, direcString, nLayers, int(AllJumps_net_type))
+        dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(T_net, direcString, nLayers, int(AllJumps_net_type), ch)
     
     if Mode == "train":
         prepo = "saving in"
@@ -495,14 +495,14 @@ def main(args):
                 OnSites_state1, OnSites_state2, rateData, dispData,
                 specsToTrain, VacSpec, start_ep, end_ep,
                 interval, N_train_jumps, gNet)
-        np.save("tr_{4}_{0}_{1}_n{2}c8_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString), train_diff/(1.0*N_train))
-        np.save("val_{4}_{0}_{1}_n{2}c8_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString), valid_diff/(1.0*N_train))
+        np.save("tr_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), train_diff/(1.0*N_train))
+        np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), valid_diff/(1.0*N_train))
 
     elif Mode == "getY":
         y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_Occs, State2_Occs,
                 OnSites_state1, OnSites_state2, specsToTrain, VacSpec, start_ep, gNet, Ndim)
-        np.save("y1_{4}_{0}_{1}_n{2}c8_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep), y1Vecs)
-        np.save("y2_{4}_{0}_{1}_n{2}c8_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep), y2Vecs)
+        np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y1Vecs)
+        np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y2Vecs)
 
 
 if __name__ == "__main__":
