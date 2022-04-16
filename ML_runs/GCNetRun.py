@@ -31,18 +31,18 @@ else:
 
 class GCNet(nn.Module):
     def __init__(self, GnnPerms, gdiags, NNsites, SitesToShells,
-                dim, N_ngb, NSpec, mean=0.0, std=0.1, b=1.0, nl=3):
+                dim, N_ngb, NSpec, mean=0.0, std=0.1, b=1.0, nl=3, nch=8):
         
         super().__init__()
         modules = []
-        modules += [GConv(NSpec, 8, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
+        modules += [GConv(NSpec, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
                 nn.Softplus(beta=b), GAvg()]
 
         for i in range(nl):
-            modules += [GConv(8, 8, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
+            modules += [GConv(nch, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
                     nn.Softplus(beta=b), GAvg()]
 
-        modules += [GConv(8, 1, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
+        modules += [GConv(nch, 1, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
                 nn.Softplus(beta=b), GAvg()]
 
         modules += [R3ConvSites(SitesToShells, GnnPerms, gdiags, NNsites, N_ngb, 
@@ -367,6 +367,9 @@ def main(args):
     nLayers = int(args[count])
     count += 1
     
+    ch = int(args[count])
+    count += 1
+
     scratch_if_no_init = bool(int(args[count]))
     count += 1
     
@@ -473,7 +476,7 @@ def main(args):
     
     # Make a network to either train from scratch or load saved state into
     gNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-            mean=0.02, std=0.2, b=1.0, nl=nLayers).double().to(device)
+            mean=0.02, std=0.2, b=1.0, nl=nLayers, nch=ch).double().to(device)
 
     # Call MakeComputeData here
     State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2 = makeComputeData(state1List, state2List, dispList,
