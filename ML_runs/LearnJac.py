@@ -27,18 +27,18 @@ else:
 
 class GCNet(nn.Module):
     def __init__(self, GnnPerms, gdiags, NNsites, SitesToShells,
-                dim, N_ngb, NSpec, mean=0.0, std=0.1, b=1.0, nl=3):
+                dim, N_ngb, NSpec, mean=0.0, std=0.1, b=1.0, nl=3, nch=8):
         
         super().__init__()
         modules = []
-        modules += [GConv(NSpec, 8, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
+        modules += [GConv(NSpec, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
                 nn.Softplus(beta=b), GAvg()]
 
         for i in range(nl):
-            modules += [GConv(8, 8, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
+            modules += [GConv(nch, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
                     nn.Softplus(beta=b), GAvg()]
 
-        modules += [GConv(8, 1, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
+        modules += [GConv(nch, 1, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
                 nn.Softplus(beta=b), GAvg()]
 
         modules += [R3ConvSites(SitesToShells, GnnPerms, gdiags, NNsites, N_ngb, 
@@ -60,8 +60,16 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs[:N_train]).double()
     state2Data = pt.tensor(State2_Occs[:N_train]).double()
-    y1TargetData = pt.tensor(y1Target).double().to(device)
-    y2TargetData = pt.tensor(y2Target).double().to(device)
+    
+    # Process the y-vectors to learn only unit vectors
+    y1TargetNorms = np.linalg.norm(y1Target, axis = 1)
+    y1Target_units = y1Target / y1TargetNorms.reshape(y1Target.shape[0], 1)
+
+    y2TargetNorms = np.linalg.norm(y2Target, axis = 1)
+    y2Target_units = y2Target / y2TargetNorms.reshape(y2Target.shape[0], 1)
+    
+    y1TargetData = pt.tensor(y1Target_units).double().to(device)
+    y2TargetData = pt.tensor(y2Target_units).double().to(device)
 
     On_st1 = None
     On_st2 = None   
@@ -76,9 +84,9 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     try:
         gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(start_ep)))
         print("Starting from epoch {}".format(start_ep), flush=True)
-        for layerInd in range(0, len(gNet.net)-1, 3):
-            gNet.net[layerInd].Psi.requires_grad = False
-            gNet.net[layerInd].bias.requires_grad = False
+        #for layerInd in range(0, len(gNet.net)-1, 3):
+        #    gNet.net[layerInd].Psi.requires_grad = False
+        #    gNet.net[layerInd].bias.requires_grad = False
 
     except:
         if scratch_if_no_init:
@@ -136,8 +144,16 @@ def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs).double()
     state2Data = pt.tensor(State2_Occs).double()
-    y1TargetData = pt.tensor(y1Target).double().to(device)
-    y2TargetData = pt.tensor(y2Target).double().to(device)
+
+    # Process the y-vectors to learn only unit vectors
+    y1TargetNorms = np.linalg.norm(y1Target, axis = 1)
+    y1Target_units = y1Target / y1TargetNorms.reshape(y1Target.shape[0], 1)
+
+    y2TargetNorms = np.linalg.norm(y2Target, axis = 1)
+    y2Target_units = y2Target / y2TargetNorms.reshape(y2Target.shape[0], 1)
+    
+    y1TargetData = pt.tensor(y1Target_units).double().to(device)
+    y2TargetData = pt.tensor(y2Target_units).double().to(device)
 
     Nsamples = state1Data.shape[0]
 
@@ -267,6 +283,9 @@ def main(args):
     nLayers = int(args[count])
     count += 1
     
+    nchann = int(args[count])
+    count += 1
+
     scratch_if_no_init = bool(int(args[count]))
     count += 1
     
@@ -362,7 +381,7 @@ def main(args):
     
     # Make a network to either train from scratch or load saved state into
     gNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-            mean=0.02, std=0.2, b=1.0, nl=nLayers).double().to(device)
+            mean=0.02, std=0.02, b=1.0, nl=nLayers, nch = nchann).double().to(device)
         
     # Call MakeComputeData here
     State1_Occs, State2_Occs, _, _, OnSites_state1, OnSites_state2 =\
