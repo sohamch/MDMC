@@ -242,7 +242,8 @@ def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
                     
                     loss += (loss1 + loss2).item()    
-                    diff_epochs.append(loss)
+                
+                diff_epochs.append(loss)
 
         return np.array(diff_epochs)
     
@@ -463,7 +464,7 @@ def main(args):
         train_diff, valid_diff = Evaluate(dirPath, State1_Occs, State2_Occs,
                 OnSites_state1, OnSites_state2, y1Target, y2Target,
                 specsToTrain, VacSpec, start_ep, end_ep,
-                interval, N_train, gNet, Train_norms=Train_mode)
+                interval, N_train, gNet, Train_mode=Train_mode)
         
         if Train_mode=="direct":
             np.save("tr_{3}_{0}_fity_jac{1}_n{2}c8.npy".format(T_data, Jac_iter, nLayers, direcString),
