@@ -53,7 +53,7 @@ class GCNet(nn.Module):
 """## Write the training function"""
 def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
           y1Target, y2Target, SpecsToTrain, VacSpec, start_ep, end_ep,
-          interval, N_train, gNet, lRate=0.001, scratch_if_no_init=True, Train_mode="direct"):
+          interval, N_train, gNet, lRate=0.001, scratch_if_no_init=True, Train_mode=None):
     
     Ndim = y1Target.shape[1]
     N_batch = 128
@@ -86,7 +86,7 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     
     # filter out with the method shown in the pytorch forum
     optimizer = pt.optim.Adam(filter(lambda p : p.requires_grad, gNet.parameters()), lr=lRate, weight_decay=0.)
-    print("Starting Training loop") 
+    print("Starting Training loop in {} mode".format(Train_mode)) 
     for epoch in tqdm(range(start_ep, end_ep + 1), position=0, leave=True):
         
         ## checkpoint
@@ -154,7 +154,7 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
              y1Target, y2Target, SpecsToTrain, VacSpec,
-             start_ep, end_ep, interval, N_train, gNet):
+             start_ep, end_ep, interval, N_train, gNet, Train_mode):
     
     Ndim = y1Target.shape[1]
     N_batch = 512
@@ -169,7 +169,7 @@ def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
     print("Evaluating species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
     print("Sample Jumps: {}, Training: {}, Validation: {}".format(Nsamples, N_train, Nsamples-N_train))
-    print("Evaluating with networks at: {}".format(dirPath))
+    print("Evaluating in mode {} with networks at: {}".format(Train_mode, dirPath))
     On_st1 = None
     On_st2 = None
     
@@ -254,7 +254,7 @@ def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 def Gather_Y(dirPath, State1_Occs, State2_Occs,
                 OnSites_st1, OnSites_st2, SpecsToTrain,
-                VacSpec, epoch, gNet, Ndim):
+                VacSpec, epoch, gNet, Ndim, Train_mode):
     
     N_batch = 256
     # Convert compute data to pytorch tensors
@@ -269,12 +269,17 @@ def Gather_Y(dirPath, State1_Occs, State2_Occs,
     else:
         On_st1 = makeProdTensor(OnSites_st1, Ndim).long()
         On_st2 = makeProdTensor(OnSites_st2, Ndim).long()
+    
+    if Train_mode == "direct" or Train_mode == "units":
+        y1Vecs = np.zeros((Nsamples, 3))
+        y2Vecs = np.zeros((Nsamples, 3))
 
-    y1Vecs = np.zeros((Nsamples, 3))
-    y2Vecs = np.zeros((Nsamples, 3))
+    else:
+        y1Vecs = np.zeros(Nsamples)
+        y2Vecs = np.zeros(Nsamples)
 
-    print("Evaluating network on species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
-    print("Network: {}".format(dirPath) + "/ep_{0}.pt".format(epoch))
+    print("Gathering y in mode {} on species: {}. Vacancy label: {}".format(Train_mode, SpecsToTrain, VacSpec))
+    print("Using Network: {}".format(dirPath) + "/ep_{0}.pt".format(epoch))
     with pt.no_grad():
         ## load checkpoint
         gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
@@ -298,9 +303,21 @@ def Gather_Y(dirPath, State1_Occs, State2_Occs,
                 On_st2Batch = On_st2[batch : end].to(device)
                 y1 = pt.sum(y1*On_st1Batch, dim=2)
                 y2 = pt.sum(y2*On_st2Batch, dim=2)
+
+            # Then select the appropriate mode
+            if Train_mode=="norms":
+                y1 = pt.exp(-pt.norm(y1, dim = 1))
+                y2 = pt.exp(-pt.norm(y2, dim = 1))
             
-            y1 = F.normalize(y1, p=2.0, dim=1, eps=1e-8)
-            y2 = F.normalize(y2, p=2.0, dim=1, eps=1e-8)
+            elif Train_mode=="units":
+                y1 = F.normalize(y1, p=2.0, dim=1, eps=1e-8)
+                y2 = F.normalize(y2, p=2.0, dim=1, eps=1e-8)
+
+            elif Train_mode=="direct":
+                1*1
+
+            else:
+                raise ValueError("Training Mode {} not recognized. Should be one of {}, {} or {}".format(Train_mode, "direct", "norms", "units"))
 
             y1Vecs[batch : end] = y1.cpu().numpy()
             y2Vecs[batch : end] = y2.cpu().numpy()
