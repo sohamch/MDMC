@@ -53,7 +53,7 @@ class GCNet(nn.Module):
 """## Write the training function"""
 def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
           y1Target, y2Target, SpecsToTrain, VacSpec, start_ep, end_ep,
-          interval, N_train, gNet, lRate=0.001, scratch_if_no_init=True, Train_mode=None):
+          interval, N_train, gNet, lRate=0.001, scratch_if_no_init=True, Train_mode=None, Freeze=False, wt_norms=False):
     
     Ndim = y1Target.shape[1]
     N_batch = 128
@@ -73,7 +73,7 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         print("Training Species : {}".format(SpecsToTrain)) 
         On_st1 = makeProdTensor(OnSites_st1[:N_train], Ndim).long()
         On_st2 = makeProdTensor(OnSites_st2[:N_train], Ndim).long()
-    
+        
     try:
         gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(start_ep)))
         print("Starting from epoch {}".format(start_ep), flush=True)
@@ -84,8 +84,16 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         else:
             raise FileNotFoundError("No saved network found in {} at epoch {}".format(dirPath, start_ep))
     
+    # freeze layers
+    if Freeze:
+        for layerInd in range(0, len(gNet.net)-1-3, 3):
+            gNet.net[layerInd].Psi.requires_grad = False
+            gNet.net[layerInd].bias.requires_grad = False
+        
+        print("Everything except last two layers frozen.")
+
     # filter out with the method shown in the pytorch forum
-    optimizer = pt.optim.Adam(filter(lambda p : p.requires_grad, gNet.parameters()), lr=lRate, weight_decay=0.)
+    optimizer = pt.optim.Adam(filter(lambda p : p.requires_grad, gNet.parameters()), lr=lRate)
     print("Starting Training loop in {} mode".format(Train_mode)) 
     for epoch in tqdm(range(start_ep, end_ep + 1), position=0, leave=True):
         
@@ -140,9 +148,15 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             elif Train_mode=="direct":
                 y1_target_Batch = y1TargetData[batch : end]
                 y2_target_Batch = y2TargetData[batch : end]
+                if not wt_norms:
+                    loss1 = pt.sum(pt.norm((y1_target_Batch - y1), dim=1)**2)
+                    loss2 = pt.sum(pt.norm((y2_target_Batch - y2), dim=1)**2)
+                else:
+                    y1_inv_exp_norms = pt.exp(-pt.norm(y1_target_Batch, dim=1))
+                    y2_inv_exp_norms = pt.exp(-pt.norm(y2_target_Batch, dim=1))
 
-                loss1 = pt.sum(pt.norm((y1_target_Batch - y1), dim=1)**2)
-                loss2 = pt.sum(pt.norm((y2_target_Batch - y2), dim=1)**2)
+                    loss1 = pt.sum(y1_inv_exp_norms * pt.norm((y1_target_Batch - y1), dim=1)**2)
+                    loss2 = pt.sum(y2_inv_exp_norms * pt.norm((y2_target_Batch - y2), dim=1)**2)
 
             else:
                 raise ValueError("Training Mode {} not recognized. Should be one of {}, {} or {}".format(Train_mode, "direct", "norms", "units"))
@@ -376,7 +390,13 @@ def main(args):
     count += 1
 
     Train_mode = args[count]
-        
+    count += 1
+    
+    weight_norms = bool(args[count])
+    count += 1
+
+    Freeze_inner_layers = bool(args[count])
+    
     if Mode == "train" or Mode == "eval":
         AllJumps = False # whether to consider all jumps out of the samples or just stochastically selected one
     elif Mode == "getY":
@@ -457,21 +477,31 @@ def main(args):
     if Mode == "train":
         Train(dirPath, State1_Occs, State2_Occs, OnSites_state1, OnSites_state2,
               y1Target, y2Target, specsToTrain, VacSpec, start_ep, end_ep, interval, N_train, 
-              gNet, lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, Train_mode=Train_mode)
+              gNet, lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, Train_mode=Train_mode,
+              Freeze=Freeze_inner_layers, wt_norms=weight_norms)
 
     elif Mode == "eval":
         
         train_diff, valid_diff = Evaluate(dirPath, State1_Occs, State2_Occs,
                 OnSites_state1, OnSites_state2, y1Target, y2Target,
                 specsToTrain, VacSpec, start_ep, end_ep,
-                interval, N_train, gNet, Train_mode=Train_mode)
+                interval, N_train, gNet, Train_mode=Train_mode, Freeze=)
         
         if Train_mode=="direct":
-            np.save("tr_{3}_{0}_fity_jac{1}_n{2}c8.npy".format(T_data, Jac_iter, nLayers, direcString),
-                train_diff)
             
-            np.save("val_{3}_{0}_fity_jac{1}_n{2}c8.npy".format(T_data, Jac_iter, nLayers, direcString),
-                valid_diff)
+            if weight_norms:
+                np.save("tr_{3}_{0}_fity_jac{1}_n{2}c8_dir_wt_norm.npy".format(T_data, Jac_iter, nLayers, direcString),
+                        train_diff)
+            
+                np.save("val_{3}_{0}_fity_jac{1}_n{2}c8_dir_wt_norm.npy".format(T_data, Jac_iter, nLayers, direcString),
+                        valid_diff)
+            
+            else:
+                np.save("tr_{3}_{0}_fity_jac{1}_n{2}c8_dir.npy".format(T_data, Jac_iter, nLayers, direcString),
+                        train_diff)
+            
+                np.save("val_{3}_{0}_fity_jac{1}_n{2}c8_dir.npy".format(T_data, Jac_iter, nLayers, direcString),
+                        valid_diff)
         
         elif Train_mode=="units":
             np.save("tr_{3}_{0}_fity_jac{1}_n{2}c8_units.npy".format(T_data, Jac_iter, nLayers, direcString),
