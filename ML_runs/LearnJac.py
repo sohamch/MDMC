@@ -86,11 +86,14 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     
     # freeze layers
     if Freeze:
-        for layerInd in range(0, len(gNet.net)-1-3, 3):
+        for layerInd in range(0, len(gNet.net)-1-6, 3):
             gNet.net[layerInd].Psi.requires_grad = False
             gNet.net[layerInd].bias.requires_grad = False
         
-        print("Everything except last two layers frozen.")
+        print("Everything except last three layers frozen.")
+    
+    if wt_norms:
+        print("weighting target y vectors by inverse exponential norm")
 
     # filter out with the method shown in the pytorch forum
     optimizer = pt.optim.Adam(filter(lambda p : p.requires_grad, gNet.parameters()), lr=lRate)
@@ -167,7 +170,7 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 
 def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
-             y1Target, y2Target, SpecsToTrain, VacSpec,
+             rates, disps, y1Target, y2Target, SpecsToTrain, VacSpec,
              start_ep, end_ep, interval, N_train, gNet, Train_mode):
     
     Ndim = y1Target.shape[1]
@@ -175,7 +178,7 @@ def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs).double()
     state2Data = pt.tensor(State2_Occs).double()
-
+    rateData = pt.tensor(rates).double()
     y1TargetData = pt.tensor(y1Target).double().to(device)
     y2TargetData = pt.tensor(y2Target).double().to(device)
 
@@ -189,23 +192,30 @@ def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     
     if SpecsToTrain == [VacSpec]:
         assert OnSites_st1 == OnSites_st2 == None
+        dispData = pt.tensor(disps[:, 0, :]).double()
     else:
+        dispData = pt.tensor(disps[:, 1, :]).double() 
         On_st1 = makeProdTensor(OnSites_st1, Ndim).long()
         On_st2 = makeProdTensor(OnSites_st2, Ndim).long()
 
     def compute(startSample, endSample):
+        loss_epochs = []
         diff_epochs = []
         with pt.no_grad():
             for epoch in tqdm(range(start_ep, end_ep + 1, interval), position=0, leave=True):
                 ## load checkpoint
                 gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
-                loss = 0 
+                loss = 0
+                diff = 0
                 for batch in range(startSample, endSample, N_batch):
                     end = min(batch + N_batch, endSample)
 
                     state1Batch = state1Data[batch : end].to(device)
                     state2Batch = state2Data[batch : end].to(device)
                     
+                    rateBatch = rateData[batch : end].to(device)
+                    dispBatch = dispData[batch : end].to(device)
+
                     y1_target_Batch = y1TargetData[batch : end]
                     y2_target_Batch = y2TargetData[batch : end]
                     
@@ -223,7 +233,13 @@ def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                         y1 = pt.sum(y1*On_st1Batch, dim=2)
                         y2 = pt.sum(y2*On_st2Batch, dim=2)
 
-                    # Then select the appropriate mode
+                    dy = y2 - y1
+                    
+                    # compute transport coefficient
+                    loss_diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/6.
+                    diff += loss_diff.item()
+                    
+                    # Then select the appropriate mode to calculate fitting loss
                     if Train_mode=="norms":
                         y1_target_Batch = pt.exp(-pt.norm(y1TargetData[batch : end], dim=1))
                         y2_target_Batch = pt.exp(-pt.norm(y2TargetData[batch : end], dim=1))
@@ -257,14 +273,15 @@ def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                     
                     loss += (loss1 + loss2).item()    
                 
-                diff_epochs.append(loss)
+                loss_epochs.append(loss)
+                diff_epochs.append(diff)
 
-        return np.array(diff_epochs)
+        return np.array(loss_epochs), np.array(diff_epochs)
     
-    train_diff = compute(0, N_train)
-    test_diff = compute(N_train, Nsamples)
+    train_loss, train_diff = compute(0, N_train)
+    valid_loss, valid_diff = compute(N_train, Nsamples)
 
-    return train_diff/(2.0*N_train), test_diff/(2.0*(Nsamples - N_train))
+    return train_loss/(2.0*N_train), valid_loss/(2.0*(Nsamples - N_train)), train_diff/(N_train), valid_diff/(Nsamples-N_train)
 
 
 def Gather_Y(dirPath, State1_Occs, State2_Occs,
@@ -392,10 +409,10 @@ def main(args):
     Train_mode = args[count]
     count += 1
     
-    weight_norms = bool(args[count])
+    weight_norms = bool(int(args[count]))
     count += 1
 
-    Freeze_inner_layers = bool(args[count])
+    Freeze_inner_layers = bool(int(args[count]))
     
     if Mode == "train" or Mode == "eval":
         AllJumps = False # whether to consider all jumps out of the samples or just stochastically selected one
@@ -467,7 +484,7 @@ def main(args):
             mean=0.02, std=0.02, b=1.0, nl=nLayers, nch = nchann).double().to(device)
         
     # Call MakeComputeData here
-    State1_Occs, State2_Occs, _, _, OnSites_state1, OnSites_state2 =\
+    State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2 =\
             makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, 
                     rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList,
                     N_train, AllJumps=AllJumps)
@@ -482,39 +499,63 @@ def main(args):
 
     elif Mode == "eval":
         
-        train_diff, valid_diff = Evaluate(dirPath, State1_Occs, State2_Occs,
-                OnSites_state1, OnSites_state2, y1Target, y2Target,
+        train_loss, valid_loss, train_diff, valid_diff = Evaluate(dirPath, State1_Occs, State2_Occs,
+                OnSites_state1, OnSites_state2, rateData, dispData, y1Target, y2Target,
                 specsToTrain, VacSpec, start_ep, end_ep,
-                interval, N_train, gNet, Train_mode=Train_mode, Freeze=)
+                interval, N_train, gNet, Train_mode=Train_mode)
         
         if Train_mode=="direct":
             
             if weight_norms:
                 np.save("tr_{3}_{0}_fity_jac{1}_n{2}c8_dir_wt_norm.npy".format(T_data, Jac_iter, nLayers, direcString),
-                        train_diff)
+                        train_loss)
             
                 np.save("val_{3}_{0}_fity_jac{1}_n{2}c8_dir_wt_norm.npy".format(T_data, Jac_iter, nLayers, direcString),
+                        valid_loss)
+                
+                np.save("tr_L{3}{3}_{0}_fity_jac{1}_n{2}c8_dir_wt_norm.npy".format(T_data, Jac_iter, nLayers, direcString),
+                        train_diff)
+            
+                np.save("val_L_{3}{3}_{0}_fity_jac{1}_n{2}c8_dir_wt_norm.npy".format(T_data, Jac_iter, nLayers, direcString),
                         valid_diff)
             
             else:
                 np.save("tr_{3}_{0}_fity_jac{1}_n{2}c8_dir.npy".format(T_data, Jac_iter, nLayers, direcString),
-                        train_diff)
+                        train_loss)
             
                 np.save("val_{3}_{0}_fity_jac{1}_n{2}c8_dir.npy".format(T_data, Jac_iter, nLayers, direcString),
+                        valid_loss)
+                
+                np.save("tr_L{3}{3}_{0}_fity_jac{1}_n{2}c8_dir.npy".format(T_data, Jac_iter, nLayers, direcString),
+                        train_diff)
+            
+                np.save("val_L{3}{3}_{0}_fity_jac{1}_n{2}c8_dir.npy".format(T_data, Jac_iter, nLayers, direcString),
                         valid_diff)
         
         elif Train_mode=="units":
             np.save("tr_{3}_{0}_fity_jac{1}_n{2}c8_units.npy".format(T_data, Jac_iter, nLayers, direcString),
-                train_diff)
+                train_loss)
             
             np.save("val_{3}_{0}_fity_jac{1}_n{2}c8_units.npy".format(T_data, Jac_iter, nLayers, direcString),
+                valid_loss)
+
+            np.save("tr_L{3}{3}_{0}_fity_jac{1}_n{2}c8_units.npy".format(T_data, Jac_iter, nLayers, direcString),
+                train_diff)
+            
+            np.save("val_L{3}{3}_{0}_fity_jac{1}_n{2}c8_units.npy".format(T_data, Jac_iter, nLayers, direcString),
                 valid_diff)
 
         elif Train_mode=="norms":
             np.save("tr_{3}_{0}_fity_jac{1}_n{2}c8_norms.npy".format(T_data, Jac_iter, nLayers, direcString),
-                train_diff)
+                train_loss)
             
             np.save("val_{3}_{0}_fity_jac{1}_n{2}c8_norms.npy".format(T_data, Jac_iter, nLayers, direcString),
+                valid_loss)
+            
+            np.save("tr_L{3}{3}_{0}_fity_jac{1}_n{2}c8_norms.npy".format(T_data, Jac_iter, nLayers, direcString),
+                train_diff)
+            
+            np.save("val_L{3}{3}_{0}_fity_jac{1}_n{2}c8_norms.npy".format(T_data, Jac_iter, nLayers, direcString),
                 valid_diff)
 
     elif Mode == "getY":
