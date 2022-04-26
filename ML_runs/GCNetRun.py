@@ -55,10 +55,18 @@ class GCNet(nn.Module):
         return y
 
 
-def Load_crysDats():
+def Load_crysDats(nn=1):
     ## load the crystal data files
-    GpermNNIdx = np.load(CrysDatPath + "GroupNNpermutations.npy")
-    NNsiteList = np.load(CrysDatPath + "NNsites_sitewise.npy")
+    if nn == 1:
+        GpermNNIdx = np.load(CrysDatPath + "GroupNNpermutations.npy")
+        NNsiteList = np.load(CrysDatPath + "NNsites_sitewise.npy")
+    elif nn == 2:
+        GpermNNIdx = np.load(CrysDatPath + "GroupNNpermutations_2nn.npy")
+        NNsiteList = np.load(CrysDatPath + "NNsites_sitewise_2nn.npy")
+    
+    else:
+        raise ValueError("Filter range should be 1 or 2 nn. Entered: {}".format(nn))
+
     siteShellIndices = np.load(CrysDatPath + "SitesToShells.npy")
     JumpNewSites = np.load(CrysDatPath + "JumpNewSiteIndices.npy")
     dxJumps = np.load(CrysDatPath + "dxList.npy")
@@ -369,6 +377,9 @@ def main(args):
     
     ch = int(args[count])
     count += 1
+    
+    filter_nn = int(args[count])
+    count += 1
 
     scratch_if_no_init = bool(int(args[count]))
     count += 1
@@ -458,8 +469,9 @@ def main(args):
     print(pt.__version__)
     
     # Load crystal parameters
-    GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats()
+    GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(nn=filter_nn)
     N_ngb = NNsiteList.shape[0]
+    print("Filter neighbor range: {}".format(N_ngb))
     Nsites = NNsiteList.shape[1]
     SitesToShells = pt.tensor(siteShellIndices).long().to(device)
     GnnPerms = pt.tensor(GpermNNIdx).long().to(device)
