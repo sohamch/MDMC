@@ -17,7 +17,6 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from SymmLayers import GConv, R3Conv, R3ConvSites, GAvg
 
-
 device=None
 if pt.cuda.is_available():
     print(pt.cuda.get_device_name())
@@ -63,6 +62,9 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     
     y1TargetData = pt.tensor(y1Target).double().to(device)
     y2TargetData = pt.tensor(y2Target).double().to(device)
+    
+    #if Changes:
+    #    assert Train_mode == "direct"
 
     On_st1 = None
     On_st2 = None   
@@ -128,17 +130,7 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                 y2 = pt.sum(y2*On_st2Batch, dim=2)
             
             # Then select the appropriate mode
-            if Train_mode=="norms":
-                y1_target_Batch = pt.exp(-pt.norm(y1TargetData[batch : end], dim=1))
-                y2_target_Batch = pt.exp(-pt.norm(y2TargetData[batch : end], dim=1))
-
-                y1 = pt.exp(-pt.norm(y1, dim = 1))
-                y2 = pt.exp(-pt.norm(y2, dim = 1))
-            
-                loss1 = pt.sum((y1_target_Batch - y1)**2)
-                loss2 = pt.sum((y2_target_Batch - y2)**2)
-
-            elif Train_mode=="units":
+            if Train_mode=="units":
                 y1_target_Batch = F.normalize(y1TargetData[batch : end], p=2.0, dim=1)
                 y2_target_Batch = F.normalize(y2TargetData[batch : end], p=2.0, dim=1)
 
@@ -147,6 +139,16 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
                 loss1 = pt.sum(pt.norm((y1_target_Batch - y1), dim=1)**2)
                 loss2 = pt.sum(pt.norm((y2_target_Batch - y2), dim=1)**2)
+            
+            elif Train_mode=="rel_dev":
+                y1_target_Batch = y1TargetData[batch : end]
+                y2_target_Batch = y2TargetData[batch : end]
+
+                y1_target_norm = pt.norm(y1_target_Batch, dim=1).view(-1, 1)
+                y2_target_norm = pt.norm(y2_target_Batch, dim=1).view(-1, 1)
+
+                loss1 = pt.sum(pt.norm((y1_target_Batch - y1)/y1_target_norm, dim=1)**2)
+                loss2 = pt.sum(pt.norm((y2_target_Batch - y2)/y2_target_norm, dim=1)**2)
             
             elif Train_mode=="direct":
                 y1_target_Batch = y1TargetData[batch : end]
@@ -162,7 +164,7 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                     loss2 = pt.sum(y2_inv_exp_norms * pt.norm((y2_target_Batch - y2), dim=1)**2)
 
             else:
-                raise ValueError("Training Mode {} not recognized. Should be one of {}, {} or {}".format(Train_mode, "direct", "norms", "units"))
+                raise ValueError("Training Mode {} not recognized. Should be one of {}, {} or {}".format(Train_mode, "direct", "rel_dev", "units"))
 
             loss = (loss1 + loss2)/(2.0*(end - batch))
             loss.backward()
@@ -171,8 +173,9 @@ def Train(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
              rates, disps, y1Target, y2Target, SpecsToTrain, VacSpec,
-             start_ep, end_ep, interval, N_train, gNet, Train_mode):
-    
+             start_ep, end_ep, interval, N_train, gNet, Train_mode,
+             fit_changes=False, y1_0j = None, y2_0j = None):
+
     Ndim = y1Target.shape[1]
     N_batch = 512
     # Convert compute data to pytorch tensors
@@ -181,6 +184,13 @@ def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     rateData = pt.tensor(rates).double()
     y1TargetData = pt.tensor(y1Target).double().to(device)
     y2TargetData = pt.tensor(y2Target).double().to(device)
+    
+    if fit_changes:
+        print("Fitting residuals")
+        assert Train_mode == "direct"
+        assert y1_0j is not None and y2_0j is not None
+        y1_0j_Data = pt.tensor(y1_0j).double().to(device)
+        y2_0j_Data = pt.tensor(y2_0j).double().to(device)
 
     Nsamples = state1Data.shape[0]
 
@@ -234,23 +244,16 @@ def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                         y2 = pt.sum(y2*On_st2Batch, dim=2)
 
                     dy = y2 - y1
+                    if fit_changes:
+                        y1_0j_batch = y1_0j_Data[batch : end]
+                        y2_0j_batch = y2_0j_Data[batch : end]
+                        dy += y2_0j_batch - y1_0j_batch
                     
-                    # compute transport coefficient
                     loss_diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/6.
                     diff += loss_diff.item()
                     
                     # Then select the appropriate mode to calculate fitting loss
-                    if Train_mode=="norms":
-                        y1_target_Batch = pt.exp(-pt.norm(y1TargetData[batch : end], dim=1))
-                        y2_target_Batch = pt.exp(-pt.norm(y2TargetData[batch : end], dim=1))
-
-                        y1 = pt.exp(-pt.norm(y1, dim = 1))
-                        y2 = pt.exp(-pt.norm(y2, dim = 1))
-                    
-                        loss1 = pt.sum((y1_target_Batch - y1)**2)
-                        loss2 = pt.sum((y2_target_Batch - y2)**2)
-
-                    elif Train_mode=="units":
+                    if Train_mode=="units":
                         y1_target_Batch = F.normalize(y1TargetData[batch : end], p=2.0, dim=1)
                         y2_target_Batch = F.normalize(y2TargetData[batch : end], p=2.0, dim=1)
 
@@ -260,7 +263,7 @@ def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                         loss1 = pt.sum(pt.norm((y1_target_Batch - y1), dim=1)**2)
                         loss2 = pt.sum(pt.norm((y2_target_Batch - y2), dim=1)**2)
                     
-                    elif Train_mode=="direct":
+                    elif Train_mode=="direct" or Train_mode=="rel_dev":
                         y1_target_Batch = y1TargetData[batch : end]
                         y2_target_Batch = y2TargetData[batch : end]
 
@@ -268,7 +271,7 @@ def Evaluate(dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                         loss2 = pt.sum(pt.norm((y2_target_Batch - y2), dim=1)**2)
 
                     else:
-                        raise ValueError("Training Mode {} not recognized. Should be one of {}, {} or {}".format(Train_mode, "direct", "norms", "units"))
+                        raise ValueError("Training Mode {} not recognized. Should be one of {}, {} or {}".format(Train_mode, "direct", "rel_dev", "units"))
 
                     
                     loss += (loss1 + loss2).item()    
@@ -413,15 +416,35 @@ def main(args):
     count += 1
 
     Freeze_inner_layers = bool(int(args[count]))
+    count += 1
+
+    Permute = bool(int(args[count]))
     
-    if Mode == "train" or Mode == "eval":
-        AllJumps = False # whether to consider all jumps out of the samples or just stochastically selected one
-    elif Mode == "getY":
-        AllJumps = True
+    AllJumps=False
+    #if Mode == "train" or Mode == "eval":
+    #    AllJumps = False # whether to consider all jumps out of the samples or just stochastically selected one
+    #elif Mode == "getY":
+    #    AllJumps = True
         
     # Load data
     state1List, state2List, dispList, rateList, AllJumpRates, jmpSelects = Load_Data(FileName)
     
+    if Permute:
+        try:
+            perm = np.load("Perm_jac_{}.npy".format(T_data))
+        except:
+            perm = np.random.permutation(np.arange(state1List.shape[0]))
+            np.save(RunPath + "Perm_jac_{}.npy".format(T_data), perm)
+        state1List = state1List[perm]
+        state2List = state2List[perm]
+        dispList = dispList[perm]
+        rateList = rateList[perm]
+        AllJumpRates = AllJumpRates[perm]
+        jmpSelects = jmpSelects[perm]
+    
+    else:
+        perm = np.arange(state1List.shape[0])
+
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
     Nsites = state1List.shape[1]
@@ -437,9 +460,26 @@ def main(args):
             direcString += "{}".format(spec)
 
     # Load target jacobian data
-    y1Target = np.load("y1_{}".format(T_data)+"_"+direcString+"_jac_{}.npy".format(Jac_iter))
-    y2Target = np.load("y2_{}".format(T_data)+"_"+direcString+"_jac_{}.npy".format(Jac_iter))
-    
+    Changes=False
+    try:
+        y1Target = np.load("y1_{}".format(T_data)+"_"+direcString+"_jac_{}.npy".format(Jac_iter))[perm]
+        y2Target = np.load("y2_{}".format(T_data)+"_"+direcString+"_jac_{}.npy".format(Jac_iter))[perm]
+        y1_0j = None
+        y2_0j = None 
+    except:
+        try:
+            y1Target = np.load("dely1_{}".format(T_data)+"_"+direcString+"_jac_{}.npy".format(Jac_iter))[perm]
+            y2Target = np.load("dely2_{}".format(T_data)+"_"+direcString+"_jac_{}.npy".format(Jac_iter))[perm]
+            y1_0j = np.load("y1_0j_{}".format(T_data)+"_"+direcString+"_jac_{}.npy".format(Jac_iter))[perm]
+            y2_0j = np.load("y2_0j_{}".format(T_data)+"_"+direcString+"_jac_{}.npy".format(Jac_iter))[perm]
+            Changes = True
+            print("Fitting to changes. Changing Train mode to direct.")
+            Train_mode = "direct"
+
+        except FileNotFoundError:
+            raise FileNotFoundError("Proper files for neither y vectors nor changes were found.")
+            
+
     dirNameNets = "ep_T_{0}_{1}_jac_{3}_n{2}c8_{4}".format(T_data, direcString, nLayers, Jac_iter, Train_mode)
     if Mode == "eval" or Mode == "getY":
         prepo = "saved at"
@@ -502,7 +542,7 @@ def main(args):
         train_loss, valid_loss, train_diff, valid_diff = Evaluate(dirPath, State1_Occs, State2_Occs,
                 OnSites_state1, OnSites_state2, rateData, dispData, y1Target, y2Target,
                 specsToTrain, VacSpec, start_ep, end_ep,
-                interval, N_train, gNet, Train_mode=Train_mode)
+                interval, N_train, gNet, Train_mode=Train_mode, fit_changes=Changes, y1_0j=y1_0j, y2_0j=y2_0j)
         
         if Train_mode=="direct":
             
@@ -545,21 +585,21 @@ def main(args):
             np.save("val_L{3}{3}_{0}_fity_jac{1}_n{2}c8_units.npy".format(T_data, Jac_iter, nLayers, direcString),
                 valid_diff)
 
-        elif Train_mode=="norms":
-            np.save("tr_{3}_{0}_fity_jac{1}_n{2}c8_norms.npy".format(T_data, Jac_iter, nLayers, direcString),
+        elif Train_mode=="rel_dev":
+            np.save("tr_{3}_{0}_fity_jac{1}_n{2}c8_rel_dev.npy".format(T_data, Jac_iter, nLayers, direcString),
                 train_loss)
             
-            np.save("val_{3}_{0}_fity_jac{1}_n{2}c8_norms.npy".format(T_data, Jac_iter, nLayers, direcString),
+            np.save("val_{3}_{0}_fity_jac{1}_n{2}c8_rel_dev.npy".format(T_data, Jac_iter, nLayers, direcString),
                 valid_loss)
             
-            np.save("tr_L{3}{3}_{0}_fity_jac{1}_n{2}c8_norms.npy".format(T_data, Jac_iter, nLayers, direcString),
+            np.save("tr_L{3}{3}_{0}_fity_jac{1}_n{2}c8_rel_dev.npy".format(T_data, Jac_iter, nLayers, direcString),
                 train_diff)
             
-            np.save("val_L{3}{3}_{0}_fity_jac{1}_n{2}c8_norms.npy".format(T_data, Jac_iter, nLayers, direcString),
+            np.save("val_L{3}{3}_{0}_fity_jac{1}_n{2}c8_rel_dev.npy".format(T_data, Jac_iter, nLayers, direcString),
                 valid_diff)
 
     elif Mode == "getY":
-        assert AllJumps
+        #assert AllJumps
         y1Vecs, y2Vecs = Gather_Y(dirPath, State1_Occs, State2_Occs,
                                   OnSites_state1, OnSites_state2, specsToTrain,
                                   VacSpec, start_ep, gNet, Ndim, Train_mode=Train_mode)
