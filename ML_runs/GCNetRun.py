@@ -91,7 +91,10 @@ def Load_Data(FileName):
         dispList = np.array(fl["SpecDisps"])[perm]
         rateList = np.array(fl["rates"])[perm]
         AllJumpRates = np.array(fl["AllJumpRates"])[perm]
-        jmpSelects = np.array(fl["JumpSelects"])[perm]
+        try:
+            jmpSelects = np.array(fl["JumpSelects"])[perm]
+        except:
+            jmpSelects = np.array(fl["JumpSelection"])[perm]
     
     return state1List, state2List, dispList, rateList, AllJumpRates, jmpSelects
 
