@@ -1,7 +1,7 @@
 import os
 import sys
 RunPath = os.getcwd() + "/"
-CrysPath = "/home/sohamc2/HEA_FCC/"
+CrysPath = "/home/sohamc2/HEA_FCC/MDMC/"
 DataPath = "/home/sohamc2/HEA_FCC/MDMC/ML_runs/DataSets/"
 ModulePath = "/home/sohamc2/VKMC/SymNetworkRuns/CE_Symmetry/Symm_Network/"
 
@@ -167,8 +167,8 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
         OnSites_state2 = np.zeros((NJumps, Nsites), dtype=np.int8)
     
         for spec in specsToTrain:
-            OnSites_state1 += State1_occs[:, sp_ch[spec1], :]
-            OnSites_state2 += State2_occs[:, sp_ch[spec2], :]
+            OnSites_state1 += State1_occs[:, sp_ch[spec], :]
+            OnSites_state2 += State2_occs[:, sp_ch[spec], :]
     
     return State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2
 
