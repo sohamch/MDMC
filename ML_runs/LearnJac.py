@@ -367,7 +367,10 @@ def main(args):
     count=1
     FileName = args[count] # Name of data file to train on
     count += 1
-    
+
+    CrystalType = args[count]
+    count += 1
+
     Jac_iter = int(args[count]) # target jacobian iteration to learn vectors from
     count += 1
     
@@ -503,7 +506,7 @@ def main(args):
     print("Running in Mode {} with networks {} {}".format(Mode, prepo, dirPath))
     
     # Load crystal parameters
-    GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats()
+    GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(type=CrystalType)
     N_ngb = NNsiteList.shape[0]
     Nsites = NNsiteList.shape[1]
     SitesToShells = pt.tensor(siteShellIndices).long().to(device)
