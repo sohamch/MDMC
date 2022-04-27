@@ -109,6 +109,16 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     NSpec = specs.shape[0] - 1
     Nsites = state1List.shape[1]
     NNsvac = NNsiteList[1:, 0]
+    
+    sp_ch = {}
+    for sp in specs:
+        if sp == VacSpec:
+            continue
+        
+        if sp - VacSpec < 0:
+            sp_ch[sp] = sp
+        else:
+            sp_ch[sp] = sp-1
 
     State1_occs = np.zeros((NJumps, NSpec, Nsites), dtype=np.int8)
     State2_occs = np.zeros((NJumps, NSpec, Nsites), dtype=np.int8)
@@ -133,16 +143,16 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
                 for site in range(1, Nsites): # exclude the vacancy site
                     spec1 = state1[site]
                     spec2 = state2[site]
-                    State1_occs[Idx, spec1-1, site] = 1
-                    State2_occs[Idx, spec2-1, site] = 1
+                    State1_occs[Idx, sp_ch[spec1], site] = 1
+                    State2_occs[Idx, sp_ch[spec2], site] = 1
 
         else:
             state2 = state2List[samp]
             for site in range(1, Nsites): # exclude the vacancy site
                 spec1 = state1[site]
                 spec2 = state2[site]
-                State1_occs[samp, spec1-1, site] = 1
-                State2_occs[samp, spec2-1, site] = 1
+                State1_occs[samp, sp_ch[spec1], site] = 1
+                State2_occs[samp, sp_ch[spec2], site] = 1
             
             dispData[samp, 0, :] = dispList[samp, VacSpec, :]
             dispData[samp, 1, :] = sum(dispList[samp, spec, :] for spec in specsToTrain)
@@ -157,8 +167,8 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
         OnSites_state2 = np.zeros((NJumps, Nsites), dtype=np.int8)
     
         for spec in specsToTrain:
-            OnSites_state1 += State1_occs[:, spec-1, :]
-            OnSites_state2 += State2_occs[:, spec-1, :]
+            OnSites_state1 += State1_occs[:, sp_ch[spec1], :]
+            OnSites_state2 += State2_occs[:, sp_ch[spec2], :]
     
     return State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2
 
