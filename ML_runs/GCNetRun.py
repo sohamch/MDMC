@@ -1,11 +1,10 @@
 import os
 import sys
 RunPath = os.getcwd() + "/"
-CrysDatPath = "/home/sohamc2/HEA_FCC/CrysDat/"
+CrysPath = "/home/sohamc2/HEA_FCC/"
 DataPath = "/home/sohamc2/HEA_FCC/MDMC/ML_runs/DataSets/"
 ModulePath = "/home/sohamc2/VKMC/SymNetworkRuns/CE_Symmetry/Symm_Network/"
 
-#CrysDatPath = "CrysDat/"
 #DataPath = "MD_KMC_single/"
 #ModulePath = "/mnt/FCDEB3C5DEB3768C/UIUC/Research/KMC_ML/VKMC/SymNetworkRuns/CE_Symmetry/Symm_Network"
 
@@ -55,8 +54,13 @@ class GCNet(nn.Module):
         return y
 
 
-def Load_crysDats(nn=1):
+def Load_crysDats(nn=1, type="FCC"):
     ## load the crystal data files
+    if type == "FCC":
+        CrysDatPath = CrysPath + "CrysDat_FCC"
+    elif type == "BCC":
+        CrysDatPath = CrysPath + "CrysDat_BCC"
+
     if nn == 1:
         GpermNNIdx = np.load(CrysDatPath + "GroupNNpermutations.npy")
         NNsiteList = np.load(CrysDatPath + "NNsites_sitewise.npy")
@@ -368,7 +372,10 @@ def main(args):
     count=1
     FileName = args[count] # Name of data file to train on
     count += 1
-     
+    
+    CrystalType = args[count]
+    count += 1
+
     Mode = args[count] # "train" mode or "eval" mode or "getY" mode
     count += 1
 
@@ -471,7 +478,7 @@ def main(args):
     # Load crystal parameters
     GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(nn=filter_nn)
     N_ngb = NNsiteList.shape[0]
-    print("Filter neighbor range: {}".format(N_ngb))
+    print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(filter_nn, N_ngb - 1))
     Nsites = NNsiteList.shape[1]
     SitesToShells = pt.tensor(siteShellIndices).long().to(device)
     GnnPerms = pt.tensor(GpermNNIdx).long().to(device)
