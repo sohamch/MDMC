@@ -57,9 +57,9 @@ class GCNet(nn.Module):
 def Load_crysDats(nn=1, type="FCC"):
     ## load the crystal data files
     if type == "FCC":
-        CrysDatPath = CrysPath + "CrysDat_FCC"
+        CrysDatPath = CrysPath + "CrysDat_FCC/"
     elif type == "BCC":
-        CrysDatPath = CrysPath + "CrysDat_BCC"
+        CrysDatPath = CrysPath + "CrysDat_BCC/"
 
     if nn == 1:
         GpermNNIdx = np.load(CrysDatPath + "GroupNNpermutations.npy")
