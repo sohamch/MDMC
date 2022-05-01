@@ -54,11 +54,30 @@ class GCNet(nn.Module):
         return y
 
 
-def Load_crysDats(nn=1, type="FCC"):
+class GCNetRes(GCNet):
+    
+    def forward(self, InState):
+        
+        layerInd = 0
+        y = self.net[layerInd + 2](self.net[layerInd + 1](self.net[layerInd](InState)))
+
+        for layerInd in range(3, len(self.net) - 4, 3):
+            y = y + self.net[layerInd + 2](self.net[layerInd + 1](self.net[layerInd](y)))
+        
+        layerInd = len(self.net) - 4
+        y = self.net[layerInd + 2](self.net[layerInd + 1](self.net[layerInd](y)))
+
+        y = self.net[-1](y)
+
+        return y
+
+
+def Load_crysDats(nn=1, typ="FCC"):
     ## load the crystal data files
-    if type == "FCC":
+    print("Loading crystal data for : {}".format(typ))
+    if typ == "FCC":
         CrysDatPath = CrysPath + "CrysDat_FCC/"
-    elif type == "BCC":
+    elif typ == "BCC":
         CrysDatPath = CrysPath + "CrysDat_BCC/"
 
     if nn == 1:
@@ -94,7 +113,7 @@ def Load_Data(FileName):
         try:
             jmpSelects = np.array(fl["JumpSelects"])[perm]
         except:
-            jmpSelects = np.array(fl["JumpSelection"])[perm]
+            jmpSelects = np.array(fl["JumpSelection"])[perm].reshape(state1List.shape[0])
     
     return state1List, state2List, dispList, rateList, AllJumpRates, jmpSelects
 
@@ -107,7 +126,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
         NJumps = Nsamples*AllJumpRates.shape[1]
     else:
         NJumps = Nsamples
-    a = np.linalg.norm(dispList[0, 0, :])/np.linalg.norm(dxJumps[0]) 
+    a = np.linalg.norm(dispList[0, VacSpec, :])/np.linalg.norm(dxJumps[0]) 
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
     Nsites = state1List.shape[1]
@@ -130,6 +149,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     
     # Make the multichannel occupancies
     print("Building Occupancy Tensors for species : {}".format(specsToTrain))
+    print("No. of jumps : {}".format(NJumps))
     for samp in tqdm(range(Nsamples), position=0, leave=True):
         state1 = state1List[samp]
         if AllJumps:
@@ -400,6 +420,9 @@ def main(args):
     
     filter_nn = int(args[count])
     count += 1
+    
+    Residual_training = bool(int(args[count]))
+    count += 1
 
     scratch_if_no_init = bool(int(args[count]))
     count += 1
@@ -489,7 +512,7 @@ def main(args):
     print(pt.__version__)
     
     # Load crystal parameters
-    GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(nn=filter_nn)
+    GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(nn=filter_nn, typ=CrystalType)
     N_ngb = NNsiteList.shape[0]
     print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(filter_nn, N_ngb - 1))
     Nsites = NNsiteList.shape[1]
@@ -507,8 +530,12 @@ def main(args):
     gdiags = gdiagsCpu#.to(device)
     
     # Make a network to either train from scratch or load saved state into
-    gNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-            mean=0.02, std=0.2, b=1.0, nl=nLayers, nch=ch).double().to(device)
+    if not Residual_training:
+        gNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
+                mean=0.02, std=0.2, b=1.0, nl=nLayers, nch=ch).double().to(device)
+    else:
+        gNet = GCNetRes(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
+                mean=0.02, std=0.2, b=1.0, nl=nLayers, nch=ch).double().to(device)
 
     # Call MakeComputeData here
     State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2 = makeComputeData(state1List, state2List, dispList,
