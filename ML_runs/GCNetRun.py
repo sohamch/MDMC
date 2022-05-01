@@ -531,9 +531,11 @@ def main(args):
     
     # Make a network to either train from scratch or load saved state into
     if not Residual_training:
+        print("Running in Normal Convolution mode")
         gNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
                 mean=0.02, std=0.2, b=1.0, nl=nLayers, nch=ch).double().to(device)
     else:
+        print("Running in Residual network mode")
         gNet = GCNetRes(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
                 mean=0.02, std=0.2, b=1.0, nl=nLayers, nch=ch).double().to(device)
 
