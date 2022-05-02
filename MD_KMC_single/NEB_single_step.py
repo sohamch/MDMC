@@ -50,7 +50,7 @@ with open(MainPath+"lammpsBox.txt", "r") as fl:
 SiteIndToPos = np.load(MainPath+"SiteIndToLmpCartPos.npy")  # lammps pos of sites
 SiteIndToNgb = np.load(MainPath+"siteIndtoNgbSiteInd.npy")  # Nsites x z array of site neighbors
 
-with open(potPath+"CrysDat/jnetFCC.pkl", "rb") as fl:
+with open(potPath+"CrysDat_FCC/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
 dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 
