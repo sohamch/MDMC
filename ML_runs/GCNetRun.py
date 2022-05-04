@@ -92,11 +92,11 @@ class GCSubNet(nn.Module):
     def forward(self, InState, specsToTrain_chIdx):
         BackgroundSpecs = [[spec] for spec in range(InState.shape[1]) if spec not in specsToTrain_chIdx]
         
-        Input = InState[:, specsToTrain_chIdx + BackgroundSpecs[0], :].to("cuda:0")
+        Input = InState[:, specsToTrain_chIdx + BackgroundSpecs[0], :]
         y = self.subnets[0](Input)
         for bkgSpecInd in range(1, len(BackgroundSpecs)):
-            Input = InState[:, specsToTrain + BackgroundSpecs[bkgSpecInd], :].to("cuda:{0}".format(bkgSpecInd))
-            y += self.subnets[bkgSpecInd](Input).to("cuda:0")
+            Input = InState[:, specsToTrain + BackgroundSpecs[bkgSpecInd], :]
+            y += self.subnets[bkgSpecInd](Input)
             
         return y
 
@@ -255,11 +255,18 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         rates, disps, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
         gNet, lRate=0.001, scratch_if_no_init=True):
     
+    for key, item in sp_ch.items():
+        if key > VacSpec:
+            assert item == key - 1
+        else:
+            assert key < VacSpec
+            assert item == key
+
     Ndim = disps.shape[2]
     N_batch = 128
     # Convert compute data to pytorch tensors
-    state1Data = pt.tensor(State1_Occs[:N_train]).double()
-    state2Data = pt.tensor(State2_Occs[:N_train]).double()
+    state1Data = pt.tensor(State1_Occs[:N_train])
+    state2Data = pt.tensor(State2_Occs[:N_train])
     rateData = pt.tensor(rates[:N_train]).double().to(device)
     On_st1 = None 
     On_st2 = None    
@@ -297,8 +304,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             
             end = min(batch + N_batch, N_train)
 
-            state1Batch = state1Data[batch : end].to(device)
-            state2Batch = state2Data[batch : end].to(device)
+            state1Batch = state1Data[batch : end].double().to(device)
+            state2Batch = state2Data[batch : end].double().to(device)
             
             rateBatch = rateData[batch : end]
             dispBatch = dispData[batch : end]
@@ -308,6 +315,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                 y2 = gNet(state2Batch)
 
             else:
+                assert isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes)
                 y1 = gNet.forward(state1Batch, specTrainCh)
                 y2 = gNet.forward(state2Batch, specTrainCh)
             
@@ -332,6 +340,13 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         rates, disps, SpecsToTrain, VacSpec, sp_ch, start_ep, end_ep, interval, N_train,
         gNet):
     
+    for key, item in sp_ch.items():
+        if key > VacSpec:
+            assert item == key - 1
+        else:
+            assert key < VacSpec
+            assert item == key
+
     Ndim = disps.shape[2]
     N_batch = 512
     # Convert compute data to pytorch tensors
@@ -342,8 +357,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     print("Sample Jumps: {}, Training: {}, Validation: {}".format(Nsamples, N_train, Nsamples-N_train))
     print("Evaluating with networks at: {}".format(dirPath))
     
-    state2Data = pt.tensor(State2_Occs).double()
-    rateData = pt.tensor(rates).double()
+    state2Data = pt.tensor(State2_Occs)
+    rateData = pt.tensor(rates)
     On_st1 = None
     On_st2 = None
     
@@ -368,8 +383,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                 for batch in range(startSample, endSample, N_batch):
                     end = min(batch + N_batch, endSample)
 
-                    state1Batch = state1Data[batch : end].to(device)
-                    state2Batch = state2Data[batch : end].to(device)
+                    state1Batch = state1Data[batch : end].double().to(device)
+                    state2Batch = state2Data[batch : end].double().to(device)
                     
                     rateBatch = rateData[batch : end].to(device)
                     dispBatch = dispData[batch : end].to(device)
@@ -410,11 +425,18 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_ch, SpecsToTrain, VacSpec, epoch, gNet, Ndim):
     
+    for key, item in sp_ch.items():
+        if key > VacSpec:
+            assert item == key - 1
+        else:
+            assert key < VacSpec
+            assert item == key
+
     N_batch = 256
     # Convert compute data to pytorch tensors
-    state1Data = pt.tensor(State1_Occs).double()
+    state1Data = pt.tensor(State1_Occs)
     Nsamples = state1Data.shape[0]
-    state2Data = pt.tensor(State2_Occs).double()
+    state2Data = pt.tensor(State2_Occs)
     On_st1 = None
     On_st2 = None 
     
@@ -438,8 +460,8 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_
         for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
             end = min(batch + N_batch, Nsamples)
 
-            state1Batch = state1Data[batch : end].to(device)
-            state2Batch = state2Data[batch : end].to(device)
+            state1Batch = state1Data[batch : end].double().to(device)
+            state2Batch = state2Data[batch : end].double().to(device)
             
             if isinstance(gNet, GCNet) or isinstance(gNet, GCNetRes):
                 y1 = gNet(state1Batch)
