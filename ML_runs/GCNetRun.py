@@ -89,13 +89,12 @@ class GCSubNet(nn.Module):
             # store it in the module list
             self.subNets.append(subnet)
 
-    def forward(self, InState, specsToTrain_chIdx):
-        BackgroundSpecs = [[spec] for spec in range(InState.shape[1]) if spec not in specsToTrain_chIdx]
+    def forward(self, InState, specsToTrain_chIdx, BackgroundSpecs):
         
         Input = InState[:, specsToTrain_chIdx + BackgroundSpecs[0], :]
         y = self.subNets[0](Input)
         for bkgSpecInd in range(1, len(BackgroundSpecs)):
-            Input = InState[:, specsToTrain + BackgroundSpecs[bkgSpecInd], :]
+            Input = InState[:, specsToTrain_chIdx + BackgroundSpecs[bkgSpecInd], :]
             y += self.subNets[bkgSpecInd](Input)
             
         return y
@@ -290,6 +289,9 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             raise ValueError("No saved network found in {} at epoch {}".format(dirPath, start_ep))
     
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
+    BackgroundSpecs = [[spec] for spec in range(InState.shape[1]) if spec not in specTrainCh]
+    print("Species Channels to train: {}".format(specTrainCh))
+    print("Background species channels: {}".format(BackgroundSpecs))
 
     optimizer = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
     print("Starting Training loop") 
@@ -316,8 +318,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
             else:
                 assert isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes)
-                y1 = gNet.forward(state1Batch, specTrainCh)
-                y2 = gNet.forward(state2Batch, specTrainCh)
+                y1 = gNet.forward(state1Batch, specTrainCh, BackgroundSpecs)
+                y2 = gNet.forward(state2Batch, specTrainCh, BackgroundSpecs)
             
             # sum up everything except the vacancy site
             if SpecsToTrain==[VacSpec]:
