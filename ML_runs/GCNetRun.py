@@ -193,7 +193,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
             OnSites_state1 += State1_occs[:, sp_ch[spec], :]
             OnSites_state2 += State2_occs[:, sp_ch[spec], :]
     
-    return State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2
+    return State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch
 
 
 def makeProdTensor(OnSites, Ndim):
@@ -424,6 +424,9 @@ def main(args):
     Residual_training = bool(int(args[count]))
     count += 1
 
+    subNetwork_training = bool(int(args[count]))
+    count += 1
+
     scratch_if_no_init = bool(int(args[count]))
     count += 1
     
@@ -540,7 +543,7 @@ def main(args):
                 mean=0.02, std=0.2, b=1.0, nl=nLayers, nch=ch).double().to(device)
 
     # Call MakeComputeData here
-    State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2 = makeComputeData(state1List, state2List, dispList,
+    State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = makeComputeData(state1List, state2List, dispList,
             specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps)
     print("Done Creating occupancy tensors")
 
