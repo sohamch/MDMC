@@ -678,3 +678,34 @@ def main(args):
 
 if __name__ == "__main__":
     main(list(sys.argv))
+    args_file = list(sys.argv)[1]
+
+
+    count=1
+    args = {
+    "FileName":"", # Name of data file to train on
+    "CrystalType":"FCC",
+    "Mode":"train" # "train" mode or "eval" mode or "getY" mode
+    "nLayers":3,
+    "ch":3,
+    "filter_nn":1,
+    "Residual_training":False,
+    "subNetwork_training":False,
+    "scratch_if_no_init":True,
+    "T_data":0,
+    # Note : for binary random alloys, this should is the training composition instead of temperature
+    T_net = int(args[count]) # must be same as T_data if "train", can be different if "getY" or "eval"
+    
+    start_ep = int(args[count])
+    end_ep = int(args[count])
+    specTrain = args[count] # which species to train collectively: eg - 123 for species 1, 2 and 3
+    # The entry is order independent as it is sorted later
+    VacSpec = int(args[count]) # integer label for vacancy species
+    AllJumps = bool(int(args[count])) # whether to consider all jumps out of the samples or just stochastically selected one
+    # False if 0, otherwise True
+    AllJumps_net_type = bool(int(args[count])) # whether to use network trained on all jumps out of the samples or just stochastically selected one
+    # This is the directory to search for in "eval" or "getY" modes
+    # False if 0, otherwise True
+    N_train = int(args[count]) # How many INITIAL STATES to consider for training
+    interval = int(args[count]) # for train mode, interval to save and for eval mode, interval to load
+    learning_Rate = float(args[count]) if len(args)==count+1 else 0.001
