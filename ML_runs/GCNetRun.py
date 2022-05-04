@@ -71,6 +71,53 @@ class GCNetRes(GCNet):
 
         return y
 
+class GCSubNet(nn.Module):
+    def __init__(self, GnnPerms, gdiags, NNsites, SitesToShells,
+                dim, N_ngb, NSpec=5, specsToTrain=[5], mean=0.0, std=0.1, b=1.0, nl=3, nch=8):
+
+        super().__init__()
+        
+        NspecsTrain = len(specsToTrain)
+        Nsubnets = NSpec - NspecsTrain
+        NSpecChannels = NspecsTrain + 1
+        
+        self.subNets = nn.ModuleList([])
+        for subNetInd in range(Nsubnets):
+            # Create a subnetwork
+            subNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells,
+                           Ndim, N_ngb, NSpecChannels, mean=0.02, std=0.2, b=1.0, nl=nl, nch=nch)
+            # store it in the module list
+            self.subNets.append(subnet)
+
+    def forward(self, InState, specsToTrain_chIdx):
+        BackgroundSpecs = [[spec] for spec in range(InState.shape[1]) if spec not in specsToTrain_chIdx]
+        
+        Input = InState[:, specsToTrain_chIdx + BackgroundSpecs[0], :].to("cuda:0")
+        y = self.subnets[0](Input)
+        for bkgSpecInd in range(1, len(BackgroundSpecs)):
+            Input = InState[:, specsToTrain + BackgroundSpecs[bkgSpecInd], :].to("cuda:{0}".format(bkgSpecInd))
+            y += self.subnets[bkgSpecInd](Input).to("cuda:0")
+            
+        return y
+
+class GCSubNetRes(GCSubNet):
+    def __init__(self, GnnPerms, gdiags, NNsites, SitesToShells,
+                dim, N_ngb, NSpec=5, specsToTrainCh=[5], mean=0.0, std=0.1, b=1.0, nl=3, nch=8):
+
+        super().__init__()
+        
+        NspecsTrain = len(specsToTrain)
+        Nsubnets = NSpec - NspecsTrain
+        NSpecChannels = NspecsTrain + 1
+        
+        self.subNets = nn.ModuleList([])
+        for subNetInd in range(Nsubnets):
+            # Create a subnetwork
+            subNet = GCNetRes(GnnPerms, gdiags, NNsites, SitesToShells,
+                           Ndim, N_ngb, NSpecChannels, mean=0.02, std=0.2, b=1.0, nl=nl, nch=nch)
+            # store it in the module list
+            self.subNets.append(subnet)
+
 
 def Load_crysDats(nn=1, typ="FCC"):
     ## load the crystal data files
@@ -205,7 +252,7 @@ def makeProdTensor(OnSites, Ndim):
 
 """## Write the training loop"""
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
-        rates, disps, SpecsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
+        rates, disps, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
         gNet, lRate=0.001, scratch_if_no_init=True):
     
     Ndim = disps.shape[2]
@@ -234,6 +281,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             print("No Network found. Starting from scratch", flush=True)
         else:
             raise ValueError("No saved network found in {} at epoch {}".format(dirPath, start_ep))
+    
+    specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
 
     optimizer = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
     print("Starting Training loop") 
@@ -254,8 +303,13 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             rateBatch = rateData[batch : end]
             dispBatch = dispData[batch : end]
             
-            y1 = gNet(state1Batch)
-            y2 = gNet(state2Batch)
+            if isinstance(gNet, GCNet) or isinstance(gNet, GCNetRes):
+                y1 = gNet(state1Batch)
+                y2 = gNet(state2Batch)
+
+            else:
+                y1 = gNet.forward(state1Batch, specTrainCh)
+                y2 = gNet.forward(state2Batch, specTrainCh)
             
             # sum up everything except the vacancy site
             if SpecsToTrain==[VacSpec]:
@@ -275,7 +329,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 
 def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
-        rates, disps, SpecsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
+        rates, disps, SpecsToTrain, VacSpec, sp_ch, start_ep, end_ep, interval, N_train,
         gNet):
     
     Ndim = disps.shape[2]
@@ -301,6 +355,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         On_st1 = makeProdTensor(OnSites_st1, Ndim).long()
         On_st2 = makeProdTensor(OnSites_st2, Ndim).long()
 
+    specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
+    
     def compute(startSample, endSample):
         diff_epochs = []
         with pt.no_grad():
@@ -318,8 +374,14 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                     rateBatch = rateData[batch : end].to(device)
                     dispBatch = dispData[batch : end].to(device)
                     
-                    y1 = gNet(state1Batch)
-                    y2 = gNet(state2Batch)
+                    
+                    if isinstance(gNet, GCNet) or isinstance(gNet, GCNetRes):
+                        y1 = gNet(state1Batch)
+                        y2 = gNet(state2Batch)
+
+                    else:
+                        y1 = gNet.forward(state1Batch, specTrainCh)
+                        y2 = gNet.forward(state2Batch, specTrainCh)
                     
                     # sum up everything except the vacancy site if vacancy is indicated
                     if SpecsToTrain==[VacSpec]:
@@ -346,7 +408,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     return train_diff, test_diff
 
 
-def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, epoch, gNet, Ndim):
+def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_ch, SpecsToTrain, VacSpec, epoch, gNet, Ndim):
     
     N_batch = 256
     # Convert compute data to pytorch tensors
@@ -365,6 +427,8 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, Spe
     y1Vecs = np.zeros((Nsamples, 3))
     y2Vecs = np.zeros((Nsamples, 3))
 
+    specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
+    
     print("Evaluating network on species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
     print("Network: {}".format(dirPath))
     with pt.no_grad():
@@ -377,8 +441,13 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, Spe
             state1Batch = state1Data[batch : end].to(device)
             state2Batch = state2Data[batch : end].to(device)
             
-            y1 = gNet(state1Batch)
-            y2 = gNet(state2Batch)
+            if isinstance(gNet, GCNet) or isinstance(gNet, GCNetRes):
+                y1 = gNet(state1Batch)
+                y2 = gNet(state2Batch)
+
+            else:
+                y1 = gNet.forward(state1Batch, specTrainCh)
+                y2 = gNet.forward(state2Batch, specTrainCh)
             
             # sum up everything except the vacancy site if vacancy is indicated
             if SpecsToTrain == [VacSpec]:
@@ -531,7 +600,13 @@ def main(args):
         rowEnd = (gInd + 1) * Ndim
         gdiagsCpu[rowStart : rowEnd, rowStart : rowEnd] = pt.tensor(gCart)
     gdiags = gdiagsCpu#.to(device)
-    
+
+
+    # Call MakeComputeData here
+    State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = makeComputeData(state1List, state2List, dispList,
+            specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps)
+    print("Done Creating occupancy tensors. Species channels: {}".format(sp_ch))
+
     # Make a network to either train from scratch or load saved state into
     if not Residual_training:
         if not subNetwork_training:
@@ -542,7 +617,7 @@ def main(args):
         else:
             print("Running in Non-Residual Binary SubNetwork Convolution mode")
             gNet = GCSubNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-                    mean=0.02, std=0.2, b=1.0, nl=nLayers, nch=ch).double().to(device)
+                    specsToTrain, mean=0.02, std=0.2, b=1.0, nl=nLayers, nch=ch).double().to(device)
 
     else:
         if not subNetwork_training:
@@ -553,35 +628,31 @@ def main(args):
         else:
             print("Running in Residual Binary SubNetwork Convolution mode")
             gNet = GCSubNetRes(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-                    mean=0.02, std=0.2, b=1.0, nl=nLayers, nch=ch).double().to(device)
+                    specsToTrain, mean=0.02, std=0.2, b=1.0, nl=nLayers, nch=ch).double().to(device)
     
-    # Call MakeComputeData here
-    State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = makeComputeData(state1List, state2List, dispList,
-            specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps)
-    print("Done Creating occupancy tensors")
 
     # Call Training or evaluating or y-evaluating function here
     N_train_jumps = 12*N_train if AllJumps else N_train
     if Mode == "train":
         Train(T_data, dirPath, State1_Occs, State2_Occs, OnSites_state1, OnSites_state2,
-                rateData, dispData, specsToTrain, VacSpec, start_ep, end_ep, interval, N_train_jumps,
+                rateData, dispData, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train_jumps,
                 gNet, lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init)
 
     elif Mode == "eval":
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_Occs, State2_Occs,
                 OnSites_state1, OnSites_state2, rateData, dispData,
-                specsToTrain, VacSpec, start_ep, end_ep,
+                specsToTrain, sp_ch, VacSpec, start_ep, end_ep,
                 interval, N_train_jumps, gNet)
         np.save("tr_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), train_diff/(1.0*N_train))
         np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), valid_diff/(1.0*N_train))
 
     elif Mode == "getY":
         y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_Occs, State2_Occs,
-                OnSites_state1, OnSites_state2, specsToTrain, VacSpec, start_ep, gNet, Ndim)
+                OnSites_state1, OnSites_state2, sp_ch, specsToTrain, VacSpec, start_ep, gNet, Ndim)
         np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y1Vecs)
         np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y2Vecs)
 
-print("All done\n\n")
+    print("All done\n\n")
 
 if __name__ == "__main__":
     main(list(sys.argv))
