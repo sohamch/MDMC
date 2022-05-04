@@ -290,8 +290,9 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
     BackgroundSpecs = [[spec] for spec in range(InState.shape[1]) if spec not in specTrainCh]
-    print("Species Channels to train: {}".format(specTrainCh))
-    print("Background species channels: {}".format(BackgroundSpecs))
+    if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
+        print("Species Channels to train: {}".format(specTrainCh))
+        print("Background species channels: {}".format(BackgroundSpecs))
 
     optimizer = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
     print("Starting Training loop") 
@@ -317,7 +318,6 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                 y2 = gNet(state2Batch)
 
             else:
-                assert isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes)
                 y1 = gNet.forward(state1Batch, specTrainCh, BackgroundSpecs)
                 y2 = gNet.forward(state2Batch, specTrainCh, BackgroundSpecs)
             
