@@ -24,6 +24,7 @@ device=None
 if pt.cuda.is_available():
     print(pt.cuda.get_device_name())
     device = pt.device("cuda:0")
+    DeviceIDList = list(range(pt.cuda.device_count()))
 else:
     device = pt.device("cpu")
 
@@ -78,24 +79,28 @@ class GCSubNet(nn.Module):
         super().__init__()
         
         NspecsTrain = len(specsToTrain)
-        Nsubnets = NSpec - NspecsTrain
+        NsubNets = NSpec - NspecsTrain
         NSpecChannels = NspecsTrain + 1
         
         self.subNets = nn.ModuleList([])
-        for subNetInd in range(Nsubnets):
-            # Create a subnetwork
-            subnet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, dim, N_ngb,
+        for subNetInd in range(NsubNets):
+            # Create a subNetwork
+            subNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, dim, N_ngb,
                     NSpecChannels, mean=mean, std=std, b=b, nl=nl, nch=nch)
             # store it in the module list
-            self.subNets.append(subnet)
-
+            self.subNets.append(subNet)
+    
+    def Distribute_subNets(self):
+        for subNetInd, subNet in enumerate(self.subNets):
+            subNet.to("cuda:{}".format(DeviceIDList[subNetInd % len(DeviceIDList)]))
+    
     def forward(self, InState, specsToTrain_chIdx, BackgroundSpecs):
         
-        Input = InState[:, specsToTrain_chIdx + BackgroundSpecs[0], :]
+        Input = InState[:, specsToTrain_chIdx + BackgroundSpecs[0], :].to(device)
         y = self.subNets[0](Input)
         for bkgSpecInd in range(1, len(BackgroundSpecs)):
-            Input = InState[:, specsToTrain_chIdx + BackgroundSpecs[bkgSpecInd], :]
-            y += self.subNets[bkgSpecInd](Input)
+            Input = InState[:, specsToTrain_chIdx + BackgroundSpecs[bkgSpecInd], :].to("cuda:{}".format(DeviceIDList[bkgSpecInd % len(DeviceIDList)]))
+            y += self.subNets[bkgSpecInd](Input).to(device)
             
         return y
 
@@ -106,16 +111,16 @@ class GCSubNetRes(GCSubNet):
         super().__init__()
         
         NspecsTrain = len(specsToTrain)
-        Nsubnets = NSpec - NspecsTrain
+        NsubNets = NSpec - NspecsTrain
         NSpecChannels = NspecsTrain + 1
         
         self.subNets = nn.ModuleList([])
-        for subNetInd in range(Nsubnets):
-            # Create a residual subnetwork
-            subnet = GCNetRes(GnnPerms, gdiags, NNsites, SitesToShells, dim, N_ngb,
+        for subNetInd in range(NsubNets):
+            # Create a residual subNetwork
+            subNet = GCNetRes(GnnPerms, gdiags, NNsites, SitesToShells, dim, N_ngb,
                     NSpecChannels, mean=mean, std=std, b=b, nl=nl, nch=nch)
             # store it in the module list
-            self.subNets.append(subnet)
+            self.subNets.append(subNet)
 
 
 def Load_crysDats(nn=1, typ="FCC"):
@@ -280,7 +285,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         On_st2 = makeProdTensor(OnSites_st2[:N_train], Ndim).long()
 
     try:
-        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep)))
+        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep)), map_location="cpu")
         print("Starting from epoch {}".format(start_ep), flush=True)
     except:
         if scratch_if_no_init:
@@ -289,18 +294,23 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             raise ValueError("No saved network found in {} at epoch {}".format(dirPath, start_ep))
     
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
-    BackgroundSpecs = [[spec] for spec in range(InState.shape[1]) if spec not in specTrainCh]
+    BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh] 
+
+    gNet.to(device)
     if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
         print("Species Channels to train: {}".format(specTrainCh))
         print("Background species channels: {}".format(BackgroundSpecs))
 
     optimizer = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
     print("Starting Training loop") 
+
     for epoch in tqdm(range(start_ep, end_ep + 1), position=0, leave=True):
         
         ## checkpoint
         if epoch%interval==0:
+            gNet.to(device)
             pt.save(gNet.state_dict(), dirPath + "/ep_{1}.pt".format(T, epoch))
+            gNet.Distribute_subNets()
             
         for batch in range(0, N_train, N_batch):
             optimizer.zero_grad()
@@ -339,7 +349,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 
 def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
-        rates, disps, SpecsToTrain, VacSpec, sp_ch, start_ep, end_ep, interval, N_train,
+        rates, disps, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
         gNet):
     
     for key, item in sp_ch.items():
@@ -380,7 +390,10 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             for epoch in tqdm(range(start_ep, end_ep + 1, interval), position=0, leave=True):
                 ## load checkpoint
                 gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, epoch), map_location=device))
-                    
+                
+                if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes):
+                    gNet.Distribute_subNets()
+
                 diff = 0 
                 for batch in range(startSample, endSample, N_batch):
                     end = min(batch + N_batch, endSample)
