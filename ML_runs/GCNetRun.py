@@ -84,8 +84,8 @@ class GCSubNet(nn.Module):
         self.subNets = nn.ModuleList([])
         for subNetInd in range(Nsubnets):
             # Create a subnetwork
-            subNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells,
-                           Ndim, N_ngb, NSpecChannels, mean=0.02, std=0.2, b=1.0, nl=nl, nch=nch)
+            subnet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, dim, N_ngb,
+                    NSpecChannels, mean=mean, std=std, b=b, nl=nl, nch=nch)
             # store it in the module list
             self.subNets.append(subnet)
 
@@ -112,9 +112,9 @@ class GCSubNetRes(GCSubNet):
         
         self.subNets = nn.ModuleList([])
         for subNetInd in range(Nsubnets):
-            # Create a subnetwork
-            subNet = GCNetRes(GnnPerms, gdiags, NNsites, SitesToShells,
-                           Ndim, N_ngb, NSpecChannels, mean=0.02, std=0.2, b=1.0, nl=nl, nch=nch)
+            # Create a residual subnetwork
+            subnet = GCNetRes(GnnPerms, gdiags, NNsites, SitesToShells, dim, N_ngb,
+                    NSpecChannels, mean=mean, std=std, b=b, nl=nl, nch=nch)
             # store it in the module list
             self.subNets.append(subnet)
 
@@ -492,74 +492,51 @@ def main(args):
     print("Running at : "+ RunPath)
 
     # Get run parameters
-    # Replace all of this with argparse after learning about it
-    count=1
-    FileName = args[count] # Name of data file to train on
-    count += 1
+    FileName = args["FileName"] # Name of data file to train on
     
-    CrystalType = args[count]
-    count += 1
-
-    Mode = args[count] # "train" mode or "eval" mode or "getY" mode
-    count += 1
-
-    nLayers = int(args[count])
-    count += 1
+    CrystalType = args["CrystalType"]
     
-    ch = int(args[count])
-    count += 1
+    Mode = args["Mode"] # "train" mode or "eval" mode or "getY" mode
     
-    filter_nn = int(args[count])
-    count += 1
+    nLayers = int(args["NLayers"])
     
-    Residual_training = bool(int(args[count]))
-    count += 1
-
-    subNetwork_training = bool(int(args[count]))
-    count += 1
-
-    scratch_if_no_init = bool(int(args[count]))
-    count += 1
+    ch = int(args["Nchannels"])
     
-    T_data = int(args[count]) # temperature to load data from
+    filter_nn = int(args["Filter_nn"])
+    
+    Residual_training = False if args["Residual_training"]=="False" else True
+    
+    subNetwork_training = False if args["SubNetwork_training"]=="False" else True
+    
+    scratch_if_no_init = False if args["Scratch_if_no_init"]=="False" else True
+    
+    T_data = int(args["T_data"]) # temperature to load data from
     # Note : for binary random alloys, this should is the training composition instead of temperature
-    count += 1
     
-    T_net = int(args[count]) # must be same as T_data if "train", can be different if "getY" or "eval"
-    count += 1
+    T_net = int(args["T_net"]) # must be same as T_data if "train", can be different if "getY" or "eval"
     
-    start_ep = int(args[count])
-    count += 1
+    start_ep = int(args["Start_ep"])
     
-    end_ep = int(args[count])
-    count += 1
+    end_ep = int(args["End_ep"])
     
-    specTrain = args[count] # which species to train collectively: eg - 123 for species 1, 2 and 3
+    specTrain = args["SpecTrain"] # which species to train collectively: eg - 123 for species 1, 2 and 3
     # The entry is order independent as it is sorted later
-    count += 1
     
-    VacSpec = int(args[count]) # integer label for vacancy species
-    count += 1
+    VacSpec = int(args["VacSpec"]) # integer label for vacancy species
     
-    AllJumps = bool(int(args[count])) # whether to consider all jumps out of the samples or just stochastically selected one
-    # False if 0, otherwise True
-    count += 1
+    AllJumps = False if args["AllJumps"] == "False" else True 
+    # whether to consider all jumps out of the samples or just stochastically selected one
     
-    AllJumps_net_type = bool(int(args[count])) # whether to use network trained on all jumps out of the samples or just stochastically selected one
+    AllJumps_net_type = False if args["AllJumps_net_type"]=="False" else True
+    # whether to use network trained on all jumps out of the samples or just stochastically selected one
     # This is the directory to search for in "eval" or "getY" modes
-    # False if 0, otherwise True
-    count += 1
     
-    N_train = int(args[count]) # How many INITIAL STATES to consider for training
-    count += 1
-    
-    interval = int(args[count]) # for train mode, interval to save and for eval mode, interval to load
-    count += 1
-    
-    learning_Rate = float(args[count]) if len(args)==count+1 else 0.001
+    N_train = int(args["N_train"]) # How many INITIAL STATES to consider for training
+    interval = int(args["Interval"]) # for train mode, interval to save and for eval mode, interval to load
+    learning_Rate = float(args["Learning_Rate"])
     
     if not (Mode == "train" or Mode == "eval" or Mode == "getY"):
-        raise ValueError("Mode needs to be train, eval or getY and not : {}".format(Mode))
+        raise ValueError("Mode needs to be train, eval or getY but given : {}".format(Mode))
 
     if Mode == "train":
         if T_data != T_net:
@@ -684,18 +661,18 @@ if __name__ == "__main__":
     args = {
     "FileName":"", # Name of data file to train on
     "CrystalType":"FCC",
-    "Mode":"train" # "train" mode or "eval" mode or "getY" mode
-    "nLayers":"3",
-    "ch":"3",
-    "filter_nn":"1",
+    "Mode":"train", # "train" mode or "eval" mode or "getY" mode
+    "NLayers":"3",
+    "Nchannels":"3",
+    "Filter_nn":"1",
     "Residual_training":"False",
-    "subNetwork_training":"False",
-    "scratch_if_no_init":"True",
+    "SubNetwork_training":"False",
+    "Scratch_if_no_init":"True",
     "T_data":"None", # Note : for binary random alloys, this should is the training composition instead of temperature
     "T_net":"None", # must be same as T_data if "train", can be different if "getY" or "eval"
-    "start_ep":"0",
-    "end_ep":"0",
-    "specTrain":"123", # which species to train collectively: eg - 123 for species 1, 2 and 3
+    "Start_ep":"0",
+    "End_ep":"0",
+    "SpecTrain":"123", # which species to train collectively: eg - 123 for species 1, 2 and 3
     # The entry is order independent as it is sorted later
 
     "VacSpec":"0", # integer label for vacancy species
@@ -706,18 +683,24 @@ if __name__ == "__main__":
     # This specifies the directory to search for in "eval" or "getY" modes
     
     "N_train":"10000", # How many INITIAL STATES to consider for training
-    "interval":"1", # for train mode, interval to save and for eval mode, interval to load
-    "learning_Rate":"0.001"
+    "Interval":"1", # for train mode, interval to save and for eval mode, interval to load
+    "Learning_Rate":"0.001"
     }
 
     # Change default arguments to what has been passed
     with open(args_file, "r") as fl:
         for line in fl:
-            key, item = line.split()
-
-            if key not in args.keys():
-                raise KeyError("Invalid argument: {}".format(key))
+            splitLine = line.split()
+            if len(splitLine) == 0:
+                continue # skip empty lines
+            elif splitLine[0][0]=="#":
+                continue # skip comment line
             else:
-                args[key] = item
-    
+                key, item = line.split()[0], line.split()[1]
+                if key not in args.keys():
+                    raise KeyError("Invalid argument: {}".format(key))
+                else:
+                    args[key] = item
+
+
     main(args)
