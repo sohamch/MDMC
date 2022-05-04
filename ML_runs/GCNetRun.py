@@ -93,10 +93,10 @@ class GCSubNet(nn.Module):
         BackgroundSpecs = [[spec] for spec in range(InState.shape[1]) if spec not in specsToTrain_chIdx]
         
         Input = InState[:, specsToTrain_chIdx + BackgroundSpecs[0], :]
-        y = self.subnets[0](Input)
+        y = self.subNets[0](Input)
         for bkgSpecInd in range(1, len(BackgroundSpecs)):
             Input = InState[:, specsToTrain + BackgroundSpecs[bkgSpecInd], :]
-            y += self.subnets[bkgSpecInd](Input)
+            y += self.subNets[bkgSpecInd](Input)
             
         return y
 
