@@ -257,7 +257,7 @@ def makeProdTensor(OnSites, Ndim):
 """## Write the training loop"""
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
-        gNet, lRate=0.001, scratch_if_no_init=True):
+        gNet, lRate=0.001, scratch_if_no_init=True, batch_size=128):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -267,7 +267,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             assert item == key
 
     Ndim = disps.shape[2]
-    N_batch = 128
+    N_batch = batch_size
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs[:N_train])
     state2Data = pt.tensor(State2_Occs[:N_train])
@@ -292,7 +292,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             print("No Network found. Starting from scratch", flush=True)
         else:
             raise ValueError("No saved network found in {} at epoch {}".format(dirPath, start_ep))
-    
+    print("Batch size : {}".format(N_batch)) 
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
     BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh] 
 
@@ -349,7 +349,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
-        gNet):
+        gNet, batch_size=512):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -359,13 +359,13 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             assert item == key
 
     Ndim = disps.shape[2]
-    N_batch = 512
+    N_batch = batch_size
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs).double()
     Nsamples = state1Data.shape[0]
 
     print("Evaluating species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
-    print("Sample Jumps: {}, Training: {}, Validation: {}".format(Nsamples, N_train, Nsamples-N_train))
+    print("Sample Jumps: {}, Training: {}, Validation: {}, Batch size: {}".format(Nsamples, N_train, Nsamples-N_train, N_batch))
     print("Evaluating with networks at: {}".format(dirPath))
     
     state2Data = pt.tensor(State2_Occs)
@@ -441,7 +441,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     return train_diff, test_diff
 
 
-def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_ch, SpecsToTrain, VacSpec, epoch, gNet, Ndim):
+def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_ch, SpecsToTrain, VacSpec, epoch, gNet, Ndim, batch_size=256):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -450,7 +450,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_
             assert key < VacSpec
             assert item == key
 
-    N_batch = 256
+    N_batch = batch_size
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs)
     Nsamples = state1Data.shape[0]
@@ -554,6 +554,7 @@ def main(args):
     # This is the directory to search for in "eval" or "getY" modes
     
     N_train = int(args["N_train"]) # How many INITIAL STATES to consider for training
+    batch_size = int(args["Batch_size"])
     interval = int(args["Interval"]) # for train mode, interval to save and for eval mode, interval to load
     learning_Rate = float(args["Learning_Rate"])
     
@@ -657,19 +658,19 @@ def main(args):
     if Mode == "train":
         Train(T_data, dirPath, State1_Occs, State2_Occs, OnSites_state1, OnSites_state2,
                 rateData, dispData, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train_jumps,
-                gNet, lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init)
+                gNet, lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size)
 
     elif Mode == "eval":
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_Occs, State2_Occs,
                 OnSites_state1, OnSites_state2, rateData, dispData,
                 specsToTrain, sp_ch, VacSpec, start_ep, end_ep,
-                interval, N_train_jumps, gNet)
+                interval, N_train_jumps, gNet, batch_size=batch_size)
         np.save("tr_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), train_diff/(1.0*N_train))
         np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), valid_diff/(1.0*N_train))
 
     elif Mode == "getY":
         y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_Occs, State2_Occs,
-                OnSites_state1, OnSites_state2, sp_ch, specsToTrain, VacSpec, start_ep, gNet, Ndim)
+                OnSites_state1, OnSites_state2, sp_ch, specsToTrain, VacSpec, start_ep, gNet, Ndim, batch_size=batch_size)
         np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y1Vecs)
         np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y2Vecs)
 
@@ -689,7 +690,7 @@ if __name__ == "__main__":
     "Filter_nn":"1",
     "Residual_training":"False",
     "SubNetwork_training":"False",
-    "Scratch_if_no_init":"True",
+    "Scratch_if_no_init":"False",
     "T_data":"None", # Note : for binary random alloys, this should is the training composition instead of temperature
     "T_net":"None", # must be same as T_data if "train", can be different if "getY" or "eval"
     "Start_ep":"0",
@@ -706,7 +707,8 @@ if __name__ == "__main__":
     
     "N_train":"10000", # How many INITIAL STATES to consider for training
     "Interval":"1", # for train mode, interval to save and for eval mode, interval to load
-    "Learning_Rate":"0.001"
+    "Learning_Rate":"0.001",
+    "Batch_size":"128"
     }
 
     # Change default arguments to what has been passed
