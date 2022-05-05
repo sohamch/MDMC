@@ -285,7 +285,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         On_st2 = makeProdTensor(OnSites_st2[:N_train], Ndim).long()
 
     try:
-        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep)), map_location="cpu")
+        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"))
         print("Starting from epoch {}".format(start_ep), flush=True)
     except:
         if scratch_if_no_init:
@@ -298,6 +298,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
     gNet.to(device)
     if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
+        gNet.Distribute_subNets()
         print("Species Channels to train: {}".format(specTrainCh))
         print("Background species channels: {}".format(BackgroundSpecs))
 
@@ -308,9 +309,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         
         ## checkpoint
         if epoch%interval==0:
-            gNet.to(device)
             pt.save(gNet.state_dict(), dirPath + "/ep_{1}.pt".format(T, epoch))
-            gNet.Distribute_subNets()
             
         for batch in range(0, N_train, N_batch):
             optimizer.zero_grad()
@@ -383,17 +382,21 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         On_st2 = makeProdTensor(OnSites_st2, Ndim).long()
 
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
+    BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh] 
     
+    if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
+        print("Species Channels to train: {}".format(specTrainCh))
+        print("Background species channels: {}".format(BackgroundSpecs))
+
     def compute(startSample, endSample):
         diff_epochs = []
         with pt.no_grad():
             for epoch in tqdm(range(start_ep, end_ep + 1, interval), position=0, leave=True):
                 ## load checkpoint
-                gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, epoch), map_location=device))
-                
-                if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes):
+                gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, epoch), map_location=device)) 
+                if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
                     gNet.Distribute_subNets()
-
+                
                 diff = 0 
                 for batch in range(startSample, endSample, N_batch):
                     end = min(batch + N_batch, endSample)
@@ -410,8 +413,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                         y2 = gNet(state2Batch)
 
                     else:
-                        y1 = gNet.forward(state1Batch, specTrainCh)
-                        y2 = gNet.forward(state2Batch, specTrainCh)
+                        y1 = gNet.forward(state1Batch, specTrainCh, BackgroundSpecs)
+                        y2 = gNet.forward(state2Batch, specTrainCh, BackgroundSpecs)
                     
                     # sum up everything except the vacancy site if vacancy is indicated
                     if SpecsToTrain==[VacSpec]:
@@ -465,6 +468,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_
     y2Vecs = np.zeros((Nsamples, 3))
 
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
+    BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh] 
     
     print("Evaluating network on species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
     print("Network: {}".format(dirPath))
@@ -472,6 +476,9 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_
         ## load checkpoint
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, epoch), map_location=device))
                 
+        if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
+            gNet.Distribute_subNets()
+        
         for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
             end = min(batch + N_batch, Nsamples)
 
@@ -483,8 +490,8 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_
                 y2 = gNet(state2Batch)
 
             else:
-                y1 = gNet.forward(state1Batch, specTrainCh)
-                y2 = gNet.forward(state2Batch, specTrainCh)
+                y1 = gNet.forward(state1Batch, specTrainCh, BackgroundSpecs)
+                y2 = gNet.forward(state2Batch, specTrainCh, BackgroundSpecs)
             
             # sum up everything except the vacancy site if vacancy is indicated
             if SpecsToTrain == [VacSpec]:
