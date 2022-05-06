@@ -56,7 +56,7 @@ class VectorClusterExpansion(object):
             else:
                 self.SpecClusters = self.recalcClusters()
             end1 = time.time()
-            print("Built {} clusters:{:.4f} seconds".format(len([cl for clist in self.SpecClusters for cl in clist])
+        print("Built {} clusters:{:.4f} seconds".format(len([cl for clist in self.SpecClusters for cl in clist])
                                                                , end1 - start), flush=True)
 
 
