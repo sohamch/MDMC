@@ -48,7 +48,7 @@ class VectorClusterExpansion(object):
 
         start = time.time()
         if OrigVac:
-            self.SpecClusters, self.SiteSpecInteractIds, self.InteractionIdDict,\
+            self.SpecClusters, self.SiteSpecInteractIds, self.Id2InteractionDict,\
             self.clust2InteractId, self.maxinteractions = self.InteractsOrigVac()
         else:
             if MadeSpecClusts is not None:
