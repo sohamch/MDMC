@@ -14,7 +14,7 @@ class VectorClusterExpansion(object):
     class to expand velocities and rates in vector cluster functions.
     """
     def __init__(self, sup, clusexp, TScutoff, TScombShellRange, TSnnRange, jumpnetwork, NSpec, vacSite, maxorder,
-                 MadeSpecClusts=None, TclusExp=None, maxOrderTrans=None, zeroClusts=True, OrigVac=False):
+                 MadeSpecClusts=None, TclusExp=False, maxOrderTrans=None, zeroClusts=True, OrigVac=False):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
@@ -68,7 +68,7 @@ class VectorClusterExpansion(object):
         # print("Built vector bases for clusters : {:.4f}".format(time.time() - start))
 
         start = time.time()
-        if TclusExp is None:
+        if TclusExp:
             self.KRAexpander = KRA3bodyInteractions(sup, jumpnetwork, self.chem, TScombShellRange, TSnnRange, TScutoff,
                                                     NSpec, self.Nvac, vacSite)
         print("Built KRA expander : {:.4f}".format(time.time() - start))
