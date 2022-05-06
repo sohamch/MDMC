@@ -34,6 +34,7 @@ class KRA3bodyInteractions():
         self.vacSite = vacSite
         self.maxOrderTrans = 3
         self.IndexJumps()
+        # TODO : "combinedShellRange is not necessary - need to eliminate it"
         self.TransGroupsNN = self.GenerateInteractionSites(combinedShellRange, nnRange, cutoff)
         self.clusterSpeciesJumps = self.defineTransSpecies()
         self.assignTransInd()
