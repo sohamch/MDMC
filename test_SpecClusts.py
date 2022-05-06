@@ -42,7 +42,7 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         self.VclusExp.indexClustertoVecClus()
 
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
-        self.KRAEnergies = [np.random.rand(len(val)) for (key, val) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
+        # self.KRAEnergies = [np.random.rand(len(val)) for (key, val) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
 
         self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
         for site in range(1, numSites):
