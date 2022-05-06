@@ -13,7 +13,7 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, TScutoff, TScombShellRange, TSnnRange, jumpnetwork, NSpec, vacSite, maxorder,
+    def __init__(self, sup, clusexp, NSpec, vacSite, maxorder, TScutoff=None, TScombShellRange=None, TSnnRange=None, jumpnetwork=None,
                  MadeSpecClusts=None, TclusExp=False, maxOrderTrans=None, zeroClusts=True, OrigVac=False):
         """
         :param sup : clusterSupercell object
@@ -58,14 +58,7 @@ class VectorClusterExpansion(object):
             end1 = time.time()
             print("Built {} clusters:{:.4f} seconds".format(len([cl for clist in self.SpecClusters for cl in clist])
                                                                , end1 - start), flush=True)
-            # print("Translating clusters in supercell:", flush=True)
-            # self.SiteSpecInteractIds, self.Id2InteractionDict, self.Interaction2IdDict,\
-            # self.clust2InteractId, self.InteractionId2ClusId, self.maxinteractions = self.generateSiteSpecInteracts()
-            # print("Built interaction Data:{:.4f} seconds".format(time.time() - end1), flush=True)
 
-        # start = time.time()
-        # self.genVecClustBasis(self.SpecClusters)
-        # print("Built vector bases for clusters : {:.4f}".format(time.time() - start))
 
         start = time.time()
         if TclusExp:
