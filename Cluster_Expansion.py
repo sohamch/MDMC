@@ -227,22 +227,22 @@ class VectorClusterExpansion(object):
                 allClusts.update(newsymset)
                 symClusterList.append(list(newsymset))
 	
-        self.IndexClusters(symClusterList) # Index the species clusters
         self.indexClustertoSpecClus(symClusterList)  # Index clusters to symmetry groups
-	
         allSpCl = [cl for clSet in symClusterList for cl in clSet]
 
         # index the clusters
+        self.Clus2Num = {}
+        self.Num2Clus = {}
         clust2InteractId = collections.defaultdict(list)
         InteractionIdDict = {}
         for i, SpCl in enumerate(allSpCl):
             self.Clus2Num[SpCl] = i
-            clust2InteractId[SpCl].append(i)
+            clust2InteractId[i].append(i)
             self.Num2Clus[i] = SpCl
             InteractionIdDict[i] = tuple(sorted([(self.sup.index(st.R, st.ci)[0], spec)
                                                  for st, spec in SpCl.SiteSpecs],
                                                 key=lambda x: x[0]))
-
+        
         SiteSpecinteractIds = collections.defaultdict(list)
         for clSet in symClusterList:
             for cl in clSet:
