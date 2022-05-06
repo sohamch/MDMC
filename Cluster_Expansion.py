@@ -74,7 +74,7 @@ class VectorClusterExpansion(object):
         print("Built KRA expander : {:.4f}".format(time.time() - start))
 
         start = time.time()
-        self.IndexClusters()  # assign integer integer IDs to each cluster
+        self.IndexClusters(self.SpecClusters)  # assign integer integer IDs to each cluster
         self.indexClustertoSpecClus()  # Index clusters to symmetry groups
         print("Built Indexing : {:.4f}".format(time.time() - start))
 
@@ -310,11 +310,11 @@ class VectorClusterExpansion(object):
         self.clust2InteractId, self.InteractionId2ClusId, self.maxinteractions = \
             SiteSpecInteractIds, Id2InteractionDict, Interaction2IdDict, clust2InteractId, InteractionId2ClusId, maxinteractions
 
-    def IndexClusters(self):
+    def IndexClusters(self, SymmClusterList):
         """
         Assign a unique integer to each representative cluster. To help identifying them in JIT operations
         """
-        allSpCl = [SpCl for SpClList in self.SpecClusters for SpCl in SpClList]
+        allSpCl = [SpCl for SpClList in SymmClusterList for SpCl in SpClList]
         self.Clus2Num = {}
         self.Num2Clus = {}
 
