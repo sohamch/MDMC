@@ -67,8 +67,9 @@ class VectorClusterExpansion(object):
         print("Built KRA expander : {:.4f}".format(time.time() - start))
 
         start = time.time()
-        self.IndexClusters(self.SpecClusters)  # assign integer integer IDs to each cluster
-        self.indexClustertoSpecClus()  # Index clusters to symmetry groups
+        if not OrigVac:
+            self.IndexClusters(self.SpecClusters)  # assign integer integer IDs to each cluster
+            self.indexClustertoSpecClus(self.SpecClusters)  # Index clusters to symmetry groups
         print("Built Indexing : {:.4f}".format(time.time() - start))
 
     def recalcClusters(self):
@@ -191,12 +192,12 @@ class VectorClusterExpansion(object):
 
         self.clust2vecClus.default_factory = None
 
-    def indexClustertoSpecClus(self):
+    def indexClustertoSpecClus(SpecClusters):
         """
         For a given cluster, store which vector cluster it belongs to
         """
         self.clust2SpecClus = {}
-        for clListInd, clList in enumerate(self.SpecClusters):
+        for clListInd, clList in enumerate(SpecClusters):
             for clustInd, clust in enumerate(clList):
                 self.clust2SpecClus[clust] = (clListInd, clustInd)
 
@@ -225,7 +226,10 @@ class VectorClusterExpansion(object):
                              for g in self.crys.G])
                 allClusts.update(newsymset)
                 symClusterList.append(list(newsymset))
-
+	
+	self.IndexClusters(symClusterList) # Index the species clusters
+        self.indexClustertoSpecClus(symClusterList)  # Index clusters to symmetry groups
+	
         allSpCl = [cl for clSet in symClusterList for cl in clSet]
 
         # index the clusters
