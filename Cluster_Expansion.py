@@ -192,7 +192,7 @@ class VectorClusterExpansion(object):
 
         self.clust2vecClus.default_factory = None
 
-    def indexClustertoSpecClus(SpecClusters):
+    def indexClustertoSpecClus(self, SpecClusters):
         """
         For a given cluster, store which vector cluster it belongs to
         """
@@ -227,7 +227,7 @@ class VectorClusterExpansion(object):
                 allClusts.update(newsymset)
                 symClusterList.append(list(newsymset))
 	
-	self.IndexClusters(symClusterList) # Index the species clusters
+        self.IndexClusters(symClusterList) # Index the species clusters
         self.indexClustertoSpecClus(symClusterList)  # Index clusters to symmetry groups
 	
         allSpCl = [cl for clSet in symClusterList for cl in clSet]
