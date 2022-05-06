@@ -42,8 +42,9 @@ class Test_Make_Arrays(unittest.TestCase):
         TSnnRange = 4
         TScutoff = np.sqrt(3) * a0  # 5th nn cutoff
 
-        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, TScutoff, TScombShellRange, TSnnRange,
-                                                                 self.jnetBCC, self.NSpec, self.vacsite, self.MaxOrder)
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(superFCC, clusexp, NSpec, vacsite, MaxOrder, TclusExp=True,
+                TScutoff=TScutoff, TScombShellRange=TScombShellRange,
+                TSnnRange=TSnnRange, jumpnetwork=self.jnetBCC)
 
         self.TScombShellRange = TScombShellRange
         self.TSnnRange = TSnnRange
