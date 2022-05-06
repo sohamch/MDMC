@@ -33,8 +33,8 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         TSnnRange = 4
         TScutoff = np.sqrt(3) * a0  # 5th nn cutoff
 
-        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, TScutoff, TScombShellRange, TSnnRange,
-                                                                 self.jnetBCC, self.NSpec, self.vacsite, self.MaxOrder)
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.NSpec, self.vacsite, self.MaxOrder,
+        TScutoff=None, TScombShellRange=None, TSnnRange=None, jumpnetwork=None)
 
         self.VclusExp.generateSiteSpecInteracts()
         self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
@@ -42,7 +42,6 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         self.VclusExp.indexClustertoVecClus()
 
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
-        # self.KRAEnergies = [np.random.rand(len(val)) for (key, val) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
 
         self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
         for site in range(1, numSites):
