@@ -173,7 +173,11 @@ def Load_Data(FileName):
         state2List = np.array(fl["FinStates"])[perm]
         dispList = np.array(fl["SpecDisps"])[perm]
         rateList = np.array(fl["rates"])[perm]
-        AllJumpRates = np.array(fl["AllJumpRates"])[perm]
+        
+        try:
+            AllJumpRates = np.array(fl["AllJumpRates"])[perm]
+        except:
+            print("All Jump Rates not provided in data set. Make sure AllJumps is not set to True with train or eval mode active.")
         try:
             jmpSelects = np.array(fl["JumpSelects"])[perm]
         except:
