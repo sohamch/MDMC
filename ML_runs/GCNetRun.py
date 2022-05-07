@@ -178,12 +178,8 @@ def Load_Data(FileName):
             AllJumpRates = np.array(fl["AllJumpRates"])[perm]
         except:
             print("All Jump Rates not provided in data set. Make sure AllJumps is not set to True with train or eval mode active.")
-        try:
-            jmpSelects = np.array(fl["JumpSelects"])[perm]
-        except:
-            jmpSelects = np.array(fl["JumpSelection"])[perm].reshape(state1List.shape[0])
     
-    return state1List, state2List, dispList, rateList, AllJumpRates, jmpSelects
+    return state1List, state2List, dispList, rateList, AllJumpRates
 
 def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
         AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False):
@@ -586,7 +582,7 @@ def main(args):
             raise ValueError("Training and Testing condition must be the same")
 
     # Load data
-    state1List, state2List, dispList, rateList, AllJumpRates, jmpSelects = Load_Data(FileName)
+    state1List, state2List, dispList, rateList, AllJumpRates = Load_Data(FileName)
     
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
