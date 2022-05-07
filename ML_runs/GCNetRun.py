@@ -177,17 +177,22 @@ def Load_Data(FileName):
         try:
             AllJumpRates = np.array(fl["AllJumpRates"])[perm]
         except:
+            AllJumpRates = None
             print("All Jump Rates not provided in data set. Make sure AllJumps is not set to True with train or eval mode active.")
     
     return state1List, state2List, dispList, rateList, AllJumpRates
 
 def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
-        AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False):
+        AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False, mode="train"):
+    
+    if not isinstance(AllJumpRates, np.ndarray):
+        if AllJumps and (mode=="train" or mode=="eval"):
+            raise ValueError("All Rates not provided. Cannot do training or evaluation.")
 
     # make the input tensors
     Nsamples = min(state1List.shape[0], 2*N_train)
     if AllJumps:
-        NJumps = Nsamples*AllJumpRates.shape[1]
+        NJumps = Nsamples*dxJumps.shape[0]
     else:
         NJumps = Nsamples
     a = np.linalg.norm(dispList[0, VacSpec, :])/np.linalg.norm(dxJumps[0]) 
@@ -209,6 +214,8 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     State1_occs = np.zeros((NJumps, NSpec, Nsites), dtype=np.int8)
     State2_occs = np.zeros((NJumps, NSpec, Nsites), dtype=np.int8)
     dispData = np.zeros((NJumps, 2, 3))
+    
+
     rateData = np.zeros(NJumps)
     
     # Make the multichannel occupancies
@@ -217,15 +224,16 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     for samp in tqdm(range(Nsamples), position=0, leave=True):
         state1 = state1List[samp]
         if AllJumps:
-            for jInd in range(AllJumpRates.shape[1]):
+            for jInd in range(dxJumps.shape[0]):
                 JumpSpec = state1[NNsvac[jInd]]
                 state2 = state1[JumpNewSites[jInd]]
-                Idx = samp*AllJumpRates.shape[1]  + jInd
+                Idx = samp*dxJumps.shape[0]  + jInd
                 dispData[Idx, 0, :] =  dxJumps[jInd]*a
                 if JumpSpec in specsToTrain:
                     dispData[Idx, 1, :] -= dxJumps[jInd]*a
-
-                rateData[Idx] = AllJumpRates[samp, jInd]
+                
+                if not isinstance(AllJumpRates, np.ndarray):
+                    rateData[Idx] = AllJumpRates[samp, jInd]
                 
                 for site in range(1, Nsites): # exclude the vacancy site
                     spec1 = state1[site]
@@ -642,7 +650,7 @@ def main(args):
 
     # Call MakeComputeData here
     State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = makeComputeData(state1List, state2List, dispList,
-            specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps)
+            specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps, mode=Mode)
     print("Done Creating occupancy tensors. Species channels: {}".format(sp_ch))
 
     # Make a network to either train from scratch or load saved state into
