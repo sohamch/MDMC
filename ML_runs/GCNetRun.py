@@ -104,12 +104,10 @@ class GCSubNet(nn.Module):
             
         return y
 
-class GCSubNetRes(GCSubNet):
+class GCSubNetRes(nn.Module):
     def __init__(self, GnnPerms, gdiags, NNsites, SitesToShells,
                 dim, N_ngb, NSpec=5, specsToTrainCh=[5], mean=0.0, std=0.1, b=1.0, nl=3, nch=8):
 
-        super().__init__()
-        
         NspecsTrain = len(specsToTrain)
         NsubNets = NSpec - NspecsTrain
         NSpecChannels = NspecsTrain + 1
@@ -122,6 +120,19 @@ class GCSubNetRes(GCSubNet):
             # store it in the module list
             self.subNets.append(subNet)
 
+    def Distribute_subNets(self):
+        for subNetInd, subNet in enumerate(self.subNets):
+            subNet.to("cuda:{}".format(DeviceIDList[subNetInd % len(DeviceIDList)]))
+    
+    def forward(self, InState, specsToTrain_chIdx, BackgroundSpecs):
+        
+        Input = InState[:, specsToTrain_chIdx + BackgroundSpecs[0], :].to(device)
+        y = self.subNets[0](Input)
+        for bkgSpecInd in range(1, len(BackgroundSpecs)):
+            Input = InState[:, specsToTrain_chIdx + BackgroundSpecs[bkgSpecInd], :].to("cuda:{}".format(DeviceIDList[bkgSpecInd % len(DeviceIDList)]))
+            y += self.subNets[bkgSpecInd](Input).to(device)
+            
+        return y
 
 def Load_crysDats(nn=1, typ="FCC"):
     ## load the crystal data files
@@ -557,7 +568,10 @@ def main(args):
     batch_size = int(args["Batch_size"])
     interval = int(args["Interval"]) # for train mode, interval to save and for eval mode, interval to load
     learning_Rate = float(args["Learning_Rate"])
-    
+
+    wt_means = float(args["Mean_weights"])
+    wt_std = float(args["Std_weights"])
+
     if not (Mode == "train" or Mode == "eval" or Mode == "getY"):
         raise ValueError("Mode needs to be train, eval or getY but given : {}".format(Mode))
 
@@ -634,23 +648,23 @@ def main(args):
         if not subNetwork_training:
             print("Running in Non-Residual Convolution mode")
             gNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-                    mean=0.02, std=0.2, b=1.0, nl=nLayers, nch=ch).double().to(device)
+                    mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
 
         else:
             print("Running in Non-Residual Binary SubNetwork Convolution mode")
             gNet = GCSubNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-                    specsToTrain, mean=0.02, std=0.2, b=1.0, nl=nLayers, nch=ch).double().to(device)
+                    specsToTrain, mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
 
     else:
         if not subNetwork_training:
             print("Running in Residual Convolution mode")
             gNet = GCNetRes(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-                    mean=0.02, std=0.2, b=1.0, nl=nLayers, nch=ch).double().to(device)
+                    mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
 
         else:
             print("Running in Residual Binary SubNetwork Convolution mode")
             gNet = GCSubNetRes(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-                    specsToTrain, mean=0.02, std=0.2, b=1.0, nl=nLayers, nch=ch).double().to(device)
+                    specsToTrain, mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
     
 
     # Call Training or evaluating or y-evaluating function here
@@ -708,7 +722,9 @@ if __name__ == "__main__":
     "N_train":"10000", # How many INITIAL STATES to consider for training
     "Interval":"1", # for train mode, interval to save and for eval mode, interval to load
     "Learning_Rate":"0.001",
-    "Batch_size":"128"
+    "Batch_size":"128",
+    "Mean_weights": "0.02",
+    "Std_weights": "0.2"
     }
 
     # Change default arguments to what has been passed
