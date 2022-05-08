@@ -250,11 +250,30 @@ class MCSamplerClass(object):
                     vec = VecsInteracts[interactInd, vGInd]
                     lamb[vGroup, :] += vec
         return lamb
+    
+    def revert(self, offsc, state, siteA, siteB):
+        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
+            offsc[self.SiteSpecInterArray[siteA, state[siteA], interIdx]] -= 1
+
+        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
+            offsc[self.SiteSpecInterArray[siteB, state[siteB], interIdx]] -= 1
+
+        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
+            offsc[self.SiteSpecInterArray[siteA, state[siteB], interIdx]] += 1
+
+        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
+            offsc[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
+
 
     def getDelLamb(self, state, offsc, jSite, NVclus, numVecsInteracts, VecGroupInteracts, VecsInteracts):
         
         siteA, specA = vacSiteInd, self.Nspecs - 1
+        siteB = jSite
+
+        del_lamb = np.zeros((lenVecClus, 3))
         assert state[siteA] == specA
+
+        # First, switch off required sites
         for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
             # check if an interaction is on
             interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
@@ -262,36 +281,38 @@ class MCSamplerClass(object):
                 # take away the vectors for this interaction
                 for i in range(numVecsInteracts[interMainInd]):
                     del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
-            OffSiteCount[interMainInd] += 1
+            offsc[interMainInd] += 1
 
         for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
             interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
-            if OffSiteCount[interMainInd] == 0:
-                delE -= self.Interaction2En[interMainInd]
+            if offsc[interMainInd] == 0:
                 for i in range(numVecsInteracts[interMainInd]):
                     del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
-            OffSiteCount[interMainInd] += 1
+            offsc[interMainInd] += 1
 
         # Next, switch required sites on
         for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
             interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
-            OffSiteCount[interMainInd] -= 1
-            if OffSiteCount[interMainInd] == 0:
-                delE += self.Interaction2En[interMainInd]
+            offsc[interMainInd] -= 1
+            if offsc[interMainInd] == 0:
                 # add the vectors for this interaction
                 for i in range(numVecsInteracts[interMainInd]):
                     del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
 
         for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
             interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
-            OffSiteCount[interMainInd] -= 1
-            if OffSiteCount[interMainInd] == 0:
-                delE += self.Interaction2En[interMainInd]
+            offsc[interMainInd] -= 1
+            if offsc[interMainInd] == 0:
                 # add the vectors for this interaction
                 # for interactions with zero vector basis, numVecsInteracts[interMainInd] = -1 and the
                 # loop doesn't run
                 for i in range(numVecsInteracts[interMainInd]):
                     del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
+        
+        self.revert(offsc, state, siteA, siteB)
+
+        return del_lamb
+
 
     def Expand(self, state, ijList, dxList, spec, OffSiteCount, TSOffSiteCount,
                numVecsInteracts, VecGroupInteracts, VecsInteracts,
