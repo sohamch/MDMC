@@ -258,10 +258,10 @@ class MCSamplerClass(object):
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
         
-        if rateList is None:
+        if RateList is None:
             ratelist = np.zeros(ijList.shape[0])
         else:
-            rateList = RateList.copy()
+            ratelist = RateList.copy()
 
         siteA, specA = vacSiteInd, self.Nspecs - 1
         # go through all the transition
