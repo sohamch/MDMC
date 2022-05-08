@@ -269,19 +269,8 @@ class MCSamplerClass(object):
         for jumpInd in range(ijList.shape[0]):
             del_lamb = np.zeros((lenVecClus, 3))
 
-            # Get the transition index
+            # Get the transition site and species
             siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
-            delEKRA = self.KRASpecConstants[specB]  # Start with the constant term for the jumping species.
-            if RateList is None:
-                transInd = self.FinSiteFinSpecJumpInd[siteB, specB]
-                # First, work on getting the KRA energy for the jump
-                # We need to go through every point group for this jump
-                for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
-                    for interactInd in range(self.numTSInteractsInPtGroups[transInd, tsPtGpInd]):
-                        # Check if this interaction is on
-                        interactMainInd = self.JumpInteracts[transInd, tsPtGpInd, interactInd]
-                        if TSOffSiteCount[interactMainInd] == 0:
-                            delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
 
             # next, calculate the energy change due to site swapping
 
@@ -328,6 +317,18 @@ class MCSamplerClass(object):
             
             # record new rates only if none were provided
             if RateList is None:
+                # Do KRA expansion first
+                delEKRA = self.KRASpecConstants[specB]  # Start with the constant term for the jumping species.
+                transInd = self.FinSiteFinSpecJumpInd[siteB, specB]
+                # First, work on getting the KRA energy for the jump
+                # We need to go through every point group for this jump
+                for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
+                    for interactInd in range(self.numTSInteractsInPtGroups[transInd, tsPtGpInd]):
+                        # Check if this interaction is on
+                        interactMainInd = self.JumpInteracts[transInd, tsPtGpInd, interactInd]
+                        if TSOffSiteCount[interactMainInd] == 0:
+                            delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
+                
                 ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
             
             del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
@@ -340,8 +341,7 @@ class MCSamplerClass(object):
                 elif spec == specB:
                     delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], -dxList[jumpInd, :])
 
-            # Next, restore OffSiteCounts to original values for next jump, as well as
-            # for use in the next MC sweep.
+            # Next, restore OffSiteCounts to original values for next jump
             # During switch-off operations, offsite counts were increased by one.
             # So decrease them back by one
             for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
