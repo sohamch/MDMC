@@ -253,12 +253,15 @@ class MCSamplerClass(object):
 
     def Expand(self, state, ijList, dxList, spec, OffSiteCount, TSOffSiteCount,
                numVecsInteracts, VecGroupInteracts, VecsInteracts,
-               lenVecClus, beta, vacSiteInd=0):
+               lenVecClus, beta, vacSiteInd=0, RateList=None):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
-
-        ratelist = np.zeros(ijList.shape[0])
+        
+        if rateList is None:
+            ratelist = np.zeros(ijList.shape[0])
+        else:
+            rateList = RateList.copy()
 
         siteA, specA = vacSiteInd, self.Nspecs - 1
         # go through all the transition
@@ -268,16 +271,17 @@ class MCSamplerClass(object):
 
             # Get the transition index
             siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
-            transInd = self.FinSiteFinSpecJumpInd[siteB, specB]
-            # First, work on getting the KRA energy for the jump
             delEKRA = self.KRASpecConstants[specB]  # Start with the constant term for the jumping species.
-            # We need to go through every point group for this jump
-            for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
-                for interactInd in range(self.numTSInteractsInPtGroups[transInd, tsPtGpInd]):
-                    # Check if this interaction is on
-                    interactMainInd = self.JumpInteracts[transInd, tsPtGpInd, interactInd]
-                    if TSOffSiteCount[interactMainInd] == 0:
-                        delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
+            if RateList is None:
+                transInd = self.FinSiteFinSpecJumpInd[siteB, specB]
+                # First, work on getting the KRA energy for the jump
+                # We need to go through every point group for this jump
+                for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
+                    for interactInd in range(self.numTSInteractsInPtGroups[transInd, tsPtGpInd]):
+                        # Check if this interaction is on
+                        interactMainInd = self.JumpInteracts[transInd, tsPtGpInd, interactInd]
+                        if TSOffSiteCount[interactMainInd] == 0:
+                            delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
 
             # next, calculate the energy change due to site swapping
 
@@ -321,8 +325,11 @@ class MCSamplerClass(object):
                     # loop doesn't run
                     for i in range(numVecsInteracts[interMainInd]):
                         del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
-
-            ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
+            
+            # record new rates only if none were provided
+            if RateList is None:
+                ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
+            
             del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
 
             # let's do the tensordot by hand (work on finding numba support for this)
@@ -362,104 +369,6 @@ class MCSamplerClass(object):
 
         return WBar, BBar
 
-    def ExpandLatGas(self, state, ijList, dxList, spec, OffSiteCount, specRates, lenVecClus,
-                     numVecsInteracts, VecGroupInteracts, VecsInteracts, vacSiteInd=0):
-
-        del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
-        delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
-
-        ratelist = np.zeros(ijList.shape[0])
-
-        siteA, specA = vacSiteInd, self.Nspecs - 1
-        # go through all the transition
-
-        for jumpInd in range(ijList.shape[0]):
-            del_lamb = np.zeros((lenVecClus, 3))
-
-            # Get the transition index
-            siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
-
-            ratelist[jumpInd] = specRates[specB]
-
-            # Switch required sites off
-            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
-                # check if an interaction is on
-                interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
-                if OffSiteCount[interMainInd] == 0:
-                    # take away the vectors for this interaction
-                    for i in range(numVecsInteracts[interMainInd]):
-                        del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
-                OffSiteCount[interMainInd] += 1
-
-            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
-                interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
-                if OffSiteCount[interMainInd] == 0:
-                    for i in range(numVecsInteracts[interMainInd]):
-                        del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
-                OffSiteCount[interMainInd] += 1
-
-            # Next, switch required sites on
-            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
-                interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
-                OffSiteCount[interMainInd] -= 1
-                if OffSiteCount[interMainInd] == 0:
-                    # add the vectors for this interaction
-                    for i in range(numVecsInteracts[interMainInd]):
-                        del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
-
-            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
-                interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
-                OffSiteCount[interMainInd] -= 1
-                if OffSiteCount[interMainInd] == 0:
-                    # add the vectors for this interaction
-                    # for interactions with zero vector basis, numVecsInteracts[interMainInd] = -1 and the
-                    # loop doesn't run
-                    for i in range(numVecsInteracts[interMainInd]):
-                        del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
-
-            del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
-
-            # delxDotdelLamb[:, jumpInd] = np.tensordot(del_lamb, dxList[jumpInd], axes=(1, 0))
-            # let's do the tensordot by hand (work on finding numba support for this)
-            for i in range(lenVecClus):
-
-                if spec == specA: # vacancy
-                    delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], dxList[jumpInd, :])
-
-                elif spec == specB: # if it is the desired species
-                    delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], -dxList[jumpInd, :])
-
-            # Next, restore OffSiteCounts to original values
-            # During switch-off operations, offsite counts were increased by one.
-            # So decrease them back by one
-            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
-                OffSiteCount[self.SiteSpecInterArray[siteA, state[siteA], interIdx]] -= 1
-
-            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
-                OffSiteCount[self.SiteSpecInterArray[siteB, state[siteB], interIdx]] -= 1
-
-            # During switch-on operations, offsite counts were decreased by one.
-            # So increase them back by one
-            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
-                OffSiteCount[self.SiteSpecInterArray[siteA, state[siteB], interIdx]] += 1
-
-            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
-                OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
-
-        # Wbar = np.tensordot(ratelist, del_lamb_mat, axes=(0, 2))
-        WBar = np.zeros((lenVecClus, lenVecClus))
-        for i in range(lenVecClus):
-            for j in range(lenVecClus):
-                WBar[i, j] += np.dot(del_lamb_mat[i, j, :], ratelist)
-
-        # assert np.allclose(Wbar, WBar)
-
-        # Bbar = np.tensordot(ratelist, delxDotdelLamb, axes=(0, 1))
-        BBar = np.zeros(lenVecClus)
-        for i in range(lenVecClus):
-            BBar[i] = np.dot(ratelist, delxDotdelLamb[i, :])
-
-        return WBar, BBar
 
     @staticmethod
     def ExpandDirect(lamb1, lamb2, rate, dx):
