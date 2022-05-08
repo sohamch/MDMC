@@ -251,6 +251,48 @@ class MCSamplerClass(object):
                     lamb[vGroup, :] += vec
         return lamb
 
+    def getDelLamb(self, state, offsc, jSite, NVclus, numVecsInteracts, VecGroupInteracts, VecsInteracts):
+        
+        siteA, specA = vacSiteInd, self.Nspecs - 1
+        assert state[siteA] == specA
+        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
+            # check if an interaction is on
+            interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
+            if offsc[interMainInd] == 0:
+                # take away the vectors for this interaction
+                for i in range(numVecsInteracts[interMainInd]):
+                    del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
+            OffSiteCount[interMainInd] += 1
+
+        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
+            interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
+            if OffSiteCount[interMainInd] == 0:
+                delE -= self.Interaction2En[interMainInd]
+                for i in range(numVecsInteracts[interMainInd]):
+                    del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
+            OffSiteCount[interMainInd] += 1
+
+        # Next, switch required sites on
+        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
+            interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
+            OffSiteCount[interMainInd] -= 1
+            if OffSiteCount[interMainInd] == 0:
+                delE += self.Interaction2En[interMainInd]
+                # add the vectors for this interaction
+                for i in range(numVecsInteracts[interMainInd]):
+                    del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
+
+        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
+            interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
+            OffSiteCount[interMainInd] -= 1
+            if OffSiteCount[interMainInd] == 0:
+                delE += self.Interaction2En[interMainInd]
+                # add the vectors for this interaction
+                # for interactions with zero vector basis, numVecsInteracts[interMainInd] = -1 and the
+                # loop doesn't run
+                for i in range(numVecsInteracts[interMainInd]):
+                    del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
+
     def Expand(self, state, ijList, dxList, spec, OffSiteCount, TSOffSiteCount,
                numVecsInteracts, VecGroupInteracts, VecsInteracts,
                lenVecClus, beta, vacSiteInd=0, RateList=None):
@@ -330,7 +372,7 @@ class MCSamplerClass(object):
                             delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
                 
                 ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
-            
+
             del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
 
             # let's do the tensordot by hand (work on finding numba support for this)
@@ -367,7 +409,7 @@ class MCSamplerClass(object):
         for i in range(lenVecClus):
             BBar[i] = np.dot(ratelist, delxDotdelLamb[i, :])
 
-        return WBar, BBar
+        return WBar, BBar, ratelist
 
 
     @staticmethod
