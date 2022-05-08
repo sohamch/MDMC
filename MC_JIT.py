@@ -265,9 +265,9 @@ class MCSamplerClass(object):
             offsc[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
 
 
-    def getDelLamb(self, state, offsc, jSite, NVclus, numVecsInteracts, VecGroupInteracts, VecsInteracts):
+    def getDelLamb(self, state, offsc, jSite, lenVecClus, numVecsInteracts, VecGroupInteracts, VecsInteracts):
         
-        siteA, specA = vacSiteInd, self.Nspecs - 1
+        siteA, specA = self.vacSiteInd, self.Nspecs - 1
         siteB = jSite
 
         del_lamb = np.zeros((lenVecClus, 3))
@@ -407,19 +407,20 @@ class MCSamplerClass(object):
             # Next, restore OffSiteCounts to original values for next jump
             # During switch-off operations, offsite counts were increased by one.
             # So decrease them back by one
-            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
-                OffSiteCount[self.SiteSpecInterArray[siteA, state[siteA], interIdx]] -= 1
+            self.revert(OffSiteCount, state, siteA, siteB)
+            #for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
+            #    OffSiteCount[self.SiteSpecInterArray[siteA, state[siteA], interIdx]] -= 1
 
-            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
-                OffSiteCount[self.SiteSpecInterArray[siteB, state[siteB], interIdx]] -= 1
+            #for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
+            #    OffSiteCount[self.SiteSpecInterArray[siteB, state[siteB], interIdx]] -= 1
 
-            # During switch-on operations, offsite counts were decreased by one.
-            # So increase them back by one
-            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
-                OffSiteCount[self.SiteSpecInterArray[siteA, state[siteB], interIdx]] += 1
+            ## During switch-on operations, offsite counts were decreased by one.
+            ## So increase them back by one
+            #for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
+            #    OffSiteCount[self.SiteSpecInterArray[siteA, state[siteB], interIdx]] += 1
 
-            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
-                OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
+            #for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
+            #    OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
 
         WBar = np.zeros((lenVecClus, lenVecClus))
         for i in range(lenVecClus):
