@@ -408,19 +408,6 @@ class MCSamplerClass(object):
             # During switch-off operations, offsite counts were increased by one.
             # So decrease them back by one
             self.revert(OffSiteCount, state, siteA, siteB)
-            #for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
-            #    OffSiteCount[self.SiteSpecInterArray[siteA, state[siteA], interIdx]] -= 1
-
-            #for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
-            #    OffSiteCount[self.SiteSpecInterArray[siteB, state[siteB], interIdx]] -= 1
-
-            ## During switch-on operations, offsite counts were decreased by one.
-            ## So increase them back by one
-            #for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
-            #    OffSiteCount[self.SiteSpecInterArray[siteA, state[siteB], interIdx]] += 1
-
-            #for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
-            #    OffSiteCount[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
 
         WBar = np.zeros((lenVecClus, lenVecClus))
         for i in range(lenVecClus):
