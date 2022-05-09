@@ -278,7 +278,7 @@ def makeProdTensor(OnSites, Ndim):
 """## Write the training loop"""
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
-        gNet, lRate=0.001, scratch_if_no_init=True, batch_size=128):
+        gNet, lRate=0.001, scratch_if_no_init=True, batch_size=128, Meta_weight=False):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -313,6 +313,11 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             print("No Network found. Starting from scratch", flush=True)
         else:
             raise ValueError("No saved network found in {} at epoch {}".format(dirPath, start_ep))
+
+    if Meta_weight:
+        print("Learning meta weights")
+        wtNet = WeightMLP()
+
     print("Batch size : {}".format(N_batch)) 
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
     BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh] 
@@ -363,6 +368,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                 y2 = pt.sum(y2*On_st2Batch, dim=2)
 
             dy = y2 - y1
+            sample_Losses = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/6
             diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/6. 
             diff.backward()
             optimizer.step()
@@ -582,6 +588,8 @@ def main(args):
     wt_means = float(args["Mean_weights"])
     wt_std = float(args["Std_weights"])
 
+    Learn_reWt = False if args["Learn_reWt"]=="False" else True
+
     if not (Mode == "train" or Mode == "eval" or Mode == "getY"):
         raise ValueError("Mode needs to be train, eval or getY but given : {}".format(Mode))
 
@@ -682,7 +690,7 @@ def main(args):
     if Mode == "train":
         Train(T_data, dirPath, State1_Occs, State2_Occs, OnSites_state1, OnSites_state2,
                 rateData, dispData, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train_jumps,
-                gNet, lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size)
+                gNet, lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size, Meta_weight=Learn_reWt)
 
     elif Mode == "eval":
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_Occs, State2_Occs,
@@ -734,7 +742,8 @@ if __name__ == "__main__":
     "Learning_Rate":"0.001",
     "Batch_size":"128",
     "Mean_weights": "0.02",
-    "Std_weights": "0.2"
+    "Std_weights": "0.2",
+    "Learn_reWt": "False"
     }
 
     # Change default arguments to what has been passed
