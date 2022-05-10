@@ -17,7 +17,7 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         a0 = 1
         self.a0 = a0
         self.crys = crystal.Crystal.BCC(a0, chemistry="A")
-        jumpCutoff = 1.01*np.sqrt(3)*a0/2
+        jumpCutoff = 1.01*np.sqrt(3./4.)*a0
         self.jnetBCC = self.crys.jumpnetwork(0, jumpCutoff)
         self.N_units = 8
         self.superlatt = self.N_units * np.eye(3, dtype=int)
@@ -55,13 +55,7 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
 
         # check that every cluster appears just once in just one symmetry list
         clList = [cl for clList in self.VclusExp.SpecClusters for cl in clList]
-
-        for cl1 in clList:
-            count = 0
-            for cl2 in clList:
-                if cl1 == cl2:
-                    count += 1
-            assert count == 1 # check that the cluster occurs only once
+        self.assertEqual(len(clList), len(set(clList)))
 
         # let's test if the number of symmetric site clusters generated is the same
         sitetuples = set([])
