@@ -35,7 +35,7 @@ class WeightNet(nn.Module):
         self.L1 = nn.Linear(1, width)
         self.L2 = nn.Linear(width, 1)
 
-    def forward(x):
+    def forward(self, x):
         return nn.Softplus(self.L2(nn.SoftPlus(self.L1(x))))
 
 
