@@ -17,20 +17,21 @@ from scipy.constants import physical_constants
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 
 MainPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC_single/"
-potPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC/"
+potPath = "/home/sohamc2/HEA_FCC/MDMC/" # path to MEAM pot and Crystal data
 KMC_funcs_path = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC/"
 
 args = list(sys.argv)
 T = int(args[1])
-Ntraj = int(args[2]) # how many trajectories we want to simulate
-startIndex = int(args[3])
-batchSize = int(args[4]) # we'll evaluate the single-step trajectories in batches
-NImage = int(args[5])
-
-if len(args) == 7:
-    MainPath = args[7]
+startStep = int(args[2]) # which step's states to load as initial
+Ntraj = int(args[3]) # how many trajectories we want to simulate
+startIndex = int(args[4]) # which is the state to start with among those loaded
+batchSize = int(args[5]) # we'll evaluate the single-step trajectories in batches
+NImage = int(args[6])
 
 if len(args) == 8:
+    MainPath = args[7]
+
+if len(args) == 9:
     KMC_funcs_path = args[8]
 
 import sys
@@ -49,13 +50,14 @@ with open(MainPath+"lammpsBox.txt", "r") as fl:
 SiteIndToPos = np.load(MainPath+"SiteIndToLmpCartPos.npy")  # lammps pos of sites
 SiteIndToNgb = np.load(MainPath+"siteIndtoNgbSiteInd.npy")  # Nsites x z array of site neighbors
 
-with open(MainPath+"CrysDat/jnetFCC.pkl", "rb") as fl:
+with open(potPath+"CrysDat/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
 dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 
 
 # Load the starting data for the trajectories
-SiteIndToSpecAll = np.load(MainPath + "states_{}.npy".format(T))[startIndex : startIndex + Ntraj].astype(np.int16) # Ntraj x Nsites array of occupancies
+SiteIndToSpecAll = np.load(MainPath + "states_{}_{}.npy".format(T, startStep))[startIndex : startIndex + Ntraj].astype(np.int16)
+# Ntraj x Nsites array of occupancies
 assert np.all(SiteIndToSpecAll[:, 0] == 0) # check that the vacancy is always at the 0th site in the initial states
 vacSiteIndAll = np.zeros(Ntraj, dtype=int) # Ntraj size array: contains where the vac is in each traj.
 
@@ -70,6 +72,7 @@ Initlines[3] = "{} atom types\n".format(Nspec-1)
 FinalStates = np.zeros_like(SiteIndToSpecAll).astype(np.int16)
 FinalVacSites = np.zeros(Ntraj).astype(np.int16)
 SpecDisps = np.zeros((Ntraj, Nspec, 3))
+AllJumpRates = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
 tarr = np.zeros(Ntraj)
 JumpSelects = np.zeros(Ntraj, dtype=np.int8) # which jump is chosen for each trajectory
 
@@ -135,10 +138,9 @@ for batch in range(Nbatch):
             vacNgb = SiteIndToNgb[vInd, jumpInd]
             jAtom = SiteIndToSpec[traj, vacNgb]
             Barriers_Spec[jAtom].append(ebf)
-
-    if batch == 0:
-        TestRates[:, :] = rates[:, :]
-        TestBarriers[:, :] = barriers[:, :]
+    
+    # store all the rates
+    AllJumpRates[sampleStart:sampleEnd] = rates[:, :]
 
     # Then do selection
     jumpID, rateProbs, ratesCsum, rndNums, time_step = getJumpSelects(rates)
@@ -147,6 +149,8 @@ for batch in range(Nbatch):
 
     # store the random numbers for the first set of jump
     if batch == 0:
+        TestRates[:, :] = rates[:, :]
+        TestBarriers[:, :] = barriers[:, :]
         TestRandomNums[:] = rndNums[:]
 
     # Then do the final exchange
@@ -165,10 +169,11 @@ with open("SpecBarriers.pkl", "wb") as fl:
     pickle.dump(Barriers_Spec, fl)
 
 # Next, save all the arrays in an hdf5 file
-with h5py.File("data_{0}_{1}.h5".format(T, startIndex), "w") as fl:
+with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep, startIndex), "w") as fl:
     fl.create_dataset("FinalStates", data=FinalStates)
     fl.create_dataset("SpecDisps", data=SpecDisps)
     fl.create_dataset("times", data=tarr)
+    fl.create_dataset("AllJumpRates", data=AllJumpRates)
     fl.create_dataset("JumpSelects", data=JumpSelects)
     fl.create_dataset("TestRandNums", data=TestRandomNums)
     fl.create_dataset("TestRates", data=TestRates)
