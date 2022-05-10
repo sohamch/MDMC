@@ -36,7 +36,7 @@ class WeightNet(nn.Module):
         self.L2 = nn.Linear(width, 1)
 
     def forward(self, x):
-        return nn.Softplus(self.L2(nn.SoftPlus(self.L1(x))))
+        return nn.Softplus(self.L2(nn.Softplus(self.L1(x))))
 
 
 class GCNet(nn.Module):
