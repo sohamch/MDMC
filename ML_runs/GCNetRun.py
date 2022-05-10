@@ -392,10 +392,10 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             
             if Learn_wt:
                 sampleLossesInput = sample_Losses.data.clone().view(-1, 1).to(device)
-                Learn_wt = WeightSLP(sampleLossesInput).view(-1)
-                diff = pt.sum(Learn_wt * sample_Losses) # multiply sample losses with weight, and sum
+                SampleReWt = WeightSLP(sampleLossesInput).view(-1)
+                diff = pt.sum(SampleReWt * sample_Losses) # multiply sample losses with weight, and sum
             else:
-                diff = pt.sum(sample_Losses) # multiply sample losses with weight, and sum
+                diff = pt.sum(sample_Losses) # just sum sample losses
 
             diff.backward()
             
