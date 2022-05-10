@@ -19,6 +19,7 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         self.crys = crystal.Crystal.BCC(a0, chemistry="A")
         jumpCutoff = 1.01*np.sqrt(3./4.)*a0
         self.jnetBCC = self.crys.jumpnetwork(0, jumpCutoff)
+        self.BCC_active = True
         self.N_units = 8
         self.superlatt = self.N_units * np.eye(3, dtype=int)
         self.superBCC = supercell.ClusterSupercell(self.crys, self.superlatt)
@@ -81,21 +82,6 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
 
         self.assertEqual(total_reps, len(sitetuples), msg="{}, {}".format(total_reps, len(sitetuples)))
 
-        # This test is specifically for a BCC, 3-spec, 3-order, 2nn cluster expansion
-        oneCounts = 0
-        twocounts = 0
-        threecounts = 0
-        for siteList in sitesFromClusexp:
-            ln=len(siteList)
-            if ln == 1:
-                oneCounts += 1
-            elif ln == 2:
-                twocounts += 1
-            elif ln == 3:
-                threecounts += 1
-
-        self.assertEqual((oneCounts, twocounts, threecounts), (1, 14, 24))
-
         # Go through all the site clusters:
         total_spec_clusts = 0
         for clSites in sitesFromClusexp:
@@ -121,50 +107,67 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         oneBodyList = []
         TwoBodyList = []
         ThreeBodyList = []
-        # Check some of the numbers explicitly - this part is the definitive test
-        for clusterList in self.VclusExp.SpecClusters:
-            for clust in clusterList:
-                order = len(clust.SiteSpecs)
-                if order == 1:
-                    oneBody += 1
-                    oneBodyList.append(clust)
-                if order == 2:
-                    TwoBody += 1
-                    TwoBodyList.append(clust)
+        # Check some of the numbers explicitly - this part is for BCC crystals
+        if self.BCC_active:
+            # This test is specifically for a BCC, 3-spec, 3-order, 2nn cluster expansion
+            oneCounts = 0
+            twocounts = 0
+            threecounts = 0
+            for siteList in sitesFromClusexp:
+                ln = len(siteList)
+                if ln == 1:
+                    oneCounts += 1
+                elif ln == 2:
+                    twocounts += 1
+                elif ln == 3:
+                    threecounts += 1
 
-                if order == 3:
-                    ThreeBody += 1
-                    ThreeBodyList.append(clust)
+            self.assertEqual((oneCounts, twocounts, threecounts), (1, 14, 24))
+            print("Checking cluster counts")
+            for clusterList in self.VclusExp.SpecClusters:
+                for clust in clusterList:
+                    order = len(clust.SiteSpecs)
+                    if order == 1:
+                        oneBody += 1
+                        oneBodyList.append(clust)
+                    if order == 2:
+                        TwoBody += 1
+                        TwoBodyList.append(clust)
 
-        self.assertEqual(oneBody, 3)
-        self.assertEqual(TwoBody, 56)
-        self.assertEqual(ThreeBody, 240)
+                    if order == 3:
+                        ThreeBody += 1
+                        ThreeBodyList.append(clust)
 
-        # Now let's check some two body numbers
-        vacCount = 0
-        nonVacCount = 0
-        for clust in TwoBodyList:
-            specList = clust.specList
-            if any([spec == 2 for spec in specList]):
-                vacCount += 1
-            else:
-                nonVacCount += 1
+            self.assertEqual(oneBody, 3)
+            self.assertEqual(TwoBody, 56)
+            self.assertEqual(ThreeBody, 240)
 
-        self.assertEqual(vacCount, 2*2*4 + 2*2*3)  # The first term is for nearest neighbor, the second for second nearest neighbor
-        self.assertEqual(nonVacCount, 2*2*4 + 2*2*3)
+            # Now let's check some two body numbers
+            vacCount = 0
+            nonVacCount = 0
+            for clust in TwoBodyList:
+                specList = clust.specList
+                if any([spec == 2 for spec in specList]):
+                    vacCount += 1
+                else:
+                    nonVacCount += 1
 
-        # Now let's check some three body numbers
-        vacCount = 0
-        nonVacCount = 0
-        for clust in ThreeBodyList:
-            specList = clust.specList
-            if any([spec == 2 for spec in specList]):
-                vacCount += 1
-            else:
-                nonVacCount += 1
+            self.assertEqual(vacCount, 2*2*4 + 2*2*3)  # The first term is for nearest neighbor, the second for second nearest neighbor
+            self.assertEqual(nonVacCount, 2*2*4 + 2*2*3)
 
-        self.assertEqual(vacCount, (3 * 2 * 2) * 12)
-        self.assertEqual(nonVacCount, (2 * 2 * 2) * 12)
+            # Now let's check some three body numbers
+            vacCount = 0
+            nonVacCount = 0
+            for clust in ThreeBodyList:
+                specList = clust.specList
+                if any([spec == 2 for spec in specList]):
+                    vacCount += 1
+                else:
+                    nonVacCount += 1
+
+            self.assertEqual(vacCount, (3 * 2 * 2) * 12)
+            self.assertEqual(nonVacCount, (2 * 2 * 2) * 12)
+
         print("Done assignment tests")
 
 
