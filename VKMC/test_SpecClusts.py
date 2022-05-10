@@ -2,7 +2,6 @@ from onsager import crystal, supercell, cluster
 import numpy as np
 import collections
 import itertools
-import Transitions
 from ClustSpec import ClusterSpecies
 import Cluster_Expansion
 import unittest
