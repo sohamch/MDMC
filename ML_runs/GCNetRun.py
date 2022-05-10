@@ -3,7 +3,7 @@ import sys
 RunPath = os.getcwd() + "/"
 CrysPath = "/home/sohamc2/HEA_FCC/MDMC/"
 DataPath = "/home/sohamc2/HEA_FCC/MDMC/ML_runs/DataSets/"
-ModulePath = "../Symm_Network/"
+ModulePath = "/home/sohamc2/HEA_FCC/MDMC/Symm_Network/"
 
 #DataPath = "MD_KMC_single/"
 #ModulePath = "/mnt/FCDEB3C5DEB3768C/UIUC/Research/KMC_ML/VKMC/SymNetworkRuns/CE_Symmetry/Symm_Network"
