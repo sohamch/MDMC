@@ -325,7 +325,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         if scratch_if_no_init:
             print("No Network found. Starting from scratch", flush=True)
         else:
-            raise ValueError("No saved network found in {} at epoch {}".format(dirPath, start_ep))
+            raise ValueError("Required saved networks not found in {} at epoch {}".format(dirPath, start_ep))
 
     print("Batch size : {}".format(N_batch)) 
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
@@ -340,7 +340,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     optims = [pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)]
     if Learn_wt:
         WeightMLP.to(device)
-        optims.append(pt.optim.Adam(WeightMLP.parameters(), lr=lRate, weight_decay=0.001))
+        optims.append(pt.optim.Adam(WeightMLP.parameters(), lr=0.001))
 
     print("Starting Training loop") 
 
