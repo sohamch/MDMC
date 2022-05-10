@@ -5,7 +5,7 @@ import itertools
 from ClustSpec import ClusterSpecies
 import Cluster_Expansion
 import unittest
-import time
+
 
 class test_Vector_Cluster_Expansion(unittest.TestCase):
 
@@ -28,12 +28,12 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         self.vacsiteInd = self.superBCC.index(np.zeros(3, dtype=int), (0, 0))[0]
         self.clusexp = cluster.makeclusters(self.crys, 1.01*a0, self.MaxOrder)
 
-        TScombShellRange = 1  # upto 1nn combined shell
-        TSnnRange = 4
-        TScutoff = np.sqrt(3) * a0  # 5th nn cutoff
+        # TScombShellRange = 1  # upto 1nn combined shell
+        # TSnnRange = 4
+        # TScutoff = np.sqrt(3) * a0  # 5th nn cutoff
 
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.NSpec,
-                                                                 self.vacsite, self.MaxOrder,TScutoff=None,
+                                                                 self.vacsite, self.MaxOrder, TScutoff=None,
                                                                  TScombShellRange=None, TSnnRange=None,
                                                                  jumpnetwork=None)
 
@@ -179,7 +179,6 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         self.assertEqual(vacCount, (3 * 2 * 2) * 12)
         self.assertEqual(nonVacCount, (2 * 2 * 2) * 12)
 
-
     def test_genvecs(self):
         """
         Here, we test if we have generated the vector cluster basis (site-based only) properly
@@ -299,8 +298,9 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         # First, we generate the Jit arrays
 
         # First, the chemical data
-        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, \
-        numInteractsSiteSpec, SiteSpecInterArray = self.VclusExp.makeJitInteractionsData(self.Energies)
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,\
+        numInteractsSiteSpec, SiteSpecInterArray =\
+            self.VclusExp.makeJitInteractionsData(self.Energies)
 
         # Next, the vector basis data
         numVecsInteracts, VecsInteracts, VecGroupInteracts = self.VclusExp.makeJitVectorBasisData()
@@ -371,7 +371,6 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         for key, item in repclustCount.items():
             self.assertEqual(item, len(self.VclusExp.sup.mobilepos))
 
-
         print("checked interactions")
 
         # Now, test the vector basis and energy information for the clusters
@@ -403,16 +402,8 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
             for spec in range(self.NSpec):
                 numInteractStored = numInteractsSiteSpec[siteInd, spec]
                 # get the actual count
-                ci, R = self.VclusExp.sup.ciR(siteInd)
+                # ci, R = self.VclusExp.sup.ciR(siteInd)
                 self.assertEqual(len(self.VclusExp.SiteSpecInteractIds[(siteInd, spec)]), numInteractStored)
                 for IdxOfInteract in range(numInteractStored):
                     interactMainIndex = SiteSpecInterArray[siteInd, spec, IdxOfInteract]
                     self.assertEqual(interactMainIndex, self.VclusExp.SiteSpecInteractIds[(siteInd, spec)][IdxOfInteract])
-
-        
-
-
-
-
-
-
