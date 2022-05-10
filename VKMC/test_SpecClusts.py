@@ -32,8 +32,10 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         TSnnRange = 4
         TScutoff = np.sqrt(3) * a0  # 5th nn cutoff
 
-        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.NSpec, self.vacsite, self.MaxOrder,
-        TScutoff=None, TScombShellRange=None, TSnnRange=None, jumpnetwork=None)
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.NSpec,
+                                                                 self.vacsite, self.MaxOrder,TScutoff=None,
+                                                                 TScombShellRange=None, TSnnRange=None,
+                                                                 jumpnetwork=None)
 
         self.VclusExp.generateSiteSpecInteracts()
         self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
@@ -92,7 +94,7 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
             # Now, for two and three body clusters:
             # we can have max one vacancy at a site, and any other site can have any other occupancy.
             # or we can have no vacancy at all in which case it's just (Nspec - 1)**ordr
-            # Also, Since we are in BCC lattices, we can symmetrically permute two sites in every two or three body cluster
+            # Also, we can symmetrically permute two sites in every two or three body cluster
             total_spec_clusts += (ordr * (self.NSpec - 1)**(ordr - 1) + (self.NSpec-1)**ordr)//2
         #
         total_code = sum([len(lst) for lst in self.VclusExp.SpecClusters])
