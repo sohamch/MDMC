@@ -290,6 +290,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         rates, disps, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
         gNet, lRate=0.001, scratch_if_no_init=True, batch_size=128, Learn_wt=False, WeightSLP=None):
     
+    # Do a small check that species channels were assigned correctly 
     for key, item in sp_ch.items():
         if key > VacSpec:
             assert item == key - 1
@@ -339,6 +340,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
     optims = [pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)]
     if Learn_wt:
+        print("Learning sample reweighting with SLP.") 
         WeightSLP.to(device)
         optims.append(pt.optim.Adam(WeightSLP.parameters(), lr=0.001))
 
