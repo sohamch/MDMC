@@ -622,7 +622,7 @@ def main(args):
     
     wtNet = None
     if Learn_wt:
-        wtNet = WeightNet(width=128) 
+        wtNet = WeightNet(width=128).double().to(device) 
 
     if not (Mode == "train" or Mode == "eval" or Mode == "getY"):
         raise ValueError("Mode needs to be train, eval or getY but given : {}".format(Mode))
