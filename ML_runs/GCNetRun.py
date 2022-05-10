@@ -288,7 +288,7 @@ def makeProdTensor(OnSites, Ndim):
 """## Write the training loop"""
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
-        gNet, lRate=0.001, scratch_if_no_init=True, batch_size=128, Learn_wt=False, WeightMLP=None):
+        gNet, lRate=0.001, scratch_if_no_init=True, batch_size=128, Learn_wt=False, WeightSLP=None):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -318,7 +318,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     try:
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"))
         if Learn_wt:
-            WeightMLP.load_state_dict(pt.load(dirPath + "/wt_ep_{1}.pt".format(T, start_ep), map_location="cpu"))
+            WeightSLP.load_state_dict(pt.load(dirPath + "/wt_ep_{1}.pt".format(T, start_ep), map_location="cpu"))
         print("Starting from epoch {}".format(start_ep), flush=True)
 
     except:
@@ -339,8 +339,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
     optims = [pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)]
     if Learn_wt:
-        WeightMLP.to(device)
-        optims.append(pt.optim.Adam(WeightMLP.parameters(), lr=0.001))
+        WeightSLP.to(device)
+        optims.append(pt.optim.Adam(WeightSLP.parameters(), lr=0.001))
 
     print("Starting Training loop") 
 
@@ -350,11 +350,13 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         if epoch%interval==0:
             pt.save(gNet.state_dict(), dirPath + "/ep_{1}.pt".format(T, epoch))
             if Learn_wt:
-                pt.save(WeightMLP.state_dict(), dirPath + "/wt_ep_{1}.pt".format(T, epoch))
+                pt.save(WeightSLP.state_dict(), dirPath + "/wt_ep_{1}.pt".format(T, epoch))
 
             
         for batch in range(0, N_train, N_batch):
-            [opt.zero_grad() for opt in optims]
+            
+            for opt in optims:
+                opt.zero_grad()
             
             end = min(batch + N_batch, N_train)
 
@@ -386,12 +388,13 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             dy = y2 - y1
             sample_Losses = rateBatch * pt.norm((dispBatch + dy), dim=1)**2/6.
             
-            Learn_wt = 1.0 # start with no learned weight
             if Learn_wt:
                 sampleLossesInput = sample_Losses.data.clone().view(-1, 1).to(device)
-                Learn_wt = WeightMLP(sampleLossesInput).view(-1)
+                Learn_wt = WeightSLP(sampleLossesInput).view(-1)
+                diff = pt.sum(Learn_wt * sample_Losses) # multiply sample losses with weight, and sum
+            else:
+                diff = pt.sum(sample_Losses) # multiply sample losses with weight, and sum
 
-            diff = pt.sum(Learn_wt * sample_Losses) # multiply sample losses with weight, and sum
             diff.backward()
             
             # Propagate all optimizers
@@ -617,7 +620,7 @@ def main(args):
     
     wtNet = None
     if Learn_wt:
-        wtNet = WeightNet(width=256) 
+        wtNet = WeightNet(width=128) 
 
     if not (Mode == "train" or Mode == "eval" or Mode == "getY"):
         raise ValueError("Mode needs to be train, eval or getY but given : {}".format(Mode))
@@ -720,7 +723,7 @@ def main(args):
         Train(T_data, dirPath, State1_Occs, State2_Occs, OnSites_state1, OnSites_state2,
                 rateData, dispData, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train_jumps,
                 gNet, lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size,
-                Learn_wt=Learn_wt, WeightMLP=wtNet)
+                Learn_wt=Learn_wt, WeightSLP=wtNet)
 
     elif Mode == "eval":
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_Occs, State2_Occs,
