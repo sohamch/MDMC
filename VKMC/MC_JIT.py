@@ -165,6 +165,19 @@ class MCSamplerClass(object):
 
         return delE, del_lamb
 
+    def revert(self, offsc, state, siteA, siteB):
+        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
+            offsc[self.SiteSpecInterArray[siteA, state[siteA], interIdx]] -= 1
+
+        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
+            offsc[self.SiteSpecInterArray[siteB, state[siteB], interIdx]] -= 1
+
+        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
+            offsc[self.SiteSpecInterArray[siteA, state[siteB], interIdx]] += 1
+
+        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
+            offsc[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
+
     def makeMCsweep(self, state, N_nonVacSpecs, OffSiteCount, TransOffSiteCount,
                     beta, randLogarr, Nswaptrials, vacSiteInd):
         """
@@ -226,34 +239,7 @@ class MCSamplerClass(object):
             assert specB == spBSelect
             assert specA != specB
 
-            delE = 0.
-            delE, _ = self.DoSwapUpdate(state, siteA, siteB, 1, OffSiteCount,
-                     None, None, None)
-            # Next, switch required interactions off
-            for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
-                interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
-                if OffSiteCount[interMainInd] == 0:
-                    delE -= self.Interaction2En[interMainInd]
-                OffSiteCount[interMainInd] += 1
-
-            for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
-                interMainInd = self.SiteSpecInterArray[siteB, specB, interIdx]
-                if OffSiteCount[interMainInd] == 0:
-                    delE -= self.Interaction2En[interMainInd]
-                OffSiteCount[interMainInd] += 1
-
-            # Next, switch required sites on
-            for interIdx in range(self.numInteractsSiteSpec[siteA, specB]):
-                interMainInd = self.SiteSpecInterArray[siteA, specB, interIdx]
-                OffSiteCount[interMainInd] -= 1
-                if OffSiteCount[interMainInd] == 0:
-                    delE += self.Interaction2En[interMainInd]
-
-            for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
-                interMainInd = self.SiteSpecInterArray[siteB, specA, interIdx]
-                OffSiteCount[interMainInd] -= 1
-                if OffSiteCount[interMainInd] == 0:
-                    delE += self.Interaction2En[interMainInd]
+            delE, _ = self.DoSwapUpdate(state, siteA, siteB, 1, OffSiteCount, None, None, None)
 
             self.delEArray[swapcount] = delE
 
@@ -303,20 +289,6 @@ class MCSamplerClass(object):
                     vec = VecsInteracts[interactInd, vGInd]
                     lamb[vGroup, :] += vec
         return lamb
-    
-    def revert(self, offsc, state, siteA, siteB):
-        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
-            offsc[self.SiteSpecInterArray[siteA, state[siteA], interIdx]] -= 1
-
-        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
-            offsc[self.SiteSpecInterArray[siteB, state[siteB], interIdx]] -= 1
-
-        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
-            offsc[self.SiteSpecInterArray[siteA, state[siteB], interIdx]] += 1
-
-        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
-            offsc[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
-
 
     def getDelLamb(self, state, offsc, vacSiteInd, jSite, lenVecClus,
                    numVecsInteracts, VecGroupInteracts, VecsInteracts):
