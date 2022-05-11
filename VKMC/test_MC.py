@@ -760,7 +760,7 @@ class Test_MC(DataClass):
 
                     # get the delta lambda and check for the vector stars
                     jSite = ijList[TInd]
-                    del_lamb = self.MCSampler_Jit.getDelLamb(initState, offscjit, self.vacSiteInd, jSite,
+                    del_lamb = self.MCSampler_Jit.getDelLamb(initState, offscjit, self.vacsiteInd, jSite,
                                                              lenVecClus, self.numVecsInteracts,
                                                              self.VecGroupInteracts, self.VecsInteracts)
 
