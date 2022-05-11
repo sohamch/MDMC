@@ -585,7 +585,8 @@ class Test_MC(DataClass):
                 if initState[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
                     TransOffSiteCount[TsInteractIdx] += 1
 
-        ijList, dxList = self.VclusExp.KRAexpander.jList.copy(), self.VclusExp.KRAexpander.dxList.copy()
+        ijList = np.array(self.VclusExp.KRAexpander.jList)
+        dxList = np.array(self.VclusExp.KRAexpander.dxList)
         lenVecClus = len(self.VclusExp.vecClus)
 
         # Now, do the expansion
@@ -595,7 +596,7 @@ class Test_MC(DataClass):
         beta = 1.0
         Wbar, Bbar = MCSampler_Jit.Expand(state, ijList, dxList, spec, offscjit, TransOffSiteCount,
                self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts,
-               lenVecClus, beta, vacSiteInd=self.vacsiteInd)
+               lenVecClus, beta, self.vacsiteInd, None)
 
         offscjit2 = MC_JIT.GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
 
