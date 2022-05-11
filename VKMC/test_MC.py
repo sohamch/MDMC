@@ -594,7 +594,7 @@ class Test_MC(DataClass):
         state = initState.copy()
         spec = 2
         beta = 1.0
-        Wbar, Bbar = MCSampler_Jit.Expand(state, ijList, dxList, spec, offscjit, TransOffSiteCount,
+        Wbar, Bbar, _ = MCSampler_Jit.Expand(state, ijList, dxList, spec, offscjit, TransOffSiteCount,
                self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts,
                lenVecClus, beta, self.vacsiteInd, None)
 
