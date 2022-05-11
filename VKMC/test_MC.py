@@ -760,12 +760,6 @@ class Test_MC(DataClass):
 
                     # get the delta lambda and check for the vector stars
                     jSite = ijList[TInd]
-                    del_lamb = self.MCSampler_Jit.getDelLamb(initState, offscjit, self.vacsiteInd, jSite,
-                                                             lenVecClus, self.numVecsInteracts,
-                                                             self.VecGroupInteracts, self.VecsInteracts)
-
-                    self.assertTrue(np.allclose(vec1, del_lamb[vs1]))
-                    self.assertTrue(np.allclose(vec2, del_lamb[vs2]))
 
                     Wbar_test[vs1, vs2] += rate*dot
                     if vs1 == 0:
