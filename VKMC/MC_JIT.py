@@ -239,6 +239,7 @@ class MCSamplerClass(object):
             assert specB == spBSelect
             assert specA != specB
 
+            # Do the swap
             delE, _ = self.DoSwapUpdate(state, siteA, siteB, 1, OffSiteCount, None, None, None)
 
             self.delEArray[swapcount] = delE
