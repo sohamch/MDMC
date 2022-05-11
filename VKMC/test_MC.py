@@ -647,16 +647,16 @@ class Test_MC(DataClass):
                     # Now do the site swaps and calculate the energy
                     delE = 0.0
 
-                    for interactnun in range(self.numInteractsSiteSpec[siteA, specA]):
-                        interactInd = self.SiteSpecInterArray[siteA, specA, interactnun]
+                    for interactnum in range(self.numInteractsSiteSpec[siteA, specA]):
+                        interactInd = self.SiteSpecInterArray[siteA, specA, interactnum]
                         repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
                         repClus = self.VclusExp.Num2Clus[repClusInd]
-                        vecList = self.VclusExp.clust2vecClus[repClus]
-
-                        if len(vecList) > 0:
-                            self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
-                        else:
+                        repClustSymListInd = self.VclusExp.clust2SpecClus[repClus][0]
+                        if self.VclusExp.clus2LenVecClus[repClustSymListInd] == 0:
                             self.assertEqual(self.numVecsInteracts[interactInd], -1)
+                            continue
+                        vecList = self.VclusExp.clust2vecClus[repClus]
+                        self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
 
                         for i in range(self.numVecsInteracts[interactInd]):
                             self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
@@ -673,16 +673,16 @@ class Test_MC(DataClass):
                                     vec2 -= self.VecsInteracts[interactInd, tupInd, :]
                         offscjit[interactInd] += 1
 
-                    for interactnun in range(self.numInteractsSiteSpec[siteB, specB]):
-                        interactInd = self.SiteSpecInterArray[siteB, specB, interactnun]
+                    for interactnum in range(self.numInteractsSiteSpec[siteB, specB]):
+                        interactInd = self.SiteSpecInterArray[siteB, specB, interactnum]
                         repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
                         repClus = self.VclusExp.Num2Clus[repClusInd]
-                        vecList = self.VclusExp.clust2vecClus[repClus]
-
-                        if len(vecList) > 0:
-                            self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
-                        else:
+                        repClustSymListInd = self.VclusExp.clust2SpecClus[repClus][0]
+                        if self.VclusExp.clus2LenVecClus[repClustSymListInd] == 0:
                             self.assertEqual(self.numVecsInteracts[interactInd], -1)
+                            continue
+                        vecList = self.VclusExp.clust2vecClus[repClus]
+                        self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
 
                         for i in range(self.numVecsInteracts[interactInd]):
                             self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
@@ -699,18 +699,15 @@ class Test_MC(DataClass):
                                     vec2 -= self.VecsInteracts[interactInd, tupInd, :]
                         offscjit[interactInd] += 1
 
-                    for interactnun in range(self.numInteractsSiteSpec[siteA, specB]):
-                        interactInd = self.SiteSpecInterArray[siteA, specB, interactnun]
-
+                    for interactnum in range(self.numInteractsSiteSpec[siteA, specB]):
+                        interactInd = self.SiteSpecInterArray[siteA, specB, interactnum]
                         repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
-                        repClus = self.VclusExp.Num2Clus[repClusInd]
-
-                        vecList = self.VclusExp.clust2vecClus[repClus]
-
-                        if len(vecList) > 0:
-                            self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
-                        else:
+                        repClustSymListInd = self.VclusExp.clust2SpecClus[repClus][0]
+                        if self.VclusExp.clus2LenVecClus[repClustSymListInd] == 0:
                             self.assertEqual(self.numVecsInteracts[interactInd], -1)
+                            continue
+                        vecList = self.VclusExp.clust2vecClus[repClus]
+                        self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
 
                         for i in range(self.numVecsInteracts[interactInd]):
                             self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
@@ -728,18 +725,15 @@ class Test_MC(DataClass):
                                 if tup[0] == vs2:
                                     vec2 += self.VecsInteracts[interactInd, tupInd, :]
 
-                    for interactnun in range(self.numInteractsSiteSpec[siteB, specA]):
-                        interactInd = self.SiteSpecInterArray[siteB, specA, interactnun]
-
+                    for interactnum in range(self.numInteractsSiteSpec[siteB, specA]):
+                        interactInd = self.SiteSpecInterArray[siteB, specA, interactnum]
                         repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
-                        repClus = self.VclusExp.Num2Clus[repClusInd]
-
-                        vecList = self.VclusExp.clust2vecClus[repClus]
-
-                        if len(vecList) > 0:
-                            self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
-                        else:
+                        repClustSymListInd = self.VclusExp.clust2SpecClus[repClus][0]
+                        if self.VclusExp.clus2LenVecClus[repClustSymListInd] == 0:
                             self.assertEqual(self.numVecsInteracts[interactInd], -1)
+                            continue
+                        vecList = self.VclusExp.clust2vecClus[repClus]
+                        self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
 
                         for i in range(self.numVecsInteracts[interactInd]):
                             self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
