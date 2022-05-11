@@ -42,9 +42,11 @@ class Test_Make_Arrays(unittest.TestCase):
         TSnnRange = 4
         TScutoff = np.sqrt(3) * a0  # 5th nn cutoff
 
-        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(superFCC, clusexp, NSpec, vacsite, MaxOrder, TclusExp=True,
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(
+            self.superBCC, self.clusexp, self.NSpec, self.vacsite, self.MaxOrder,
                 TScutoff=TScutoff, TScombShellRange=TScombShellRange,
-                TSnnRange=TSnnRange, jumpnetwork=self.jnetBCC)
+                TSnnRange=TSnnRange, jumpnetwork=self.jnetBCC, TclusExp=True
+        )
 
         self.TScombShellRange = TScombShellRange
         self.TSnnRange = TSnnRange
@@ -159,8 +161,9 @@ class Test_Make_Arrays_FCC(Test_Make_Arrays):
         TSnnRange = 4
         TScutoff = np.sqrt(2) * a0  # 4th nn cutoff
 
-        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superFCC, self.clusexp, TScutoff, TScombShellRange, TSnnRange,
-                                                                 self.jnetFCC, self.NSpec, self.vacsite, self.MaxOrder)
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superFCC, self.clusexp, self.NSpec, self.vacsite,
+                                                                 self.MaxOrder, TScutoff, TScombShellRange, TSnnRange,
+                                                                 self.jnetFCC, TclusExp=True)
 
         self.TScombShellRange = TScombShellRange
         self.TSnnRange = TSnnRange

@@ -13,8 +13,9 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, NSpec, vacSite, maxorder, TScutoff=None, TScombShellRange=None, TSnnRange=None, jumpnetwork=None,
-                 MadeSpecClusts=None, TclusExp=False, maxOrderTrans=None, zeroClusts=True, OrigVac=False):
+    def __init__(self, sup, clusexp, NSpec, vacSite, maxorder, TScutoff=None, TScombShellRange=None,
+                 TSnnRange=None, jumpnetwork=None, MadeSpecClusts=None, TclusExp=False,
+                 zeroClusts=True, OrigVac=False):
         """
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
