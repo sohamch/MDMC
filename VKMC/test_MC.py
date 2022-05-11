@@ -202,10 +202,10 @@ class Test_MC(DataClass):
         # randLogarr = np.log(np.random.rand(Nswaptrials))
 
         # If we want to ensure acceptance, we keep it really small
-        # randLogarr = np.ones(Nswaptrials)*-1000.0
+        randLogarr = np.ones(Nswaptrials)*-1000.0
 
         # If we want to ensure rejection, we keep it really big
-        randLogarr = np.ones(Nswaptrials) * 1000.0
+        # randLogarr = np.ones(Nswaptrials) * 1000.0
 
         # Put in tests for Jit calculations
         # make the offsite counts
