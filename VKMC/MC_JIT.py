@@ -296,7 +296,6 @@ class MCSamplerClass(object):
 
         return del_lamb
 
-
     def Expand(self, state, ijList, dxList, spec, OffSiteCount, TSOffSiteCount,
                numVecsInteracts, VecGroupInteracts, VecsInteracts,
                lenVecClus, beta, vacSiteInd=0, RateList=None):
@@ -338,17 +337,14 @@ class MCSamplerClass(object):
 
             del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
 
-            # let's do the tensordot by hand (work on finding numba support for this)
+            # let's do the tensordot by hand (numba doesn't support np.tensordot)
             for i in range(lenVecClus):
-                # replace innder loop with outer product
                 if spec == specA:
                     delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], dxList[jumpInd, :])
                 elif spec == specB:
                     delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], -dxList[jumpInd, :])
 
             # Next, restore OffSiteCounts to original values for next jump
-            # During switch-off operations, offsite counts were increased by one.
-            # So decrease them back by one
             self.revert(OffSiteCount, state, siteA, siteB)
 
         WBar = np.zeros((lenVecClus, lenVecClus))
