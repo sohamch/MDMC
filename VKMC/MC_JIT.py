@@ -114,6 +114,57 @@ class MCSamplerClass(object):
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
 
+    def DoSwapUpdate(self, state, siteA, siteB, lenVecClus, OffSiteCount,
+                     numVecsInteracts, VecGroupInteracts, VecsInteracts):
+
+        del_lamb = np.zeros((lenVecClus, 3))
+        delE = 0.0
+        # Switch required sites off
+        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
+            # check if an interaction is on
+            interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
+            if OffSiteCount[interMainInd] == 0:
+                delE -= self.Interaction2En[interMainInd]
+                # take away the vectors for this interaction
+                if numVecsInteracts is not None:
+                    for i in range(numVecsInteracts[interMainInd]):
+                        del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
+            OffSiteCount[interMainInd] += 1
+
+        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
+            interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
+            if OffSiteCount[interMainInd] == 0:
+                delE -= self.Interaction2En[interMainInd]
+                if numVecsInteracts is not None:
+                    for i in range(numVecsInteracts[interMainInd]):
+                        del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
+            OffSiteCount[interMainInd] += 1
+
+        # Next, switch required sites on
+        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
+            interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
+            OffSiteCount[interMainInd] -= 1
+            if OffSiteCount[interMainInd] == 0:
+                delE += self.Interaction2En[interMainInd]
+                # add the vectors for this interaction
+                if numVecsInteracts is not None:
+                    for i in range(numVecsInteracts[interMainInd]):
+                        del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
+
+        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
+            interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
+            OffSiteCount[interMainInd] -= 1
+            if OffSiteCount[interMainInd] == 0:
+                delE += self.Interaction2En[interMainInd]
+                # add the vectors for this interaction
+                # for interactions with zero vector basis, numVecsInteracts[interMainInd] = -1 and the
+                # loop doesn't run
+                if numVecsInteracts is not None:
+                    for i in range(numVecsInteracts[interMainInd]):
+                        del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
+
+        return delE, del_lamb
+
     def makeMCsweep(self, state, N_nonVacSpecs, OffSiteCount, TransOffSiteCount,
                     beta, randLogarr, Nswaptrials, vacSiteInd):
         """
@@ -176,6 +227,8 @@ class MCSamplerClass(object):
             assert specA != specB
 
             delE = 0.
+            delE, _ = self.DoSwapUpdate(state, siteA, siteB, 1, OffSiteCount,
+                     None, None, None)
             # Next, switch required interactions off
             for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
                 interMainInd = self.SiteSpecInterArray[siteA, specA, interIdx]
