@@ -702,6 +702,7 @@ class Test_MC(DataClass):
                     for interactnum in range(self.numInteractsSiteSpec[siteA, specB]):
                         interactInd = self.SiteSpecInterArray[siteA, specB, interactnum]
                         repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
+                        repClus = self.VclusExp.Num2Clus[repClusInd]
                         repClustSymListInd = self.VclusExp.clust2SpecClus[repClus][0]
                         if self.VclusExp.clus2LenVecClus[repClustSymListInd] == 0:
                             self.assertEqual(self.numVecsInteracts[interactInd], -1)
@@ -728,6 +729,7 @@ class Test_MC(DataClass):
                     for interactnum in range(self.numInteractsSiteSpec[siteB, specA]):
                         interactInd = self.SiteSpecInterArray[siteB, specA, interactnum]
                         repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
+                        repClus = self.VclusExp.Num2Clus[repClusInd]
                         repClustSymListInd = self.VclusExp.clust2SpecClus[repClus][0]
                         if self.VclusExp.clus2LenVecClus[repClustSymListInd] == 0:
                             self.assertEqual(self.numVecsInteracts[interactInd], -1)
