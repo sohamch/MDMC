@@ -585,7 +585,7 @@ class Test_MC(DataClass):
                 if initState[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
                     TransOffSiteCount[TsInteractIdx] += 1
 
-        ijList, dxList = self.VclusExp.KRAexpander.ijList.copy(), self.VclusExp.KRAexpander.dxList.copy()
+        ijList, dxList = self.VclusExp.KRAexpander.jList.copy(), self.VclusExp.KRAexpander.dxList.copy()
         lenVecClus = len(self.VclusExp.vecClus)
 
         # Now, do the expansion
