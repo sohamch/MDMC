@@ -286,45 +286,12 @@ class MCSamplerClass(object):
         siteA, specA = vacSiteInd, self.Nspecs - 1
         siteB = jSite
 
-        del_lamb = np.zeros((lenVecClus, 3))
         assert state[siteA] == specA
 
-        # First, switch off required sites
-        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
-            # check if an interaction is on
-            interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
-            if offsc[interMainInd] == 0:
-                # take away the vectors for this interaction
-                for i in range(numVecsInteracts[interMainInd]):
-                    del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
-            offsc[interMainInd] += 1
+        _, del_lamb = self.DoSwapUpdate(state, siteA, siteB, lenVecClus, offsc,
+                                        numVecsInteracts, VecGroupInteracts, VecsInteracts)
 
-        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
-            interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
-            if offsc[interMainInd] == 0:
-                for i in range(numVecsInteracts[interMainInd]):
-                    del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
-            offsc[interMainInd] += 1
-
-        # Next, switch required sites on
-        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
-            interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
-            offsc[interMainInd] -= 1
-            if offsc[interMainInd] == 0:
-                # add the vectors for this interaction
-                for i in range(numVecsInteracts[interMainInd]):
-                    del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
-
-        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
-            interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
-            offsc[interMainInd] -= 1
-            if offsc[interMainInd] == 0:
-                # add the vectors for this interaction
-                # for interactions with zero vector basis, numVecsInteracts[interMainInd] = -1 and the
-                # loop doesn't run
-                for i in range(numVecsInteracts[interMainInd]):
-                    del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
-        
+        # Then revert back off site count to original values
         self.revert(offsc, state, siteA, siteB)
 
         return del_lamb
