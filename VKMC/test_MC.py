@@ -594,9 +594,10 @@ class Test_MC(DataClass):
         state = initState.copy()
         spec = 2
         beta = 1.0
-        Wbar, Bbar, rates_used = MCSampler_Jit.Expand(state, ijList, dxList, spec, offscjit, TransOffSiteCount,
-               self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts,
-               lenVecClus, beta, self.vacsiteInd, None)
+        Wbar, Bbar, rates_used, delEJumps, delEKRAJumps =\
+            MCSampler_Jit.Expand(state, ijList, dxList, spec, offscjit, TransOffSiteCount,
+                                 self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts,
+                                 lenVecClus, beta, self.vacsiteInd, None)
 
         offscjit2 = MC_JIT.GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
 
@@ -619,9 +620,8 @@ class Test_MC(DataClass):
                 # Go through all the jumps
                 for TInd in range(len(ijList)):
                     # For every jump, reset the offsite count
+                    offscjit = offscjit2.copy()
                     TSOffCount = TransOffSiteCount.copy()
-
-                    delEKRA = 0.0
                     vec1 = np.zeros(3, dtype=float)
                     vec2 = np.zeros(3, dtype=float)
 
@@ -631,10 +631,8 @@ class Test_MC(DataClass):
                     specA = state[siteA]  # the vacancy
                     self.assertEqual(specA, self.NSpec - 1)
                     specB = state[siteB]
+                    delEKRA = self.KRASpecConstants[specB]
                     # get the index of this transition
-                    # self.assertEqual(specB, SpecTransArray[TInd])
-                    # self.assertEqual(siteB, SiteTransArray[TInd])
-
                     jumpInd = self.FinSiteFinSpecJumpInd[siteB, specB]
                     # get the KRA energy for this jump in this state
                     for ptgrpInd in range(self.numJumpPointGroups[jumpInd]):
@@ -759,6 +757,10 @@ class Test_MC(DataClass):
                     # get the rate
                     rate = np.exp(-(0.5 * delE + delEKRA))
                     # test the rate
+                    self.assertAlmostEqual(delEKRA, delEKRAJumps[TInd], 8,
+                                           msg="{} {} {}".format(delEKRA, delEKRAJumps[TInd], TInd))
+                    self.assertAlmostEqual(delE, delEJumps[TInd], 8,
+                                           msg="{} {} {}".format(delE, delEJumps[TInd], TInd))
                     self.assertAlmostEqual(rate, rates_used[TInd], 8)
 
                     # get the dot product
