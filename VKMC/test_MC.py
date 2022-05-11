@@ -594,7 +594,7 @@ class Test_MC(DataClass):
         state = initState.copy()
         spec = 2
         beta = 1.0
-        Wbar, Bbar, _ = MCSampler_Jit.Expand(state, ijList, dxList, spec, offscjit, TransOffSiteCount,
+        Wbar, Bbar, rates_used = MCSampler_Jit.Expand(state, ijList, dxList, spec, offscjit, TransOffSiteCount,
                self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts,
                lenVecClus, beta, self.vacsiteInd, None)
 
@@ -654,9 +654,10 @@ class Test_MC(DataClass):
                         repClustSymListInd = self.VclusExp.clust2SpecClus[repClus][0]
                         if self.VclusExp.clus2LenVecClus[repClustSymListInd] == 0:
                             self.assertEqual(self.numVecsInteracts[interactInd], -1)
-                            continue
-                        vecList = self.VclusExp.clust2vecClus[repClus]
-                        self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
+                            vecList = []
+                        else:
+                            vecList = self.VclusExp.clust2vecClus[repClus]
+                            self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
 
                         for i in range(self.numVecsInteracts[interactInd]):
                             self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
@@ -680,9 +681,10 @@ class Test_MC(DataClass):
                         repClustSymListInd = self.VclusExp.clust2SpecClus[repClus][0]
                         if self.VclusExp.clus2LenVecClus[repClustSymListInd] == 0:
                             self.assertEqual(self.numVecsInteracts[interactInd], -1)
-                            continue
-                        vecList = self.VclusExp.clust2vecClus[repClus]
-                        self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
+                            vecList = []
+                        else:
+                            vecList = self.VclusExp.clust2vecClus[repClus]
+                            self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
 
                         for i in range(self.numVecsInteracts[interactInd]):
                             self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
@@ -706,9 +708,10 @@ class Test_MC(DataClass):
                         repClustSymListInd = self.VclusExp.clust2SpecClus[repClus][0]
                         if self.VclusExp.clus2LenVecClus[repClustSymListInd] == 0:
                             self.assertEqual(self.numVecsInteracts[interactInd], -1)
-                            continue
-                        vecList = self.VclusExp.clust2vecClus[repClus]
-                        self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
+                            vecList = []
+                        else:
+                            vecList = self.VclusExp.clust2vecClus[repClus]
+                            self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
 
                         for i in range(self.numVecsInteracts[interactInd]):
                             self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
@@ -718,7 +721,6 @@ class Test_MC(DataClass):
                         offscjit[interactInd] -= 1
                         if offscjit[interactInd] == 0:
                             delE += self.Interaction2En[interactInd]
-                            vecList = self.VclusExp.clust2vecClus[repClus]
                             for tupInd, tup in enumerate(vecList):
                                 if tup[0] == vs1:
                                     vec1 += self.VecsInteracts[interactInd, tupInd, :]
@@ -733,9 +735,10 @@ class Test_MC(DataClass):
                         repClustSymListInd = self.VclusExp.clust2SpecClus[repClus][0]
                         if self.VclusExp.clus2LenVecClus[repClustSymListInd] == 0:
                             self.assertEqual(self.numVecsInteracts[interactInd], -1)
-                            continue
-                        vecList = self.VclusExp.clust2vecClus[repClus]
-                        self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
+                            vecList = []
+                        else:
+                            vecList = self.VclusExp.clust2vecClus[repClus]
+                            self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
 
                         for i in range(self.numVecsInteracts[interactInd]):
                             self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
@@ -755,11 +758,11 @@ class Test_MC(DataClass):
                                     vec2 += self.VecsInteracts[interactInd, tupInd, :]
                     # get the rate
                     rate = np.exp(-(0.5 * delE + delEKRA))
+                    # test the rate
+                    self.assertAlmostEqual(rate, rates_used[TInd], 8)
+
                     # get the dot product
                     dot = np.dot(vec1, vec2)
-
-                    # get the delta lambda and check for the vector stars
-                    jSite = ijList[TInd]
 
                     Wbar_test[vs1, vs2] += rate*dot
                     if vs1 == 0:
