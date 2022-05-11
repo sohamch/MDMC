@@ -306,6 +306,8 @@ class MCSamplerClass(object):
         
         if RateList is None:
             ratelist = np.zeros(ijList.shape[0])
+            delElist = np.zeros(ijList.shape[0])
+            delEKRAlist = np.zeros(ijList.shape[0])
         else:
             ratelist = RateList.copy()
 
@@ -319,6 +321,9 @@ class MCSamplerClass(object):
             # next, calculate the energy and basis function change due to site swapping
             delE, del_lamb = self.DoSwapUpdate(state, siteA, siteB, lenVecClus, OffSiteCount,
                                                numVecsInteracts, VecGroupInteracts, VecsInteracts)
+
+            # Next, restore OffSiteCounts to original values for next jump
+            self.revert(OffSiteCount, state, siteA, siteB)
             
             # record new rates only if none were provided
             if RateList is None:
@@ -335,6 +340,8 @@ class MCSamplerClass(object):
                             delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
                 
                 ratelist[jumpInd] = np.exp(-(0.5 * delE + delEKRA) * beta)
+                delElist[jumpInd] = delE
+                delEKRAlist[jumpInd] = delEKRA
 
             del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
 
@@ -345,9 +352,6 @@ class MCSamplerClass(object):
                 elif spec == specB:
                     delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], -dxList[jumpInd, :])
 
-            # Next, restore OffSiteCounts to original values for next jump
-            self.revert(OffSiteCount, state, siteA, siteB)
-
         WBar = np.zeros((lenVecClus, lenVecClus))
         for i in range(lenVecClus):
             for j in range(lenVecClus):
@@ -357,6 +361,8 @@ class MCSamplerClass(object):
         for i in range(lenVecClus):
             BBar[i] = np.dot(ratelist, delxDotdelLamb[i, :])
 
+        if RateList is None:
+            return WBar, BBar, ratelist, delElist, delEKRAlist
         return WBar, BBar, ratelist
 
 
