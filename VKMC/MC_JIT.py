@@ -265,7 +265,8 @@ class MCSamplerClass(object):
             offsc[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
 
 
-    def getDelLamb(self, state, offsc, vacSiteInd, jSite, lenVecClus, numVecsInteracts, VecGroupInteracts, VecsInteracts):
+    def getDelLamb(self, state, offsc, vacSiteInd, jSite, lenVecClus,
+                   numVecsInteracts, VecGroupInteracts, VecsInteracts):
         
         siteA, specA = vacSiteInd, self.Nspecs - 1
         siteB = jSite
