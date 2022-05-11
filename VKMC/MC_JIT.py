@@ -266,17 +266,7 @@ class MCSamplerClass(object):
 
             else:
                 # revert back the off site counts, because the state has not changed
-                for interIdx in range(self.numInteractsSiteSpec[siteA, specA]):
-                    OffSiteCount[self.SiteSpecInterArray[siteA, specA, interIdx]] -= 1
-
-                for interIdx in range(self.numInteractsSiteSpec[siteB, specB]):
-                    OffSiteCount[self.SiteSpecInterArray[siteB, specB, interIdx]] -= 1
-
-                for interIdx in range(self.numInteractsSiteSpec[siteA, specB]):
-                    OffSiteCount[self.SiteSpecInterArray[siteA, specB, interIdx]] += 1
-
-                for interIdx in range(self.numInteractsSiteSpec[siteB, specA]):
-                    OffSiteCount[self.SiteSpecInterArray[siteB, specA, interIdx]] += 1
+                self.revert(OffSiteCount, state, siteA, siteB)
 
         return SpecLocations, acceptCount
 
@@ -356,53 +346,12 @@ class MCSamplerClass(object):
         # go through all the transition
 
         for jumpInd in range(ijList.shape[0]):
-            del_lamb = np.zeros((lenVecClus, 3))
-
             # Get the transition site and species
             siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
 
-            # next, calculate the energy change due to site swapping
-
-            delE = 0.0
-            # Switch required sites off
-            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
-                # check if an interaction is on
-                interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
-                if OffSiteCount[interMainInd] == 0:
-                    delE -= self.Interaction2En[interMainInd]
-                    # take away the vectors for this interaction
-                    for i in range(numVecsInteracts[interMainInd]):
-                        del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
-                OffSiteCount[interMainInd] += 1
-
-            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
-                interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
-                if OffSiteCount[interMainInd] == 0:
-                    delE -= self.Interaction2En[interMainInd]
-                    for i in range(numVecsInteracts[interMainInd]):
-                        del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
-                OffSiteCount[interMainInd] += 1
-
-            # Next, switch required sites on
-            for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
-                interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
-                OffSiteCount[interMainInd] -= 1
-                if OffSiteCount[interMainInd] == 0:
-                    delE += self.Interaction2En[interMainInd]
-                    # add the vectors for this interaction
-                    for i in range(numVecsInteracts[interMainInd]):
-                        del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
-
-            for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
-                interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
-                OffSiteCount[interMainInd] -= 1
-                if OffSiteCount[interMainInd] == 0:
-                    delE += self.Interaction2En[interMainInd]
-                    # add the vectors for this interaction
-                    # for interactions with zero vector basis, numVecsInteracts[interMainInd] = -1 and the
-                    # loop doesn't run
-                    for i in range(numVecsInteracts[interMainInd]):
-                        del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
+            # next, calculate the energy and basis function change due to site swapping
+            delE, del_lamb = self.DoSwapUpdate(state, siteA, siteB, lenVecClus, OffSiteCount,
+                                               numVecsInteracts, VecGroupInteracts, VecsInteracts)
             
             # record new rates only if none were provided
             if RateList is None:
