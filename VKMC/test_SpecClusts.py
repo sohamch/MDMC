@@ -5,7 +5,7 @@ import itertools
 from ClustSpec import ClusterSpecies
 import Cluster_Expansion
 import unittest
-import time
+
 
 class test_Vector_Cluster_Expansion(unittest.TestCase):
 
@@ -17,7 +17,7 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         a0 = 1
         self.a0 = a0
         self.crys = crystal.Crystal.BCC(a0, chemistry="A")
-        jumpCutoff = 1.01*np.sqrt(3)*a0/2
+        jumpCutoff = 1.01*np.sqrt(3./4.)*a0
         self.jnetBCC = self.crys.jumpnetwork(0, jumpCutoff)
         self.N_units = 8
         self.superlatt = self.N_units * np.eye(3, dtype=int)
@@ -28,12 +28,14 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         self.vacsiteInd = self.superBCC.index(np.zeros(3, dtype=int), (0, 0))[0]
         self.clusexp = cluster.makeclusters(self.crys, 1.01*a0, self.MaxOrder)
 
-        TScombShellRange = 1  # upto 1nn combined shell
-        TSnnRange = 4
-        TScutoff = np.sqrt(3) * a0  # 5th nn cutoff
+        # TScombShellRange = 1  # upto 1nn combined shell
+        # TSnnRange = 4
+        # TScutoff = np.sqrt(3) * a0  # 5th nn cutoff
 
-        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.NSpec, self.vacsite, self.MaxOrder,
-        TScutoff=None, TScombShellRange=None, TSnnRange=None, jumpnetwork=None)
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.NSpec,
+                                                                 self.vacsite, self.MaxOrder, TScutoff=None,
+                                                                 TScombShellRange=None, TSnnRange=None,
+                                                                 jumpnetwork=None)
 
         self.VclusExp.generateSiteSpecInteracts()
         self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
@@ -55,13 +57,7 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
 
         # check that every cluster appears just once in just one symmetry list
         clList = [cl for clList in self.VclusExp.SpecClusters for cl in clList]
-
-        for cl1 in clList:
-            count = 0
-            for cl2 in clList:
-                if cl1 == cl2:
-                    count += 1
-            assert count == 1 # check that the cluster occurs only once
+        self.assertEqual(len(clList), len(set(clList)))
 
         # let's test if the number of symmetric site clusters generated is the same
         sitetuples = set([])
@@ -87,21 +83,6 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
 
         self.assertEqual(total_reps, len(sitetuples), msg="{}, {}".format(total_reps, len(sitetuples)))
 
-        # This test is specifically for a BCC, 3-spec, 3-order, 2nn cluster expansion
-        oneCounts = 0
-        twocounts = 0
-        threecounts = 0
-        for siteList in sitesFromClusexp:
-            ln=len(siteList)
-            if ln == 1:
-                oneCounts += 1
-            elif ln == 2:
-                twocounts += 1
-            elif ln == 3:
-                threecounts += 1
-
-        self.assertEqual((oneCounts, twocounts, threecounts), (1, 14, 24))
-
         # Go through all the site clusters:
         total_spec_clusts = 0
         for clSites in sitesFromClusexp:
@@ -113,12 +94,19 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
             # Now, for two and three body clusters:
             # we can have max one vacancy at a site, and any other site can have any other occupancy.
             # or we can have no vacancy at all in which case it's just (Nspec - 1)**ordr
-            # Also, Since we are in BCC lattices, we can symmetrically permute two sites in every two or three body cluster
+            # Also, we can symmetrically permute two sites in every two or three body cluster
             total_spec_clusts += (ordr * (self.NSpec - 1)**(ordr - 1) + (self.NSpec-1)**ordr)//2
         #
         total_code = sum([len(lst) for lst in self.VclusExp.SpecClusters])
         #
         self.assertEqual(total_code, total_spec_clusts, msg="{}, {}".format(total_code, total_spec_clusts))
+        print("Done assignment tests")
+
+    def testBCC_counts(self):
+        # This test is specifically for a BCC, 3-spec, 3-order, 2nn cluster expansion
+        oneCounts = 0
+        twocounts = 0
+        threecounts = 0
 
         oneBody = 0
         TwoBody = 0
@@ -127,7 +115,26 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         oneBodyList = []
         TwoBodyList = []
         ThreeBodyList = []
-        # Check some of the numbers explicitly - this part is the definitive test
+
+        sitesFromClusexp = set([])
+        for clSet in self.clusexp:
+            for cl in list(clSet):
+                for g in self.VclusExp.crys.G:
+                    newsitelist = tuple([site.g(self.VclusExp.crys, g) for site in cl.sites])
+                    Rtrans = sum([site.R for site in newsitelist])//len(newsitelist)
+                    sitesFromClusexp.add(tuple([site - Rtrans for site in newsitelist]))
+
+        for siteList in sitesFromClusexp:
+            ln = len(siteList)
+            if ln == 1:
+                oneCounts += 1
+            elif ln == 2:
+                twocounts += 1
+            elif ln == 3:
+                threecounts += 1
+
+        self.assertEqual((oneCounts, twocounts, threecounts), (1, 14, 24))
+        print("Checking cluster counts")
         for clusterList in self.VclusExp.SpecClusters:
             for clust in clusterList:
                 order = len(clust.SiteSpecs)
@@ -171,8 +178,6 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
 
         self.assertEqual(vacCount, (3 * 2 * 2) * 12)
         self.assertEqual(nonVacCount, (2 * 2 * 2) * 12)
-        print("Done assignment tests")
-
 
     def test_genvecs(self):
         """
@@ -293,8 +298,9 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         # First, we generate the Jit arrays
 
         # First, the chemical data
-        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, \
-        numInteractsSiteSpec, SiteSpecInterArray = self.VclusExp.makeJitInteractionsData(self.Energies)
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,\
+        numInteractsSiteSpec, SiteSpecInterArray =\
+            self.VclusExp.makeJitInteractionsData(self.Energies)
 
         # Next, the vector basis data
         numVecsInteracts, VecsInteracts, VecGroupInteracts = self.VclusExp.makeJitVectorBasisData()
@@ -365,7 +371,6 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         for key, item in repclustCount.items():
             self.assertEqual(item, len(self.VclusExp.sup.mobilepos))
 
-
         print("checked interactions")
 
         # Now, test the vector basis and energy information for the clusters
@@ -397,16 +402,8 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
             for spec in range(self.NSpec):
                 numInteractStored = numInteractsSiteSpec[siteInd, spec]
                 # get the actual count
-                ci, R = self.VclusExp.sup.ciR(siteInd)
+                # ci, R = self.VclusExp.sup.ciR(siteInd)
                 self.assertEqual(len(self.VclusExp.SiteSpecInteractIds[(siteInd, spec)]), numInteractStored)
                 for IdxOfInteract in range(numInteractStored):
                     interactMainIndex = SiteSpecInterArray[siteInd, spec, IdxOfInteract]
                     self.assertEqual(interactMainIndex, self.VclusExp.SiteSpecInteractIds[(siteInd, spec)][IdxOfInteract])
-
-        
-
-
-
-
-
-

@@ -42,9 +42,11 @@ class Test_Make_Arrays(unittest.TestCase):
         TSnnRange = 4
         TScutoff = np.sqrt(3) * a0  # 5th nn cutoff
 
-        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(superFCC, clusexp, NSpec, vacsite, MaxOrder, TclusExp=True,
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(
+            self.superBCC, self.clusexp, self.NSpec, self.vacsite, self.MaxOrder,
                 TScutoff=TScutoff, TScombShellRange=TScombShellRange,
-                TSnnRange=TSnnRange, jumpnetwork=self.jnetBCC)
+                TSnnRange=TSnnRange, jumpnetwork=self.jnetBCC, TclusExp=True
+        )
 
         self.TScombShellRange = TScombShellRange
         self.TSnnRange = TSnnRange
@@ -159,8 +161,9 @@ class Test_Make_Arrays_FCC(Test_Make_Arrays):
         TSnnRange = 4
         TScutoff = np.sqrt(2) * a0  # 4th nn cutoff
 
-        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superFCC, self.clusexp, TScutoff, TScombShellRange, TSnnRange,
-                                                                 self.jnetFCC, self.NSpec, self.vacsite, self.MaxOrder)
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superFCC, self.clusexp, self.NSpec, self.vacsite,
+                                                                 self.MaxOrder, TScutoff, TScombShellRange, TSnnRange,
+                                                                 self.jnetFCC, TclusExp=True)
 
         self.TScombShellRange = TScombShellRange
         self.TSnnRange = TSnnRange
@@ -199,10 +202,10 @@ class Test_MC(DataClass):
         # randLogarr = np.log(np.random.rand(Nswaptrials))
 
         # If we want to ensure acceptance, we keep it really small
-        # randLogarr = np.ones(Nswaptrials)*-1000.0
+        randLogarr = np.ones(Nswaptrials)*-1000.0
 
         # If we want to ensure rejection, we keep it really big
-        randLogarr = np.ones(Nswaptrials) * 1000.0
+        # randLogarr = np.ones(Nswaptrials) * 1000.0
 
         # Put in tests for Jit calculations
         # make the offsite counts
@@ -563,318 +566,214 @@ class Test_MC(DataClass):
         self.assertAlmostEqual(EnFin, EnInit + MCSampler_Jit.delETotal)
         self.assertAlmostEqual(EnFin, EnSwap)
 
-    # def test_exit_states(self):
-    #     # First, create a random state
-    #     initState = self.initState
-    #     initCopy = initState.copy()
-    #     MCSampler_Jit = self.MCSampler_Jit
-    #
-    #     ijList = self.VclusExp.KRAexpander.ijList
-    #     dxList = self.VclusExp.KRAexpander.dxList
-    #
-    #     # get the offsite counts
-    #     state = initCopy.copy()
-    #     En1 = 0.
-    #     offsc = np.zeros_like(self.numSitesInteracts)
-    #     for interactIdx in range(self.numSitesInteracts.shape[0]):
-    #         numSites = self.numSitesInteracts[interactIdx]
-    #         offcount = 0
-    #         for intSiteind in range(numSites):
-    #             interSite = self.SupSitesInteracts[interactIdx, intSiteind]
-    #             interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
-    #             if state[interSite] != interSpec:
-    #                 offcount += 1
-    #         offsc[interactIdx] = offcount
-    #         if offcount == 0:
-    #             En1 += self.Interaction2En[interactIdx]
-    #
-    #     # make the TS offsite counts
-    #     TSoffsc = np.zeros(len(MCSampler_Jit.TSInteractSites))
-    #     for TsInteractIdx in range(len(MCSampler_Jit.TSInteractSites)):
-    #         TSoffsc[TsInteractIdx] = 0
-    #         for Siteind in range(MCSampler_Jit.numSitesTSInteracts[TsInteractIdx]):
-    #             if state[MCSampler_Jit.TSInteractSites[TsInteractIdx, Siteind]] != MCSampler_Jit.TSInteractSpecs[TsInteractIdx, Siteind]:
-    #                 TSoffsc[TsInteractIdx] += 1
-    #
-    #     Nsites = self.VclusExp.Nsites
-    #     # Next, get the exit data
-    #     statesTrans, ratelist, Specdisps = MCSampler_Jit.getExitData(state, ijList, dxList, offsc, TSoffsc, 1.0, Nsites)
-    #
-    #     self.assertEqual(len(statesTrans), ijList.shape[0])
-    #     # check that the species have been exchanged properly
-    #     for jInd in range(ijList.shape[0]):
-    #         stateFin = statesTrans[jInd, :]
-    #         finSite = ijList[jInd]
-    #         # Check that in the final state the correct species have been swapped
-    #         self.assertEqual(stateFin[finSite], state[self.vacsiteInd])
-    #         self.assertEqual(stateFin[self.vacsiteInd], state[finSite])
-    #
-    #         specB = state[finSite]  # the species that has moved
-    #         dx = Specdisps[jInd, specB, :]
-    #         self.assertTrue(np.allclose(dx, -dxList[jInd]))
-    #
-    #         # Next, get the KRA energies
-    #
-    #         # Check which transition this final site, final spec pair corresponds to
-    #         transInd = self.FinSiteFinSpecJumpInd[finSite, specB]
-    #         delEKRA = 0.
-    #         for tsPtGpInd in range(self.numJumpPointGroups[transInd]):
-    #             for interactInd in range(self.numTSInteractsInPtGroups[transInd, tsPtGpInd]):
-    #                 # Check if this interaction is on
-    #                 interactMainInd = self.JumpInteracts[transInd, tsPtGpInd, interactInd]
-    #                 if TSoffsc[interactMainInd] == 0:
-    #                     delEKRA += self.Jump2KRAEng[transInd, tsPtGpInd, interactInd]
-    #
-    #         # Now check it without the arrays
-    #         self.assertEqual(self.VclusExp.KRAexpander.jump2Index[(self.vacsiteInd, finSite, specB)], transInd)
-    #
-    #         # Get the point groups
-    #         TSptGrps = self.VclusExp.KRAexpander.clusterSpeciesJumps[(self.vacsiteInd, finSite, specB)]
-    #         EnKRA = 0.
-    #         for TsPtGpInd, (type, TSinteractList) in zip(itertools.count(), TSptGrps.items()):
-    #             specList = [self.NSpec - 1, specB] + [spec for spec in spectup]
-    #             # Go through the TS clusters
-    #             for interactInd, TSClust in enumerate(TSinteractList):
-    #                 interact = tuple([(self.VclusExp.sup.index(site.R, site.ci)[0], spec)
-    #                                   for site, spec in zip(TSClust.sites, specList)])
-    #
-    #                 # Check if this interaction is on
-    #                 offcount = 0
-    #                 for (site, spec) in interact:
-    #                     if state[site] != spec:
-    #                         offcount += 1
-    #
-    #                 # Assert the offcount
-    #                 interactMainInd = self.JumpInteracts[transInd, TsPtGpInd, interactInd]
-    #                 self.assertEqual(TSoffsc[interactMainInd], offcount)
-    #
-    #                 if offcount == 0:
-    #                     EnKRA += self.KRAEnergies[transInd][TsPtGpInd]
-    #
-    #         self.assertAlmostEqual(EnKRA, delEKRA, msg="\n{}".format(self.KRAEnergies))
-    #
-    #         # Next, check that the rates satisfy detailed balance
-    #         stateExit = statesTrans[jInd]
-    #         # Get the offsite count of this state and its energy
-    #         En2 = 0.
-    #         for interactIdx in range(self.numSitesInteracts.shape[0]):
-    #             numSites = self.numSitesInteracts[interactIdx]
-    #             offcount = 0
-    #             for intSiteind in range(numSites):
-    #                 interSite = self.SupSitesInteracts[interactIdx, intSiteind]
-    #                 interSpec = self.SpecOnInteractSites[interactIdx, intSiteind]
-    #                 if stateExit[interSite] != interSpec:
-    #                     offcount += 1
-    #             if offcount == 0:
-    #                 En2 += self.Interaction2En[interactIdx]
-    #
-    #         delE = En2 - En1
-    #         rate = np.exp(-1.0*(0.5*delE + delEKRA))
-    #         self.assertAlmostEqual(rate, ratelist[jInd])
+    def test_expansion(self):
+        """
+        To test if Wbar and Bbar are computed correctly
+        """
+        # Compute them with the dicts and match with what comes out from the code.
+        # Wbar_test = np.zeros()
 
-    # def test_expansion(self):
-    #     """
-    #     To test if Wbar and Bbar are computed correctly
-    #     """
-    #     # Compute them with the dicts and match with what comes out from the code.
-    #     # Wbar_test = np.zeros()
-    #
-    #     initState = self.initState
-    #
-    #     MCSampler_Jit = self.MCSampler_Jit
-    #
-    #     TransOffSiteCount = np.zeros(len(self.TSInteractSites), dtype=int)
-    #
-    #     # Build TS offsites
-    #     for TsInteractIdx in range(len(TransOffSiteCount)):
-    #         for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
-    #             if initState[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
-    #                 TransOffSiteCount[TsInteractIdx] += 1
-    #
-    #     ijList, dxList = self.VclusExp.KRAexpander.ijList.copy(), self.VclusExp.KRAexpander.dxList.copy()
-    #     lenVecClus = len(self.VclusExp.vecClus)
-    #
-    #     # Now, do the expansion
-    #     offscjit = MC_JIT.GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
-    #     state = initState.copy()
-    #     spec = 2
-    #     beta = 1.0
-    #     Wbar, Bbar = MCSampler_Jit.Expand(state, ijList, dxList, spec, offscjit, TransOffSiteCount,
-    #            self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts,
-    #            lenVecClus, beta, vacSiteInd=self.vacsiteInd)
-    #
-    #     offscjit2 = MC_JIT.GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
-    #
-    #     # Check that the offsitecounts have been correctly reverted and state is unchanged.
-    #
-    #     self.assertTrue(np.array_equal(offscjit2, offscjit))
-    #     self.assertTrue(np.array_equal(state, initState))
-    #
-    #     self.assertTrue(np.array_equal(self.SiteSpecInterArray, MCSampler_Jit.SiteSpecInterArray))
-    #     self.assertTrue(np.array_equal(self.numInteractsSiteSpec, MCSampler_Jit.numInteractsSiteSpec))
-    #     self.assertTrue(np.allclose(self.Interaction2En, MCSampler_Jit.Interaction2En))
-    #
-    #     print("Starting TS tests")
-    #     Wbar_test = np.zeros_like(Wbar, dtype=float)
-    #     Bbar_test = np.zeros_like(Bbar, dtype=float)
-    #
-    #     # Now test the rate expansion by explicitly constructing it
-    #     for vs1 in range(len(self.VclusExp.vecVec)):
-    #         for vs2 in range(len(self.VclusExp.vecVec)):
-    #             # Go through all the jumps
-    #             for TInd in range(len(ijList)):
-    #                 # For every jump, reset the offsite count
-    #                 TSOffCount = TransOffSiteCount.copy()
-    #
-    #                 delEKRA = 0.0
-    #                 vec1 = np.zeros(3, dtype=float)
-    #                 vec2 = np.zeros(3, dtype=float)
-    #
-    #                 siteB = ijList[TInd]
-    #                 siteA = self.vacsiteInd
-    #                 # Check that the initial site is always the vacancy
-    #                 specA = state[siteA]  # the vacancy
-    #                 self.assertEqual(specA, self.NSpec - 1)
-    #                 specB = state[siteB]
-    #                 # get the index of this transition
-    #                 # self.assertEqual(specB, SpecTransArray[TInd])
-    #                 # self.assertEqual(siteB, SiteTransArray[TInd])
-    #
-    #                 jumpInd = self.FinSiteFinSpecJumpInd[siteB, specB]
-    #                 # get the KRA energy for this jump in this state
-    #                 for ptgrpInd in range(self.numJumpPointGroups[jumpInd]):
-    #                     for ptGpInteractInd in range(self.numTSInteractsInPtGroups[jumpInd, ptgrpInd]):
-    #                         # See if the interaction is on
-    #                         offcount = TSOffCount[self.JumpInteracts[jumpInd, ptgrpInd, ptGpInteractInd]]
-    #                         if offcount == 0:
-    #                             delEKRA += self.Jump2KRAEng[jumpInd, ptgrpInd, ptGpInteractInd]
-    #
-    #                 # Now do the site swaps and calculate the energy
-    #                 delE = 0.0
-    #
-    #                 for interactnun in range(self.numInteractsSiteSpec[siteA, specA]):
-    #                     interactInd = self.SiteSpecInterArray[siteA, specA, interactnun]
-    #                     repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
-    #                     repClus = self.VclusExp.Num2Clus[repClusInd]
-    #                     vecList = self.VclusExp.clust2vecClus[repClus]
-    #
-    #                     if len(vecList) > 0:
-    #                         self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
-    #                     else:
-    #                         self.assertEqual(self.numVecsInteracts[interactInd], -1)
-    #
-    #                     for i in range(self.numVecsInteracts[interactInd]):
-    #                         self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
-    #                                                     self.VclusExp.vecVec[vecList[i][0]][vecList[i][1]]))
-    #                         self.assertEqual(self.VecGroupInteracts[interactInd, i], vecList[i][0])
-    #
-    #                     if offscjit[interactInd] == 0:
-    #                         delE -= self.Interaction2En[interactInd]
-    #                         for tupInd, tup in enumerate(vecList):
-    #                             if tup[0] == vs1:
-    #                                 vec1 -= self.VecsInteracts[interactInd, tupInd, :]
-    #                         for tupInd, tup in enumerate(vecList):
-    #                             if tup[0] == vs2:
-    #                                 vec2 -= self.VecsInteracts[interactInd, tupInd, :]
-    #                     offscjit[interactInd] += 1
-    #
-    #                 for interactnun in range(self.numInteractsSiteSpec[siteB, specB]):
-    #                     interactInd = self.SiteSpecInterArray[siteB, specB, interactnun]
-    #                     repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
-    #                     repClus = self.VclusExp.Num2Clus[repClusInd]
-    #                     vecList = self.VclusExp.clust2vecClus[repClus]
-    #
-    #                     if len(vecList) > 0:
-    #                         self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
-    #                     else:
-    #                         self.assertEqual(self.numVecsInteracts[interactInd], -1)
-    #
-    #                     for i in range(self.numVecsInteracts[interactInd]):
-    #                         self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
-    #                                                     self.VclusExp.vecVec[vecList[i][0]][vecList[i][1]]))
-    #                         self.assertEqual(self.VecGroupInteracts[interactInd, i], vecList[i][0])
-    #
-    #                     if offscjit[interactInd] == 0:
-    #                         delE -= self.Interaction2En[interactInd]
-    #                         for tupInd, tup in enumerate(vecList):
-    #                             if tup[0] == vs1:
-    #                                 vec1 -= self.VecsInteracts[interactInd, tupInd, :]
-    #                         for tupInd, tup in enumerate(vecList):
-    #                             if tup[0] == vs2:
-    #                                 vec2 -= self.VecsInteracts[interactInd, tupInd, :]
-    #                     offscjit[interactInd] += 1
-    #
-    #                 for interactnun in range(self.numInteractsSiteSpec[siteA, specB]):
-    #                     interactInd = self.SiteSpecInterArray[siteA, specB, interactnun]
-    #
-    #                     repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
-    #                     repClus = self.VclusExp.Num2Clus[repClusInd]
-    #
-    #                     vecList = self.VclusExp.clust2vecClus[repClus]
-    #
-    #                     if len(vecList) > 0:
-    #                         self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
-    #                     else:
-    #                         self.assertEqual(self.numVecsInteracts[interactInd], -1)
-    #
-    #                     for i in range(self.numVecsInteracts[interactInd]):
-    #                         self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
-    #                                                     self.VclusExp.vecVec[vecList[i][0]][vecList[i][1]]))
-    #                         self.assertEqual(self.VecGroupInteracts[interactInd, i], vecList[i][0])
-    #
-    #                     offscjit[interactInd] -= 1
-    #                     if offscjit[interactInd] == 0:
-    #                         delE += self.Interaction2En[interactInd]
-    #                         vecList = self.VclusExp.clust2vecClus[repClus]
-    #                         for tupInd, tup in enumerate(vecList):
-    #                             if tup[0] == vs1:
-    #                                 vec1 += self.VecsInteracts[interactInd, tupInd, :]
-    #                         for tupInd, tup in enumerate(vecList):
-    #                             if tup[0] == vs2:
-    #                                 vec2 += self.VecsInteracts[interactInd, tupInd, :]
-    #
-    #                 for interactnun in range(self.numInteractsSiteSpec[siteB, specA]):
-    #                     interactInd = self.SiteSpecInterArray[siteB, specA, interactnun]
-    #
-    #                     repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
-    #                     repClus = self.VclusExp.Num2Clus[repClusInd]
-    #
-    #                     vecList = self.VclusExp.clust2vecClus[repClus]
-    #
-    #                     if len(vecList) > 0:
-    #                         self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
-    #                     else:
-    #                         self.assertEqual(self.numVecsInteracts[interactInd], -1)
-    #
-    #                     for i in range(self.numVecsInteracts[interactInd]):
-    #                         self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
-    #                                                     self.VclusExp.vecVec[vecList[i][0]][vecList[i][1]]))
-    #                         self.assertEqual(self.VecGroupInteracts[interactInd, i], vecList[i][0])
-    #
-    #                     offscjit[interactInd] -= 1
-    #                     if offscjit[interactInd] == 0:
-    #                         delE += self.Interaction2En[interactInd]
-    #                         for tupInd, tup in enumerate(vecList):
-    #                             if tup[0] == vs1:
-    #                                 self.assertEqual(self.VecGroupInteracts[interactInd, tupInd], vs1)
-    #                                 vec1 += self.VecsInteracts[interactInd, tupInd, :]
-    #                         for tupInd, tup in enumerate(vecList):
-    #                             if tup[0] == vs2:
-    #                                 self.assertEqual(self.VecGroupInteracts[interactInd, tupInd], vs2)
-    #                                 vec2 += self.VecsInteracts[interactInd, tupInd, :]
-    #                 # get the rate
-    #                 rate = np.exp(-(0.5 * delE + delEKRA))
-    #                 # get the dot product
-    #                 dot = np.dot(vec1, vec2)
-    #
-    #                 Wbar_test[vs1, vs2] += rate*dot
-    #                 if vs1 == 0:
-    #                     Bbar_test[vs2] += rate*np.dot(dxList[TInd], vec2)
-    #
-    #             self.assertAlmostEqual(Wbar[vs1, vs2], Wbar_test[vs1, vs2], 8,
-    #                                    msg="\n{} {}".format(Wbar[vs1, vs2], Wbar_test[vs1, vs2]))
-    #
-    #     self.assertTrue(np.allclose(Bbar, Bbar_test))
+        initState = self.initState
+
+        MCSampler_Jit = self.MCSampler_Jit
+
+        TransOffSiteCount = np.zeros(len(self.TSInteractSites), dtype=int)
+
+        # Build TS offsites
+        for TsInteractIdx in range(len(TransOffSiteCount)):
+            for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
+                if initState[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
+                    TransOffSiteCount[TsInteractIdx] += 1
+
+        ijList = np.array(self.VclusExp.KRAexpander.jList)
+        dxList = np.array(self.VclusExp.KRAexpander.dxList)
+        lenVecClus = len(self.VclusExp.vecClus)
+
+        # Now, do the expansion
+        offscjit = MC_JIT.GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
+        state = initState.copy()
+        spec = 2
+        beta = 1.0
+        Wbar, Bbar, rates_used, delEJumps, delEKRAJumps =\
+            MCSampler_Jit.Expand(state, ijList, dxList, spec, offscjit, TransOffSiteCount,
+                                 self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts,
+                                 lenVecClus, beta, self.vacsiteInd, None)
+
+        offscjit2 = MC_JIT.GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
+
+        # Check that the offsitecounts have been correctly reverted and state is unchanged.
+
+        self.assertTrue(np.array_equal(offscjit2, offscjit))
+        self.assertTrue(np.array_equal(state, initState))
+
+        self.assertTrue(np.array_equal(self.SiteSpecInterArray, MCSampler_Jit.SiteSpecInterArray))
+        self.assertTrue(np.array_equal(self.numInteractsSiteSpec, MCSampler_Jit.numInteractsSiteSpec))
+        self.assertTrue(np.allclose(self.Interaction2En, MCSampler_Jit.Interaction2En))
+
+        print("Starting TS tests")
+        Wbar_test = np.zeros_like(Wbar, dtype=float)
+        Bbar_test = np.zeros_like(Bbar, dtype=float)
+
+        # Now test the rate expansion by explicitly constructing it
+        for vs1 in range(len(self.VclusExp.vecVec)):
+            for vs2 in range(len(self.VclusExp.vecVec)):
+                # Go through all the jumps
+                for TInd in range(len(ijList)):
+                    # For every jump, reset the offsite count
+                    offscjit = offscjit2.copy()
+                    TSOffCount = TransOffSiteCount.copy()
+                    vec1 = np.zeros(3, dtype=float)
+                    vec2 = np.zeros(3, dtype=float)
+
+                    siteB = ijList[TInd]
+                    siteA = self.vacsiteInd
+                    # Check that the initial site is always the vacancy
+                    specA = state[siteA]  # the vacancy
+                    self.assertEqual(specA, self.NSpec - 1)
+                    specB = state[siteB]
+                    delEKRA = self.KRASpecConstants[specB]
+                    # get the index of this transition
+                    jumpInd = self.FinSiteFinSpecJumpInd[siteB, specB]
+                    # get the KRA energy for this jump in this state
+                    for ptgrpInd in range(self.numJumpPointGroups[jumpInd]):
+                        for ptGpInteractInd in range(self.numTSInteractsInPtGroups[jumpInd, ptgrpInd]):
+                            # See if the interaction is on
+                            offcount = TSOffCount[self.JumpInteracts[jumpInd, ptgrpInd, ptGpInteractInd]]
+                            if offcount == 0:
+                                delEKRA += self.Jump2KRAEng[jumpInd, ptgrpInd, ptGpInteractInd]
+
+                    # Now do the site swaps and calculate the energy
+                    delE = 0.0
+
+                    for interactnum in range(self.numInteractsSiteSpec[siteA, specA]):
+                        interactInd = self.SiteSpecInterArray[siteA, specA, interactnum]
+                        repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
+                        repClus = self.VclusExp.Num2Clus[repClusInd]
+                        repClustSymListInd = self.VclusExp.clust2SpecClus[repClus][0]
+                        if self.VclusExp.clus2LenVecClus[repClustSymListInd] == 0:
+                            self.assertEqual(self.numVecsInteracts[interactInd], -1)
+                            vecList = []
+                        else:
+                            vecList = self.VclusExp.clust2vecClus[repClus]
+                            self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
+
+                        for i in range(self.numVecsInteracts[interactInd]):
+                            self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
+                                                        self.VclusExp.vecVec[vecList[i][0]][vecList[i][1]]))
+                            self.assertEqual(self.VecGroupInteracts[interactInd, i], vecList[i][0])
+
+                        if offscjit[interactInd] == 0:
+                            delE -= self.Interaction2En[interactInd]
+                            for tupInd, tup in enumerate(vecList):
+                                if tup[0] == vs1:
+                                    vec1 -= self.VecsInteracts[interactInd, tupInd, :]
+                            for tupInd, tup in enumerate(vecList):
+                                if tup[0] == vs2:
+                                    vec2 -= self.VecsInteracts[interactInd, tupInd, :]
+                        offscjit[interactInd] += 1
+
+                    for interactnum in range(self.numInteractsSiteSpec[siteB, specB]):
+                        interactInd = self.SiteSpecInterArray[siteB, specB, interactnum]
+                        repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
+                        repClus = self.VclusExp.Num2Clus[repClusInd]
+                        repClustSymListInd = self.VclusExp.clust2SpecClus[repClus][0]
+                        if self.VclusExp.clus2LenVecClus[repClustSymListInd] == 0:
+                            self.assertEqual(self.numVecsInteracts[interactInd], -1)
+                            vecList = []
+                        else:
+                            vecList = self.VclusExp.clust2vecClus[repClus]
+                            self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
+
+                        for i in range(self.numVecsInteracts[interactInd]):
+                            self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
+                                                        self.VclusExp.vecVec[vecList[i][0]][vecList[i][1]]))
+                            self.assertEqual(self.VecGroupInteracts[interactInd, i], vecList[i][0])
+
+                        if offscjit[interactInd] == 0:
+                            delE -= self.Interaction2En[interactInd]
+                            for tupInd, tup in enumerate(vecList):
+                                if tup[0] == vs1:
+                                    vec1 -= self.VecsInteracts[interactInd, tupInd, :]
+                            for tupInd, tup in enumerate(vecList):
+                                if tup[0] == vs2:
+                                    vec2 -= self.VecsInteracts[interactInd, tupInd, :]
+                        offscjit[interactInd] += 1
+
+                    for interactnum in range(self.numInteractsSiteSpec[siteA, specB]):
+                        interactInd = self.SiteSpecInterArray[siteA, specB, interactnum]
+                        repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
+                        repClus = self.VclusExp.Num2Clus[repClusInd]
+                        repClustSymListInd = self.VclusExp.clust2SpecClus[repClus][0]
+                        if self.VclusExp.clus2LenVecClus[repClustSymListInd] == 0:
+                            self.assertEqual(self.numVecsInteracts[interactInd], -1)
+                            vecList = []
+                        else:
+                            vecList = self.VclusExp.clust2vecClus[repClus]
+                            self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
+
+                        for i in range(self.numVecsInteracts[interactInd]):
+                            self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
+                                                        self.VclusExp.vecVec[vecList[i][0]][vecList[i][1]]))
+                            self.assertEqual(self.VecGroupInteracts[interactInd, i], vecList[i][0])
+
+                        offscjit[interactInd] -= 1
+                        if offscjit[interactInd] == 0:
+                            delE += self.Interaction2En[interactInd]
+                            for tupInd, tup in enumerate(vecList):
+                                if tup[0] == vs1:
+                                    vec1 += self.VecsInteracts[interactInd, tupInd, :]
+                            for tupInd, tup in enumerate(vecList):
+                                if tup[0] == vs2:
+                                    vec2 += self.VecsInteracts[interactInd, tupInd, :]
+
+                    for interactnum in range(self.numInteractsSiteSpec[siteB, specA]):
+                        interactInd = self.SiteSpecInterArray[siteB, specA, interactnum]
+                        repClusInd = self.VclusExp.InteractionId2ClusId[interactInd]
+                        repClus = self.VclusExp.Num2Clus[repClusInd]
+                        repClustSymListInd = self.VclusExp.clust2SpecClus[repClus][0]
+                        if self.VclusExp.clus2LenVecClus[repClustSymListInd] == 0:
+                            self.assertEqual(self.numVecsInteracts[interactInd], -1)
+                            vecList = []
+                        else:
+                            vecList = self.VclusExp.clust2vecClus[repClus]
+                            self.assertEqual(self.numVecsInteracts[interactInd], len(vecList))
+
+                        for i in range(self.numVecsInteracts[interactInd]):
+                            self.assertTrue(np.allclose(self.VecsInteracts[interactInd, i, :],
+                                                        self.VclusExp.vecVec[vecList[i][0]][vecList[i][1]]))
+                            self.assertEqual(self.VecGroupInteracts[interactInd, i], vecList[i][0])
+
+                        offscjit[interactInd] -= 1
+                        if offscjit[interactInd] == 0:
+                            delE += self.Interaction2En[interactInd]
+                            for tupInd, tup in enumerate(vecList):
+                                if tup[0] == vs1:
+                                    self.assertEqual(self.VecGroupInteracts[interactInd, tupInd], vs1)
+                                    vec1 += self.VecsInteracts[interactInd, tupInd, :]
+                            for tupInd, tup in enumerate(vecList):
+                                if tup[0] == vs2:
+                                    self.assertEqual(self.VecGroupInteracts[interactInd, tupInd], vs2)
+                                    vec2 += self.VecsInteracts[interactInd, tupInd, :]
+                    # get the rate
+                    rate = np.exp(-(0.5 * delE + delEKRA))
+                    # test the rate
+                    self.assertAlmostEqual(delEKRA, delEKRAJumps[TInd], 8,
+                                           msg="{} {} {}".format(delEKRA, delEKRAJumps[TInd], TInd))
+                    self.assertAlmostEqual(delE, delEJumps[TInd], 8,
+                                           msg="{} {} {}".format(delE, delEJumps[TInd], TInd))
+                    self.assertAlmostEqual(rate, rates_used[TInd], 8)
+
+                    # get the dot product
+                    dot = np.dot(vec1, vec2)
+
+                    Wbar_test[vs1, vs2] += rate*dot
+                    if vs1 == 0:
+                        Bbar_test[vs2] += rate*np.dot(dxList[TInd], vec2)
+
+                self.assertAlmostEqual(Wbar[vs1, vs2], Wbar_test[vs1, vs2], 8,
+                                       msg="\n{} {}".format(Wbar[vs1, vs2], Wbar_test[vs1, vs2]))
+
+        self.assertTrue(np.allclose(Bbar, Bbar_test))
 
 
 class Test_KMC(DataClass):
