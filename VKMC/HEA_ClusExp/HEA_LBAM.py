@@ -48,7 +48,7 @@ def Load_crys_Data(typ="FCC")
     assert vacsiteInd == 0
     return jList, dxList, jumpNewIndices, superFCC, jnetFCC, vacsite, vacsiteInd
 
-def makeVClusExp(superCell, clustCut, MaxOrder, NSpec, vacsite)
+def makeVClusExp(superCell, jnet, clustCut, MaxOrder, NSpec, vacsite)
     TScombShellRange = 1  # upto 1nn combined shell
     TSnnRange = 4
     TScutoff = np.sqrt(2)  # 4th nn cutoff - must be the same as TSnnRange
@@ -60,9 +60,9 @@ def makeVClusExp(superCell, clustCut, MaxOrder, NSpec, vacsite)
 
     # We'll create a dummy KRA expander anyway since the MC_JIT module is designed to accept transition arrays
     # However, this dummy KEA expander will never get used
-    VclusExp = Cluster_Expansion.VectorClusterExpansion(superFCC, clusexp, NSpec, vacsite, MaxOrder, TclusExp=True,
+    VclusExp = Cluster_Expansion.VectorClusterExpansion(superCell, clusexp, NSpec, vacsite, MaxOrder, TclusExp=True,
                                                     TScutoff=TScutoff, TScombShellRange=TScombShellRange,
-                                                    TSnnRange=TSnnRange, jumpnetwork=jnetFCC,
+                                                    TSnnRange=TSnnRange, jumpnetwork=jnet,
                                                     OrigVac=False, zeroClusts=True)
 
     print("generating interaction and vector basis data.")
@@ -78,6 +78,7 @@ def CreateJitCalculator(VclusExp):
     # First, we have to generate all the arrays
     # Lattice gas Like -  set all energies to zero
     # All the rates are known to us anyway - they are the ones that are going to get used
+    NSpec = VclusExp.NSpec
     Energies = np.zeros(len(VclusExp.SpecClusters))
     KRAEnergies = [np.zeros(len(KRAClusterDict)) for (key, KRAClusterDict) in 
             VclusExp.KRAexpander.clusterSpeciesJumps.items()]
@@ -106,11 +107,12 @@ def CreateJitCalculator(VclusExp):
         FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups,
         JumpInteracts, Jump2KRAEng, KRASpecConstants
     )
-
+    
+    # The vector expansion data are not explicitly part of MCJit, so we'll return them separately
     return MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts
 
 
-def Expand(T, state1List, Nsamples, dxList, SpecExpand, AllJumpRates, MCJit, NVclus,
+def Expand(T, state1List, vacsiteInd, Nsamples, dxList, SpecExpand, AllJumpRates, MCJit, NVclus,
         numVecsInteracts, VecsInteracts, VecGroupInteracts):
 
     # Get a dummy TS offsite counts
@@ -119,6 +121,8 @@ def Expand(T, state1List, Nsamples, dxList, SpecExpand, AllJumpRates, MCJit, NVc
     # Then we write the expansion loop
     totalW = np.zeros((NVclus, NVclus))
     totalB = np.zeros(NVclus)
+    
+    assert np.all(state1List[vacsiteInd] == MCJit.Nspecs - 1)
 
     print("Calculating rate and velocity expansions")
     for samp in tqdm(range(Nsamples), position=0, leave=True):
@@ -193,37 +197,10 @@ def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
     
         L += rateList[samp] * np.linalg.norm(disp_sp_mod)**2 /6.0
 
-    L/= (end-start)
+    L /= (end-start)
 
     return L
 
-# Get the new validation set result
-print("Calculating Validation set transport coefficients.")
-L = 0.
-for samp in tqdm(range(Nsamples//2, Nsamples), position=0, leave=True):
-    state = NSpec - 1 - state1List[samp]
-    
-    offsc = MC_JIT.GetOffSite(state, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites)
-    jSelect = jumpSelects[samp]
-    jSite = jList[jSelect]
-    
-    del_lamb = MCJit.getDelLamb(state, offsc, vacsiteInd, jSite, NVclus,
-                                numVecsInteracts, VecGroupInteracts, VecsInteracts)
-    
-    disp_sp = dispList[samp, NSpec - 1 - SpecExpand, :]
-    if state[jList[jSelect]] == 0:
-        assert np.allclose(disp_sp, -dxList[jSelect])
-    else:
-        assert np.allclose(disp_sp, 0.)
-    
-    del_y = del_lamb.T @ etaBar
-    
-    disp_sp_mod = disp_sp + del_y
-    
-    L += rateList[samp] * np.linalg.norm(disp_sp_mod)**2 /6.0
-
-L_val = L/(Nsamples - Nsamples//2)
-np.save(RunPath + "L{0}{0}_{1}.npy".format(SpecExpand, T), np.array([L_train, L_val]))
 
 if __name__ == "__main__":
 
@@ -245,9 +222,15 @@ if __name__ == "__main__":
     count += 1
 
     VacSpec = int(args[count])
+    count += 1
 
+    Ntrain = int(args[count])
+    count += 1
+
+    CrysType = "FCC" if count == len(args) else args[count]
 
     # Load Data
+    specExpOriginal = SpecExpand
     state1List, state2List, dispList, rateList, AllJumpRates = Load_Data(FileName)
     AllSpecs = np.unique(state1List[0])
     NSpec = AllSpecs.shape[0]
@@ -264,21 +247,47 @@ if __name__ == "__main__":
         gc.collect()
 
         dispList = dispListNew
-
         SpecExpand = NSpec - 1 - SpecExpand
 
-
     # Load Crystal Data
+    jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd = Load_crys_Data(typ=CrysType)
 
     # Load vecClus - if existing, else create new
+    try:
+        with open("VclusExp.pkl", "rb") as fl:
+            VclusExp = pickle.load(fl)
+        
+        print("Found exsisting cluster expansion")
+
+    except FileNotFoundError:
+        print("Generating New cluster expansion")
+        VclusExp = makeVClusExp(superCell, jnet, clustCut, MaxOrder, NSpec, vacsite)
+
     NVclus = len(VclusExp.vecVec)
 
     # Make MCJIT
-
+    MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts = CreateJitCalculator(VclusExp) 
+    
     # Expand W and B
+    # We need to scale displacements properly first
+    a0 = np.linalg.norm(dispList[0, NSpec -1 , :])/np.linalg.norm(dxList[0])
 
-    # Get Gbar and etabar
+    Wbar, Bbar, Gbar, etaBar = Expand(T, state1List, N_train, dxList*a0, SpecExpand, AllJumpRates, MCJit, NVclus,
+        numVecsInteracts, VecsInteracts, VecGroupInteracts) 
+
 
     # Calculate transport coefficients
+    print("Computing Transport coefficients")
+    L_train = Calculate_L(state1List, SpecExpand, rateList, 
+            dispList, jumpSelects, jList,
+            vacsiteInd, NVclus, MCJit, 
+            etaBar, 0, N_train)
 
+    L_val = Calculate_L(state1List, SpecExpand, rateList, 
+            dispList, jumpSelects, jList,
+            vacsiteInd, NVclus, MCJit, 
+            etaBar, N_train, state1List.shape[0])
 
+    np.save("L{0}{0}_{1}.npy".format(specExpOriginal, T), np.array([L_train, L_val]))
+
+    print("All Done \n\n")
