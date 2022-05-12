@@ -299,7 +299,7 @@ class MCSamplerClass(object):
 
     def Expand(self, state, ijList, dxList, spec, OffSiteCount, TSOffSiteCount,
                numVecsInteracts, VecGroupInteracts, VecsInteracts,
-               lenVecClus, beta, vacSiteInd=0, RateList=None):
+               lenVecClus, beta, vacSiteInd, RateList):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
