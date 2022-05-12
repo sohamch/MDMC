@@ -303,11 +303,11 @@ class MCSamplerClass(object):
 
         del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
         delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
-        
+
+        delElist = np.zeros(ijList.shape[0])
+        delEKRAlist = np.zeros(ijList.shape[0])
         if RateList is None:
             ratelist = np.zeros(ijList.shape[0])
-            delElist = np.zeros(ijList.shape[0])
-            delEKRAlist = np.zeros(ijList.shape[0])
         else:
             ratelist = RateList.copy()
 
@@ -363,7 +363,8 @@ class MCSamplerClass(object):
 
         if RateList is None:
             return WBar, BBar, ratelist, delElist, delEKRAlist
-        return WBar, BBar, ratelist
+        else:
+            return WBar, BBar, ratelist
 
 
     @staticmethod
