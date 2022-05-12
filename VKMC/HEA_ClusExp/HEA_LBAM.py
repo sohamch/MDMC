@@ -110,7 +110,7 @@ def CreateJitCalculator(VclusExp):
     return MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts
 
 
-def Expand(state1List, dxList, SpecExpand, AllJumpRates, MCJit, NVclus,
+def Expand(T, state1List, Nsamples, dxList, SpecExpand, AllJumpRates, MCJit, NVclus,
         numVecsInteracts, VecsInteracts, VecGroupInteracts):
 
     # Get a dummy TS offsite counts
@@ -121,7 +121,7 @@ def Expand(state1List, dxList, SpecExpand, AllJumpRates, MCJit, NVclus,
     totalB = np.zeros(NVclus)
 
     print("Calculating rate and velocity expansions")
-    for samp in tqdm(range(Nsamples//2), position=0, leave=True):
+    for samp in tqdm(range(Nsamples), position=0, leave=True):
     
         # In the cluster expander, the vacancy is the highest labelled species,
         # In our case, it is the lowest
@@ -141,53 +141,61 @@ def Expand(state1List, dxList, SpecExpand, AllJumpRates, MCJit, NVclus,
     totalW /= Nsamples
     totalB /= Nsamples
 
+    # verify symmetry
+    print("verifying symmetry of rate expansion")
+    for i in tqdm(range(totalW.shape[0]), position=0, leave=True):
+        for j in range(i):
+            assert np.allclose(totalW[i,j], totalW[j,i])
+
+    Gbar = spla.pinvh(totalW, rcond=1e-8)
+
+    # Check pseudo-inverse relations
+    assert np.allclose(Gbar @ totalW @ Gbar, Gbar)
+    assert np.allclose(totalW @ Gbar @ totalW, totalW)
+
+    # Compute relaxation expansion
+    etaBar = -np.dot(Gbar, totalB)
+    
     np.save(RunPath + "Wbar_{}.npy".format(T), totalW)
+    np.save(RunPath + "Gbar_{}.npy".format(T), Gbar)
+    np.save(RunPath + "etabar_{}.npy".format(T), etaBar)
     np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
 
-    return totalW, totalB
+    return totalW, totalB, Gbar, etaBar
 
-# verify symmetry
-for i in tqdm(range(totalW.shape[0]), position=0, leave=True):
-    for j in range(i):
-        assert np.allclose(totalW[i,j], totalW[j,i])
 
-Gbar = spla.pinvh(totalW, rcond=1e-8)
+# Get the Transport coefficients
+def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
+        jList, vacsiteInd, NVclus, MCJit, etaBar, start, end):
 
-# Check pseudo-inverse relations
-assert np.allclose(Gbar @ totalW @ Gbar, Gbar)
-assert np.allclose(totalW @ Gbar @ totalW, totalW)
+    L = 0.
+    for samp in tqdm(range(start, End), position=0, leave=True):
+        state = state1List[samp]
+    
+        offsc = MC_JIT.GetOffSite(state, MCJit.numSitesInteracts, MCJit.SupSitesInteracts, MCJit.SpecOnInteractSites)
+        jSelect = jumpSelects[samp]
+        jSite = jList[jSelect]
+    
+        del_lamb = MCJit.getDelLamb(state, offsc, vacsiteInd, jSite, NVclus,
+                                    numVecsInteracts, VecGroupInteracts, VecsInteracts)
+    
+        disp_sp = dispList[samp, SpecExpand, :]
+        if state[jSite] == SpecExpand:
+            assert np.allclose(disp_sp, -dxList[jSelect]), "{}\n {}\n {}\n".format(dxList, jSelect, disp_sp)
+        else:
+            assert np.allclose(disp_sp, 0.)
+    
+        # Get the change in y
+        del_y = del_lamb.T @ etaBar
+    
+        # Modify the total displacement
+        disp_sp_mod = disp_sp + del_y
+    
+        L += rateList[samp] * np.linalg.norm(disp_sp_mod)**2 /6.0
 
-# Compute relaxation expansion
-etaBar = -np.dot(Gbar, totalB)
+    L/= (end-start)
 
-# Get the new training set result
-print("Calculating Training set transport coefficients.")
-L = 0.
-for samp in tqdm(range(Nsamples//2), position=0, leave=True):
-    state = NSpec - 1 - state1List[samp]
-    
-    offsc = MC_JIT.GetOffSite(state, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites)
-    jSelect = jumpSelects[samp]
-    jSite = jList[jSelect]
-    
-    del_lamb = MCJit.getDelLamb(state, offsc, vacsiteInd, jSite, NVclus,
-                                numVecsInteracts, VecGroupInteracts, VecsInteracts)
-    
-    disp_sp = dispList[samp, NSpec - 1 - SpecExpand, :]
-    if state[jSite] == SpecExpand:
-        assert np.allclose(disp_sp, -dxList[jSelect]), "{}\n {}\n {}\n".format(dxList, jSelect, disp_sp)
-    else:
-        assert np.allclose(disp_sp, 0.)
-    
-    # Get the change in y
-    del_y = del_lamb.T @ etaBar
-    
-    # Modify the total displacement
-    disp_sp_mod = disp_sp + del_y
-    
-    L += rateList[samp] * np.linalg.norm(disp_sp_mod)**2 /6.0
-
-L_train = L/(Nsamples//2)
+    return L
 
 # Get the new validation set result
 print("Calculating Validation set transport coefficients.")
