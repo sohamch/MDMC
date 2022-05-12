@@ -5,12 +5,13 @@ import sys
 sys.path.append("/home/sohamc2/HEA_FCC/MDMC/VKMC/")
 import os
 RunPath = os.getcwd() + "/"
+
 CrysDatPath = "/home/sohamc2/HEA_FCC/MDMC/" 
+DataPath = "/home/sohamc2/HEA_FCC/MDMC/ML_runs/DataSets/"
 
 from onsager import crystal, supercell, cluster
 import numpy as np
 import scipy as sp
-import Transitions
 import Cluster_Expansion
 import MC_JIT
 import pickle
@@ -27,7 +28,7 @@ clustCut = float(args[3])
 SpecExpand = float(args[4])
 
 # Load the data set
-with h5py.File("CrysDatPath/MD_KMC_single/singleStep_{0}.h5".format(T), "r") as fl:
+with h5py.File(DataPath+"singleStep_{0}.h5".format(T), "r") as fl:
     perm = np.array(fl["Permutation"])
     state1List = np.array(fl["InitStates"])[perm]
     state2List = np.array(fl["FinStates"])[perm]
@@ -247,5 +248,4 @@ for samp in tqdm(range(Nsamples//2, Nsamples), position=0, leave=True):
     L += rateList[samp] * np.linalg.norm(disp_sp_mod)**2 /6.0
 
 L_val = L/(Nsamples - Nsamples//2)
-
 np.save(RunPath + "L{0}{0}_{1}.npy".format(SpecExpand, T), np.array(L_train, L_val))
