@@ -361,11 +361,7 @@ class MCSamplerClass(object):
         for i in range(lenVecClus):
             BBar[i] = np.dot(ratelist, delxDotdelLamb[i, :])
 
-        if RateList is None:
-            return WBar, BBar, ratelist, delElist, delEKRAlist
-        else:
-            return WBar, BBar, ratelist
-
+        return WBar, BBar, ratelist, delElist, delEKRAlist
 
     @staticmethod
     def ExpandDirect(lamb1, lamb2, rate, dx):
