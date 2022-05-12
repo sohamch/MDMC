@@ -28,6 +28,7 @@ clustCut = float(args[3])
 SpecExpand = float(args[4])
 
 # Load the data set
+print("Loading dataset")
 with h5py.File(DataPath+"singleStep_{0}.h5".format(T), "r") as fl:
     perm = np.array(fl["Permutation"])
     state1List = np.array(fl["InitStates"])[perm]
@@ -47,18 +48,19 @@ N_units = 8 # No. of unit cells along each axis in the supercell
             # So we restrict ourselves to that
 
 # Load all the crystal data
+print("Loading FCC Crystal data")
 a0 = 3.59
-jList = np.load("CrysDatPath/CrysDat_FCC/jList.npy")
-dxList = np.load("CrysDatPath/CrysDat_FCC/dxList.npy") * a0
-RtoSiteInd = np.load("CrysDatPath/CrysDat_FCC/RtoSiteInd.npy")
-siteIndtoR = np.load("CrysDatPath/CrysDat_FCC/SiteIndtoR.npy")
-jumpNewIndices = np.load("CrysDatPath/CrysDat_FCC/JumpNewSiteIndices.npy")
+jList = np.load(CrysDatPath+"CrysDat_FCC/jList.npy")
+dxList = np.load(CrysDatPath+"CrysDat_FCC/dxList.npy") * a0
+RtoSiteInd = np.load(CrysDatPath+"CrysDat_FCC/RtoSiteInd.npy")
+siteIndtoR = np.load(CrysDatPath+"CrysDat_FCC/SiteIndtoR.npy")
+jumpNewIndices = np.load(CrysDatPath+"CrysDat_FCC/JumpNewSiteIndices.npy")
 
-with open("CrysDatPath/CrysDat_FCC/supercellFCC.pkl", "rb") as fl:
+with open(CrysDatPath+"CrysDat_FCC/supercellFCC.pkl", "rb") as fl:
     superFCC = pickle.load(fl)
 crys = superFCC.crys
 
-with open("CrysDatPath/CrysDat_FCC/jnetFCC.pkl", "rb") as fl:
+with open(CrysDatPath+"CrysDat_FCC/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
 
 vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
@@ -69,6 +71,8 @@ TScombShellRange = 1  # upto 1nn combined shell
 TSnnRange = 4
 TScutoff = np.sqrt(2)  # 4th nn cutoff - must be the same as TSnnRange
 
+
+print("Creating cluster expansion.")
 clusexp = cluster.makeclusters(crys, clustCut, MaxOrder)
 
 # We'll create a dummy KRA expander anyway since the MC_JIT module is designed to accept transition arrays
@@ -78,6 +82,7 @@ VclusExp = Cluster_Expansion.VectorClusterExpansion(superFCC, clusexp, NSpec, va
                                                     TSnnRange=TSnnRange, jumpnetwork=jnetFCC,
                                                     OrigVac=False, zeroClusts=True)
 
+print("generating interaction and vector basis data.")
 VclusExp.generateSiteSpecInteracts()
 # Generate the basis vectors for the clusters
 VclusExp.genVecClustBasis(VclusExp.SpecClusters)
@@ -155,7 +160,6 @@ totalW = np.zeros((NVclus, NVclus))
 totalB = np.zeros(NVclus)
 
 print("Calculating rate and velocity expansions")
-
 for samp in tqdm(range(Nsamples//2), position=0, leave=True):
     
     # In the cluster expander, the vacancy is the highest labelled species,
@@ -165,7 +169,7 @@ for samp in tqdm(range(Nsamples//2), position=0, leave=True):
     
     offsc = MC_JIT.GetOffSite(state, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites)
     
-    WBar, bBar, rates_used = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
+    WBar, bBar, rates_used , _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
                                           TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
                                           NVclus, 0, vacsiteInd, AllJumpRates[samp])
     
