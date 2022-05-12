@@ -11,7 +11,7 @@ DataPath = "/home/sohamc2/HEA_FCC/MDMC/ML_runs/DataSets/"
 
 from onsager import crystal, supercell, cluster
 import numpy as np
-import scipy as sp
+import scipy.linalg as spla
 import Cluster_Expansion
 import MC_JIT
 import pickle
@@ -25,7 +25,7 @@ args = list(sys.argv)
 T = int(args[1])
 MaxOrder = int(args[2])
 clustCut = float(args[3])
-SpecExpand = float(args[4])
+SpecExpand = int(args[4])
 
 # Load the data set
 print("Loading dataset")
@@ -142,7 +142,7 @@ print("Verifying active cluster counting")
 state_test = NSpec - 1 - state1List[0]
 offsc = MC_JIT.GetOffSite(state_test, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites)
 offCounts = np.zeros_like(offsc)
-for interactInd in tqdm(range(100000), position=0, leave=True):
+for interactInd in tqdm(range(numSitesInteracts.shape[0]//10), position=0, leave=True):
     off_count_interact = 0
     for siteInd in range(numSitesInteracts[interactInd]):
         supSite = SupSitesInteracts[interactInd, siteInd]
@@ -184,11 +184,11 @@ np.save(RunPath + "Wbar_{}.npy".format(T), totalW)
 np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
 
 # verify symmetry
-for i in tqmd(range(totalW.shape[0]), position=0, leave=True):
+for i in tqdm(range(totalW.shape[0]), position=0, leave=True):
     for j in range(i):
         assert np.allclose(totalW[i,j], totalW[j,i])
 
-Gbar = sp.linalg.pinvh(totalW, rtol=1e-8)
+Gbar = spla.pinvh(totalW, rcond=1e-8)
 
 # Check pseudo-inverse relations
 assert np.allclose(Gbar @ totalW @ Gbar, Gbar)
@@ -210,9 +210,9 @@ for samp in tqdm(range(Nsamples//2), position=0, leave=True):
     del_lamb = MCJit.getDelLamb(state, offsc, vacsiteInd, jSite, NVclus,
                                 numVecsInteracts, VecGroupInteracts, VecsInteracts)
     
-    disp_sp = dispList[samp, SpecExpand, :]
-    if state[jList[jSelect]] == 0:
-        assert np.allclose(disp_sp, -dxList[jSelect])
+    disp_sp = dispList[samp, NSpec - 1 - SpecExpand, :]
+    if state[jSite] == SpecExpand:
+        assert np.allclose(disp_sp, -dxList[jSelect]), "{}\n {}\n {}\n".format(dxList, jSelect, disp_sp)
     else:
         assert np.allclose(disp_sp, 0.)
     
@@ -239,7 +239,7 @@ for samp in tqdm(range(Nsamples//2, Nsamples), position=0, leave=True):
     del_lamb = MCJit.getDelLamb(state, offsc, vacsiteInd, jSite, NVclus,
                                 numVecsInteracts, VecGroupInteracts, VecsInteracts)
     
-    disp_sp = dispList[samp, SpecExpand, :]
+    disp_sp = dispList[samp, NSpec - 1 - SpecExpand, :]
     if state[jList[jSelect]] == 0:
         assert np.allclose(disp_sp, -dxList[jSelect])
     else:
@@ -252,4 +252,22 @@ for samp in tqdm(range(Nsamples//2, Nsamples), position=0, leave=True):
     L += rateList[samp] * np.linalg.norm(disp_sp_mod)**2 /6.0
 
 L_val = L/(Nsamples - Nsamples//2)
-np.save(RunPath + "L{0}{0}_{1}.npy".format(SpecExpand, T), np.array(L_train, L_val))
+np.save(RunPath + "L{0}{0}_{1}.npy".format(SpecExpand, T), np.array([L_train, L_val]))
+
+if __name__ == "__main__":
+
+    # Load Data
+
+    # Load Crystal Data
+
+    # Load vecClus - if existing, else create new
+
+    # Make MCJIT
+
+    # Expand W and B
+
+    # Get Gbar and etabar
+
+    # Calculate transport coefficients
+
+
