@@ -22,7 +22,6 @@ import pickle
 import h5py
 from tqdm import tqdm
 from numba import jit, int64, float64
-from GCNetRun import Load_Data 
 import gc
 
 
@@ -31,7 +30,7 @@ N_units = 8 # No. of unit cells along each axis in the supercell
             # So we restrict ourselves to that
 
 # Load all the crystal data
-def Load_crys_Data(typ="FCC")
+def Load_crys_Data(typ="FCC"):
     print("Loading {} Crystal data".format(typ))
     jList = np.load(CrysDatPath+"CrysDat_{}/jList.npy".format(typ))
     dxList = np.load(CrysDatPath+"CrysDat_{}/dxList.npy".format(typ))
@@ -48,7 +47,33 @@ def Load_crys_Data(typ="FCC")
     assert vacsiteInd == 0
     return jList, dxList, jumpNewIndices, superFCC, jnetFCC, vacsite, vacsiteInd
 
-def makeVClusExp(superCell, jnet, clustCut, MaxOrder, NSpec, vacsite)
+def Load_Data(FileName):
+    with h5py.File(DataPath + FileName, "r") as fl:
+        try:
+            perm = fl["Permutation"]
+            print("found permuation")
+        except:
+            perm = np.arange(len(fl["InitStates"]))
+
+        state1List = np.array(fl["InitStates"])[perm]
+        state2List = np.array(fl["FinStates"])[perm]
+        dispList = np.array(fl["SpecDisps"])[perm]
+        rateList = np.array(fl["rates"])[perm]
+
+        try:
+            AllJumpRates = np.array(fl["AllJumpRates"])[perm]
+        except:
+            raise ValueError("All Jump Rates not provided in data set.")
+
+        try:
+            jumpSelects = np.array(fl["JumpSelects"])[perm].astype(np.int8)
+        except:
+            jumpSelects = np.array(fl["JumpSelection"])[perm].astype(np.int8)
+
+    return state1List, state2List, dispList, rateList, AllJumpRates, jumpSelects
+
+
+def makeVClusExp(superCell, jnet, clustCut, MaxOrder, NSpec, vacsite):
     TScombShellRange = 1  # upto 1nn combined shell
     TSnnRange = 4
     TScutoff = np.sqrt(2)  # 4th nn cutoff - must be the same as TSnnRange
@@ -122,7 +147,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, dxList, SpecExpand, AllJumpRates
     totalW = np.zeros((NVclus, NVclus))
     totalB = np.zeros(NVclus)
     
-    assert np.all(state1List[vacsiteInd] == MCJit.Nspecs - 1)
+    assert np.all(state1List[:, vacsiteInd] == MCJit.Nspecs - 1)
 
     print("Calculating rate and velocity expansions")
     for samp in tqdm(range(Nsamples), position=0, leave=True):
@@ -130,15 +155,17 @@ def Expand(T, state1List, vacsiteInd, Nsamples, dxList, SpecExpand, AllJumpRates
         # In the cluster expander, the vacancy is the highest labelled species,
         # In our case, it is the lowest
         # So we'll change the numbering so that the vacancy is labelled 5
-        state = state1List[samp]
+        state = state1List[samp].copy()
     
         offsc = MC_JIT.GetOffSite(state, MCJit.numSitesInteracts, MCJit.SupSitesInteracts, MCJit.SpecOnInteractSites)
     
         WBar, bBar, rates_used , _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
                                           TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
                                           NVclus, 0, vacsiteInd, AllJumpRates[samp])
-    
+        
+        assert np.array_equal(state, state1List[samp]) # assert revertions
         assert np.allclose(rates_used, AllJumpRates[samp])
+        
         totalW += WBar
         totalB += bBar
 
@@ -224,14 +251,15 @@ if __name__ == "__main__":
     VacSpec = int(args[count])
     count += 1
 
-    Ntrain = int(args[count])
+    N_train = int(args[count])
     count += 1
 
     CrysType = "FCC" if count == len(args) else args[count]
 
     # Load Data
     specExpOriginal = SpecExpand
-    state1List, state2List, dispList, rateList, AllJumpRates = Load_Data(FileName)
+    state1List, state2List, dispList, rateList, AllJumpRates, jumpSelects = Load_Data(FileName)
+
     AllSpecs = np.unique(state1List[0])
     NSpec = AllSpecs.shape[0]
     Nsamples = state1List.shape[0]
@@ -262,6 +290,8 @@ if __name__ == "__main__":
     except FileNotFoundError:
         print("Generating New cluster expansion")
         VclusExp = makeVClusExp(superCell, jnet, clustCut, MaxOrder, NSpec, vacsite)
+        with open("VclusExp.pkl", "wb") as fl:
+            pickle.dump(VclusExp, fl)
 
     NVclus = len(VclusExp.vecVec)
 
@@ -271,8 +301,11 @@ if __name__ == "__main__":
     # Expand W and B
     # We need to scale displacements properly first
     a0 = np.linalg.norm(dispList[0, NSpec -1 , :])/np.linalg.norm(dxList[0])
+    
+    #Expand(T, state1List, vacsiteInd, Nsamples, dxList, SpecExpand, AllJumpRates, MCJit, NVclus,
+    #    numVecsInteracts, VecsInteracts, VecGroupInteracts)
 
-    Wbar, Bbar, Gbar, etaBar = Expand(T, state1List, N_train, dxList*a0, SpecExpand, AllJumpRates, MCJit, NVclus,
+    Wbar, Bbar, Gbar, etaBar = Expand(T, state1List, vacsiteInd, N_train, dxList*a0, SpecExpand, AllJumpRates, MCJit, NVclus,
         numVecsInteracts, VecsInteracts, VecGroupInteracts) 
 
 
