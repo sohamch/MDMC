@@ -108,6 +108,8 @@ def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
         KRAEnergies = [np.zeros(len(KRAClusterDict)) for (key, KRAClusterDict) in 
                 VclusExp.KRAexpander.clusterSpeciesJumps.items()]
 
+        KRASpecConstants = np.zeros(NSpec-1)
+
         # First, the chemical data
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,\
         Interaction2En, numInteractsSiteSpec, SiteSpecInterArray = VclusExp.makeJitInteractionsData(Energies)
@@ -177,7 +179,6 @@ def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
             NVclus = np.array(fl["NVclus"])[0]
     
     # Make the MC class
-    KRASpecConstants = np.random.rand(NSpec-1)
     MCJit = MC_JIT.MCSamplerClass(
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,
         numInteractsSiteSpec, SiteSpecInterArray,
@@ -282,9 +283,7 @@ def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
     return L
 
 
-if __name__ == "__main__":
-
-    args = list(sys.argv)
+def main(args):
     count = 1
     T = int(args[count])
     count += 1
@@ -308,6 +307,9 @@ if __name__ == "__main__":
     count += 1
 
     from_scratch = bool(int(args[count]))
+    count += 1
+
+    saveClusExp = bool(int(args[count]))
     count += 1
 
     saveJit = bool(int(args[count]))
@@ -342,11 +344,16 @@ if __name__ == "__main__":
     if from_scratch:
         print("Generating New cluster expansion")
         VclusExp = makeVClusExp(superCell, jnet, clustCut, MaxOrder, NSpec, vacsite)
+        if saveClusExp:
+            with open(RunPath+"VclusExp.pkl", "wb") as fl:
+                pickle.dump(VclusExp, fl)
+
     else:
+        VclusExp = None
         saveJit = False
 
     # Make MCJIT
-    MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus = CreateJitCalculator(VclusExp, NSpec, T, scratch=from_scatch, save=saveJit) 
+    MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus = CreateJitCalculator(VclusExp, NSpec, T, scratch=from_scratch, save=saveJit) 
     
     # Expand W and B
     # We need to scale displacements properly first
@@ -374,3 +381,6 @@ if __name__ == "__main__":
     np.save("L{0}{0}_{1}.npy".format(specExpOriginal, T), np.array([L_train, L_val]))
 
     print("All Done \n\n")
+
+if __name__ == "__main__":
+    main(list(sys.argv))
