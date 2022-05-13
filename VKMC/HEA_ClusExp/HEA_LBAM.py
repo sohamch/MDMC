@@ -137,7 +137,7 @@ def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
             fl.create_dataset("SiteSpecInterArray", data=SiteSpecInterArray)
             fl.create_dataset("numVecsInteracts", data=numVecsInteracts)
             fl.create_dataset("VecsInteracts", data=VecsInteracts)
-            fl.create_dataset("VecGroupInteracts", data=VecsInteracts)
+            fl.create_dataset("VecGroupInteracts", data=VecGroupInteracts)
             
             fl.create_dataset("numSitesTSInteracts", data=numSitesTSInteracts)
             fl.create_dataset("TSInteractSites", data=TSInteractSites)
