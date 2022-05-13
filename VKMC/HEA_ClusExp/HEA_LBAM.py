@@ -163,7 +163,7 @@ def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
             SiteSpecInterArray = np.array(fl["SiteSpecInterArray"])
             numVecsInteracts = np.array(fl["numVecsInteracts"])
             VecsInteracts = np.array(fl["VecsInteracts"])
-            VecsInteracts = np.array(fl["VecGroupInteracts"])
+            VecGroupInteracts = np.array(fl["VecGroupInteracts"])
 
             numSitesTSInteracts = np.array(fl["numSitesTSInteracts"])
             TSInteractSites = np.array(fl["TSInteractSites"])
@@ -252,7 +252,8 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jList, dxList, SpecExpand, AllJu
 
 # Get the Transport coefficients
 def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
-        jList, dxList, vacsiteInd, NVclus, MCJit, etaBar, start, end):
+        jList, dxList, vacsiteInd, NVclus, MCJit, etaBar, start, end,
+        numVecsInteracts, VecGroupInteracts, VecsInteracts):
 
     L = 0.
     for samp in tqdm(range(start, end), position=0, leave=True):
@@ -372,12 +373,14 @@ def main(args):
     L_train = Calculate_L(state1List, SpecExpand, rateList, 
             dispList, jumpSelects, jList, dxList*a0,
             vacsiteInd, NVclus, MCJit, 
-            etaBar, 0, N_train)
+            etaBar, 0, N_train,
+            numVecsInteracts, VecGroupInteracts, VecsInteracts)
 
     L_val = Calculate_L(state1List, SpecExpand, rateList, 
             dispList, jumpSelects, jList, dxList*a0,
             vacsiteInd, NVclus, MCJit, 
-            etaBar, N_train, state1List.shape[0])
+            etaBar, N_train, state1List.shape[0],
+            numVecsInteracts, VecGroupInteracts, VecsInteracts)
 
     np.save("L{0}{0}_{1}.npy".format(specExpOriginal, T), np.array([L_train, L_val]))
 
