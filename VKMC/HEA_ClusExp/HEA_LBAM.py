@@ -99,12 +99,11 @@ def makeVClusExp(superCell, jnet, clustCut, MaxOrder, NSpec, vacsite):
 
     return VclusExp
 
-def CreateJitCalculator(VclusExp, scratch=True, saveArrays=True):
+def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
     if scratch:
         # First, we have to generate all the arrays
         # Lattice gas Like -  set all energies to zero
         # All the rates are known to us anyway - they are the ones that are going to get used
-        NSpec = VclusExp.NSpec
         Energies = np.zeros(len(VclusExp.SpecClusters))
         KRAEnergies = [np.zeros(len(KRAClusterDict)) for (key, KRAClusterDict) in 
                 VclusExp.KRAexpander.clusterSpeciesJumps.items()]
@@ -115,6 +114,8 @@ def CreateJitCalculator(VclusExp, scratch=True, saveArrays=True):
 
         # Next, the vector basis data
         numVecsInteracts, VecsInteracts, VecGroupInteracts = VclusExp.makeJitVectorBasisData()
+        
+        NVclus = len(VclusExp.vecClus)
 
         # Note : The KRA expansion works only for binary alloys
         # Right now we don't need them, since we already know the rates
@@ -123,14 +124,58 @@ def CreateJitCalculator(VclusExp, scratch=True, saveArrays=True):
         TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites,\
         TSInteractSpecs, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups,\
         numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng = VclusExp.KRAexpander.makeTransJitData(KRACounterSpec, KRAEnergies)
+    
+    if save:
+        print("Saving JIT arrays")
+        with h5py.File(RunPath+"JitArrays_{}.h5".format(T), "w") as fl:
+            fl.create_dataset("numSitesInteracts", data = numSitesInteracts)
+            fl.create_dataset("SupSitesInteracts", data = SupSitesInteracts)
+            fl.create_dataset("SpecOnInteractSites", data=SpecOnInteractSites)
+            fl.create_dataset("numInteractsSiteSpec", data=numInteractsSiteSpec)
+            fl.create_dataset("SiteSpecInterArray", data=SiteSpecInterArray)
+            fl.create_dataset("numVecsInteracts", data=numVecsInteracts)
+            fl.create_dataset("VecsInteracts", data=VecsInteracts)
+            fl.create_dataset("VecGroupInteracts", data=VecsInteracts)
+            
+            fl.create_dataset("numSitesTSInteracts", data=numSitesTSInteracts)
+            fl.create_dataset("TSInteractSites", data=TSInteractSites)
+            fl.create_dataset("TSInteractSpecs", data=TSInteractSpecs)
+            fl.create_dataset("jumpFinSites", data=jumpFinSites)
+            fl.create_dataset("jumpFinSpec", data=jumpFinSpec)
+            fl.create_dataset("FinSiteFinSpecJumpInd", data=FinSiteFinSpecJumpInd)
+            fl.create_dataset("numJumpPointGroups", data=numJumpPointGroups)
+            fl.create_dataset("numTSInteractsInPtGroups", data=numTSInteractsInPtGroups)
+            fl.create_dataset("JumpInteracts", data=JumpInteracts)
+            fl.create_dataset("Jump2KRAEng", data=Jump2KRAEng)
+            fl.create_dataset("KRASpecConstants", data=KRASpecConstants)
+            fl.create_dataset("NVclus", data=np.array([NVclus], dtype=int))
 
-    if saveArrays:
-        with h5py.File(RunPath+"JitArrays.h5", "w") as fl:
-            fl.create_dataset("numSitesInteracts", data = numSitesInteracts.astype(np.int8))
-            fl.create_dataset("SupSitesInteracts", data = SupSitesInteracts.astype(np.int16))
-            fl.create_data
+    
+    else:
+        print("Attempting to load arrays")
+        with h5py.File(RunPath+"JitArrays_{}.h5".format(T), "r") as fl:
+            numSitesInteracts = np.array(fl["numSitesInteracts"])
+            SupSitesInteracts = np.array(fl["SupSitesInteracts"])
+            SpecOnInteractSites = np.array(fl["SpecOnInteractSites"])
+            numInteractsSiteSpec = np.array(fl["numInteractsSiteSpec"])
+            SiteSpecInterArray = np.array(fl["SiteSpecInterArray"])
+            numVecsInteracts = np.array(fl["numVecsInteracts"])
+            VecsInteracts = np.array(fl["VecsInteracts"])
+            VecsInteracts = np.array(fl["VecGroupInteracts"])
 
-
+            numSitesTSInteracts = np.array(fl["numSitesTSInteracts"])
+            TSInteractSites = np.array(fl["TSInteractSites"])
+            TSInteractSpecs = np.array(fl["TSInteractSpecs"])
+            jumpFinSites = np.array(fl["jumpFinSites"])
+            jumpFinSpec = np.array(fl["jumpFinSpec"])
+            FinSiteFinSpecJumpInd = np.array(fl["FinSiteFinSpecJumpInd"])
+            numJumpPointGroups = np.array(fl["numJumpPointGroups"])
+            numTSInteractsInPtGroups = np.array(fl["numTSInteractsInPtGroups"])
+            JumpInteracts = np.array(fl["JumpInteracts"])
+            Jump2KRAEng = np.array(fl["Jump2KRAEng"])
+            KRASpecConstants = np.array(fl["KRASpecConstants"])
+            NVclus = np.array(fl["NVclus"])[0]
+    
     # Make the MC class
     KRASpecConstants = np.random.rand(NSpec-1)
     MCJit = MC_JIT.MCSamplerClass(
@@ -142,7 +187,7 @@ def CreateJitCalculator(VclusExp, scratch=True, saveArrays=True):
     )
     
     # The vector expansion data are not explicitly part of MCJit, so we'll return them separately
-    return MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts
+    return MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus
 
 
 def Expand(T, state1List, vacsiteInd, Nsamples, dxList, SpecExpand, AllJumpRates, MCJit, NVclus,
@@ -262,6 +307,12 @@ if __name__ == "__main__":
     N_train = int(args[count])
     count += 1
 
+    from_scratch = bool(int(args[count]))
+    count += 1
+
+    saveJit = bool(int(args[count]))
+    count += 1
+
     CrysType = "FCC" if count == len(args) else args[count]
 
     # Load Data
@@ -288,23 +339,14 @@ if __name__ == "__main__":
     # Load Crystal Data
     jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd = Load_crys_Data(typ=CrysType)
 
-    # Load vecClus - if existing, else create new
-    try:
-        with open("VclusExp.pkl", "rb") as fl:
-            VclusExp = pickle.load(fl)
-        
-        print("Found exsisting cluster expansion")
-
-    except FileNotFoundError:
+    if from_scratch:
         print("Generating New cluster expansion")
         VclusExp = makeVClusExp(superCell, jnet, clustCut, MaxOrder, NSpec, vacsite)
-        #with open("VclusExp.pkl", "wb") as fl:
-        #    pickle.dump(VclusExp, fl)
-
-    NVclus = len(VclusExp.vecVec)
+    else:
+        saveJit = False
 
     # Make MCJIT
-    MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts = CreateJitCalculator(VclusExp) 
+    MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus = CreateJitCalculator(VclusExp, NSpec, T, scratch=from_scatch, save=saveJit) 
     
     # Expand W and B
     # We need to scale displacements properly first
