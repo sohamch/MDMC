@@ -129,7 +129,7 @@ def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
     
     if save:
         print("Saving JIT arrays")
-        with h5py.File(RunPath+"JitArrays_{}.h5".format(T), "w") as fl:
+        with h5py.File(RunPath+"JitArrays.h5", "w") as fl:
             fl.create_dataset("numSitesInteracts", data = numSitesInteracts)
             fl.create_dataset("SupSitesInteracts", data = SupSitesInteracts)
             fl.create_dataset("SpecOnInteractSites", data=SpecOnInteractSites)
@@ -155,7 +155,7 @@ def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
     
     else:
         print("Attempting to load arrays")
-        with h5py.File(RunPath+"JitArrays_{}.h5".format(T), "r") as fl:
+        with h5py.File(RunPath+"JitArrays.h5", "r") as fl:
             numSitesInteracts = np.array(fl["numSitesInteracts"])
             SupSitesInteracts = np.array(fl["SupSitesInteracts"])
             SpecOnInteractSites = np.array(fl["SpecOnInteractSites"])
@@ -191,7 +191,7 @@ def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
     return MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus
 
 
-def Expand(T, state1List, vacsiteInd, Nsamples, dxList, SpecExpand, AllJumpRates, MCJit, NVclus,
+def Expand(T, state1List, vacsiteInd, Nsamples, jList, dxList, SpecExpand, AllJumpRates, MCJit, NVclus,
         numVecsInteracts, VecsInteracts, VecGroupInteracts):
 
     # Get a dummy TS offsite counts
@@ -362,8 +362,8 @@ def main(args):
     #Expand(T, state1List, vacsiteInd, Nsamples, dxList, SpecExpand, AllJumpRates, MCJit, NVclus,
     #    numVecsInteracts, VecsInteracts, VecGroupInteracts)
 
-    Wbar, Bbar, Gbar, etaBar = Expand(T, state1List, vacsiteInd, N_train, dxList*a0, SpecExpand, AllJumpRates, MCJit, NVclus,
-        numVecsInteracts, VecsInteracts, VecGroupInteracts) 
+    Wbar, Bbar, Gbar, etaBar = Expand(T, state1List, vacsiteInd, N_train, jList, dxList*a0, 
+            SpecExpand, AllJumpRates, MCJit, NVclus, numVecsInteracts, VecsInteracts, VecGroupInteracts) 
 
 
     # Calculate transport coefficients
