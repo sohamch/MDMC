@@ -99,29 +99,37 @@ def makeVClusExp(superCell, jnet, clustCut, MaxOrder, NSpec, vacsite):
 
     return VclusExp
 
-def CreateJitCalculator(VclusExp):
-    # First, we have to generate all the arrays
-    # Lattice gas Like -  set all energies to zero
-    # All the rates are known to us anyway - they are the ones that are going to get used
-    NSpec = VclusExp.NSpec
-    Energies = np.zeros(len(VclusExp.SpecClusters))
-    KRAEnergies = [np.zeros(len(KRAClusterDict)) for (key, KRAClusterDict) in 
-            VclusExp.KRAexpander.clusterSpeciesJumps.items()]
+def CreateJitCalculator(VclusExp, scratch=True, saveArrays=True):
+    if scratch:
+        # First, we have to generate all the arrays
+        # Lattice gas Like -  set all energies to zero
+        # All the rates are known to us anyway - they are the ones that are going to get used
+        NSpec = VclusExp.NSpec
+        Energies = np.zeros(len(VclusExp.SpecClusters))
+        KRAEnergies = [np.zeros(len(KRAClusterDict)) for (key, KRAClusterDict) in 
+                VclusExp.KRAexpander.clusterSpeciesJumps.items()]
 
-    # First, the chemical data
-    numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,\
-    Interaction2En, numInteractsSiteSpec, SiteSpecInterArray = VclusExp.makeJitInteractionsData(Energies)
+        # First, the chemical data
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,\
+        Interaction2En, numInteractsSiteSpec, SiteSpecInterArray = VclusExp.makeJitInteractionsData(Energies)
 
-    # Next, the vector basis data
-    numVecsInteracts, VecsInteracts, VecGroupInteracts = VclusExp.makeJitVectorBasisData()
+        # Next, the vector basis data
+        numVecsInteracts, VecsInteracts, VecGroupInteracts = VclusExp.makeJitVectorBasisData()
 
-    # Note : The KRA expansion works only for binary alloys
-    # Right now we don't need them, since we already know the rates
-    # However, we create a dummy one since the JIT MC calculator requires the arrays
-    KRACounterSpec = 1
-    TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites,\
-    TSInteractSpecs, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups,\
-    numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng = VclusExp.KRAexpander.makeTransJitData(KRACounterSpec, KRAEnergies)
+        # Note : The KRA expansion works only for binary alloys
+        # Right now we don't need them, since we already know the rates
+        # However, we create a dummy one since the JIT MC calculator requires the arrays
+        KRACounterSpec = 1
+        TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites,\
+        TSInteractSpecs, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups,\
+        numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng = VclusExp.KRAexpander.makeTransJitData(KRACounterSpec, KRAEnergies)
+
+    if saveArrays:
+        with h5py.File(RunPath+"JitArrays.h5", "w") as fl:
+            fl.create_dataset("numSitesInteracts", data = numSitesInteracts.astype(np.int8))
+            fl.create_dataset("SupSitesInteracts", data = SupSitesInteracts.astype(np.int16))
+            fl.create_data
+
 
     # Make the MC class
     KRASpecConstants = np.random.rand(NSpec-1)
