@@ -179,7 +179,7 @@ def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
             NVclus = np.array(fl["NVclus"])[0]
     
     # Make the MC class
-    Interaction2En = np.zeros_like(numSitesInteracts, dtype=int)
+    Interaction2En = np.zeros_like(numSitesInteracts, dtype=float)
     MCJit = MC_JIT.MCSamplerClass(
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,
         numInteractsSiteSpec, SiteSpecInterArray,
