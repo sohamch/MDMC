@@ -197,10 +197,10 @@ def Expand(T, state1List, vacsiteInd, Nsamples, dxList, SpecExpand, AllJumpRates
 
 # Get the Transport coefficients
 def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
-        jList, vacsiteInd, NVclus, MCJit, etaBar, start, end):
+        jList, dxList, vacsiteInd, NVclus, MCJit, etaBar, start, end):
 
     L = 0.
-    for samp in tqdm(range(start, End), position=0, leave=True):
+    for samp in tqdm(range(start, end), position=0, leave=True):
         state = state1List[samp]
     
         offsc = MC_JIT.GetOffSite(state, MCJit.numSitesInteracts, MCJit.SupSitesInteracts, MCJit.SpecOnInteractSites)
@@ -290,8 +290,8 @@ if __name__ == "__main__":
     except FileNotFoundError:
         print("Generating New cluster expansion")
         VclusExp = makeVClusExp(superCell, jnet, clustCut, MaxOrder, NSpec, vacsite)
-        with open("VclusExp.pkl", "wb") as fl:
-            pickle.dump(VclusExp, fl)
+        #with open("VclusExp.pkl", "wb") as fl:
+        #    pickle.dump(VclusExp, fl)
 
     NVclus = len(VclusExp.vecVec)
 
@@ -312,12 +312,12 @@ if __name__ == "__main__":
     # Calculate transport coefficients
     print("Computing Transport coefficients")
     L_train = Calculate_L(state1List, SpecExpand, rateList, 
-            dispList, jumpSelects, jList,
+            dispList, jumpSelects, jList, dxList*a0,
             vacsiteInd, NVclus, MCJit, 
             etaBar, 0, N_train)
 
     L_val = Calculate_L(state1List, SpecExpand, rateList, 
-            dispList, jumpSelects, jList,
+            dispList, jumpSelects, jList, dxList*a0,
             vacsiteInd, NVclus, MCJit, 
             etaBar, N_train, state1List.shape[0])
 
