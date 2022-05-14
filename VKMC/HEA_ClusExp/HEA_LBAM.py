@@ -281,7 +281,7 @@ def Expand_1jmp(T, state1List, vacsiteInd, Nsamples, jSiteList, jSelectList, dis
                                           NVclus, 0, vacsiteInd, Rate)
         
         assert np.array_equal(state, state1List[samp]) # assert revertions
-        assert np.allclose(rates_used, AllJumpRates[samp])
+        assert np.allclose(rates_used[0], np.sum(AllJumpRates[samp]))
         
         totalW += WBar
         totalB += bBar
