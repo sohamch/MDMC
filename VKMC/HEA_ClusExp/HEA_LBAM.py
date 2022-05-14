@@ -271,7 +271,7 @@ def Expand_1jmp(T, state1List, vacsiteInd, Nsamples, jSiteList, jSelectList, dis
         state = state1List[samp].copy()
         
         jList = np.array([jSiteList[jSelectList[samp]]], dtype=int)
-        dxList = np.array([dispList[samp, -1, jSelectList[samp]]], dtype=float)
+        dxList = np.array([dispList[samp, -1, :]], dtype=float)
         Rate = np.array([rates[samp]], dtype=float)
 
         offsc = MC_JIT.GetOffSite(state, MCJit.numSitesInteracts, MCJit.SupSitesInteracts, MCJit.SpecOnInteractSites)
