@@ -278,7 +278,7 @@ def Expand_1jmp(T, state1List, vacsiteInd, Nsamples, jSiteList, jSelectList, dis
     
         WBar, bBar, rates_used , _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
                                           TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
-                                          NVclus, 0, vacsiteInd, Rate[samp])
+                                          NVclus, 0, vacsiteInd, Rate)
         
         assert np.array_equal(state, state1List[samp]) # assert revertions
         assert np.allclose(rates_used, AllJumpRates[samp])
