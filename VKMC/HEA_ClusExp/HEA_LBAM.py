@@ -250,6 +250,67 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jList, dxList, SpecExpand, AllJu
     return totalW, totalB, Gbar, etaBar
 
 
+def Expand_1jmp(T, state1List, vacsiteInd, Nsamples, jSiteList, jSelectList, dispList, SpecExpand, rates, MCJit, NVclus,
+        numVecsInteracts, VecsInteracts, VecGroupInteracts):
+
+    # Get a dummy TS offsite counts
+    TSOffSc = np.zeros(MCJit.numSitesTSInteracts.shape[0], dtype=np.int8)
+
+    # Then we write the expansion loop
+    totalW = np.zeros((NVclus, NVclus))
+    totalB = np.zeros(NVclus)
+    
+    assert np.all(state1List[:, vacsiteInd] == MCJit.Nspecs - 1)
+
+    print("Calculating rate and velocity expansions")
+    for samp in tqdm(range(Nsamples), position=0, leave=True):
+    
+        # In the cluster expander, the vacancy is the highest labelled species,
+        # In our case, it is the lowest
+        # So we'll change the numbering so that the vacancy is labelled 5
+        state = state1List[samp].copy()
+        
+        jList = np.array([jSiteList[jSelectList[samp]]], dtype=int)
+        dxList = np.array([dispList[samp, -1, jSelectList[samp]]], dtype=float)
+        Rate = np.array([rates[samp]], dtype=float)
+
+        offsc = MC_JIT.GetOffSite(state, MCJit.numSitesInteracts, MCJit.SupSitesInteracts, MCJit.SpecOnInteractSites)
+    
+        WBar, bBar, rates_used , _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
+                                          TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
+                                          NVclus, 0, vacsiteInd, Rate[samp])
+        
+        assert np.array_equal(state, state1List[samp]) # assert revertions
+        assert np.allclose(rates_used, AllJumpRates[samp])
+        
+        totalW += WBar
+        totalB += bBar
+
+    totalW /= Nsamples
+    totalB /= Nsamples
+
+    # verify symmetry
+    print("verifying symmetry of rate expansion")
+    for i in tqdm(range(totalW.shape[0]), position=0, leave=True):
+        for j in range(i):
+            assert np.allclose(totalW[i,j], totalW[j,i])
+
+    Gbar = spla.pinvh(totalW, rcond=1e-8)
+
+    # Check pseudo-inverse relations
+    assert np.allclose(Gbar @ totalW @ Gbar, Gbar)
+    assert np.allclose(totalW @ Gbar @ totalW, totalW)
+
+    # Compute relaxation expansion
+    etaBar = -np.dot(Gbar, totalB)
+    
+    np.save(RunPath + "Wbar_{}.npy".format(T), totalW)
+    np.save(RunPath + "Gbar_{}.npy".format(T), Gbar)
+    np.save(RunPath + "etabar_{}.npy".format(T), etaBar)
+    np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
+
+    return totalW, totalB, Gbar, etaBar
+
 # Get the Transport coefficients
 def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
         jList, dxList, vacsiteInd, NVclus, MCJit, etaBar, start, end,
@@ -316,6 +377,9 @@ def main(args):
 
     saveJit = bool(int(args[count]))
     count += 1
+    
+    singleJump_Train = bool(int(args[count]))
+    count += 1
 
     CrysType = "FCC" if count == len(args) else args[count]
 
@@ -363,9 +427,19 @@ def main(args):
     
     #Expand(T, state1List, vacsiteInd, Nsamples, dxList, SpecExpand, AllJumpRates, MCJit, NVclus,
     #    numVecsInteracts, VecsInteracts, VecGroupInteracts)
+    
+    if singleJump_Train:
+        print("Training to 1 jump")
 
-    Wbar, Bbar, Gbar, etaBar = Expand(T, state1List, vacsiteInd, N_train, jList, dxList*a0, 
-            SpecExpand, AllJumpRates, MCJit, NVclus, numVecsInteracts, VecsInteracts, VecGroupInteracts) 
+        #Expand_1jmp(T, state1List, vacsiteInd, Nsamples, jSiteList, jSelectList, dispList, SpecExpand, rates, MCJit, NVclus,
+            #numVecsInteracts, VecsInteracts, VecGroupInteracts):
+        Wbar, Bbar, Gbar, etaBar = Expand_1jmp(T, state1List, vacsiteInd, N_train, jList, jumpSelects, dispList, 
+                SpecExpand, rateList, MCJit, NVclus, numVecsInteracts, VecsInteracts, VecGroupInteracts) 
+
+    else:
+        print("Training to all jumps")
+        Wbar, Bbar, Gbar, etaBar = Expand(T, state1List, vacsiteInd, N_train, jList, dxList*a0, 
+                SpecExpand, AllJumpRates, MCJit, NVclus, numVecsInteracts, VecsInteracts, VecGroupInteracts) 
 
 
     # Calculate transport coefficients
