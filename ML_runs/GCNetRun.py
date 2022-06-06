@@ -841,8 +841,8 @@ parser.add_argument("-rl","--RepLayer", metavar="RL", type=int, help="Layer to e
 parser.add_argument("-rlavg","--RepLayerAvg", action="store_true", help="Whether to average Representation for all samples")
 
 parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
-parser.add_argument("-nch", "--Nchannels", metavar="Ch", help="No. of representation channels in non-input layers.")
-parser.add_argument("-cngb", "--ConvNgbRange", metavar="NN", help="Nearest neighbor range of convolutional filters.")
+parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, help="No. of representation channels in non-input layers.")
+parser.add_argument("-cngb", "--ConvNgbRange", type=int, default=1, metavar="NN", help="Nearest neighbor range of convolutional filters.")
 
 
 parser.add_argument("-rn", "--Residual", action="store_true", help="Whether to do residual training.")
