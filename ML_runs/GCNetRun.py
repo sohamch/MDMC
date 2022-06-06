@@ -356,9 +356,9 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         
         ## checkpoint
         if epoch%interval==0:
-            pt.save(gNet.state_dict(), dirPath + "/ep_{1}.pt".format(T, epoch))
+            pt.save(gNet.state_dict(), dirPath + "/ep_{0}.pt".format(epoch))
             if Learn_wt:
-                pt.save(WeightSLP.state_dict(), dirPath + "/wt_ep_{1}.pt".format(T, epoch))
+                pt.save(WeightSLP.state_dict(), dirPath + "/wt_ep_{0}.pt".format(epoch))
 
             
         for batch in range(0, N_train, N_batch):
@@ -456,7 +456,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         with pt.no_grad():
             for epoch in tqdm(range(start_ep, end_ep + 1, interval), position=0, leave=True):
                 ## load checkpoint
-                gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, epoch), map_location=device)) 
+                gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device)) 
                 if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
                     gNet.Distribute_subNets()
                 
@@ -537,7 +537,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_
     print("Network: {}".format(dirPath))
     with pt.no_grad():
         ## load checkpoint
-        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, epoch), map_location=device))
+        gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
                 
         if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
             gNet.Distribute_subNets()
@@ -588,7 +588,7 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
 
     with pt.no_grad():
         ## load checkpoint
-        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, epoch), map_location=device))
+        gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
         nLayers = (len(gNet.net)-7)//3
         for LayerInd in LayerIndList:
             ch = gNet.net[LayerInd - 2].Psi.shape[0]
