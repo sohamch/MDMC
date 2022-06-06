@@ -1,0 +1,59 @@
+usage: GCNetRun.py [-h] [-DF F] [-cr Crys] [-m M] [-rl RL] [-rlavg] [-nl L]
+                   [-nch Ch] [-cngb NN] [-rn] [-sn] [-scr] [-td T] [-tn T]
+                   [-sep Ep] [-eep Ep] [-sp s1s2s3] [-vSp SpV] [-aj] [-ajn]
+                   [-nt NTRAIN] [-i I] [-lr LR] [-bs BS] [-wm WM] [-ws WS]
+                   [-lw]
+
+Input parameters for using GCnets
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -DF F, --FileName F   Data file name at specified DataPath.
+  -cr Crys, --Crys Crys
+                        Type of crystal to read crystal data of.
+  -m M, --Mode M        Running mode (train, eval, getY, getRep if getRep,
+                        then layer must specified with -RepLayer.
+  -rl RL, --RepLayer RL
+                        Layer to extract representation from (count starts
+                        from 0)
+  -rlavg, --RepLayerAvg
+                        Whether to average Representation for all samples
+  -nl L, --Nlayers L    No. of layers of the neural network.
+  -nch Ch, --Nchannels Ch
+                        No. of representation channels in non-input layers.
+  -cngb NN, --ConvNgbRange NN
+                        Nearest neighbor range of convolutional filters.
+  -rn, --Residual       Whether to do residual training.
+  -sn, --SubNet         Whether to train pairwise subnetworks.
+  -scr, --Scratch       Whether to create new network and start from scratch
+  -td T, --Tdata T      Temperature to read data from
+  -tn T, --TNet T       Temperature to use networks from For example one can
+                        evaluate a network trained on 1073 K data, on the 1173
+                        K data, to see what it does.
+  -sep Ep, --Start_epoch Ep
+                        Starting epoch (for training, this network will be
+                        read in.)
+  -eep Ep, --End_epoch Ep
+                        Ending epoch (for training, this will be the last
+                        epoch.)
+  -sp s1s2s3, --SpecTrain s1s2s3
+                        species to consider, order independent (Eg, 123 or 213
+                        etc for species 1, 2 and 3
+  -vSp SpV, --VacSpec SpV
+                        species index of vacancy, must match dataset, default
+                        0
+  -aj, --AllJumps       Whether to train on all jumps, or single selected
+                        jumps out of a state.
+  -ajn, --AllJumpsNetType
+                        Whether to use network trained on all jumps, or single
+                        selected jumps out of a state.
+  -nt NTRAIN, --Ntrain NTRAIN
+                        No. of training samples.
+  -i I, -Interval I     Epoch intervals in which to save or load networks.
+  -lr LR, -Learning_rate LR
+                        Learning rate for Adam algorithm.
+  -bs BS, -Batch_size BS
+                        size of a single batch of samples.
+  -wm WM, -Mean_wt WM   Initialization mean value of weights.
+  -ws WS, -Std_wt WS    Initialization standard dev of weights.
+  -lw, -Learn_weights   Whether to learn reweighting of samples.
