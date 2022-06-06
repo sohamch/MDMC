@@ -836,7 +836,7 @@ parser = argparse.ArgumentParser(description="Input parameters for using GCnets"
 parser.add_argument("-DF", "--FileName", metavar="F", type=str, help="Data file name at specified DataPath.")
 parser.add_argument("-cr", "--Crys", metavar="Crys", type=str, help="Type of crystal to read crystal data of.")
 
-parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (train, eval, getY, getRep \n if getRep, then layer must specified with -RepLayer.")
+parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
 parser.add_argument("-rl","--RepLayer", metavar="RL", type=int, help="Layer to extract representation from (count starts from 0)")
 parser.add_argument("-rlavg","--RepLayerAvg", action="store_true", help="Whether to average Representation for all samples")
 
