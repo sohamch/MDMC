@@ -649,7 +649,7 @@ def main(args):
     T_data = args.Tdata
     # Note : for binary random alloys, this should is the training composition instead of temperature
 
-    T_net = args.Tnet # must be same as T_data if "train", can be different if "getY" or "eval"
+    T_net = args.TNet # must be same as T_data if "train", can be different if "getY" or "eval"
 
     if Mode=="train" and T_data != T_net:
         raise ValueError("Different temperatures in training mode not allowed")
@@ -684,8 +684,8 @@ def main(args):
     if Learn_wt:
         wtNet = WeightNet(width=128).double().to(device) 
 
-    if not (Mode == "train" or Mode == "eval" or Mode == "getY"):
-        raise ValueError("Mode needs to be train, eval or getY but given : {}".format(Mode))
+    if not (Mode == "train" or Mode == "eval" or Mode == "getY" or Mode == "getRep"):
+        raise ValueError("Mode needs to be train, eval, getY or getRep but given : {}".format(Mode))
 
     if Mode == "train":
         if T_data != T_net:
@@ -803,7 +803,7 @@ def main(args):
     
     elif Mode == "getRep":
         GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, args.RepLayer, N_train_jumps, batch_size=batch_size,
-           avg=args.RepLayerAvg, AllJumps=AllJumps):
+           avg=args.RepLayerAvg, AllJumps=AllJumps)
 
     print("All done\n\n")
 
@@ -837,7 +837,7 @@ parser.add_argument("-vSp", "--VacSpec", metavar="SpV", type=int, default=0, hel
 parser.add_argument("-aj", "--AllJumps", action="store_true", help="Whether to train on all jumps, or single selected jumps out of a state.")
 parser.add_argument("-ajn", "--AllJumpsNetType", action="store_true", help="Whether to use network trained on all jumps, or single selected jumps out of a state.")
 
-parser.add_argument("-nt", "--Ntrain", type=int, default=10000, help="No. of training samples.")
+parser.add_argument("-nt", "--N_train", type=int, default=10000, help="No. of training samples.")
 parser.add_argument("-i", "-Interval", type=int, default=1, help="Epoch intervals in which to save or load networks.")
 parser.add_argument("-lr", "-Learning_rate", type=float, default=0.001, help="Learning rate for Adam algorithm.")
 parser.add_argument("-bs", "-Batch_size", type=int, default=128, help="size of a single batch of samples.")
