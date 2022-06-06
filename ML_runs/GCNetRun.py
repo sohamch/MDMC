@@ -61,6 +61,14 @@ class GCNet(nn.Module):
     def forward(self, InState):
         y = self.net(InState)
         return y
+    
+    def getRep(self, InState, LayerInd):
+        # get the last single channel representation of the state
+        # LayerInd is counted starting from zero
+        y = self.net[0](InState)
+        for L in range(1, LayerInd + 1):
+            y = self.net[L](y)
+        return y
 
 
 class GCNetRes(GCNet):
@@ -762,7 +770,7 @@ parser.add_argument("-DF", "--FileName", metavar="F", type=str, help="Data file 
 parser.add_argument("-cr", "--Crys", metavar="Crys", type=str, help="Type of crystal to read crystal data of.")
 
 parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (train, eval, getY, getRep \n if getRep, then layer must specified with -RepLayer.")
-parser.add_argument("-rl","--RepLayer", metavar="RL", type=int, help="Layer to extract representation from")
+parser.add_argument("-rl","--RepLayer", metavar="RL", type=int, help="Layer to extract representation from (count starts from 0)")
 parser.add_argument("-rlavg","--RepLayerAvg", metavar="True/False", type=bool, default=True, help="Whether to average Representation for all samples")
 
 parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
