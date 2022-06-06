@@ -569,54 +569,56 @@ def main(args):
     print("Running at : "+ RunPath)
 
     # Get run parameters
-    FileName = args["FileName"] # Name of data file to train on
+    FileName = args.FileName # Name of data file to train on
     
-    CrystalType = args["CrystalType"]
+    CrystalType = args.Crys
     
-    Mode = args["Mode"] # "train" mode or "eval" mode or "getY" mode
+    Mode = args.Mode # "train" mode or "eval" mode or "getY" mode
     
-    nLayers = int(args["NLayers"])
+    nLayers = args.Nlayers
     
-    ch = int(args["Nchannels"])
+    ch = args.Nchannels
     
-    filter_nn = int(args["Filter_nn"])
+    filter_nn = args.ConvNgbRange
     
-    Residual_training = False if args["Residual_training"]=="False" else True
+    Residual_training = args.Residual
+    subNetwork_training = args.SubNet
+
+    scratch_if_no_init = args.Scratch
     
-    subNetwork_training = False if args["SubNetwork_training"]=="False" else True
-    
-    scratch_if_no_init = False if args["Scratch_if_no_init"]=="False" else True
-    
-    T_data = int(args["T_data"]) # temperature to load data from
+    T_data = args.Tdata
     # Note : for binary random alloys, this should is the training composition instead of temperature
-    
-    T_net = int(args["T_net"]) # must be same as T_data if "train", can be different if "getY" or "eval"
-    
-    start_ep = int(args["Start_ep"])
-    
-    end_ep = int(args["End_ep"])
-    
-    specTrain = args["SpecTrain"] # which species to train collectively: eg - 123 for species 1, 2 and 3
-    # The entry is order independent as it is sorted later
-    
-    VacSpec = int(args["VacSpec"]) # integer label for vacancy species
-    
-    AllJumps = False if args["AllJumps"] == "False" else True 
-    # whether to consider all jumps out of the samples or just stochastically selected one
-    
-    AllJumps_net_type = False if args["AllJumps_net_type"]=="False" else True
-    # whether to use network trained on all jumps out of the samples or just stochastically selected one
-    # This is the directory to search for in "eval" or "getY" modes
-    
-    N_train = int(args["N_train"]) # How many INITIAL STATES to consider for training
-    batch_size = int(args["Batch_size"])
-    interval = int(args["Interval"]) # for train mode, interval to save and for eval mode, interval to load
-    learning_Rate = float(args["Learning_Rate"])
 
-    wt_means = float(args["Mean_weights"])
-    wt_std = float(args["Std_weights"])
+    T_net = args.Tnet # must be same as T_data if "train", can be different if "getY" or "eval"
 
-    Learn_wt = False if args["Learn_wt"]=="False" else True
+    if Mode=="train" and T_data != T_net:
+        raise ValueError("Different temperatures in training mode not allowed")
+    
+    start_ep = args.Start_epochs
+    end_ep = args.End_epoch
+
+    if not (Mode == "train" or Mode == "eval"):
+        print("Mode : {}, setting end epoch to start epoch".format(Mode))
+        end_ep = start_ep
+    
+    specTrain = args.SpecTrain
+    
+    VacSpec = args.VacSpec
+    
+    AllJumps = args.AllJumps 
+    
+    AllJumps_net_type = args.AllJumpsNetType
+    
+    N_train = args.N_train
+
+    batch_size = args.Batch_size
+    interval = args.Interval # for train mode, interval to save and for eval mode, interval to load
+    learning_Rate = args.Learning_rate
+
+    wt_means = args.Mean_wt
+    wt_std = args.Std_wt
+
+    Learn_wt = args.Learn_weights
     
     wtNet = None
     if Learn_wt:
@@ -738,6 +740,19 @@ def main(args):
                 OnSites_state1, OnSites_state2, sp_ch, specsToTrain, VacSpec, start_ep, gNet, Ndim, batch_size=batch_size)
         np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y1Vecs)
         np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y2Vecs)
+    
+    elif Mode == "getRep":
+        RepLayer = args.RepLayer
+        avg = args.RepLayerAvg
+        y1Vecs, y2Vecs = GetRep(T_net, dirPath, State1_Occs, State2_Occs,
+                OnSites_state1, OnSites_state2, sp_ch, specsToTrain, VacSpec, start_ep, gNet, LayerInd, Ndim, batch_size=batch_size, avg=avg)
+        if RepLayerAvg:
+            np.save("Rep1Avg_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y1Vecs)
+            np.save("Rep2Avg_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y2Vecs)
+        else:
+            np.save("Rep1_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y1Vecs)
+            np.save("Rep2_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y2Vecs)
+
 
     print("All done\n\n")
 
@@ -772,11 +787,11 @@ parser.add_argument("-aj", "--AllJumps", metavar="True/False", type=bool, defaul
 parser.add_argument("-ajn", "--AllJumpsNetType", metavar="True/False", type=bool, default=False, help="Whether to use network trained on all jumps, or single selected jumps out of a state.")
 
 parser.add_argument("-nt", "--Ntrain", type=int, default=10000, help="No. of training samples.")
-parser.add_argument("-i", "-Interval", type=int, default=10000, help="No. of training samples.")
+parser.add_argument("-i", "-Interval", type=int, default=1, help="Epoch intervals in which to save or load networks.")
 parser.add_argument("-lr", "-Learning_rate", type=float, default=0.001, help="Learning rate for Adam algorithm.")
 parser.add_argument("-bs", "-Batch_size", type=int, default=128, help="size of a single batch of samples.")
 parser.add_argument("-wm", "-Mean_wt", type=float, default=0.02, help="Initialization mean value of weights.")
-parser.add_argument("-ws", "-Mean_std", type=float, default=0.2, help="Initialization standard dev of weights.")
+parser.add_argument("-ws", "-Std_wt", type=float, default=0.2, help="Initialization standard dev of weights.")
 parser.add_argument("-lw", "-Learn_weights", type=bool, default=False, help="Whether to learn reweighting of samples.")
 
 if __name__ == "__main__":
@@ -784,53 +799,5 @@ if __name__ == "__main__":
     args_file = list(sys.argv)[1]
 
     count=1
-    args = {
-    "FileName":"", # Name of data file to train on
-    "CrystalType":"FCC",
-    "Mode":"train", # "train" mode or "eval" mode or "getY" mode
-    "NLayers":"3",
-    "Nchannels":"3",
-    "Filter_nn":"1",
-    "Residual_training":"False",
-    "SubNetwork_training":"False",
-    "Scratch_if_no_init":"False",
-    "T_data":"None", # Note : for binary random alloys, this should is the training composition instead of temperature
-    "T_net":"None", # must be same as T_data if "train", can be different if "getY" or "eval"
-    "Start_ep":"0",
-    "End_ep":"0",
-    "SpecTrain":"123", # which species to train collectively: eg - 123 for species 1, 2 and 3
-    # The entry is order independent as it is sorted later
-
-    "VacSpec":"0", # integer label for vacancy species
-    
-    "AllJumps": "False", # whether to consider all jumps out of the samples or just stochastically selected one
-
-    "AllJumps_net_type": "False", # whether to use network trained on all jumps out of the samples or just stochastically selected one
-    # This specifies the directory to search for in "eval" or "getY" modes
-    
-    "N_train":"10000", # How many INITIAL STATES to consider for training
-    "Interval":"1", # for train mode, interval to save and for eval mode, interval to load
-    "Learning_Rate":"0.001",
-    "Batch_size":"128",
-    "Mean_weights": "0.02",
-    "Std_weights": "0.2",
-    "Learn_wt": "False"
-    }
-
-    # Change default arguments to what has been passed
-    with open(args_file, "r") as fl:
-        for line in fl:
-            splitLine = line.split()
-            if len(splitLine) == 0:
-                continue # skip empty lines
-            elif splitLine[0][0]=="#":
-                continue # skip comment line
-            else:
-                key, item = line.split()[0], line.split()[1]
-                if key not in args.keys():
-                    raise KeyError("Invalid argument: {}".format(key))
-                else:
-                    args[key] = item
-
-
+    args = parser.parse_args()
     main(args)
