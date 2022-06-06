@@ -604,9 +604,6 @@ def GetRep(T_net, dirPath, State1_Occs, State2_Occs,
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
     BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh]
 
-    print("Evaluating network on species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
-    print("Network: {}".format(dirPath))
-
     with pt.no_grad():
         ## load checkpoint
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, epoch), map_location=device))
@@ -628,13 +625,11 @@ def GetRep(T_net, dirPath, State1_Occs, State2_Occs,
 
     else:
         y1Reps_train = np.mean(y1Reps[:Ntrain], axis=0)
-        y1Reps_eval = np.mean(y1Reps[Ntrain:Nsamples], axis=0)
+        y1Reps_eval = np.mean(y1Reps[Ntrain:], axis=0)
         
         y2Reps_train = np.mean(y2Reps[:Ntrain], axis=0)
-        y2Reps_eval = np.mean(y2Reps[Ntrain:Nsamples], axis=0)
+        y2Reps_eval = np.mean(y2Reps[Ntrain:], axis=0)
         return y1Reps_train, y2Reps_train, y1Reps_eval, y2Reps_eval
-
-
 
 
 def main(args):
@@ -833,7 +828,6 @@ def main(args):
             np.save("Rep2_trAvg_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y2RepsTrain)
             np.save("Rep2_evAvg_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y2RepsEval)
             np.save("Rep2_evAvg_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y2RepsEval)
-
 
     print("All done\n\n")
 
