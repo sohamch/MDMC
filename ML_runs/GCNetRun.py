@@ -1,12 +1,10 @@
 import os
 import sys
+import argparse
 RunPath = os.getcwd() + "/"
 CrysPath = "/home/sohamc2/HEA_FCC/MDMC/"
 DataPath = "/home/sohamc2/HEA_FCC/MDMC/ML_runs/DataSets/"
 ModulePath = "/home/sohamc2/HEA_FCC/MDMC/Symm_Network/"
-
-#DataPath = "MD_KMC_single/"
-#ModulePath = "/mnt/FCDEB3C5DEB3768C/UIUC/Research/KMC_ML/VKMC/SymNetworkRuns/CE_Symmetry/Symm_Network"
 
 sys.path.append(ModulePath)
 
@@ -744,6 +742,34 @@ def main(args):
     print("All done\n\n")
 
 # Add argument parser
+parser = argparse.ArgumentParser(description="Input parameters for using GCnets")
+parser.add_argument("-DF", "-FileName", metavar="F", type=str, help="Data file name at specified DataPath.")
+parser.add_argument("-crys", metavar="Crys", type=str, help="Type of crystal to read crystal data of.")
+
+parser.add_argument("-m", "-Mode", metavar="M", type=str, help="Running mode (train, eval, getY, getRep \n if getRep, then layer must specified with -RepLayer.")
+parser.add_argument("-RL","-RepLayer", metavar="RL", type=int, help="Layer to extract representation from")
+parser.add_argument("-RLavg","-RepLayerAvg", metavar="True/False", type=bool, default=True, help="Whether to average Representation for all samples")
+
+parser.add_argument("-nl", "-Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
+parser.add_argument("-nch", "-Nchannels", metavar="Ch", help="No. of representation channels in non-input layers.")
+parser.add_argument("-Cngb", "-ConvNgbRange", metavar="NN", help="Nearest neighbor range of convolutional filters.")
+
+
+parser.add_argument("-RNN", "-Residual", metavar="True/False", type=bool, default=False, help="Whether to do residual training or not.")
+parser.add_argument("-SNN", "-SubNet", metavar="True/False", type=bool, default=False, help="Whether to train pairwise subnetworks or not.")
+parser.add_argument("-scr", "-Scratch", metavar="True/False", type=bool, default=False, help="Create new network and start from scratch?")
+
+parser.add_argument("-TD", "-Tdata", metavar="T", type=int, help="Temperature to read data from")
+parser.add_argument("-TR", "-TNet", metavar="T", type=int, help="Temperature to use networks from\n For example one can evaluate a network trained on 1073 K data, on the 1173 K data, to see what it does.")
+parser.add_argument("-SEp", "-Start_epoch", metavar="Ep", type=int, help="Starting epoch (for training, this network will be read in.)")
+parser.add_argument("-EEp", "-End_epoch", metavar="Ep", type=int, help="Ending epoch (for training, this will be the last epoch.)")
+
+parser.add_argument("-Sp", "-SpecTrain", metavar="s1s2s3", type=str, help="species to consider, order independent (Eg, 123 or 213 etc for species 1, 2 and 3")
+parser.add_argument("-VSp", "", metavar="s1s2s3", type=str, help="species to consider, order independent (Eg, 123 or 213 etc for species 1, 2 and 3")
+
+
+
+
 
 if __name__ == "__main__":
     # main(list(sys.argv))
