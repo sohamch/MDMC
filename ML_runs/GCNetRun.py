@@ -572,7 +572,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_
 
     return y1Vecs, y2Vecs
 
-def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerIndList, Ndim, N_train, batch_size=1000,
+def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerIndList, N_train, batch_size=1000,
            avg=True, AllJumps=False):
     
     N_batch = batch_size
@@ -802,7 +802,7 @@ def main(args):
         np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y2Vecs)
     
     elif Mode == "getRep":
-        GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, args.RepLayer, N_train_jumps, batch_size=batch_size,
+        GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, start_ep, gNet, args.RepLayer, N_train_jumps, batch_size=batch_size,
            avg=args.RepLayerAvg, AllJumps=AllJumps)
 
     print("All done\n\n")
