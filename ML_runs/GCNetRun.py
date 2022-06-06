@@ -580,11 +580,11 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
     state1Data = pt.tensor(State1_Occs)
     Nsamples = state1Data.shape[0]
     state2Data = pt.tensor(State2_Occs)
-
-    try:
+    
+    storeDir = RunPath + "StateReps_{}".format(T_net) 
+    exists = os.path.isdir(storeDir)
+    if not exists:
         os.mkdir(RunPath + "StateReps_{}".format(T_net))
-    except FileExistsError:
-        print("Directory for storing reps already found at : " + RunPath + "StateReps_{}".format(T_net))
 
     with pt.no_grad():
         ## load checkpoint
@@ -612,14 +612,14 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
                 y1RepsVal = np.mean(y1Reps[N_train:], axis = 0)
                 y2RepsVal = np.mean(y2Reps[N_train:], axis = 0)
                 
-                np.save(RunPath + "StateReps_{1}/Rep1_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y1RepsTrain)
-                np.save(RunPath + "StateReps_{1}/Rep2_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y2RepsTrain)
-                np.save(RunPath + "StateReps_{1}/Rep1_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y1RepsVal)
-                np.save(RunPath + "StateReps_{1}/Rep2_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y2RepsVal)
+                np.save(storeDir + "/Rep1_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y1RepsTrain)
+                np.save(storeDir + "/Rep2_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y2RepsTrain)
+                np.save(storeDir + "/Rep1_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y1RepsVal)
+                np.save(storeDir + "/Rep2_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y2RepsVal)
 
             else:
-                np.save(RunPath + "StateReps_{1}/Rep1_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y1Reps)
-                np.save(RunPath + "StateReps_{1}/Rep2_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y2Reps)
+                np.save(storeDir + "/Rep1_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y1Reps)
+                np.save(storeDir + "/Rep2_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y2Reps)
 
 
 def main(args):
@@ -654,7 +654,7 @@ def main(args):
     if Mode=="train" and T_data != T_net:
         raise ValueError("Different temperatures in training mode not allowed")
     
-    start_ep = args.Start_epochs
+    start_ep = args.Start_epoch
     end_ep = args.End_epoch
 
     if not (Mode == "train" or Mode == "eval"):
@@ -710,7 +710,7 @@ def main(args):
 
     # This is where networks will be saved to and loaded from
     dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(T_net, direcString, nLayers, int(AllJumps), ch)
-    if Mode == "eval" or Mode == "getY":
+    if Mode == "eval" or Mode == "getY" or Mode=="getRep":
         prepo = "saved at"
         dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(T_net, direcString, nLayers, int(AllJumps_net_type), ch)
     
@@ -838,12 +838,12 @@ parser.add_argument("-aj", "--AllJumps", action="store_true", help="Whether to t
 parser.add_argument("-ajn", "--AllJumpsNetType", action="store_true", help="Whether to use network trained on all jumps, or single selected jumps out of a state.")
 
 parser.add_argument("-nt", "--N_train", type=int, default=10000, help="No. of training samples.")
-parser.add_argument("-i", "-Interval", type=int, default=1, help="Epoch intervals in which to save or load networks.")
-parser.add_argument("-lr", "-Learning_rate", type=float, default=0.001, help="Learning rate for Adam algorithm.")
-parser.add_argument("-bs", "-Batch_size", type=int, default=128, help="size of a single batch of samples.")
-parser.add_argument("-wm", "-Mean_wt", type=float, default=0.02, help="Initialization mean value of weights.")
-parser.add_argument("-ws", "-Std_wt", type=float, default=0.2, help="Initialization standard dev of weights.")
-parser.add_argument("-lw", "-Learn_weights", action="store_true", help="Whether to learn reweighting of samples.")
+parser.add_argument("-i", "--Interval", type=int, default=1, help="Epoch intervals in which to save or load networks.")
+parser.add_argument("-lr", "--Learning_rate", type=float, default=0.001, help="Learning rate for Adam algorithm.")
+parser.add_argument("-bs", "--Batch_size", type=int, default=128, help="size of a single batch of samples.")
+parser.add_argument("-wm", "--Mean_wt", type=float, default=0.02, help="Initialization mean value of weights.")
+parser.add_argument("-ws", "--Std_wt", type=float, default=0.2, help="Initialization standard dev of weights.")
+parser.add_argument("-lw", "--Learn_weights", action="store_true", help="Whether to learn reweighting of samples.")
 
 if __name__ == "__main__":
     # main(list(sys.argv))
