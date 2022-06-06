@@ -572,6 +572,70 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_
 
     return y1Vecs, y2Vecs
 
+def GetRep(T_net, dirPath, State1_Occs, State2_Occs,
+           OnSites_state1, OnSites_state2, sp_ch, specsToTrain,
+           VacSpec, start_ep, gNet, LayerInd, Nch, Ndim, N_train, batch_size=1000,
+           avg=True):
+    
+    for key, item in sp_ch.items():
+        if key > VacSpec:
+            assert item == key - 1
+        else:
+            assert key < VacSpec
+            assert item == key
+
+    N_batch = batch_size
+    # Convert compute data to pytorch tensors
+    state1Data = pt.tensor(State1_Occs)
+    Nsamples = state1Data.shape[0]
+    state2Data = pt.tensor(State2_Occs)
+    On_st1 = None
+    On_st2 = None
+
+    if SpecsToTrain == [VacSpec]:
+        assert OnSites_st1 == OnSites_st2 == None
+    else:
+        On_st1 = makeProdTensor(OnSites_st1, Ndim).long()
+        On_st2 = makeProdTensor(OnSites_st2, Ndim).long()
+    
+    y1Reps = np.zeros((Nsamples, Nch, Nsites))
+    y2Reps = np.zeros((Nsamples, Nch, Nsites))
+
+    specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
+    BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh]
+
+    print("Evaluating network on species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
+    print("Network: {}".format(dirPath))
+
+    with pt.no_grad():
+        ## load checkpoint
+        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, epoch), map_location=device))
+
+        for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
+            end = min(batch + N_batch, Nsamples)
+
+            state1Batch = state1Data[batch : end].double().to(device)
+            state2Batch = state2Data[batch : end].double().to(device)
+
+            y1 = gNet.getRep(state1Batch, LayerInd)
+            y2 = gNet.getRep(state2Batch, LayerInd)
+
+            y1Reps[batch : end] = y1.cpu().numpy()
+            y2Reps[batch : end] = y2.cpu().numpy()
+    
+    if not avg:
+        return y1Reps, y2Reps
+
+    else:
+        y1Reps_train = np.mean(y1Reps[:Ntrain], axis=0)
+        y1Reps_eval = np.mean(y1Reps[Ntrain:Nsamples], axis=0)
+        
+        y2Reps_train = np.mean(y2Reps[:Ntrain], axis=0)
+        y2Reps_eval = np.mean(y2Reps[Ntrain:Nsamples], axis=0)
+        return y1Reps_train, y2Reps_train, y1Reps_eval, y2Reps_eval
+
+
+
 
 def main(args):
     print("Running at : "+ RunPath)
@@ -591,6 +655,9 @@ def main(args):
     
     Residual_training = args.Residual
     subNetwork_training = args.SubNet
+    
+    if Mode=="getRep" and (Residual_training or subNetwork_training):
+        raise NotImplementedError("getRep is not currently supported in residual and subnetwork training mode.")
 
     scratch_if_no_init = args.Scratch
     
@@ -728,7 +795,7 @@ def main(args):
     
 
     # Call Training or evaluating or y-evaluating function here
-    N_train_jumps = 12*N_train if AllJumps else N_train
+    N_train_jumps = (N_ngb - 1)*N_train if AllJumps else N_train
     if Mode == "train":
         Train(T_data, dirPath, State1_Occs, State2_Occs, OnSites_state1, OnSites_state2,
                 rateData, dispData, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train_jumps,
@@ -751,15 +818,21 @@ def main(args):
     
     elif Mode == "getRep":
         RepLayer = args.RepLayer
-        avg = args.RepLayerAvg
-        y1Vecs, y2Vecs = GetRep(T_net, dirPath, State1_Occs, State2_Occs,
-                OnSites_state1, OnSites_state2, sp_ch, specsToTrain, VacSpec, start_ep, gNet, LayerInd, Ndim, batch_size=batch_size, avg=avg)
-        if RepLayerAvg:
-            np.save("Rep1Avg_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y1Vecs)
-            np.save("Rep2Avg_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y2Vecs)
+        if not args.RepLayerAvg:
+            y1Reps, y2Reps = GetRep(T_net, dirPath, State1_Occs, State2_Occs,
+                    OnSites_state1, OnSites_state2, sp_ch, specsToTrain, VacSpec, 
+                    start_ep, gNet, LayerInd, Nch, Ndim, N_train_jumps, batch_size=batch_size, avg=False)
+            np.save("Rep1_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y1Reps)
+            np.save("Rep2_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y2Reps)
         else:
-            np.save("Rep1_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y1Vecs)
-            np.save("Rep2_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y2Vecs)
+            y1RepsTrain, y2RepsTrain, y1RepsEval, y2RepsEval = GetRep(T_net, dirPath, State1_Occs, State2_Occs,
+                    OnSites_state1, OnSites_state2, sp_ch, specsToTrain, VacSpec,
+                    start_ep, gNet, LayerInd, Nch, Ndim, N_train_jumps, 
+                    batch_size=batch_size, avg=False)
+            np.save("Rep1_trAvg_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y1RepsTrain)
+            np.save("Rep2_trAvg_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y2RepsTrain)
+            np.save("Rep2_evAvg_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y2RepsEval)
+            np.save("Rep2_evAvg_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y2RepsEval)
 
 
     print("All done\n\n")
