@@ -832,7 +832,7 @@ def main(args):
     print("All done\n\n")
 
 # Add argument parser
-parser = argparse.ArgumentParser(description="Input parameters for using GCnets")
+parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-DF", "--FileName", metavar="F", type=str, help="Data file name at specified DataPath.")
 parser.add_argument("-cr", "--Crys", metavar="Crys", type=str, help="Type of crystal to read crystal data of.")
 
