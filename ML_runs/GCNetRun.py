@@ -598,8 +598,8 @@ def GetRep(T_net, dirPath, State1_Occs, State2_Occs,
         On_st1 = makeProdTensor(OnSites_st1, Ndim).long()
         On_st2 = makeProdTensor(OnSites_st2, Ndim).long()
     
-    y1Reps = np.zeros((Nsamples, Nch, Nsites))
-    y2Reps = np.zeros((Nsamples, Nch, Nsites))
+    y1Reps = np.zeros((Nsamples, Nch, Nsites), dtype=np.float32)
+    y2Reps = np.zeros((Nsamples, Nch, Nsites), dtype=np.float32)
 
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
     BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh]
@@ -620,8 +620,8 @@ def GetRep(T_net, dirPath, State1_Occs, State2_Occs,
             y1 = gNet.getRep(state1Batch, LayerInd)
             y2 = gNet.getRep(state2Batch, LayerInd)
 
-            y1Reps[batch : end] = y1.cpu().numpy()
-            y2Reps[batch : end] = y2.cpu().numpy()
+            y1Reps[batch : end] = y1.cpu().numpy().astype(np.float32)
+            y2Reps[batch : end] = y2.cpu().numpy().astype(np.float32)
     
     if not avg:
         return y1Reps, y2Reps
@@ -844,16 +844,16 @@ parser.add_argument("-cr", "--Crys", metavar="Crys", type=str, help="Type of cry
 
 parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (train, eval, getY, getRep \n if getRep, then layer must specified with -RepLayer.")
 parser.add_argument("-rl","--RepLayer", metavar="RL", type=int, help="Layer to extract representation from (count starts from 0)")
-parser.add_argument("-rlavg","--RepLayerAvg", metavar="True/False", type=bool, default=True, help="Whether to average Representation for all samples")
+parser.add_argument("-rlavg","--RepLayerAvg", action="store_true", help="Whether to average Representation for all samples")
 
 parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
 parser.add_argument("-nch", "--Nchannels", metavar="Ch", help="No. of representation channels in non-input layers.")
 parser.add_argument("-cngb", "--ConvNgbRange", metavar="NN", help="Nearest neighbor range of convolutional filters.")
 
 
-parser.add_argument("-rn", "--Residual", metavar="True/False", type=bool, default=False, help="Whether to do residual training.")
-parser.add_argument("-sn", "--SubNet", metavar="True/False", type=bool, default=False, help="Whether to train pairwise subnetworks.")
-parser.add_argument("-scr", "--Scratch", metavar="True/False", type=bool, default=False, help="Whether to create new network and start from scratch")
+parser.add_argument("-rn", "--Residual", action="store_true", help="Whether to do residual training.")
+parser.add_argument("-sn", "--SubNet", action="store_true", help="Whether to train pairwise subnetworks.")
+parser.add_argument("-scr", "--Scratch", action="store_true", help="Whether to create new network and start from scratch")
 
 parser.add_argument("-td", "--Tdata", metavar="T", type=int, help="Temperature to read data from")
 parser.add_argument("-tn", "--TNet", metavar="T", type=int, help="Temperature to use networks from\n For example one can evaluate a network trained on 1073 K data, on the 1173 K data, to see what it does.")
@@ -864,8 +864,8 @@ parser.add_argument("-sp", "--SpecTrain", metavar="s1s2s3", type=str, help="spec
 parser.add_argument("-vSp", "--VacSpec", metavar="SpV", type=int, default=0, help="species index of vacancy, must match dataset, default 0")
 
 
-parser.add_argument("-aj", "--AllJumps", metavar="True/False", type=bool, default=False, help="Whether to train on all jumps, or single selected jumps out of a state.")
-parser.add_argument("-ajn", "--AllJumpsNetType", metavar="True/False", type=bool, default=False, help="Whether to use network trained on all jumps, or single selected jumps out of a state.")
+parser.add_argument("-aj", "--AllJumps", action="store_true", help="Whether to train on all jumps, or single selected jumps out of a state.")
+parser.add_argument("-ajn", "--AllJumpsNetType", action="store_true", help="Whether to use network trained on all jumps, or single selected jumps out of a state.")
 
 parser.add_argument("-nt", "--Ntrain", type=int, default=10000, help="No. of training samples.")
 parser.add_argument("-i", "-Interval", type=int, default=1, help="Epoch intervals in which to save or load networks.")
@@ -873,7 +873,7 @@ parser.add_argument("-lr", "-Learning_rate", type=float, default=0.001, help="Le
 parser.add_argument("-bs", "-Batch_size", type=int, default=128, help="size of a single batch of samples.")
 parser.add_argument("-wm", "-Mean_wt", type=float, default=0.02, help="Initialization mean value of weights.")
 parser.add_argument("-ws", "-Std_wt", type=float, default=0.2, help="Initialization standard dev of weights.")
-parser.add_argument("-lw", "-Learn_weights", type=bool, default=False, help="Whether to learn reweighting of samples.")
+parser.add_argument("-lw", "-Learn_weights", action="store_true", help="Whether to learn reweighting of samples.")
 
 if __name__ == "__main__":
     # main(list(sys.argv))
