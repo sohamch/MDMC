@@ -579,6 +579,7 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs)
     Nsamples = state1Data.shape[0]
+    Nsites = stateData.shape[2]
     state2Data = pt.tensor(State2_Occs)
     
     storeDir = RunPath + "StateReps_{}".format(T_net) 
