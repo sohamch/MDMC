@@ -580,8 +580,12 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
     state1Data = pt.tensor(State1_Occs)
     Nsamples = state1Data.shape[0]
     state2Data = pt.tensor(State2_Occs)
-    
-    os.mkdir(RunPath + "StateReps_{}".format(T_net))
+
+    try:
+        os.mkdir(RunPath + "StateReps_{}".format(T_net))
+    except FileExistsError:
+        print("Directory for storing reps already found at : " + RunPath + "StateReps_{}".format(T_net))
+
 
     with pt.no_grad():
         ## load checkpoint
