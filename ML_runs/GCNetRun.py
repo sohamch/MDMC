@@ -572,64 +572,51 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_
 
     return y1Vecs, y2Vecs
 
-def GetRep(T_net, dirPath, State1_Occs, State2_Occs,
-           OnSites_state1, OnSites_state2, sp_ch, specsToTrain,
-           VacSpec, start_ep, gNet, LayerInd, Nch, Ndim, N_train, batch_size=1000,
-           avg=True):
+def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerIndList, Ndim, N_train, batch_size=1000,
+           avg=True, AllJumps=False):
     
-    for key, item in sp_ch.items():
-        if key > VacSpec:
-            assert item == key - 1
-        else:
-            assert key < VacSpec
-            assert item == key
-
     N_batch = batch_size
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs)
     Nsamples = state1Data.shape[0]
     state2Data = pt.tensor(State2_Occs)
-    On_st1 = None
-    On_st2 = None
-
-    if SpecsToTrain == [VacSpec]:
-        assert OnSites_st1 == OnSites_st2 == None
-    else:
-        On_st1 = makeProdTensor(OnSites_st1, Ndim).long()
-        On_st2 = makeProdTensor(OnSites_st2, Ndim).long()
     
-    y1Reps = np.zeros((Nsamples, Nch, Nsites), dtype=np.float32)
-    y2Reps = np.zeros((Nsamples, Nch, Nsites), dtype=np.float32)
-
-    specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
-    BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh]
+    os.mkdir(RunPath + "StateReps_{}".format(T_net))
 
     with pt.no_grad():
         ## load checkpoint
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, epoch), map_location=device))
+        nLayers = (len(gNet.net)-7)//3
+        for LayerInd in LayerIndList:
+            ch = gNet.net[LayerInd - 2].Psi.shape[0]
+            y1Reps = np.zeros((Nsamples, ch, Nsites), dtype=np.float32)
+            y2Reps = np.zeros((Nsamples, ch, Nsites), dtype=np.float32)
+            for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
+                end = min(batch + N_batch, Nsamples)
 
-        for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
-            end = min(batch + N_batch, Nsamples)
+                state1Batch = state1Data[batch : end].double().to(device)
+                state2Batch = state2Data[batch : end].double().to(device)
 
-            state1Batch = state1Data[batch : end].double().to(device)
-            state2Batch = state2Data[batch : end].double().to(device)
+                y1 = gNet.getRep(state1Batch, LayerInd)
+                y2 = gNet.getRep(state2Batch, LayerInd)
 
-            y1 = gNet.getRep(state1Batch, LayerInd)
-            y2 = gNet.getRep(state2Batch, LayerInd)
+                y1Reps[batch : end] = y1.cpu().numpy().astype(np.float32)
+                y2Reps[batch : end] = y2.cpu().numpy().astype(np.float32)
+            
+            if avg:
+                y1RepsTrain = np.mean(y1Reps[:N_train], axis = 0)
+                y2RepsTrain = np.mean(y2Reps[:N_train], axis = 0)
+                y1RepsVal = np.mean(y1Reps[N_train:], axis = 0)
+                y2RepsVal = np.mean(y2Reps[N_train:], axis = 0)
+                
+                np.save(RunPath + "StateReps_{1}/Rep1_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y1RepsTrain)
+                np.save(RunPath + "StateReps_{1}/Rep2_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y2RepsTrain)
+                np.save(RunPath + "StateReps_{1}/Rep1_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y1RepsVal)
+                np.save(RunPath + "StateReps_{1}/Rep2_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y2RepsVal)
 
-            y1Reps[batch : end] = y1.cpu().numpy().astype(np.float32)
-            y2Reps[batch : end] = y2.cpu().numpy().astype(np.float32)
-    
-    if not avg:
-        return y1Reps, y2Reps
-
-    else:
-        y1Reps_train = np.mean(y1Reps[:Ntrain], axis=0)
-        y1Reps_eval = np.mean(y1Reps[Ntrain:], axis=0)
-        
-        y2Reps_train = np.mean(y2Reps[:Ntrain], axis=0)
-        y2Reps_eval = np.mean(y2Reps[Ntrain:], axis=0)
-        return y1Reps_train, y2Reps_train, y1Reps_eval, y2Reps_eval
+            else:
+                np.save(RunPath + "StateReps_{1}/Rep1_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y1Reps)
+                np.save(RunPath + "StateReps_{1}/Rep2_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, ch, LayerInd), y2Reps)
 
 
 def main(args):
@@ -812,22 +799,10 @@ def main(args):
         np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y2Vecs)
     
     elif Mode == "getRep":
-        RepLayer = args.RepLayer
-        if not args.RepLayerAvg:
             y1Reps, y2Reps = GetRep(T_net, dirPath, State1_Occs, State2_Occs,
                     OnSites_state1, OnSites_state2, sp_ch, specsToTrain, VacSpec, 
                     start_ep, gNet, LayerInd, Nch, Ndim, N_train_jumps, batch_size=batch_size, avg=False)
-            np.save("Rep1_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y1Reps)
-            np.save("Rep2_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y2Reps)
-        else:
-            y1RepsTrain, y2RepsTrain, y1RepsEval, y2RepsEval = GetRep(T_net, dirPath, State1_Occs, State2_Occs,
-                    OnSites_state1, OnSites_state2, sp_ch, specsToTrain, VacSpec,
-                    start_ep, gNet, LayerInd, Nch, Ndim, N_train_jumps, 
                     batch_size=batch_size, avg=False)
-            np.save("Rep1_trAvg_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y1RepsTrain)
-            np.save("Rep2_trAvg_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y2RepsTrain)
-            np.save("Rep2_evAvg_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y2RepsEval)
-            np.save("Rep2_evAvg_l{7}_sp{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch, RepLayer), y2RepsEval)
 
     print("All done\n\n")
 
@@ -837,8 +812,8 @@ parser.add_argument("-DF", "--FileName", metavar="F", type=str, help="Data file 
 parser.add_argument("-cr", "--Crys", metavar="Crys", type=str, help="Type of crystal to read crystal data of.")
 
 parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
-parser.add_argument("-rl","--RepLayer", metavar="RL", type=int, help="Layer to extract representation from (count starts from 0)")
-parser.add_argument("-rlavg","--RepLayerAvg", action="store_true", help="Whether to average Representation for all samples")
+parser.add_argument("-rl","--RepLayer", metavar="[L1, L2,..]", type=int, nargs="+", help="Layers to extract representation from (count starts from 0)")
+parser.add_argument("-rlavg","--RepLayerAvg", action="store_true", help="Whether to average Representations across samples (training and validation will be made separate)")
 
 parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
 parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, help="No. of representation channels in non-input layers.")
