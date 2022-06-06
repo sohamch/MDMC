@@ -342,7 +342,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     if Learn_wt:
         print("Learning sample reweighting with SLP.") 
         WeightSLP.to(device)
-        optims.append(pt.optim.Adam(WeightSLP.parameters(), lr=0.001))
+        optims.append(pt.optim.Adam(WeightSLP.parameters(), lr=0.0001))
 
     print("Starting Training loop") 
 
@@ -742,6 +742,8 @@ def main(args):
         np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y2Vecs)
 
     print("All done\n\n")
+
+# Add argument parser
 
 if __name__ == "__main__":
     # main(list(sys.argv))
