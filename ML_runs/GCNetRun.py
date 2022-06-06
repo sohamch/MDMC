@@ -586,7 +586,6 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
     except FileExistsError:
         print("Directory for storing reps already found at : " + RunPath + "StateReps_{}".format(T_net))
 
-
     with pt.no_grad():
         ## load checkpoint
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, epoch), map_location=device))
@@ -803,10 +802,8 @@ def main(args):
         np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y2Vecs)
     
     elif Mode == "getRep":
-            y1Reps, y2Reps = GetRep(T_net, dirPath, State1_Occs, State2_Occs,
-                    OnSites_state1, OnSites_state2, sp_ch, specsToTrain, VacSpec, 
-                    start_ep, gNet, LayerInd, Nch, Ndim, N_train_jumps, batch_size=batch_size, avg=False)
-                    batch_size=batch_size, avg=False)
+        GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, args.RepLayer, N_train_jumps, batch_size=batch_size,
+           avg=args.RepLayerAvg, AllJumps=AllJumps):
 
     print("All done\n\n")
 
