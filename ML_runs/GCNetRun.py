@@ -743,33 +743,41 @@ def main(args):
 
 # Add argument parser
 parser = argparse.ArgumentParser(description="Input parameters for using GCnets")
-parser.add_argument("-DF", "-FileName", metavar="F", type=str, help="Data file name at specified DataPath.")
-parser.add_argument("-crys", metavar="Crys", type=str, help="Type of crystal to read crystal data of.")
+parser.add_argument("-DF", "--FileName", metavar="F", type=str, help="Data file name at specified DataPath.")
+parser.add_argument("-cr", "--Crys", metavar="Crys", type=str, help="Type of crystal to read crystal data of.")
 
-parser.add_argument("-m", "-Mode", metavar="M", type=str, help="Running mode (train, eval, getY, getRep \n if getRep, then layer must specified with -RepLayer.")
-parser.add_argument("-RL","-RepLayer", metavar="RL", type=int, help="Layer to extract representation from")
-parser.add_argument("-RLavg","-RepLayerAvg", metavar="True/False", type=bool, default=True, help="Whether to average Representation for all samples")
+parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (train, eval, getY, getRep \n if getRep, then layer must specified with -RepLayer.")
+parser.add_argument("-rl","--RepLayer", metavar="RL", type=int, help="Layer to extract representation from")
+parser.add_argument("-rlavg","--RepLayerAvg", metavar="True/False", type=bool, default=True, help="Whether to average Representation for all samples")
 
-parser.add_argument("-nl", "-Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
-parser.add_argument("-nch", "-Nchannels", metavar="Ch", help="No. of representation channels in non-input layers.")
-parser.add_argument("-Cngb", "-ConvNgbRange", metavar="NN", help="Nearest neighbor range of convolutional filters.")
-
-
-parser.add_argument("-RNN", "-Residual", metavar="True/False", type=bool, default=False, help="Whether to do residual training or not.")
-parser.add_argument("-SNN", "-SubNet", metavar="True/False", type=bool, default=False, help="Whether to train pairwise subnetworks or not.")
-parser.add_argument("-scr", "-Scratch", metavar="True/False", type=bool, default=False, help="Create new network and start from scratch?")
-
-parser.add_argument("-TD", "-Tdata", metavar="T", type=int, help="Temperature to read data from")
-parser.add_argument("-TR", "-TNet", metavar="T", type=int, help="Temperature to use networks from\n For example one can evaluate a network trained on 1073 K data, on the 1173 K data, to see what it does.")
-parser.add_argument("-SEp", "-Start_epoch", metavar="Ep", type=int, help="Starting epoch (for training, this network will be read in.)")
-parser.add_argument("-EEp", "-End_epoch", metavar="Ep", type=int, help="Ending epoch (for training, this will be the last epoch.)")
-
-parser.add_argument("-Sp", "-SpecTrain", metavar="s1s2s3", type=str, help="species to consider, order independent (Eg, 123 or 213 etc for species 1, 2 and 3")
-parser.add_argument("-VSp", "", metavar="s1s2s3", type=str, help="species to consider, order independent (Eg, 123 or 213 etc for species 1, 2 and 3")
+parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
+parser.add_argument("-nch", "--Nchannels", metavar="Ch", help="No. of representation channels in non-input layers.")
+parser.add_argument("-cngb", "--ConvNgbRange", metavar="NN", help="Nearest neighbor range of convolutional filters.")
 
 
+parser.add_argument("-rn", "--Residual", metavar="True/False", type=bool, default=False, help="Whether to do residual training.")
+parser.add_argument("-sn", "--SubNet", metavar="True/False", type=bool, default=False, help="Whether to train pairwise subnetworks.")
+parser.add_argument("-scr", "--Scratch", metavar="True/False", type=bool, default=False, help="Whether to create new network and start from scratch")
+
+parser.add_argument("-td", "--Tdata", metavar="T", type=int, help="Temperature to read data from")
+parser.add_argument("-tn", "--TNet", metavar="T", type=int, help="Temperature to use networks from\n For example one can evaluate a network trained on 1073 K data, on the 1173 K data, to see what it does.")
+parser.add_argument("-sep", "--Start_epoch", metavar="Ep", type=int, help="Starting epoch (for training, this network will be read in.)")
+parser.add_argument("-eep", "--End_epoch", metavar="Ep", type=int, help="Ending epoch (for training, this will be the last epoch.)")
+
+parser.add_argument("-sp", "--SpecTrain", metavar="s1s2s3", type=str, help="species to consider, order independent (Eg, 123 or 213 etc for species 1, 2 and 3")
+parser.add_argument("-vSp", "--VacSpec", metavar="SpV", type=int, default=0, help="species index of vacancy, must match dataset, default 0")
 
 
+parser.add_argument("-aj", "--AllJumps", metavar="True/False", type=bool, default=False, help="Whether to train on all jumps, or single selected jumps out of a state.")
+parser.add_argument("-ajn", "--AllJumpsNetType", metavar="True/False", type=bool, default=False, help="Whether to use network trained on all jumps, or single selected jumps out of a state.")
+
+parser.add_argument("-nt", "--Ntrain", type=int, default=10000, help="No. of training samples.")
+parser.add_argument("-i", "-Interval", type=int, default=10000, help="No. of training samples.")
+parser.add_argument("-lr", "-Learning_rate", type=float, default=0.001, help="Learning rate for Adam algorithm.")
+parser.add_argument("-bs", "-Batch_size", type=int, default=128, help="size of a single batch of samples.")
+parser.add_argument("-wm", "-Mean_wt", type=float, default=0.02, help="Initialization mean value of weights.")
+parser.add_argument("-ws", "-Mean_std", type=float, default=0.2, help="Initialization standard dev of weights.")
+parser.add_argument("-lw", "-Learn_weights", type=bool, default=False, help="Whether to learn reweighting of samples.")
 
 if __name__ == "__main__":
     # main(list(sys.argv))
