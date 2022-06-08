@@ -791,7 +791,6 @@ def main(args):
             print("Running in Residual Binary SubNetwork Convolution mode")
             gNet = GCSubNetRes(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
                     specsToTrain, mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
-    
 
     # Call Training or evaluating or y-evaluating function here
     N_train_jumps = (N_ngb - 1)*N_train if AllJumps else N_train
@@ -859,10 +858,20 @@ parser.add_argument("-wm", "--Mean_wt", type=float, default=0.02, help="Initiali
 parser.add_argument("-ws", "--Std_wt", type=float, default=0.2, help="Initialization standard dev of weights.")
 parser.add_argument("-lw", "--Learn_weights", action="store_true", help="Whether to learn reweighting of samples.")
 
+parser.add_argument("-d", "--DumpArgs", action="store_true", help="Whether to dump arguments in a file")
+parser.add_argument("-dpf", "--DumpFile", action="store_true", help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
+
 if __name__ == "__main__":
     # main(list(sys.argv))
     args_file = list(sys.argv)[1]
 
     count=1
     args = parser.parse_args()
+    
+    if args.DumpArgs:
+        opts = vars(args)
+        with open(RunPath + args.DumpFile, "w") as fl:
+            for key, val in opts.items():
+                fl.write("{}: {}\n".format(key, val))
+
     main(args)
