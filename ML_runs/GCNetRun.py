@@ -859,7 +859,7 @@ parser.add_argument("-ws", "--Std_wt", type=float, default=0.2, help="Initializa
 parser.add_argument("-lw", "--Learn_weights", action="store_true", help="Whether to learn reweighting of samples.")
 
 parser.add_argument("-d", "--DumpArgs", action="store_true", help="Whether to dump arguments in a file")
-parser.add_argument("-dpf", "--DumpFile", action="store_true", help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
+parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str, help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
 
 if __name__ == "__main__":
     # main(list(sys.argv))
@@ -869,6 +869,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     if args.DumpArgs:
+        print("Dumping arguments to: {}".format(args.DumpFile))
         opts = vars(args)
         with open(RunPath + args.DumpFile, "w") as fl:
             for key, val in opts.items():
