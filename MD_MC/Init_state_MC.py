@@ -135,10 +135,7 @@ if __name__ == "__main__":
     N_proc = int(args[4])  # No. of procs to parallelize over
     jobID = int(args[5])
     N_save = int(args[6])
-
-    chk_cmd = subprocess.Popen("mkdir chkpt", shell=True)
-    rt = chk_cmd.wait()
-    assert rt == 0
+    allSave = bool(int(args[7]))
 
     # Create an FCC primitive unit cell
     a = 3.59
@@ -176,7 +173,7 @@ if __name__ == "__main__":
     # Run MC
     write_lammps_input(jobID)
     start = time.time()
-    N_total, N_accept, Eng_steps, _, _, _ = MC_Run(N_swap, superFCC, N_proc, jobID, elems, N_save=N_save)
+    N_total, N_accept, Eng_steps_accept, Eng_steps_all, rand_steps, swap_steps = MC_Run(N_swap, superFCC, N_proc, jobID, elems, N_save=N_save)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
@@ -185,3 +182,8 @@ if __name__ == "__main__":
     np.save("Eng_steps_therm.npy", np.array(Eng_steps))
     with open("superFCC_therm.pkl", "wb") as fl:
         pickle.dump(superFCC, fl)
+
+    if allSave:
+        np.save("Eng_all_steps.npy", np.array(Eng_steps_all))
+        np.save("rand_steps.npy", np.array(rand_steps))
+        np.save("swap_atoms.npy", np.array(swap_steps))
