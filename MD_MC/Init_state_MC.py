@@ -187,7 +187,7 @@ if __name__ == "__main__":
     with open("superInitial_{}.pkl".format(jobID), "wb") as fl:
         pickle.dump(superFCC, fl)
 
-    # First thermalize the starting state
+    # Thermalize the starting state
     write_lammps_input(jobID)
     start = time.time()
     N_total, N_accept, Eng_steps, _, _, _ = MC_Run(N_therm, superFCC, N_proc, jobID, elems, __test__=__test__)
