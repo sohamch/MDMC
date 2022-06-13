@@ -134,7 +134,7 @@ if __name__ == "__main__":
     N_units = int(args[3])  # dimensions of unit cell
     N_proc = int(args[4])  # No. of procs to parallelize over
     jobID = int(args[5])
-    N_save = int(args[6]) if len(args) == 7 else 200
+    N_save = int(args[6])
 
     chk_cmd = subprocess.Popen("mkdir chkpt", shell=True)
     rt = chk_cmd.wait()
