@@ -34,16 +34,12 @@ def write_lammps_input(jobID):
 
 # Next, we write the MC loop
 def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
-           N_therm=2000, N_save=200, serial=True, __test__=False):
+           N_therm=2000, N_save=200, serial=True):
     if serial:
         # cmdString = "mpirun -np 1 $LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
         cmdString = "$LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
     else:
         cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs, jobID)
-
-    if __test__:
-        N_therm = 1
-        N_save = 1
 
     N_accept = 0
     N_total = 0
@@ -68,9 +64,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
     cond = True  # condition for loop termination
     while cond:
         Eng_steps_all.append(e1)
-        if __test__:
-            write_lammps_data("inp_MC_init_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
-
+        
         # Now randomize the atomic occupancies
         site1 = np.random.randint(0, Natoms)
         site2 = np.random.randint(0, Natoms)
@@ -85,8 +79,6 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
 
         # write the supercell again as a lammps file
         write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
-        if __test__:
-            write_lammps_data("inp_MC_final_{0}.data".format(jobID), ASE_Super, specorder=elems)
 
         # evaluate the energy
         cmd = subprocess.Popen(cmdString, shell=True)
@@ -127,15 +119,9 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
                 with open("chkpt/counter.txt", "w") as fl_counter:
                     fl_counter.write("last step saved\n{}".format(N_total))
 
-        if __test__:
-            write_lammps_data("Result_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
-            rand_steps.append(rn)
-            swap_steps.append([site1, site2])
-
-            cond = N_total < 2
-
-        else:
-            cond = N_total <= SwapRun + 1
+        rand_steps.append(rn)
+        swap_steps.append([site1, site2])
+        cond = N_total <= SwapRun + 1
 
     return N_total, N_accept, Eng_steps_accept, Eng_steps_all, rand_steps, swap_steps
 
@@ -148,9 +134,8 @@ if __name__ == "__main__":
     N_units = int(args[3])  # dimensions of unit cell
     N_proc = int(args[4])  # No. of procs to parallelize over
     jobID = int(args[5])
-    Nsave = int(args[6]) if len(args) == 7 else 200
+    N_save = int(args[6]) if len(args) == 7 else 200
 
-    __test__ = False
     chk_cmd = subprocess.Popen("mkdir chkpt", shell=True)
     rt = chk_cmd.wait()
     assert rt == 0
@@ -191,9 +176,7 @@ if __name__ == "__main__":
     # Thermalize the starting state
     write_lammps_input(jobID)
     start = time.time()
-    #def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
-    #        N_therm=2000, N_save=200, serial=True, __test__=False):
-    N_total, N_accept, Eng_steps, _, _, _ = MC_Run(N_therm, superFCC, N_proc, jobID, elems, N_save=N_save, __test__=__test__)
+    N_total, N_accept, Eng_steps, _, _, _ = MC_Run(N_therm, superFCC, N_proc, jobID, elems, N_save=N_save)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
