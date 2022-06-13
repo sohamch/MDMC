@@ -148,6 +148,7 @@ if __name__ == "__main__":
     N_units = int(args[3])  # dimensions of unit cell
     N_proc = int(args[4])  # No. of procs to parallelize over
     jobID = int(args[5])
+    Nsave = int(args[6]) if len(args) == 7 else 200
 
     __test__ = False
     chk_cmd = subprocess.Popen("mkdir chkpt", shell=True)
@@ -190,7 +191,9 @@ if __name__ == "__main__":
     # Thermalize the starting state
     write_lammps_input(jobID)
     start = time.time()
-    N_total, N_accept, Eng_steps, _, _, _ = MC_Run(N_therm, superFCC, N_proc, jobID, elems, __test__=__test__)
+    #def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
+    #        N_therm=2000, N_save=200, serial=True, __test__=False):
+    N_total, N_accept, Eng_steps, _, _, _ = MC_Run(N_therm, superFCC, N_proc, jobID, elems, N_save=N_save, __test__=__test__)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
