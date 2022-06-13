@@ -130,7 +130,7 @@ if __name__ == "__main__":
     kB = physical_constants["Boltzmann constant in eV/K"][0]
     args = list(sys.argv)
     T = float(args[1])
-    N_therm = int(args[2])  # thermalization steps (until this many moves accepted)
+    N_swap = int(args[2])  # thermalization steps (until this many moves Have been run)
     N_units = int(args[3])  # dimensions of unit cell
     N_proc = int(args[4])  # No. of procs to parallelize over
     jobID = int(args[5])
@@ -173,10 +173,10 @@ if __name__ == "__main__":
     with open("superInitial_{}.pkl".format(jobID), "wb") as fl:
         pickle.dump(superFCC, fl)
 
-    # Thermalize the starting state
+    # Run MC
     write_lammps_input(jobID)
     start = time.time()
-    N_total, N_accept, Eng_steps, _, _, _ = MC_Run(N_therm, superFCC, N_proc, jobID, elems, N_save=N_save)
+    N_total, N_accept, Eng_steps, _, _, _ = MC_Run(N_swap, superFCC, N_proc, jobID, elems, N_save=N_save)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
