@@ -1,9 +1,15 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# In[1]:
+
+
 import torch as pt
 import torch.nn as nn
 import torch.nn.functional as F
+
+
+# In[2]:
 
 
 class GConv(nn.Module):
@@ -58,16 +64,7 @@ class GConv(nn.Module):
         NNRepeat = NNsites.unsqueeze(0).repeat(In.shape[0], Nch, 1)
         
         return pt.gather(In, 2, NNRepeat)
-
-    def NNSum(self, In, nnVecs):
-        # The nnVecs are assumed to be matrix columns with 0 at the first column
-        # nnVecs = [0 z1 z2..]
-        if In.shape[1] != 1: # Check that we have single channel inputs here
-            raise ValueError("The state must be single channel for vector convolution.")
-
-        out = self.RearrangeInput(In, self.NNsites)
-        return pt.matmul(nnVecs, out)
-
+    
     def forward(self, In):
         
         Nbatch = In.shape[0]
@@ -84,6 +81,9 @@ class GConv(nn.Module):
         out = pt.matmul(Psi, out) + bias
         
         return out.view(Nbatch, NchOut, Ng, NSites)
+
+
+# In[ ]:
 
 
 class R3Conv(nn.Module):
@@ -173,3 +173,6 @@ class GAvg(nn.Module):
         Ng = In.shape[2]        
         # sum out the group channels
         return pt.sum(In, dim=2)/Ng
+
+
+
