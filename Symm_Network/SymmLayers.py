@@ -83,6 +83,23 @@ class GConv(nn.Module):
         return out.view(Nbatch, NchOut, Ng, NSites)
 
 
+def NNSum(In, NNsites, nnVecs):
+    # The nnVecs are assumed to be matrix columns with 0 at the first column
+    # nnVecs = [0 z1 z2..]
+    if In.shape[1] != 1:  # Check that we have single channel inputs here
+        raise ValueError("The state must be single channel for vector convolution.")
+
+    N_ngb = NNsites.shape[0]
+
+    Nch = In.shape[1]
+
+    out = In.repeat_interleave(N_ngb, dim=1)
+    NNRepeat = NNsites.unsqueeze(0).repeat(out.shape[0], Nch, 1)
+
+    out = pt.gather(out, 2, NNRepeat)
+
+    return pt.matmul(nnVecs, out)
+
 # In[ ]:
 
 
