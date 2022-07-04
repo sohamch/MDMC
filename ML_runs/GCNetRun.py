@@ -607,8 +607,8 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
                 y1 = gNet.getRep(state1Batch, LayerInd)
                 y2 = gNet.getRep(state2Batch, LayerInd)
 
-                y1Reps[batch : end] = y1.cpu().numpy().astype(np.float32)
-                y2Reps[batch : end] = y2.cpu().numpy().astype(np.float32)
+                y1Reps[batch : end] = y1.cpu().numpy()
+                y2Reps[batch : end] = y2.cpu().numpy()
             
             if avg:
                 y1RepsTrain = np.mean(y1Reps[:N_train], axis = 0)
