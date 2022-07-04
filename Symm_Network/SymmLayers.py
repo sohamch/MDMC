@@ -193,7 +193,7 @@ class GAvg(nn.Module):
 
 
 class GCNet(nn.Module):
-    def __init__(self, GnnPerms, NNsites, SitesToShells,
+    def __init__(self, GnnPerms, gdiags, NNsites, SitesToShells,
                 dim, N_ngb, mean=1.0, std=0.1, NSpec=5, nl=3, nch=8):
         
         super().__init__()
