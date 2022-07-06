@@ -548,9 +548,6 @@ def main(args):
     scratch_if_no_init = args.Scratch
     
     T_data = args.Tdata
-    # Note : for binary random alloys, this should is the training composition instead of temperature
-
-    T_net = args.TNet # must be same as T_data if "train", can be different if "getY" or "eval"
 
     start_ep = args.Start_epoch
     end_ep = args.End_epoch
@@ -578,12 +575,8 @@ def main(args):
     if Learn_wt:
         wtNet = WeightNet(width=128).double().to(device) 
 
-    if not (Mode == "train" or Mode == "eval" or Mode == "getY" or Mode == "getRep"):
-        raise ValueError("Mode needs to be train, eval, getY or getRep but given : {}".format(Mode))
-
-    if Mode == "train":
-        if T_data != T_net:
-            raise ValueError("Training and Testing condition must be the same")
+    if not (Mode == "train" or Mode == "eval"):
+        raise ValueError("Mode needs to be train or eval but given : {}".format(Mode))
 
     # Load data
     state1List, state2List, dispList, rateList, AllJumpRates = Load_Data(DataFilePath)
@@ -602,11 +595,10 @@ def main(args):
         for spec in specsToTrain:
             direcString += "{}".format(spec)
 
-    # This is where networks will be saved to and loaded from
-    dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(T_net, direcString, nLayers, int(AllJumps), ch)
+    # This is where the Poisson networks will be saved to and loaded from
+    dirNameNets = "ep_Poiss_T_{0}_{1}_n{2}c{3}".format(T_net, direcString, nLayers, ch)
     if Mode == "eval" or Mode == "getY" or Mode=="getRep":
         prepo = "saved at"
-        dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(T_net, direcString, nLayers, int(AllJumps_net_type), ch)
     
     if Mode == "train":
         prepo = "saving in"
