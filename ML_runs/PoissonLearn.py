@@ -572,9 +572,10 @@ def main(args):
     if not (Mode == "train" or Mode == "eval"):
         raise ValueError("Mode needs to be train or eval but given : {}".format(Mode))
 
-    # Load data
+    #1. Load data
     state1List, state2List, dispList, rateList, AllJumpRates = Load_Data(DataFilePath)
     
+    #2. This is where the Poisson networks will be saved to and loaded from
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
     Nsites = state1List.shape[1]
@@ -589,7 +590,6 @@ def main(args):
         for spec in specsToTrain:
             direcString += "{}".format(spec)
 
-    # This is where the Poisson networks will be saved to and loaded from
     dirNameNets = "ep_Poiss_T_{0}_{1}_n{2}c{3}".format(T_net, direcString, nLayers, ch)
     if Mode == "eval" or Mode == "getY" or Mode=="getRep":
         prepo = "saved at"
@@ -612,7 +612,7 @@ def main(args):
 
     print(pt.__version__)
     
-    # Load crystal parameters
+    #3.  Load crystal parameters
     GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(nn=filter_nn, typ=CrysDatPath)
     N_ngb = NNsiteList.shape[0]
     print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(filter_nn, N_ngb - 1))
@@ -630,43 +630,18 @@ def main(args):
         gdiagsCpu[rowStart : rowEnd, rowStart : rowEnd] = pt.tensor(gCart)
     gdiags = gdiagsCpu#.to(device)
 
+    #4. Make a network to either train from scratch or load saved state into
+    gNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
+            mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
 
-    # Call MakeComputeData here
-    State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = makeComputeData(state1List, state2List, dispList,
-            specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps, mode=Mode)
-    print("Done Creating occupancy tensors. Species channels: {}".format(sp_ch))
-
-    # Make a network to either train from scratch or load saved state into
-    if not Residual_training:
-        if not subNetwork_training:
-            print("Running in Non-Residual Convolution mode")
-            gNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-                    mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
-
-        else:
-            print("Running in Non-Residual Binary SubNetwork Convolution mode")
-            gNet = GCSubNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-                    specsToTrain, mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
-
-    else:
-        if not subNetwork_training:
-            print("Running in Residual Convolution mode")
-            gNet = GCNetRes(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-                    mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
-
-        else:
-            print("Running in Residual Binary SubNetwork Convolution mode")
-            gNet = GCSubNetRes(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-                    specsToTrain, mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
-
-    # Call Training or evaluating or y-evaluating function here
-    N_train_jumps = (N_ngb - 1)*N_train if AllJumps else N_train
+    #5. Call Training or evaluating or y-evaluating function here
+    #5.1 - Training mode
+    #state1List, state2List, dispList, rateList, AllJumpRates = Load_Data(DataFilePath)
     if Mode == "train":
-        Train(T_data, dirPath, State1_Occs, State2_Occs, OnSites_state1, OnSites_state2,
-                rateData, dispData, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train_jumps,
-                gNet, lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size,
-                Learn_wt=Learn_wt, WeightSLP=wtNet)
-
+        Train(T_data, dirPath, state1List, state2List, rateList, dispList, specsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
+                gNet, lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size)
+    
+    #5.2 - Evauation mode
     elif Mode == "eval":
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_Occs, State2_Occs,
                 OnSites_state1, OnSites_state2, rateData, dispData,
@@ -674,16 +649,6 @@ def main(args):
                 interval, N_train_jumps, gNet, batch_size=batch_size)
         np.save("tr_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), train_diff/(1.0*N_train))
         np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), valid_diff/(1.0*N_train))
-
-    elif Mode == "getY":
-        y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_Occs, State2_Occs,
-                OnSites_state1, OnSites_state2, sp_ch, specsToTrain, VacSpec, start_ep, gNet, Ndim, batch_size=batch_size)
-        np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y1Vecs)
-        np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y2Vecs)
-    
-    elif Mode == "getRep":
-        GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, start_ep, gNet, args.RepLayer, N_train_jumps, batch_size=batch_size,
-           avg=args.RepLayerAvg, AllJumps=AllJumps)
 
     print("All done\n\n")
 
