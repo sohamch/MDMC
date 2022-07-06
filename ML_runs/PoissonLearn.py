@@ -13,7 +13,8 @@ import h5py
 import pickle
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from SymmLayers import GConv, R3Conv, R3ConvSites, GAvg
+from SymmLayers import * 
+from GCNetRun import makeComputeData, makeProdTensor, Gather_Y 
 
 device=None
 if pt.cuda.is_available():
@@ -22,40 +23,6 @@ if pt.cuda.is_available():
     DeviceIDList = list(range(pt.cuda.device_count()))
 else:
     device = pt.device("cpu")
-
-
-class GCNet(nn.Module):
-    def __init__(self, GnnPerms, gdiags, NNsites, SitesToShells,
-                dim, N_ngb, NSpec, mean=0.0, std=0.1, b=1.0, nl=3, nch=8):
-        
-        super().__init__()
-        modules = []
-        modules += [GConv(NSpec, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
-                nn.Softplus(beta=b), GAvg()]
-
-        for i in range(nl):
-            modules += [GConv(nch, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
-                    nn.Softplus(beta=b), GAvg()]
-
-        modules += [GConv(nch, 1, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
-                nn.Softplus(beta=b), GAvg()]
-
-        modules += [R3ConvSites(SitesToShells, GnnPerms, gdiags, NNsites, N_ngb, 
-            dim, mean=mean, std=std)]
-        
-        self.net = nn.Sequential(*modules)
-    
-    def forward(self, InState):
-        y = self.net(InState)
-        return y
-    
-    def getRep(self, InState, LayerInd):
-        # get the last single channel representation of the state
-        # LayerInd is counted starting from zero
-        y = self.net[0](InState)
-        for L in range(1, LayerInd + 1):
-            y = self.net[L](y)
-        return y
 
 def Load_crysDats(nn=1, typ="FCC"):
     ## load the crystal data files
@@ -82,8 +49,8 @@ def Load_crysDats(nn=1, typ="FCC"):
         GIndtoGDict = pickle.load(fl)
     return GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps
 
-def Load_Data(FileName):
-    with h5py.File(DataPath + FileName, "r") as fl:
+def Load_Data(FilePath):
+    with h5py.File(FileName, "r") as fl:
         
         state1List = np.array(fl["InitStates"])
         state2List = np.array(fl["FinStates"])
@@ -97,94 +64,18 @@ def Load_Data(FileName):
             AllJumpRates /= rateSums
         except:
             AllJumpRates = None
-            print("All Jump Rates not provided in data set. Make sure AllJumps is not set to True with train or eval mode active.")
+            raise ValueError("All Jump Rates not provided in data set.")
     
     return state1List, state2List, dispList, rateList, AllJumpRates
-
-def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
-        AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False, mode="train"):
-    
-    if not isinstance(AllJumpRates, np.ndarray):
-        if AllJumps and (mode=="train" or mode=="eval"):
-            raise ValueError("All Rates not provided. Cannot do training or evaluation.")
-
-    # make the input tensors
-    Nsamples = min(state1List.shape[0], 2*N_train)
-    if AllJumps:
-        NJumps = Nsamples*dxJumps.shape[0]
-    else:
-        NJumps = Nsamples
-    a = np.linalg.norm(dispList[0, VacSpec, :])/np.linalg.norm(dxJumps[0]) 
-    specs = np.unique(state1List[0])
-    NSpec = specs.shape[0] - 1
-    Nsites = state1List.shape[1]
-    NNsvac = NNsiteList[1:, 0]
-    
-    sp_ch = {}
-    for sp in specs:
-        if sp == VacSpec:
-            continue
-        
-        if sp - VacSpec < 0:
-            sp_ch[sp] = sp
-        else:
-            sp_ch[sp] = sp-1
-
-    State1_occs = np.zeros((NJumps, NSpec, Nsites), dtype=np.int8)
-    State2_occs = np.zeros((NJumps, NSpec, Nsites), dtype=np.int8)
-    dispData = np.zeros((NJumps, 2, 3))
-    
-
-    rateData = np.zeros(NJumps)
-    
-    # Make the multichannel occupancies
-    print("Building Occupancy Tensors for species : {}".format(specsToTrain))
-    print("No. of jumps : {}".format(NJumps))
-    for samp in tqdm(range(Nsamples), position=0, leave=True):
-        state1 = state1List[samp]
-        for jInd in range(dxJumps.shape[0]):
-            JumpSpec = state1[NNsvac[jInd]]
-            state2 = state1[JumpNewSites[jInd]]
-            Idx = samp*dxJumps.shape[0]  + jInd
-            dispData[Idx, 0, :] =  dxJumps[jInd]*a
-            if JumpSpec in specsToTrain:
-                dispData[Idx, 1, :] -= dxJumps[jInd]*a
-            
-            if not isinstance(AllJumpRates, np.ndarray):
-                rateData[Idx] = AllJumpRates[samp, jInd]
-            
-            for site in range(1, Nsites): # exclude the vacancy site
-                spec1 = state1[site]
-                spec2 = state2[site]
-                State1_occs[Idx, sp_ch[spec1], site] = 1
-                State2_occs[Idx, sp_ch[spec2], site] = 1
-
-    # Make the numpy tensor to indicate "on" sites (i.e, those whose y vectors will be collected)
-    OnSites_state1 = None
-    OnSites_state2 = None
-    if specsToTrain != [VacSpec]:
-        OnSites_state1 = np.zeros((NJumps, Nsites), dtype=np.int8)
-        OnSites_state2 = np.zeros((NJumps, Nsites), dtype=np.int8)
-    
-        for spec in specsToTrain:
-            OnSites_state1 += State1_occs[:, sp_ch[spec], :]
-            OnSites_state2 += State2_occs[:, sp_ch[spec], :]
-    
-    return State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch
-
-
-def makeProdTensor(OnSites, Ndim):
-    Onst = pt.tensor(OnSites)
-    Onst = Onst.repeat_interleave(Ndim, dim=0)
-    Onst = Onst.view(-1, Ndim, OnSites.shape[1])
-    return Onst
-
 
 """## Write the training loop"""
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
         gNet, lRate=0.001, scratch_if_no_init=True, batch_size=128, Learn_wt=False, WeightSLP=None):
     
+    # Call MakeComputeData here
+    State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = makeComputeData(state1List, state2List, dispList,
+            specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps, mode=Mode)
     # Do a small check that species channels were assigned correctly 
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -430,30 +321,8 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
                 y1Reps[batch : end] = y1.cpu().numpy()
                 y2Reps[batch : end] = y2.cpu().numpy()
             
-            if avg:
-                y1RepsTrain = np.mean(y1Reps[:N_train], axis = 0)
-                y2RepsTrain = np.mean(y2Reps[:N_train], axis = 0)
-                y1RepsVal = np.mean(y1Reps[N_train:], axis = 0)
-                y2RepsVal = np.mean(y2Reps[N_train:], axis = 0)
-                
-                y1RepsTrain_err = np.std(y1Reps[:N_train], axis = 0)/np.sqrt(N_train)
-                y2RepsTrain_err = np.std(y2Reps[:N_train], axis = 0)/np.sqrt(N_train)
-                y1RepsVal_err = np.std(y1Reps[N_train:], axis = 0)/np.sqrt((Nsamples - N_train))
-                y2RepsVal_err = np.std(y2Reps[N_train:], axis = 0)/np.sqrt((Nsamples - N_train))
-                
-                np.save(storeDir + "/Rep1_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1RepsTrain)
-                np.save(storeDir + "/Rep2_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2RepsTrain)
-                np.save(storeDir + "/Rep1_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1RepsVal)
-                np.save(storeDir + "/Rep2_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2RepsVal)
-
-                np.save(storeDir + "/Rep1_tr_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1RepsTrain_err)
-                np.save(storeDir + "/Rep2_tr_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2RepsTrain_err)
-                np.save(storeDir + "/Rep1_val_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1RepsVal_err)
-                np.save(storeDir + "/Rep2_val_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2RepsVal_err)
-            
-            else:
-                np.save(storeDir + "/Rep1_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1Reps)
-                np.save(storeDir + "/Rep2_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2Reps)
+                np.save(storeDir + "/Rep1_Poiss_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1Reps)
+                np.save(storeDir + "/Rep2_Poiss_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2Reps)
 
 
 def main(args):
