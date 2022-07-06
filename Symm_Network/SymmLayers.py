@@ -83,9 +83,6 @@ class GConv(nn.Module):
         return out.view(Nbatch, NchOut, Ng, NSites)
 
 
-# In[ ]:
-
-
 class R3Conv(nn.Module):
     def __init__(self, SitesToShells, GnnPerms, gdiags, NNsites,
                  N_ngb, dim, mean=1.0, std=0.1):
@@ -173,6 +170,47 @@ class GAvg(nn.Module):
         Ng = In.shape[2]        
         # sum out the group channels
         return pt.sum(In, dim=2)/Ng
+
+
+class GCNet(nn.Module):
+    def __init__(self, GnnPerms, gdiags, NNsites, SitesToShells,
+                dim, N_ngb, mean=1.0, std=0.1, NSpec=5, nl=3, nch=8):
+        
+        super().__init__()
+        modules = []
+        modules += [
+            GConv(NSpec, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
+            nn.Softplus(),
+            GAvg()
+        ]
+        
+        for l in range(nl):
+            modules += [
+                GConv(nch, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
+                nn.Softplus(),
+                GAvg()
+            ]
+        modules += [
+            GConv(nch, 1, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
+            nn.Softplus(),
+            GAvg()
+        ]
+        modules.append(R3ConvSites(SitesToShells, GnnPerms, gdiags, NNsites, N_ngb,
+                        dim, mean=mean, std=std))
+        
+        self.net = nn.Sequential(*modules)
+    
+    def forward(self, InState):
+        y = self.net(InState)
+        return y
+    
+    def getRep(self, InState, LayerInd):
+        # get the last single channel representation of the state
+        # LayerInd is counted starting from zero
+        y = self.net[0](InState)
+        for L in range(1, LayerInd + 1):
+            y = self.net[L](y)
+        return y
 
 
 
