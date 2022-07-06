@@ -145,37 +145,23 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     print("No. of jumps : {}".format(NJumps))
     for samp in tqdm(range(Nsamples), position=0, leave=True):
         state1 = state1List[samp]
-        if AllJumps:
-            for jInd in range(dxJumps.shape[0]):
-                JumpSpec = state1[NNsvac[jInd]]
-                state2 = state1[JumpNewSites[jInd]]
-                Idx = samp*dxJumps.shape[0]  + jInd
-                dispData[Idx, 0, :] =  dxJumps[jInd]*a
-                if JumpSpec in specsToTrain:
-                    dispData[Idx, 1, :] -= dxJumps[jInd]*a
-                
-                if not isinstance(AllJumpRates, np.ndarray):
-                    rateData[Idx] = AllJumpRates[samp, jInd]
-                
-                for site in range(1, Nsites): # exclude the vacancy site
-                    spec1 = state1[site]
-                    spec2 = state2[site]
-                    State1_occs[Idx, sp_ch[spec1], site] = 1
-                    State2_occs[Idx, sp_ch[spec2], site] = 1
-
-        else:
-            state2 = state2List[samp]
+        for jInd in range(dxJumps.shape[0]):
+            JumpSpec = state1[NNsvac[jInd]]
+            state2 = state1[JumpNewSites[jInd]]
+            Idx = samp*dxJumps.shape[0]  + jInd
+            dispData[Idx, 0, :] =  dxJumps[jInd]*a
+            if JumpSpec in specsToTrain:
+                dispData[Idx, 1, :] -= dxJumps[jInd]*a
+            
+            if not isinstance(AllJumpRates, np.ndarray):
+                rateData[Idx] = AllJumpRates[samp, jInd]
+            
             for site in range(1, Nsites): # exclude the vacancy site
                 spec1 = state1[site]
                 spec2 = state2[site]
-                State1_occs[samp, sp_ch[spec1], site] = 1
-                State2_occs[samp, sp_ch[spec2], site] = 1
-            
-            dispData[samp, 0, :] = dispList[samp, VacSpec, :]
-            dispData[samp, 1, :] = sum(dispList[samp, spec, :] for spec in specsToTrain)
+                State1_occs[Idx, sp_ch[spec1], site] = 1
+                State2_occs[Idx, sp_ch[spec2], site] = 1
 
-            rateData[samp] = rateList[samp]
-    
     # Make the numpy tensor to indicate "on" sites (i.e, those whose y vectors will be collected)
     OnSites_state1 = None
     OnSites_state2 = None
@@ -546,6 +532,10 @@ def main(args):
     print("Running at : "+ RunPath)
 
     # Get run parameters
+    #parser.add_argument("-DP", "--DataFilePath", metavar="/path/to/datafile", type=str, help="Data file Path.")
+    #parser.add_argument("-RP", "--RunPath", metavar="/path/to/save-or-read/nets", type=str, help="Path to load and save networks.")
+    #parser.add_argument("-Crp", "--CrysDatPath", metavar="/path/to/crysdats/", type=str, help="Path to read crystal data out of.")
+    
     FileName = args.FileName # Name of data file to train on
     
     CrystalType = args.Crys
@@ -728,8 +718,12 @@ def main(args):
 
 # Add argument parser
 parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("-DF", "--FileName", metavar="F", type=str, help="Data file name at specified DataPath.")
-parser.add_argument("-cr", "--Crys", metavar="Crys", type=str, help="Type of crystal to read crystal data of.")
+parser.add_argument("-DP", "--DataFilePath", metavar="/path/to/datafile", type=str, help="Data file Path.")
+parser.add_argument("-RP", "--RunPath", metavar="/path/to/save-or-read/nets", type=str, help="Path to load and save networks.")
+parser.add_argument("-CrP", "--CrysDatPath", metavar="/path/to/crysdats/", type=str, help="Path to read crystal data out of.")
+
+# We also need a path to the initial trained network to compute the state relaxations
+parser.add_argument("-gep", "--GFNetEpoch", metavar="/path/to/nets/", type=str, help="epoch to compute the relaxations.")
 
 parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
 parser.add_argument("-rl","--RepLayer", metavar="[L1, L2,..]", type=int, nargs="+", help="Layers to extract representation from (count starts from 0)")
@@ -766,6 +760,7 @@ parser.add_argument("-lw", "--Learn_weights", action="store_true", help="Whether
 
 parser.add_argument("-d", "--DumpArgs", action="store_true", help="Whether to dump arguments in a file")
 parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str, help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
+
 
 if __name__ == "__main__":
     # main(list(sys.argv))
