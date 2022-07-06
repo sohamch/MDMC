@@ -68,6 +68,7 @@ def Load_Data(FilePath):
     
     return state1List, state2List, dispList, rateList, AllJumpRates
 
+
 """## Write the training loop"""
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
@@ -101,6 +102,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         dispData = pt.tensor(disps[:N_train, 1, :]).double().to(device) 
         On_st1 = makeProdTensor(OnSites_st1[:N_train], Ndim).long()
         On_st2 = makeProdTensor(OnSites_st2[:N_train], Ndim).long()
+    
+    # Next we have to compute the relaxation vectors
 
     try:
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"))
@@ -472,6 +475,9 @@ parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, help="No. of lay
 parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, help="No. of representation channels in non-input layers.")
 parser.add_argument("-cngb", "--ConvNgbRange", type=int, default=1, metavar="NN", help="Nearest neighbor range of convolutional filters.")
 
+parser.add_argument("-nlI", "--NlayersInit",  metavar="L", type=int, help="No. of layers of the initial neural network.")
+parser.add_argument("-nchI", "--NchannelsInit", metavar="Ch", type=int, help="No. of representation channels in the initial network.")
+parser.add_argument("-cngbI", "--ConvNgbRangeInit", type=int, default=1, metavar="NN", help="Nearest neighbor range of convolutional filter in initial network.")
 
 parser.add_argument("-rn", "--Residual", action="store_true", help="Whether to do residual training.")
 parser.add_argument("-sn", "--SubNet", action="store_true", help="Whether to train pairwise subnetworks.")
