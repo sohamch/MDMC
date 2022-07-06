@@ -13,7 +13,8 @@ import h5py
 import pickle
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from SymmLayers import * 
+from SymmLayers import *
+import GCNetRun
 from GCNetRun import makeComputeData, makeProdTensor, Gather_Y 
 
 device=None
@@ -70,9 +71,8 @@ def Load_Data(FilePath):
 
 
 """## Write the training loop"""
-def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
-        rates, disps, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
-        gNet, lRate=0.001, scratch_if_no_init=True, batch_size=128, Learn_wt=False, WeightSLP=None):
+def Train(T_data, dirPath, state1List, state2List, rateList, dispList, specsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
+                gNet, gNetInit, lRate=0.001, scratch_if_no_init=True, batch_size=10)
     
     # Call MakeComputeData here
     State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = makeComputeData(state1List, state2List, dispList,
@@ -103,12 +103,13 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         On_st1 = makeProdTensor(OnSites_st1[:N_train], Ndim).long()
         On_st2 = makeProdTensor(OnSites_st2[:N_train], Ndim).long()
     
-    # Next we have to compute the relaxation vectors
+    # Next we have to compute the relaxation vectors with gNetInit
+    #
+    (T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_ch, SpecsToTrain, VacSpec, epoch, gNet, Ndim, batch_size=256)
 
+    
     try:
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"))
-        if Learn_wt:
-            WeightSLP.load_state_dict(pt.load(dirPath + "/wt_ep_{1}.pt".format(T, start_ep), map_location="cpu"))
         print("Starting from epoch {}".format(start_ep), flush=True)
 
     except:
@@ -348,6 +349,12 @@ def main(args):
     
     filter_nn = args.ConvNgbRange
     
+    nLayersInit = args.NlayersInit
+    
+    chInit = args.NchannelsInit
+    
+    filter_nn_init = args.ConvNgbRangeInit
+    
     scratch_if_no_init = args.Scratch
     
     T_data = args.Tdata
@@ -432,17 +439,24 @@ def main(args):
         rowEnd = (gInd + 1) * Ndim
         gdiagsCpu[rowStart : rowEnd, rowStart : rowEnd] = pt.tensor(gCart)
     gdiags = gdiagsCpu#.to(device)
-
-    #4. Make a network to either train from scratch or load saved state into
+    
+    #4. Make the required networks
+    #4.1 Make a network to either train from scratch or load saved state into
     gNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
             mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
-
+    
+    #4.2 - load the network to compute relaxations with
+    gNetInit = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
+            mean=wt_means, std=wt_std, b=1.0, nl=nLayersInit, nch=chInit).double()
+    
+    gNetInit.load_state_dict(pt.load(InitRunPath, map_location="cpu")).to(device)
+    
     #5. Call Training or evaluating or y-evaluating function here
     #5.1 - Training mode
     #state1List, state2List, dispList, rateList, AllJumpRates = Load_Data(DataFilePath)
     if Mode == "train":
         Train(T_data, dirPath, state1List, state2List, rateList, dispList, specsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
-                gNet, lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size)
+                gNet, gNetInit, lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size)
     
     #5.2 - Evauation mode
     elif Mode == "eval":
