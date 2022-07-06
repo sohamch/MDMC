@@ -643,12 +643,11 @@ def main(args):
     
     #5.2 - Evauation mode
     elif Mode == "eval":
-        train_diff, valid_diff = Evaluate(T_net, dirPath, State1_Occs, State2_Occs,
-                OnSites_state1, OnSites_state2, rateData, dispData,
+        train_diff, valid_diff = Evaluate(T_data, dirPath, state1List, state2List, rateList, dispList,
                 specsToTrain, sp_ch, VacSpec, start_ep, end_ep,
-                interval, N_train_jumps, gNet, batch_size=batch_size)
-        np.save("tr_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), train_diff/(1.0*N_train))
-        np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), valid_diff/(1.0*N_train))
+                interval, N_train, gNet, batch_size=batch_size)
+        np.save("tr_Poiss_{3}_{0}_{1}_n{2}c{4}.npy".format(T_data, T_net, nLayers, direcString, ch), train_diff/(1.0*N_train))
+        np.save("val_Poiss_{3}_{0}_{1}_n{2}c{4}.npy".format(T_data, T_net, nLayers, direcString, ch), valid_diff/(1.0*N_train))
 
     print("All done\n\n")
 
