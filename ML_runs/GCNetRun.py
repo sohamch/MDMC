@@ -504,7 +504,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     return train_diff, test_diff
 
 
-def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_ch, SpecsToTrain, VacSpec, epoch, gNet, Ndim, batch_size=256):
+def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_ch, SpecsToTrain, VacSpec, gNet, Ndim, epoch=None, batch_size=256):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -534,11 +534,13 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_
     BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh] 
     
     print("Evaluating network on species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
-    print("Network: {}".format(dirPath))
+    if epoch is not None:
+        print("Network: {}".format(dirPath))
     with pt.no_grad():
         ## load checkpoint
-        gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
-                
+        if epoch is not None:
+            gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
+             
         if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
             gNet.Distribute_subNets()
         
@@ -596,8 +598,8 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
         nLayers = (len(gNet.net)-7)//3
         for LayerInd in LayerIndList:
             ch = gNet.net[LayerInd - 2].Psi.shape[0]
-            y1Reps = np.zeros((Nsamples, ch, Nsites), dtype=np.float32)
-            y2Reps = np.zeros((Nsamples, ch, Nsites), dtype=np.float32)
+            y1Reps = np.zeros((Nsamples, ch, Nsites))
+            y2Reps = np.zeros((Nsamples, ch, Nsites))
             for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
                 end = min(batch + N_batch, Nsamples)
 
@@ -810,7 +812,7 @@ def main(args):
 
     elif Mode == "getY":
         y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_Occs, State2_Occs,
-                OnSites_state1, OnSites_state2, sp_ch, specsToTrain, VacSpec, start_ep, gNet, Ndim, batch_size=batch_size)
+                OnSites_state1, OnSites_state2, sp_ch, specsToTrain, VacSpec, gNet, Ndim, epoch=start_ep, batch_size=batch_size)
         np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y1Vecs)
         np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y2Vecs)
     
