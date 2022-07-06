@@ -569,12 +569,6 @@ def main(args):
     wt_means = args.Mean_wt
     wt_std = args.Std_wt
 
-    Learn_wt = args.Learn_weights
-    
-    wtNet = None
-    if Learn_wt:
-        wtNet = WeightNet(width=128).double().to(device) 
-
     if not (Mode == "train" or Mode == "eval"):
         raise ValueError("Mode needs to be train or eval but given : {}".format(Mode))
 
