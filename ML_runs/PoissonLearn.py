@@ -479,21 +479,14 @@ parser.add_argument("-nlI", "--NlayersInit",  metavar="L", type=int, help="No. o
 parser.add_argument("-nchI", "--NchannelsInit", metavar="Ch", type=int, help="No. of representation channels in the initial network.")
 parser.add_argument("-cngbI", "--ConvNgbRangeInit", type=int, default=1, metavar="NN", help="Nearest neighbor range of convolutional filter in initial network.")
 
-parser.add_argument("-rn", "--Residual", action="store_true", help="Whether to do residual training.")
-parser.add_argument("-sn", "--SubNet", action="store_true", help="Whether to train pairwise subnetworks.")
 parser.add_argument("-scr", "--Scratch", action="store_true", help="Whether to create new network and start from scratch")
 
 parser.add_argument("-td", "--Tdata", metavar="T", type=int, help="Temperature to read data from")
-parser.add_argument("-tn", "--TNet", metavar="T", type=int, help="Temperature to use networks from\n For example one can evaluate a network trained on 1073 K data, on the 1173 K data, to see what it does.")
 parser.add_argument("-sep", "--Start_epoch", metavar="Ep", type=int, help="Starting epoch (for training, this network will be read in.)")
 parser.add_argument("-eep", "--End_epoch", metavar="Ep", type=int, help="Ending epoch (for training, this will be the last epoch.)")
 
 parser.add_argument("-sp", "--SpecTrain", metavar="s1s2s3", type=str, help="species to consider, order independent (Eg, 123 or 213 etc for species 1, 2 and 3")
 parser.add_argument("-vSp", "--VacSpec", metavar="SpV", type=int, default=0, help="species index of vacancy, must match dataset, default 0")
-
-
-parser.add_argument("-aj", "--AllJumps", action="store_true", help="Whether to train on all jumps, or single selected jumps out of a state.")
-parser.add_argument("-ajn", "--AllJumpsNetType", action="store_true", help="Whether to use network trained on all jumps, or single selected jumps out of a state.")
 
 parser.add_argument("-nt", "--N_train", type=int, default=10000, help="No. of training samples.")
 parser.add_argument("-i", "--Interval", type=int, default=1, help="Epoch intervals in which to save or load networks.")
@@ -501,7 +494,6 @@ parser.add_argument("-lr", "--Learning_rate", type=float, default=0.001, help="L
 parser.add_argument("-bs", "--Batch_size", type=int, default=128, help="size of a single batch of samples.")
 parser.add_argument("-wm", "--Mean_wt", type=float, default=0.02, help="Initialization mean value of weights.")
 parser.add_argument("-ws", "--Std_wt", type=float, default=0.2, help="Initialization standard dev of weights.")
-parser.add_argument("-lw", "--Learn_weights", action="store_true", help="Whether to learn reweighting of samples.")
 
 parser.add_argument("-d", "--DumpArgs", action="store_true", help="Whether to dump arguments in a file")
 parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str, help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
