@@ -2,9 +2,6 @@ import os
 import sys
 import argparse
 RunPath = os.getcwd() + "/"
-CrysPath = "/home/sohamc2/HEA_FCC/MDMC/"
-DataPath = "/home/sohamc2/HEA_FCC/MDMC/ML_runs/DataSets/"
-ModulePath = "/home/sohamc2/HEA_FCC/MDMC/Symm_Network/"
 
 sys.path.append(ModulePath)
 
@@ -533,12 +530,12 @@ def main(args):
 
     # Get run parameters
     #parser.add_argument("-DP", "--DataFilePath", metavar="/path/to/datafile", type=str, help="Data file Path.")
-    #parser.add_argument("-RP", "--RunPath", metavar="/path/to/save-or-read/nets", type=str, help="Path to load and save networks.")
+    #parser.add_argument("-RP", "--InitRunPath", metavar="/path/to/save-or-read/nets", type=str, help="Path to load and save networks.")
     #parser.add_argument("-Crp", "--CrysDatPath", metavar="/path/to/crysdats/", type=str, help="Path to read crystal data out of.")
     
-    FileName = args.FileName # Name of data file to train on
-    
-    CrystalType = args.Crys
+    DataFilePath = args.DataFilePath # Full Path of data file to train on
+    InitRunPath = args.InitRunPath # Full Path of the network with which to compute relaxations
+    CrysDatPath = args.CrysDatPath
     
     Mode = args.Mode # "train" mode or "eval" mode or "getY" mode
     
@@ -548,12 +545,6 @@ def main(args):
     
     filter_nn = args.ConvNgbRange
     
-    Residual_training = args.Residual
-    subNetwork_training = args.SubNet
-    
-    if Mode=="getRep" and (Residual_training or subNetwork_training):
-        raise NotImplementedError("getRep is not currently supported in residual and subnetwork training mode.")
-
     scratch_if_no_init = args.Scratch
     
     T_data = args.Tdata
@@ -561,9 +552,6 @@ def main(args):
 
     T_net = args.TNet # must be same as T_data if "train", can be different if "getY" or "eval"
 
-    if Mode=="train" and T_data != T_net:
-        raise ValueError("Different temperatures in training mode not allowed")
-    
     start_ep = args.Start_epoch
     end_ep = args.End_epoch
 
@@ -574,10 +562,6 @@ def main(args):
     specTrain = args.SpecTrain
     
     VacSpec = args.VacSpec
-    
-    AllJumps = args.AllJumps 
-    
-    AllJumps_net_type = args.AllJumpsNetType
     
     N_train = args.N_train
 
@@ -602,7 +586,7 @@ def main(args):
             raise ValueError("Training and Testing condition must be the same")
 
     # Load data
-    state1List, state2List, dispList, rateList, AllJumpRates = Load_Data(FileName)
+    state1List, state2List, dispList, rateList, AllJumpRates = Load_Data(DataFilePath)
     
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
@@ -719,7 +703,7 @@ def main(args):
 # Add argument parser
 parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-DP", "--DataFilePath", metavar="/path/to/datafile", type=str, help="Data file Path.")
-parser.add_argument("-RP", "--RunPath", metavar="/path/to/save-or-read/nets", type=str, help="Path to load and save networks.")
+parser.add_argument("-RP", "--InitRunPath", metavar="/path/to/save-or-read/nets", type=str, help="Path to load and save networks.")
 parser.add_argument("-CrP", "--CrysDatPath", metavar="/path/to/crysdats/", type=str, help="Path to read crystal data out of.")
 
 # We also need a path to the initial trained network to compute the state relaxations
