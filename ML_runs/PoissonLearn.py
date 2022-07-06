@@ -579,7 +579,11 @@ def main(args):
                 interval, N_train, gNet, batch_size=batch_size)
         np.save("tr_Poiss_{3}_{0}_{1}_n{2}c{4}.npy".format(T_data, T_net, nLayers, direcString, ch), train_diff/(1.0*N_train))
         np.save("val_Poiss_{3}_{0}_{1}_n{2}c{4}.npy".format(T_data, T_net, nLayers, direcString, ch), valid_diff/(1.0*N_train))
-
+    
+    #5.3 - Get the representations
+    elif Mode == "getRep":
+        GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, start_ep, gNet, args.RepLayer, N_train_jumps, batch_size=batch_size,
+           avg=args.RepLayerAvg, AllJumps=AllJumps)
     print("All done\n\n")
 
 # Add argument parser
