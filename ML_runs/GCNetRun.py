@@ -291,37 +291,49 @@ def makeProdTensor(OnSites, Ndim):
     return Onst
 
 
+def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamps):
+    # Do a small check that species channels were assigned correctly
+    if sp_ch is not None:
+        for key, item in sp_ch.items():
+            if key > VacSpec:
+                assert item == key - 1
+            else:
+                assert key < VacSpec
+                assert item == key
+
+    Ndim = disps.shape[2]
+    # Convert compute data to pytorch tensors
+    state1Data = pt.tensor(State1_Occs[:Nsamps])
+    state2Data = pt.tensor(State2_Occs[:Nsamps])
+    rateData=None
+    if rates is not None:
+        rateData = pt.tensor(rates[:Nsamps]).double().to(device)
+    On_st1 = None 
+    On_st2 = None
+    dispData=None
+    if SpecsToTrain == [VacSpec]:
+        assert OnSites_st1 == OnSites_st2 == None
+        print("Training on Vacancy".format(SpecsToTrain)) 
+        if disps is not None:
+            dispData = pt.tensor(disps[:Nsamps, 0, :]).double().to(device)
+    else:
+        print("Training Species : {}".format(SpecsToTrain))
+        if disps is not None:
+            dispData = pt.tensor(disps[:Nsamps, 1, :]).double().to(device) 
+        On_st1 = makeProdTensor(OnSites_st1[:Nsamps], Ndim).long()
+        On_st2 = makeProdTensor(OnSites_st2[:Nsamps], Ndim).long()
+
+    return state1Data, state2Data, dispData, rateData, On_st1, On_st2
+
 """## Write the training loop"""
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
         gNet, lRate=0.001, scratch_if_no_init=True, batch_size=128, Learn_wt=False, WeightSLP=None):
     
-    # Do a small check that species channels were assigned correctly 
-    for key, item in sp_ch.items():
-        if key > VacSpec:
-            assert item == key - 1
-        else:
-            assert key < VacSpec
-            assert item == key
+    state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
+            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, N_train)
 
-    Ndim = disps.shape[2]
     N_batch = batch_size
-    # Convert compute data to pytorch tensors
-    state1Data = pt.tensor(State1_Occs[:N_train])
-    state2Data = pt.tensor(State2_Occs[:N_train])
-    rateData = pt.tensor(rates[:N_train]).double().to(device)
-    On_st1 = None 
-    On_st2 = None    
-    if SpecsToTrain == [VacSpec]:
-        assert OnSites_st1 == OnSites_st2 == None
-        print("Training on Vacancy".format(SpecsToTrain)) 
-        dispData = pt.tensor(disps[:N_train, 0, :]).double().to(device)
-    else:
-        print("Training Species : {}".format(SpecsToTrain)) 
-        dispData = pt.tensor(disps[:N_train, 1, :]).double().to(device) 
-        On_st1 = makeProdTensor(OnSites_st1[:N_train], Ndim).long()
-        On_st2 = makeProdTensor(OnSites_st2[:N_train], Ndim).long()
-
     try:
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"))
         if Learn_wt:
@@ -421,28 +433,16 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             assert key < VacSpec
             assert item == key
 
-    Ndim = disps.shape[2]
     N_batch = batch_size
     # Convert compute data to pytorch tensors
-    state1Data = pt.tensor(State1_Occs).double()
-    Nsamples = state1Data.shape[0]
+    Nsamples = State1_Occs.shape[0]
 
     print("Evaluating species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
     print("Sample Jumps: {}, Training: {}, Validation: {}, Batch size: {}".format(Nsamples, N_train, Nsamples-N_train, N_batch))
     print("Evaluating with networks at: {}".format(dirPath))
     
-    state2Data = pt.tensor(State2_Occs)
-    rateData = pt.tensor(rates)
-    On_st1 = None
-    On_st2 = None
-    
-    if SpecsToTrain == [VacSpec]:
-        assert OnSites_st1 == OnSites_st2 == None
-        dispData = pt.tensor(disps[:, 0, :]).double()
-    else:
-        dispData = pt.tensor(disps[:, 1, :]).double() 
-        On_st1 = makeProdTensor(OnSites_st1, Ndim).long()
-        On_st2 = makeProdTensor(OnSites_st2, Ndim).long()
+    state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
+            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamples)
 
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
     BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh] 
@@ -515,17 +515,12 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_
 
     N_batch = batch_size
     # Convert compute data to pytorch tensors
-    state1Data = pt.tensor(State1_Occs)
-    Nsamples = state1Data.shape[0]
-    state2Data = pt.tensor(State2_Occs)
-    On_st1 = None
-    On_st2 = None 
-    
-    if SpecsToTrain == [VacSpec]:
-        assert OnSites_st1 == OnSites_st2 == None
-    else:
-        On_st1 = makeProdTensor(OnSites_st1, Ndim).long()
-        On_st2 = makeProdTensor(OnSites_st2, Ndim).long()
+    Nsamples = State1_Occs.shape[0]
+    rates=None
+    disps=None
+    sp_ch=None
+    state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
+            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamples)
 
     y1Vecs = np.zeros((Nsamples, 3))
     y2Vecs = np.zeros((Nsamples, 3))
