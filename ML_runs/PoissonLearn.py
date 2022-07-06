@@ -608,11 +608,12 @@ def main(args):
             raise ValueError("Training directory does not exist but start epoch greater than zero: {}\ndirectory given: {}".format(start_ep, dirPath))
 
     print("Running in Mode {} with networks {} {}".format(Mode, prepo, dirPath))
+    print("Computing relaxations with: {}".format(InitRunPath))
 
     print(pt.__version__)
     
     # Load crystal parameters
-    GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(nn=filter_nn, typ=CrystalType)
+    GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(nn=filter_nn, typ=CrysDatPath)
     N_ngb = NNsiteList.shape[0]
     print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(filter_nn, N_ngb - 1))
     Nsites = NNsiteList.shape[1]
