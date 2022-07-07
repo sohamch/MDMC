@@ -2,8 +2,8 @@ import os
 import sys
 import argparse
 RunPath = os.getcwd() + "/"
-CrysPath = "/home/sohamc2/HEA_FCC/MDMC/"
-DataPath = "/home/sohamc2/HEA_FCC/MDMC/ML_runs/DataSets/"
+#CrysPath = "/home/sohamc2/HEA_FCC/MDMC/"
+#DataPath = "/home/sohamc2/HEA_FCC/MDMC/ML_runs/DataSets/"
 ModulePath = "/home/sohamc2/HEA_FCC/MDMC/Symm_Network/"
 
 sys.path.append(ModulePath)
@@ -152,14 +152,8 @@ class GCSubNetRes(nn.Module):
             
         return y
 
-def Load_crysDats(nn=1, typ="FCC"):
+def Load_crysDats(nn=1, CrysDatPath):
     ## load the crystal data files
-    print("Loading crystal data for : {}".format(typ))
-    if typ == "FCC":
-        CrysDatPath = CrysPath + "CrysDat_FCC/"
-    elif typ == "BCC":
-        CrysDatPath = CrysPath + "CrysDat_BCC/"
-
     if nn == 1:
         GpermNNIdx = np.load(CrysDatPath + "GroupNNpermutations.npy")
         NNsiteList = np.load(CrysDatPath + "NNsites_sitewise.npy")
@@ -177,8 +171,8 @@ def Load_crysDats(nn=1, typ="FCC"):
         GIndtoGDict = pickle.load(fl)
     return GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps
 
-def Load_Data(FileName):
-    with h5py.File(DataPath + FileName, "r") as fl:
+def Load_Data(DataPath):
+    with h5py.File(DataPath, "r") as fl:
         try:
             perm = fl["Permutation"]
             print("found permuation")
