@@ -152,7 +152,7 @@ class GCSubNetRes(nn.Module):
             
         return y
 
-def Load_crysDats(nn=1, CrysDatPath):
+def Load_crysDats(nn, CrysDatPath):
     ## load the crystal data files
     if nn == 1:
         GpermNNIdx = np.load(CrysDatPath + "GroupNNpermutations.npy")
