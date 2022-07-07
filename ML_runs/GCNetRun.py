@@ -631,9 +631,10 @@ def main(args):
     print("Running at : "+ RunPath)
 
     # Get run parameters
-    FileName = args.FileName # Name of data file to train on
+    FileName = args.DataPath # Name of data file to train on
     
-    CrystalType = args.Crys
+    #CrystalType = args.Crys
+    CrysPath = args.CrysDatPath
     
     Mode = args.Mode # "train" mode or "eval" mode or "getY" mode
     
@@ -737,7 +738,7 @@ def main(args):
     print(pt.__version__)
     
     # Load crystal parameters
-    GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(nn=filter_nn, typ=CrystalType)
+    GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(nn=filter_nn, CrysDatPath)
     N_ngb = NNsiteList.shape[0]
     print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(filter_nn, N_ngb - 1))
     Nsites = NNsiteList.shape[1]
@@ -813,8 +814,8 @@ def main(args):
 
 # Add argument parser
 parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("-DF", "--FileName", metavar="F", type=str, help="Data file name at specified DataPath.")
-parser.add_argument("-cr", "--Crys", metavar="Crys", type=str, help="Type of crystal to read crystal data of.")
+parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str, help="Path to Data file.")
+parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
 
 parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
 parser.add_argument("-rl","--RepLayer", metavar="[L1, L2,..]", type=int, nargs="+", help="Layers to extract representation from (count starts from 0)")
