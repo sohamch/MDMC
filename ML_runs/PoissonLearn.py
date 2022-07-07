@@ -15,7 +15,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from SymmLayers import *
 import GCNetRun
-from GCNetRun import makeComputeData, makeProdTensor, Gather_Y 
+from GCNetRun import makeComputeData, makeProdTensor, makeDataTensors, Gather_Y 
 
 device=None
 if pt.cuda.is_available():
@@ -71,43 +71,45 @@ def Load_Data(FilePath):
 
 
 """## Write the training loop"""
-def Train(T_data, dirPath, state1List, state2List, rateList, dispList, specsToTrain, VacSpec, start_ep, end_ep, interval, N_train,
-                gNet, gNetInit, lRate=0.001, scratch_if_no_init=True, batch_size=10)
+def Train(T_data, dirPath, state1List, state2List, AllJumpRates, dxJumps,
+        NNSites, rateList, dispList, JumpNewSites, 
+        specsToTrain, VacSpec, start_ep, end_ep, interval, N_train, 
+        gNet, gNetInit, lRate=0.001, scratch_if_no_init=True, batch_size=10)
     
-    # Call MakeComputeData here
-    State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = makeComputeData(state1List, state2List, dispList,
-            specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps, mode=Mode)
-    # Do a small check that species channels were assigned correctly 
-    for key, item in sp_ch.items():
-        if key > VacSpec:
-            assert item == key - 1
-        else:
-            assert key < VacSpec
-            assert item == key
+    #1. Call MakeComputeData here to make transition pairs
+    State1_Occs, State2_Occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = makeComputeData(state1List, state2List, dispList,
+            specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=True, mode="train")
 
     Ndim = disps.shape[2]
     N_batch = batch_size
-    # Convert compute data to pytorch tensors
-    state1Data = pt.tensor(State1_Occs[:N_train])
-    state2Data = pt.tensor(State2_Occs[:N_train])
-    rateData = pt.tensor(rates[:N_train]).double().to(device)
-    On_st1 = None 
-    On_st2 = None    
-    if SpecsToTrain == [VacSpec]:
-        assert OnSites_st1 == OnSites_st2 == None
-        print("Training on Vacancy".format(SpecsToTrain)) 
-        dispData = pt.tensor(disps[:N_train, 0, :]).double().to(device)
-    else:
-        print("Training Species : {}".format(SpecsToTrain)) 
-        dispData = pt.tensor(disps[:N_train, 1, :]).double().to(device) 
-        On_st1 = makeProdTensor(OnSites_st1[:N_train], Ndim).long()
-        On_st2 = makeProdTensor(OnSites_st2[:N_train], Ndim).long()
+    Njmp = AllJumpRates.shape[1]
     
-    # Next we have to compute the relaxation vectors with gNetInit
-    #
-    (T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_ch, SpecsToTrain, VacSpec, epoch, gNet, Ndim, batch_size=256)
+    #2. Convert compute data to pytorch tensors
+    state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
+            OnSites_state1, OnSites_state2, specsToTrain, VacSpec, sp_ch, N_train)
+    
+    state1Data = state1Data[::Njmp] # extract the unique initial states
+    if On_st1 is not None:
+        On_st1 = On_st1[::Njmp]
 
+    #3. Next we have to compute the relaxation vectors with gNetInit
+    y1vecs, y2vecs = Gather_Y(None, None, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
+            sp_ch, SpecsToTrain, VacSpec, epoch, gNetInit, Ndim, batch_size=256)
     
+    #4. Next, compute relaxation changes
+    delY = np.zeros((N_train, 3))
+    for samp in range(N_train):
+        y1 = y1vecs[samp*Njmp]
+        y2Av = np.zeros(3)
+        AvDisp = np.zeros(3)
+        for jmp in range(Njmp):
+            y2Av += AllJumpRates[samp, jmp] * y2vecs[samp*Njmp + jmp]
+            if state1List[samp, NNsites[jmp+1, 0]] in specsToTrain:
+                AvDisp -= dxJumps[jmp] * AllJumpRates[samp, jmp]
+
+        delY[samp] = AvDisp + y2Av - y1
+
+    #5. Try loading saved networks
     try:
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"))
         print("Starting from epoch {}".format(start_ep), flush=True)
@@ -123,16 +125,8 @@ def Train(T_data, dirPath, state1List, state2List, rateList, dispList, specsToTr
     BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh] 
 
     gNet.to(device)
-    if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
-        gNet.Distribute_subNets()
-        print("Species Channels to train: {}".format(specTrainCh))
-        print("Background species channels: {}".format(BackgroundSpecs))
-
-    optims = [pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)]
-    if Learn_wt:
-        print("Learning sample reweighting with SLP.") 
-        WeightSLP.to(device)
-        optims.append(pt.optim.Adam(WeightSLP.parameters(), lr=0.0001))
+    
+    opt = pt.optim.Adam(gNet.parameters(), lr=lRate) #, weight_decay=0.0005)
 
     print("Starting Training loop") 
 
@@ -141,57 +135,27 @@ def Train(T_data, dirPath, state1List, state2List, rateList, dispList, specsToTr
         ## checkpoint
         if epoch%interval==0:
             pt.save(gNet.state_dict(), dirPath + "/ep_{0}.pt".format(epoch))
-            if Learn_wt:
-                pt.save(WeightSLP.state_dict(), dirPath + "/wt_ep_{0}.pt".format(epoch))
-
             
         for batch in range(0, N_train, N_batch):
             
-            for opt in optims:
-                opt.zero_grad()
+            opt.zero_grad()
             
             end = min(batch + N_batch, N_train)
 
             state1Batch = state1Data[batch : end].double().to(device)
-            state2Batch = state2Data[batch : end].double().to(device)
+            On_st1Batch = On_st1[batch : end].to(device)
+            y1 = gNet(state1Batch)
+            y1 = pt.sum(y1*On_st1Batch, dim=2)
+ 
+            state2Batch = state2Data[batch * Njmp : (end+1) * Njmp].double().to(device)
+            On_st2Batch = On_st1[batch * Njmp : (end + 1) * Njmp].to(device)
+            y2Batch = gNet(state2Batch) 
             
             rateBatch = rateData[batch : end]
-            dispBatch = dispData[batch : end]
             
-            if isinstance(gNet, GCNet) or isinstance(gNet, GCNetRes):
-                y1 = gNet(state1Batch)
-                y2 = gNet(state2Batch)
-
-            else:
-                y1 = gNet.forward(state1Batch, specTrainCh, BackgroundSpecs)
-                y2 = gNet.forward(state2Batch, specTrainCh, BackgroundSpecs)
-            
-            # sum up everything except the vacancy site
-            if SpecsToTrain==[VacSpec]:
-                y1 = -pt.sum(y1[:, :, 1:], dim=2)
-                y2 = -pt.sum(y2[:, :, 1:], dim=2)
-            
-            else:
-                On_st1Batch = On_st1[batch : end].to(device)
-                On_st2Batch = On_st2[batch : end].to(device)
-                y1 = pt.sum(y1*On_st1Batch, dim=2)
-                y2 = pt.sum(y2*On_st2Batch, dim=2)
-
-            dy = y2 - y1
-            sample_Losses = rateBatch * pt.norm((dispBatch + dy), dim=1)**2/6.
-            
-            if Learn_wt:
-                sampleLossesInput = sample_Losses.data.clone().view(-1, 1).to(device)
-                SampleReWt = WeightSLP(sampleLossesInput).view(-1)
-                diff = pt.sum(SampleReWt * sample_Losses) # multiply sample losses with weight, and sum
-            else:
-                diff = pt.sum(sample_Losses) # just sum sample losses
-
             diff.backward()
             
-            # Propagate all optimizers
-            for opt in optims:
-                opt.step()
+            opt.step()
 
 
 def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
