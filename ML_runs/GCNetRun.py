@@ -313,9 +313,9 @@ def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites
         print("Training Species : {}".format(SpecsToTrain))
         if disps is not None:
             dispData = pt.tensor(disps[:Nsamps, 1, :]).double().to(device)
-        if OnSites_st1 is not None:
-            On_st1 = makeProdTensor(OnSites_st1[:Nsamps], Ndim).long()
-            On_st2 = makeProdTensor(OnSites_st2[:Nsamps], Ndim).long()
+        
+        On_st1 = makeProdTensor(OnSites_st1[:Nsamps], Ndim).long()
+        On_st2 = makeProdTensor(OnSites_st2[:Nsamps], Ndim).long()
 
     return state1Data, state2Data, dispData, rateData, On_st1, On_st2
 
@@ -513,7 +513,6 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_
     Nsamples = State1_Occs.shape[0]
     rates=None
     disps=None
-    sp_ch=None
 
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamples, Ndim=Ndim)
