@@ -285,7 +285,7 @@ def makeProdTensor(OnSites, Ndim):
     return Onst
 
 
-def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamps):
+def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamps, Ndim=3):
     # Do a small check that species channels were assigned correctly
     if sp_ch is not None:
         for key, item in sp_ch.items():
@@ -295,7 +295,6 @@ def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites
                 assert key < VacSpec
                 assert item == key
 
-    Ndim = disps.shape[2]
     # Convert compute data to pytorch tensors
     state1Data = pt.tensor(State1_Occs[:Nsamps])
     state2Data = pt.tensor(State2_Occs[:Nsamps])
@@ -313,9 +312,10 @@ def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites
     else:
         print("Training Species : {}".format(SpecsToTrain))
         if disps is not None:
-            dispData = pt.tensor(disps[:Nsamps, 1, :]).double().to(device) 
-        On_st1 = makeProdTensor(OnSites_st1[:Nsamps], Ndim).long()
-        On_st2 = makeProdTensor(OnSites_st2[:Nsamps], Ndim).long()
+            dispData = pt.tensor(disps[:Nsamps, 1, :]).double().to(device)
+        if OnSites_st1 is not None:
+            On_st1 = makeProdTensor(OnSites_st1[:Nsamps], Ndim).long()
+            On_st2 = makeProdTensor(OnSites_st2[:Nsamps], Ndim).long()
 
     return state1Data, state2Data, dispData, rateData, On_st1, On_st2
 
@@ -323,9 +323,9 @@ def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
         gNet, lRate=0.001, scratch_if_no_init=True, batch_size=128, Learn_wt=False, WeightSLP=None):
-    
+    Ndim = disps.shape[2] 
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
-            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, N_train)
+            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, N_train, Ndim=Ndim)
 
     N_batch = batch_size
     try:
@@ -435,8 +435,9 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     print("Sample Jumps: {}, Training: {}, Validation: {}, Batch size: {}".format(Nsamples, N_train, Nsamples-N_train, N_batch))
     print("Evaluating with networks at: {}".format(dirPath))
     
+    Ndim = disps.shape[2] 
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
-            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamples)
+            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamples, Ndim=Ndim)
 
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
     BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh] 
@@ -513,8 +514,9 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_
     rates=None
     disps=None
     sp_ch=None
+
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
-            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamples)
+            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamples, Ndim=Ndim)
 
     y1Vecs = np.zeros((Nsamples, 3))
     y2Vecs = np.zeros((Nsamples, 3))
@@ -528,6 +530,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_
     with pt.no_grad():
         ## load checkpoint
         if epoch is not None:
+            print("Loading epoch: {}".format(epoch))
             gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
              
         if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
