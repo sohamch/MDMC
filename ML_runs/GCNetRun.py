@@ -17,6 +17,7 @@ import pickle
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from SymmLayers import GConv, R3Conv, R3ConvSites, GAvg, GCNet
+import copy
 
 device=None
 if pt.cuda.is_available():
@@ -209,7 +210,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
                 if JumpSpec in specsToTrain:
                     dispData[Idx, 1, :] -= dxJumps[jInd]*a
                 
-                if not isinstance(AllJumpRates, np.ndarray):
+                if isinstance(AllJumpRates, np.ndarray):
                     rateData[Idx] = AllJumpRates[samp, jInd]
                 
                 for site in range(1, Nsites): # exclude the vacancy site
@@ -294,6 +295,9 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, N_train, Ndim=Ndim)
 
+    print(dispData[:10])
+    print(rateData[:10])
+    print(state1Data[:10])
     N_batch = batch_size
     try:
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"))
@@ -352,13 +356,13 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             rateBatch = rateData[batch : end]
             dispBatch = dispData[batch : end]
             
-            if isinstance(gNet, GCNet) or isinstance(gNet, GCNetRes):
-                y1 = gNet(state1Batch)
-                y2 = gNet(state2Batch)
-
-            else:
+            if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes):
                 y1 = gNet.forward(state1Batch, specTrainCh, BackgroundSpecs)
                 y2 = gNet.forward(state2Batch, specTrainCh, BackgroundSpecs)
+            
+            else:
+                y1 = gNet(state1Batch)
+                y2 = gNet(state2Batch)
             
             # sum up everything except the vacancy site
             if SpecsToTrain==[VacSpec]:
@@ -410,6 +414,10 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     Ndim = disps.shape[2] 
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamples, Ndim=Ndim)
+    
+    #print(dispData[:10])
+    #print(rateData[:10])
+    #print(state1Data[:10])
 
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
     BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh] 
@@ -417,21 +425,24 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
         print("Species Channels to train: {}".format(specTrainCh))
         print("Background species channels: {}".format(BackgroundSpecs))
-
-    def compute(startSample, endSample):
+    def compute(startSample, endSample, gNet):
         diff_epochs = []
         with pt.no_grad():
             for epoch in tqdm(range(start_ep, end_ep + 1, interval), position=0, leave=True):
                 ## load checkpoint
-                gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location="cpu")) 
                 if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes):
+                    gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device)) 
                     gNet.Distribute_subNets()
 
                 elif isinstance(gNet, GCNet):
                     if pt.cuda.device_count() > 1 and DPr:
                         print("Running on Devices : {}".format(DeviceIDList))
                         gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
+                    gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
+                    #print(list(gNet.state_dict().keys()))
                     gNet.to(device)
+                    #print(gNet.module.net[0].Psi)
+
  
                 diff = 0 
                 for batch in range(startSample, endSample, N_batch):
@@ -442,16 +453,15 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                     
                     rateBatch = rateData[batch : end].to(device)
                     dispBatch = dispData[batch : end].to(device)
-                    
-                    
-                    if isinstance(gNet, GCNet) or isinstance(gNet, GCNetRes):
-                        y1 = gNet(state1Batch)
-                        y2 = gNet(state2Batch)
-
-                    else:
+                     
+                    if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes):
                         y1 = gNet.forward(state1Batch, specTrainCh, BackgroundSpecs)
                         y2 = gNet.forward(state2Batch, specTrainCh, BackgroundSpecs)
-                    
+            
+                    else:
+                        y1 = gNet(state1Batch)
+                        y2 = gNet(state2Batch)
+            
                     # sum up everything except the vacancy site if vacancy is indicated
                     if SpecsToTrain==[VacSpec]:
                         y1 = -pt.sum(y1[:, :, 1:], dim=2)
@@ -471,8 +481,10 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
         return np.array(diff_epochs)
     
-    train_diff = compute(0, N_train)#/(1.0*N_train)
-    test_diff = compute(N_train, Nsamples)#/(1.0*(Nsamples - N_train))
+    netLoader=copy.deepcopy(gNet)
+    train_diff = compute(0, N_train, netLoader)#/(1.0*N_train)
+    netLoader=copy.deepcopy(gNet)
+    test_diff = compute(N_train, Nsamples, netLoader)#/(1.0*(Nsamples - N_train))
 
     return train_diff, test_diff
 
