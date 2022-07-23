@@ -16,7 +16,7 @@ import h5py
 import pickle
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from SymmLayers import GConv, R3Conv, R3ConvSites, GAvg
+from SymmLayers import GConv, R3Conv, R3ConvSites, GAvg, GCNet
 
 device=None
 if pt.cuda.is_available():
@@ -36,39 +36,6 @@ class WeightNet(nn.Module):
     def forward(self, x):
         return F.softplus(self.L2(F.softplus(self.L1(x))))
 
-
-class GCNet(nn.Module):
-    def __init__(self, GnnPerms, gdiags, NNsites, SitesToShells,
-                dim, N_ngb, NSpec, mean=0.0, std=0.1, b=1.0, nl=3, nch=8):
-        
-        super().__init__()
-        modules = []
-        modules += [GConv(NSpec, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
-                nn.Softplus(beta=b), GAvg()]
-
-        for i in range(nl):
-            modules += [GConv(nch, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
-                    nn.Softplus(beta=b), GAvg()]
-
-        modules += [GConv(nch, 1, GnnPerms, NNsites, N_ngb, mean=mean, std=std), 
-                nn.Softplus(beta=b), GAvg()]
-
-        modules += [R3ConvSites(SitesToShells, GnnPerms, gdiags, NNsites, N_ngb, 
-            dim, mean=mean, std=std)]
-        
-        self.net = nn.Sequential(*modules)
-    
-    def forward(self, InState):
-        y = self.net(InState)
-        return y
-    
-    def getRep(self, InState, LayerInd):
-        # get the last single channel representation of the state
-        # LayerInd is counted starting from zero
-        y = self.net[0](InState)
-        for L in range(1, LayerInd + 1):
-            y = self.net[L](y)
-        return y
 
 
 class GCNetRes(GCNet):
@@ -322,7 +289,7 @@ def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites
 """## Write the training loop"""
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
-        gNet, lRate=0.001, scratch_if_no_init=True, batch_size=128, Learn_wt=False, WeightSLP=None):
+        gNet, lRate=0.001, scratch_if_no_init=True, batch_size=128, Learn_wt=False, WeightSLP=None, DPr=False):
     Ndim = disps.shape[2] 
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, N_train, Ndim=Ndim)
@@ -343,13 +310,18 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     print("Batch size : {}".format(N_batch)) 
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
     BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh] 
-
-    gNet.to(device)
+    
     if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
         gNet.Distribute_subNets()
         print("Species Channels to train: {}".format(specTrainCh))
         print("Background species channels: {}".format(BackgroundSpecs))
+    
+    elif isinstance(gNet, GCNet):
+        if pt.cuda.device_count() > 1 and DPr:
+            print("Running on Devices : {}".format(DeviceIDList))
+            gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
 
+    gNet.to(device)
     optims = [pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)]
     if Learn_wt:
         print("Learning sample reweighting with SLP.") 
@@ -418,7 +390,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
-        gNet, batch_size=512):
+        gNet, batch_size=512, DPr=False):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -451,9 +423,14 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         with pt.no_grad():
             for epoch in tqdm(range(start_ep, end_ep + 1, interval), position=0, leave=True):
                 ## load checkpoint
-                gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device)) 
+                gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location="cpu")) 
                 if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
                     gNet.Distribute_subNets()
+
+                elif isinstance(gNet, GCNet):
+                    if pt.cuda.device_count() > 1 and DPr:
+                        print("Running on Devices : {}".format(DeviceIDList))
+                        gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
                 
                 diff = 0 
                 for batch in range(startSample, endSample, N_batch):
@@ -657,7 +634,9 @@ def main(args):
         raise NotImplementedError("getRep is not currently supported in residual and subnetwork training mode.")
 
     scratch_if_no_init = args.Scratch
-    
+
+    DPr = args.DatPar
+
     T_data = args.Tdata
     # Note : for binary random alloys, this should is the training composition instead of temperature
 
@@ -770,9 +749,9 @@ def main(args):
     # Make a network to either train from scratch or load saved state into
     if not Residual_training:
         if not subNetwork_training:
-            print("Running in Non-Residual Convolution mode")
+            print("Running in Non-Residual Non-Subnet Convolution mode")
             gNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-                    mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
+                    mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch, DPr=Dpr).double().to(device)
 
         else:
             print("Running in Non-Residual Binary SubNetwork Convolution mode")
@@ -802,7 +781,7 @@ def main(args):
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_Occs, State2_Occs,
                 OnSites_state1, OnSites_state2, rateData, dispData,
                 specsToTrain, sp_ch, VacSpec, start_ep, end_ep,
-                interval, N_train_jumps, gNet, batch_size=batch_size)
+                interval, N_train_jumps, gNet, batch_size=batch_size, DPr=DPr)
         np.save("tr_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), train_diff/(1.0*N_train))
         np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), valid_diff/(1.0*N_train))
 
@@ -835,6 +814,7 @@ parser.add_argument("-cngb", "--ConvNgbRange", type=int, default=1, metavar="NN"
 parser.add_argument("-rn", "--Residual", action="store_true", help="Whether to do residual training.")
 parser.add_argument("-sn", "--SubNet", action="store_true", help="Whether to train pairwise subnetworks.")
 parser.add_argument("-scr", "--Scratch", action="store_true", help="Whether to create new network and start from scratch")
+parser.add_argument("-DPR", "--DatPar", action="store_true", help="Whether to use data parallelism. Note - does not work for residual or subnet models. Used only in Train and eval modes.")
 
 parser.add_argument("-td", "--Tdata", metavar="T", type=int, help="Temperature to read data from")
 parser.add_argument("-tn", "--TNet", metavar="T", type=int, help="Temperature to use networks from\n For example one can evaluate a network trained on 1073 K data, on the 1173 K data, to see what it does.")
