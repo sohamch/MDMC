@@ -320,8 +320,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         if pt.cuda.device_count() > 1 and DPr:
             print("Running on Devices : {}".format(DeviceIDList))
             gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
+        gNet.to(device)
 
-    gNet.to(device)
     optims = [pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)]
     if Learn_wt:
         print("Learning sample reweighting with SLP.") 
@@ -424,14 +424,15 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             for epoch in tqdm(range(start_ep, end_ep + 1, interval), position=0, leave=True):
                 ## load checkpoint
                 gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location="cpu")) 
-                if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
+                if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes):
                     gNet.Distribute_subNets()
 
                 elif isinstance(gNet, GCNet):
                     if pt.cuda.device_count() > 1 and DPr:
                         print("Running on Devices : {}".format(DeviceIDList))
                         gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
-                
+                    gNet.to(device)
+ 
                 diff = 0 
                 for batch in range(startSample, endSample, N_batch):
                     end = min(batch + N_batch, endSample)
@@ -751,7 +752,7 @@ def main(args):
         if not subNetwork_training:
             print("Running in Non-Residual Non-Subnet Convolution mode")
             gNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
-                    mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch, DPr=Dpr).double().to(device)
+                    mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
 
         else:
             print("Running in Non-Residual Binary SubNetwork Convolution mode")
@@ -775,7 +776,7 @@ def main(args):
         Train(T_data, dirPath, State1_Occs, State2_Occs, OnSites_state1, OnSites_state2,
                 rateData, dispData, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train_jumps,
                 gNet, lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size,
-                Learn_wt=Learn_wt, WeightSLP=wtNet)
+                Learn_wt=Learn_wt, WeightSLP=wtNet, DPr=DPr)
 
     elif Mode == "eval":
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_Occs, State2_Occs,
