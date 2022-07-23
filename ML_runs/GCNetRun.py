@@ -815,7 +815,7 @@ parser.add_argument("-cngb", "--ConvNgbRange", type=int, default=1, metavar="NN"
 parser.add_argument("-rn", "--Residual", action="store_true", help="Whether to do residual training.")
 parser.add_argument("-sn", "--SubNet", action="store_true", help="Whether to train pairwise subnetworks.")
 parser.add_argument("-scr", "--Scratch", action="store_true", help="Whether to create new network and start from scratch")
-parser.add_argument("-DPR", "--DatPar", action="store_true", help="Whether to use data parallelism. Note - does not work for residual or subnet models. Used only in Train and eval modes.")
+parser.add_argument("-DPr", "--DatPar", action="store_true", help="Whether to use data parallelism. Note - does not work for residual or subnet models. Used only in Train and eval modes.")
 
 parser.add_argument("-td", "--Tdata", metavar="T", type=int, help="Temperature to read data from")
 parser.add_argument("-tn", "--TNet", metavar="T", type=int, help="Temperature to use networks from\n For example one can evaluate a network trained on 1073 K data, on the 1173 K data, to see what it does.")
