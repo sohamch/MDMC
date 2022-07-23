@@ -174,25 +174,25 @@ class GAvg(nn.Module):
 
 class GCNet(nn.Module):
     def __init__(self, GnnPerms, gdiags, NNsites, SitesToShells,
-                dim, N_ngb, mean=1.0, std=0.1, NSpec=5, nl=3, nch=8):
+                dim, N_ngb, NSpec, mean=1.0, std=0.1, b=1.0, nl=3, nch=8):
         
         super().__init__()
         modules = []
         modules += [
             GConv(NSpec, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
-            nn.Softplus(),
+            nn.Softplus(beta=b),
             GAvg()
         ]
         
         for l in range(nl):
             modules += [
                 GConv(nch, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
-                nn.Softplus(),
+                nn.Softplus(beta=b),
                 GAvg()
             ]
         modules += [
             GConv(nch, 1, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
-            nn.Softplus(),
+            nn.Softplus(beta=b),
             GAvg()
         ]
         modules.append(R3ConvSites(SitesToShells, GnnPerms, gdiags, NNsites, N_ngb,
@@ -211,6 +211,3 @@ class GCNet(nn.Module):
         for L in range(1, LayerInd + 1):
             y = self.net[L](y)
         return y
-
-
-
