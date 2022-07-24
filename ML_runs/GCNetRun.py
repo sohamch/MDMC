@@ -297,7 +297,11 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
     print(dispData[:10])
     print(rateData[:10])
-    print(state1Data[:10])
+    print(state1Data[0, :, :10])
+    print(state1Data[27, :, :10])
+    
+    print(OnSites_st1[:10])
+    print(OnSites_st2[:10])
     N_batch = batch_size
     try:
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"))
@@ -386,7 +390,6 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                 diff = pt.sum(sample_Losses) # just sum sample losses
 
             diff.backward()
-            
             # Propagate all optimizers
             for opt in optims:
                 opt.step()
@@ -415,17 +418,22 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamples, Ndim=Ndim)
     
-    #print(dispData[:10])
-    #print(rateData[:10])
-    #print(state1Data[:10])
-
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
     BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh] 
     
     if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
         print("Species Channels to train: {}".format(specTrainCh))
         print("Background species channels: {}".format(BackgroundSpecs))
-    def compute(startSample, endSample, gNet):
+    
+    # pre-convert to data parallel if required
+
+    elif isinstance(gNet, GCNet):
+        if pt.cuda.device_count() > 1 and DPr:
+            print("Using data parallel")
+            print("Running on Devices : {}".format(DeviceIDList))
+            gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
+
+    def compute(startSample, endSample):
         diff_epochs = []
         with pt.no_grad():
             for epoch in tqdm(range(start_ep, end_ep + 1, interval), position=0, leave=True):
@@ -433,15 +441,10 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                 if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes):
                     gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device)) 
                     gNet.Distribute_subNets()
-
-                elif isinstance(gNet, GCNet):
-                    if pt.cuda.device_count() > 1 and DPr:
-                        print("Running on Devices : {}".format(DeviceIDList))
-                        gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
+                
+                else:
                     gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
-                    #print(list(gNet.state_dict().keys()))
                     gNet.to(device)
-                    #print(gNet.module.net[0].Psi)
 
  
                 diff = 0 
@@ -481,10 +484,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
         return np.array(diff_epochs)
     
-    netLoader=copy.deepcopy(gNet)
-    train_diff = compute(0, N_train, netLoader)#/(1.0*N_train)
-    netLoader=copy.deepcopy(gNet)
-    test_diff = compute(N_train, Nsamples, netLoader)#/(1.0*(Nsamples - N_train))
+    train_diff = compute(0, N_train)#/(1.0*N_train)
+    test_diff = compute(N_train, Nsamples)#/(1.0*(Nsamples - N_train))
 
     return train_diff, test_diff
 
