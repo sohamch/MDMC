@@ -295,13 +295,6 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, N_train, Ndim=Ndim)
 
-    print(dispData[:10])
-    print(rateData[:10])
-    print(state1Data[0, :, :10])
-    print(state1Data[27, :, :10])
-    
-    print(OnSites_st1[:10])
-    print(OnSites_st2[:10])
     N_batch = batch_size
     try:
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"))
