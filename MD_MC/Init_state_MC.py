@@ -169,7 +169,7 @@ if __name__ == "__main__":
         print("Putting vacancy at site 0")
         del (superFCC[0])
     Natoms = len(superFCC)
-
+    print("No. of atoms : {}".format(Natoms))
     # save the supercell: will be useful for getting site positions
     with open("superInitial_{}.pkl".format(jobID), "wb") as fl:
         pickle.dump(superFCC, fl)
