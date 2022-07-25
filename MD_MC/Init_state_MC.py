@@ -9,6 +9,8 @@ from ase.build import make_supercell
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 import sys
 from scipy.constants import physical_constants
+import os
+import glob
 
 # First, we write a lammps input script for this run
 def write_lammps_input(jobID):
@@ -138,6 +140,7 @@ if __name__ == "__main__":
     N_eqb = int(args[7])
     allSave = bool(int(args[8]))
     MakeVac = bool(int(args[9]))
+    UseLastChkPt = bool(int(args[10])) if len(args)==10 else False
 
     # Create an FCC primitive unit cell
     a = 3.59
@@ -168,6 +171,15 @@ if __name__ == "__main__":
     if MakeVac:
         print("Putting vacancy at site 0")
         del (superFCC[0])
+
+    if UseLastChkPt: 
+        ChkPtFiles=os.getcwd() + "chkpt/*.pkl"
+        files=glob.glob(ChkPtFiles)
+        max_file = max(files, key=os.path.getctime) # Get the file created last
+        print("Loading checkpoint : {}".format(max_file))
+        with open(max_file, "rb") as fl:
+            superFCC = pickle.load(fl)
+
     Natoms = len(superFCC)
     print("No. of atoms : {}".format(Natoms))
     # save the supercell: will be useful for getting site positions
