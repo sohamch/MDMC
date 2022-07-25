@@ -36,7 +36,7 @@ def write_lammps_input(jobID):
 
 # Next, we write the MC loop
 def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
-           N_therm=2000, N_save=200, serial=True):
+           N_therm=2000, N_save=200, serial=True, lastChkPt=0):
     if serial:
         # cmdString = "mpirun -np 1 $LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
         cmdString = "$LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
@@ -115,7 +115,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
                 fl_timer.write("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
 
             if N_total >= N_therm:
-                with open("chkpt/supercell_{}.pkl".format(N_total), "wb") as fl_sup:
+                with open("chkpt/supercell_{}.pkl".format(N_total + lastChkPt), "wb") as fl_sup:
                     pickle.dump(ASE_Super, fl_sup)
 
                 with open("chkpt/counter.txt", "w") as fl_counter:
@@ -173,12 +173,18 @@ if __name__ == "__main__":
         del (superFCC[0])
 
     if UseLastChkPt: 
-        ChkPtFiles=os.getcwd() + "chkpt/*.pkl"
+        ChkPtFiles=os.getcwd() + "/chkpt/*.pkl"
         files=glob.glob(ChkPtFiles)
         max_file = max(files, key=os.path.getctime) # Get the file created last
         print("Loading checkpoint : {}".format(max_file))
         with open(max_file, "rb") as fl:
             superFCC = pickle.load(fl)
+        
+        lastFlName=max_file.split("/")[-1]
+        lastSave=int(lastFlName[10:-4])
+
+    else:
+        lastSave=0
 
     Natoms = len(superFCC)
     print("No. of atoms : {}".format(Natoms))
@@ -190,7 +196,7 @@ if __name__ == "__main__":
     write_lammps_input(jobID)
     start = time.time()
     N_total, N_accept, Eng_steps_accept, Eng_steps_all, rand_steps, swap_steps =\
-            MC_Run(N_swap, superFCC, N_proc, jobID, elems, N_therm=N_eqb, N_save=N_save)
+            MC_Run(N_swap, superFCC, N_proc, jobID, elems, N_therm=N_eqb, N_save=N_save, lastChkPt=lastSave)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
