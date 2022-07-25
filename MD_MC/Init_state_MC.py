@@ -135,7 +135,9 @@ if __name__ == "__main__":
     N_proc = int(args[4])  # No. of procs to parallelize over
     jobID = int(args[5])
     N_save = int(args[6])
-    allSave = bool(int(args[7]))
+    N_eqb = int(args[7])
+    allSave = bool(int(args[8]))
+    MakeVac = bool(int(args[9]))
 
     # Create an FCC primitive unit cell
     a = 3.59
@@ -163,7 +165,9 @@ if __name__ == "__main__":
         for at_Ind in range(i * partition, (i + 1) * partition):
             permInd = Indices[at_Ind]
             superFCC[permInd].symbol = elems[i]
-    del (superFCC[0])
+    if MakeVac:
+        print("Putting vacancy at site 0")
+        del (superFCC[0])
     Natoms = len(superFCC)
 
     # save the supercell: will be useful for getting site positions
@@ -173,13 +177,14 @@ if __name__ == "__main__":
     # Run MC
     write_lammps_input(jobID)
     start = time.time()
-    N_total, N_accept, Eng_steps_accept, Eng_steps_all, rand_steps, swap_steps = MC_Run(N_swap, superFCC, N_proc, jobID, elems, N_save=N_save)
+    N_total, N_accept, Eng_steps_accept, Eng_steps_all, rand_steps, swap_steps =\
+            MC_Run(N_swap, superFCC, N_proc, jobID, elems, N_therm=N_eqb, N_save=N_save)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
     print("Thermalization Run total moves : {}".format(N_total))
     print("Thermalization Time Per iteration : {}".format((end-start)/N_total))
-    np.save("Eng_steps_therm.npy", np.array(Eng_steps))
+    np.save("Eng_steps_therm.npy", np.array(Eng_steps_accept))
     with open("superFCC_therm.pkl", "wb") as fl:
         pickle.dump(superFCC, fl)
 
