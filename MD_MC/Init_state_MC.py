@@ -114,7 +114,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
                 t_now = time.time()
                 fl_timer.write("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
 
-            if N_total >= N_therm:
+            if N_total + lastChkPt >= N_therm:
                 with open("chkpt/supercell_{}.pkl".format(N_total + lastChkPt), "wb") as fl_sup:
                     pickle.dump(ASE_Super, fl_sup)
 
@@ -140,11 +140,9 @@ if __name__ == "__main__":
     N_eqb = int(args[7])
     allSave = bool(int(args[8]))
     MakeVac = bool(int(args[9]))
-    UseLastChkPt = bool(int(args[10])) if len(args)==10 else False
+    UseLastChkPt = bool(int(args[10])) if len(args)==11 else False
 
-
-    NSpec = 5
-    partition = Nsites // NSpec
+    print("Using CheckPoint : {}".format(UseLastChkPt))
 
     elems = ["Co", "Ni", "Cr", "Fe", "Mn"]
     elemsToNum = {}
@@ -186,6 +184,9 @@ if __name__ == "__main__":
         # save the supercell: will be useful for getting site positions
         with open("superInitial_{}.pkl".format(jobID), "wb") as fl:
             pickle.dump(superFCC, fl)
+
+        NSpec = len(elems)
+        partition = Nsites // NSpec
 
         for i in range(NSpec):
             for at_Ind in range(i * partition, (i + 1) * partition):
