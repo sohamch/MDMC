@@ -43,6 +43,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
     else:
         cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs, jobID)
 
+    Natoms = len(ASE_Super)
     N_accept = 0
     N_total = 0
     Eng_steps_accept = []
