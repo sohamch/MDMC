@@ -142,11 +142,6 @@ if __name__ == "__main__":
     MakeVac = bool(int(args[9]))
     UseLastChkPt = bool(int(args[10])) if len(args)==10 else False
 
-    # randomize occupancies of the sites
-    Nperm = 10
-    Indices = np.arange(Nsites)
-    for i in range(Nperm):
-        Indices = np.random.permutation(Indices)
 
     NSpec = 5
     partition = Nsites // NSpec
@@ -161,12 +156,12 @@ if __name__ == "__main__":
         ChkPtFiles=os.getcwd() + "/chkpt/*.pkl"
         files=glob.glob(ChkPtFiles)
         max_file = max(files, key=os.path.getctime) # Get the file created last
-        print("Loading checkpoint : {}".format(max_file))
         with open(max_file, "rb") as fl:
             superFCC = pickle.load(fl)
         
         lastFlName=max_file.split("/")[-1]
         lastSave=int(lastFlName[10:-4])
+        print("Loading checkpointed step : {} for run : {}".format(lastSave, jobID))
 
     else:
         lastSave=0
@@ -179,8 +174,14 @@ if __name__ == "__main__":
         superlatt = np.identity(3) * N_units
         superFCC = make_supercell(fcc, superlatt)
         Nsites = len(superFCC.get_positions())
-
         Natoms = len(superFCC)
+        
+        # randomize occupancies of the sites
+        Nperm = 10
+        Indices = np.arange(Nsites)
+        for i in range(Nperm):
+            Indices = np.random.permutation(Indices)
+
         print("No. of atoms : {}".format(Natoms))
         # save the supercell: will be useful for getting site positions
         with open("superInitial_{}.pkl".format(jobID), "wb") as fl:
