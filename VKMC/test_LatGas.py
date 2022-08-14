@@ -113,8 +113,9 @@ class Test_latGasKMC(unittest.TestCase):
 
         Nsteps = 5
 
-        X_steps, t_steps, jmpSelectSteps, jmpFinSiteList = LatGas.LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
-                                                                                vacSiteInit, N_unit, siteIndtoR, RtoSiteInd)
+        X_steps, t_steps, jmpSelectSteps, jmpFinSiteList, _, _ =\
+            LatGas.LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
+                                 vacSiteInit, N_unit, siteIndtoR, RtoSiteInd)
 
         dxtoR = [np.around(np.dot(np.linalg.inv(self.crys.lattice), dx), decimals=4).astype(int) for dx in dxList]
 
