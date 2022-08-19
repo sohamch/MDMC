@@ -133,7 +133,7 @@ if __name__ == "__main__":
     kB = physical_constants["Boltzmann constant in eV/K"][0]
     args = list(sys.argv)
     T = float(args[1])
-    N_swap = int(args[2])  # thermalization steps (until this many moves Have been run)
+    N_swap = int(args[2])
     N_units = int(args[3])  # dimensions of unit cell
     N_proc = int(args[4])  # No. of procs to parallelize over
     jobID = int(args[5])
@@ -141,11 +141,15 @@ if __name__ == "__main__":
     N_eqb = int(args[7])
     allSave = bool(int(args[8]))
     MakeVac = bool(int(args[9]))
-    UseLastChkPt = bool(int(args[10])) if len(args)==11 else False
+    MakeBinary = bool(int(args[10]))
+    comp = float(args[11])/100.
+    UseLastChkPt = bool(int(args[12])) if len(args)==13 else False
+
 
     print("Using CheckPoint : {}".format(UseLastChkPt))
 
     elems = ["Co", "Ni", "Cr", "Fe", "Mn"]
+
     elemsToNum = {}
     for elemInd, el in enumerate(elems):
         elemsToNum[el] = elemInd + 1
@@ -185,15 +189,25 @@ if __name__ == "__main__":
         # save the supercell: will be useful for getting site positions
         with open("superInitial_{}.pkl".format(jobID), "wb") as fl:
             pickle.dump(superFCC, fl)
-
-        NSpec = len(elems)
-        partition = Nsites // NSpec
-
-        for i in range(NSpec):
-            for at_Ind in range(i * partition, (i + 1) * partition):
-                permInd = Indices[at_Ind]
-                superFCC[permInd].symbol = elems[i]
         
+        if not MakeBinary:
+            NSpec = len(elems)
+            partition = Nsites // NSpec
+
+            for i in range(NSpec):
+                for at_Ind in range(i * partition, (i + 1) * partition):
+                    permInd = Indices[at_Ind]
+                    superFCC[permInd].symbol = elems[i]
+        
+        else:
+            sites_Co = int(comp * Nsites)
+            for site in Indices[:sites_Co]:
+                superFCC[site].symbol = "Co"
+
+            for site in Indices[sites_Co:]:
+                superFCC[site].symbol="Mn"
+
+            
         if MakeVac:
             print("Putting vacancy at site 0")
             del (superFCC[0])
