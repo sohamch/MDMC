@@ -65,10 +65,10 @@ def Load_Data(DataPath, f1, f2):
     return state1Listi_1, state2List_1, AllJumpRates_1, AllJumpRates_2, dispList_1, rateList_1
 
 # The data partitioning function
-def makeData(state1List, state2List, allRates_st1, allRates_st2,
+def makeData(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
         JumpNewSites, NNsiteList, dispList, dxJumps, a0, escRateList, vacSpec, specsToTrain):
     
-    NStateSamples = state1List.shape[0] 
+    NStateSamples = state1List.shape[0]
     N_ngb = dxJumps.shape[0]
     dispJumps = pt.tensor(dxJumps * a0)
     
@@ -145,15 +145,40 @@ def makeData(state1List, state2List, allRates_st1, allRates_st2,
 
 # The training function
 def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
-        JumpNewSites, NNsiteList, dispList, dxJumps, a0, escRateList, vacSpec, SpecsToTrain, N_train):
+        JumpNewSites, NNsiteList, dispList, dxJumps, a0, escRateList,
+        vacSpec, SpecsToTrain, N_train, batch_size, start_ep, end_ep, interval, gNet,
+        savePath):
     
-    # Convert to necessary tensors - portions extracted based on rank
+    # Convert to necessary tensors with  portions of the data extracted based on rank
     state1NgbTens, state2NgbTens, avDispSpecTrain_st1, avDispSpecTrain_st2, rateProbTens_st1, rateProbTens_st2, escRateTens, dispTens , sp_ch =\
-            makeData(state1List[:N_train], state2List[:N_train], allRates_st1[:N_train], allRates_st2[:N_train],
+            makeData(rank, world_size, state1List[:N_train], state2List[:N_train], allRates_st1[:N_train], allRates_st2[:N_train],
                     JumpNewSites, NNsiteList, dispList[:N_train], dxJumps, a0, escRateList[:N_train], vacSpec, SpecsToTrain)
         
     OnSites_st1 = sum(state1NgbTens[:, :, sp_ch[spec], :] for spec in SpecsToTrain)
     OnSites_st2 = sum(state2NgbTens[:, :, sp_ch[spec], :] for spec in SpecsToTrain)
+
+    # Now write the training loop
+    for epoch in tqdm(range(start_ep, end_ep + 1, batch_size), position=0, leave=True):
+
+        if ep % interval == 0:
+            if rank == 0:
+                pt.save(gNet.module.state_dict(), savePath + "/ep_{}.pt".format(epoch))
+
+        dist.barrier() # Halt all processes under saving is complete
+
+        for start_samp in range(0, N_train, batch_size):
+
+            end_samp = min(start_samp + batch_size, N_train)
+
+            state1Batch = state1NgbTens[start_samp : end_samp]
+            state2Batch = state2NgbTens[start_samp : end_samp]
+
+            On_st1Ngb_Batch = 
+
+
+    
+
+
 
 # The evaluation function
 def Eval():
