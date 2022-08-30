@@ -83,8 +83,8 @@ class GConv(nn.Module):
         return out.view(Nbatch, NchOut, Ng, NSites)
 
 
-class R3Conv(nn.Module):
-    def __init__(self, SitesToShells, GnnPerms, gdiags, NNsites,
+class R3ConvSites(nn.Module):
+    def __init__(self, GnnPerms, gdiags, NNsites,
                  N_ngb, dim, mean=1.0, std=0.1):
         super().__init__()
         Nsites = NNsites.shape[1]
@@ -97,14 +97,6 @@ class R3Conv(nn.Module):
         wtVC = nn.Parameter(pt.normal(mean, std, size=(dim, N_ngb), requires_grad=True))
         self.register_parameter("wtVC", wtVC)
         
-        # Make the shell parameters
-        Nshells = pt.max(SitesToShells)+1
-        
-        ShellWeights = nn.Parameter(pt.normal(mean, std, size=(Nshells,), requires_grad = True))
-        
-        self.register_buffer("SitesToShells", SitesToShells)
-        self.register_parameter("ShellWeights", ShellWeights)
-
     def RotateParams(self, GnnPerms):
         # First, we repeat the weights
         Ng = GnnPerms.shape[0]
@@ -114,8 +106,6 @@ class R3Conv(nn.Module):
         GnnPerm_repeat = self.GnnPerms.repeat_interleave(self.dim, dim=0)            
         self.wtVC_repeat_transf = pt.matmul(self.gdiags, pt.gather(wtVC_repeat, 1, GnnPerm_repeat))
         
-        # Repeat the shell indices
-        self.SiteShellWeights = self.ShellWeights[self.SitesToShells]
     
     def RearrangeInput(self, In, NNsites, Ng):
         N_ngb = NNsites.shape[0]        
@@ -124,28 +114,7 @@ class R3Conv(nn.Module):
         NNRepeat = NNsites.unsqueeze(0).repeat(In.shape[0], Nch, 1)
         return pt.gather(In, 2, NNRepeat)
     
-    def forward(self, In):
-        
-        NSites, GnnPerms, NNsites = self.NSites, self.GnnPerms, self.NNsites
-        
-        Nbatch = In.shape[0]
-        Ng = GnnPerms.shape[0]
-        
-        self.RotateParams(GnnPerms)
-        out = self.RearrangeInput(In, NNsites, Ng)
-        
-        # Finally, do the R3 convolution
-        out = pt.matmul(self.wtVC_repeat_transf, out).view(Nbatch, Ng, self.dim, NSites)
-        
-        # Then group average
-        out = pt.sum(out, dim=1)/Ng
-
-        # Site average with shell weights
-        out = pt.sum(out*self.SiteShellWeights, dim=2)/NSites
-        return out
-
-
-class R3ConvSites(R3Conv):
+    
     def forward(self, In):
         NSites, GnnPerms, NNsites = self.NSites, self.GnnPerms, self.NNsites
 
