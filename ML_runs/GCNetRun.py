@@ -296,8 +296,15 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, N_train, Ndim=Ndim)
 
     N_batch = batch_size
+
+    if isinstance(gNet, GCNet):
+        if pt.cuda.device_count() > 1 and DPr:
+            print("Running on Devices : {}".format(DeviceIDList))
+            gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
+            gNet.to(device)
+
     try:
-        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"))
+        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location=device))
         if Learn_wt:
             WeightSLP.load_state_dict(pt.load(dirPath + "/wt_ep_{1}.pt".format(T, start_ep), map_location="cpu"))
         print("Starting from epoch {}".format(start_ep), flush=True)
@@ -317,11 +324,6 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         print("Species Channels to train: {}".format(specTrainCh))
         print("Background species channels: {}".format(BackgroundSpecs))
     
-    elif isinstance(gNet, GCNet):
-        if pt.cuda.device_count() > 1 and DPr:
-            print("Running on Devices : {}".format(DeviceIDList))
-            gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
-        gNet.to(device)
 
     optims = [pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)]
     if Learn_wt:
@@ -848,11 +850,8 @@ parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str, help="Name of f
 
 if __name__ == "__main__":
     # main(list(sys.argv))
-    args_file = list(sys.argv)[1]
 
-    count=1
-    args = parser.parse_args()
-    
+    args = parser.parse_args()    
     if args.DumpArgs:
         print("Dumping arguments to: {}".format(args.DumpFile))
         opts = vars(args)
