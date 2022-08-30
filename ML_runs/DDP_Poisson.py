@@ -149,9 +149,9 @@ def makeData(rank, world_size, state1List, state2List, allRates_st1, allRates_st
     return state1NgbTens, state2NgbTens, avDispSpecTrain, avDispSpecTrain_st2, rateProbTens_st1, rateProbTens_st2, escRateTens, dispTens, sp_ch
 
 # Compute the multipliers in a flattened manner without a neighbor axis
-def reshapeMults(state1NgbTens, state2NgbTens, rateProbTens_st1, rateProbTens_st2):
+def FlatMults(state1NgbTens, state2NgbTens, rateProbTens_st1, rateProbTens_st2, specsToTrain, sp_ch, dim):
     N_samps = state1NgbTens.shape[0]
-    N_Ngb = state1NgbTens.shape[1]
+    N_ngb = state1NgbTens.shape[1]
     NspecCh = state1NgbTens.shape[2]
     Nsites = state1NgbTens.shape[3]
 
@@ -161,13 +161,25 @@ def reshapeMults(state1NgbTens, state2NgbTens, rateProbTens_st1, rateProbTens_st
     # Then change the view to (N_batch, N_ngb, 3)
     # Then sum axis 1 -> (N_batch, 3)
 
-    OnSites_st_1_ngbs = pt.zeros(N_samps, N_ngb, 3, Nsites)
-    OnSites_st_2_ngbs = pt.zeros(N_samps, N_ngb, 3, Nsites)
+    OnSites_st_1_ngbs = pt.zeros(N_samps*N_ngb, 3, Nsites)
+    OnSites_st_2_ngbs = pt.zeros(N_samps*N_ngb, 3, Nsites)
 
-    rateMult_st1 = pt.zeros(N_samps, 1)
+    rateMult_st1 = pt.zeros(N_samps*N_ngb, 1)
     rateMult_st2 = pt.zeros(N_samps, 1)
 
     # Now we fill them up
+    
+    for samp in range(Nsamps):
+        for ngb in range(N_ngb):
+            rateMult_st1[samp*N_ngb + ngb, 0] = rateProbTens_st1[samp, ngb]
+            rateMult_st2[samp*N_ngb + ngb, 0] = rateProbTens_st2[samp, ngb]
+            
+            for d in range(dim):
+                OnSites_st_1_ngbs[samp*N_ngb + ngb, d, :] = sum([state1NgbTens[samp, ngb, sp_ch[sp], :] for sp in specsToTrain])
+                OnSites_st_2_ngbs[samp*N_ngb + ngb, d, :] = sum([state2NgbTens[samp, ngb, sp_ch[sp], :] for sp in specsToTrain])
+
+    return OnSites_st1_ngbs, OnSites_st2_ngbs, rateMult_st1, rateMult_st2
+
 
 
 # The training function
@@ -181,8 +193,8 @@ def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
             makeData(rank, world_size, state1List[:N_train], state2List[:N_train], allRates_st1[:N_train], allRates_st2[:N_train],
                     JumpNewSites, NNsiteList, dispList[:N_train], dxJumps, a0, escRateList[:N_train], vacSpec, SpecsToTrain)
         
-    OnSites_st1_ngbs, OnSites_st2_ngbs, rateMults_st1, rateMults_st2 =\
-            reshapeMults(state1NgbTens, state2NgbTens, rateProbTens_st1, rateProbTens_st2)
+    OnSites_st1_ngbs, OnSites_st2_ngbs, rateMult_st1, rateMult_st2 =\
+            FlatMults(state1NgbTens, state2NgbTens, rateProbTens_st1, rateProbTens_st2, SpecsToTrain, sp_ch, dxJumps.shape[1])
 
 
     # Now write the training loop
@@ -197,10 +209,11 @@ def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
         for start_samp in range(0, N_train, batch_size):
 
             end_samp = min(start_samp + batch_size, N_train)
-
-            state1Batch = state1NgbTens[start_samp : end_samp].to(rank)
-            state2Batch = state2NgbTens[start_samp : end_samp].to(rank)
-
+            
+            # Flatten the samples
+            state1Batch = state1NgbTens[start_samp : end_samp].view().to(rank)
+            state2Batch = state2NgbTens[start_samp : end_samp].view().to(rank)
+            
             On_st1Ngb_Batch = 
 
 
