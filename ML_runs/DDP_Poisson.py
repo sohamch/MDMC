@@ -76,7 +76,7 @@ def makeData(rank, world_size, state1List, state2List, allRates_st1, allRates_st
 
     NStateSamples = endIndex - startIndex
     N_ngb = dxJumps.shape[0]
-    dispJumps = pt.tensor(dxJumps * a0)
+    dispJumps = pt.tensor(dxJumps * a0).double()
     
     jumpSites = NNsiteList[1:, 0]
 
@@ -101,13 +101,13 @@ def makeData(rank, world_size, state1List, state2List, allRates_st1, allRates_st
 
     state1NgbTens = pt.zeros(NStateSamples, N_ngb, NSpec, Nsites)
     state2NgbTens = pt.zeros(NStateSamples, N_ngb, NSpec, Nsites)
-    avDispSpecTrain_st1 = pt.zeros(NStateSamples, dxJumps.shape[1])
-    avDispSpecTrain_st2 = pt.zeros(NStateSamples, dxJumps.shape[1])
-    rateProbTens_st1 = pt.zeros(NStateSamples, N_ngb)
-    rateProbTens_st2 = pt.zeros(NStateSamples, N_ngb)
+    avDispSpecTrain_st1 = pt.zeros(NStateSamples, dxJumps.shape[1]).double()
+    avDispSpecTrain_st2 = pt.zeros(NStateSamples, dxJumps.shape[1]).double()
+    rateProbTens_st1 = pt.zeros(NStateSamples, N_ngb).double()
+    rateProbTens_st2 = pt.zeros(NStateSamples, N_ngb).double()
 
     escRateTens = pt.tensor(escRateList)
-    dispTens = pt.zeros(NStateSamples, 3)
+    dispTens = pt.zeros(NStateSamples, 3).double()
 
     # Now let's construct the tensors
     for sampInd in tqdm(range(startIndex, endIndex), position=0, leave=True):
@@ -123,7 +123,7 @@ def makeData(rank, world_size, state1List, state2List, allRates_st1, allRates_st
         rateProbTens_st1[sampInd, :] = pt.tensor(jProbs_st1)
         rateProbTens_st2[sampInd, :] = pt.tensor(jProbs_st2)
         
-        dispTens[sampInd] = pt.tensor(sum(dispList[sampInd, spec, :] for spec in specsToTrain))
+        dispTens[sampInd] = pt.tensor(sum(dispList[sampInd, spec, :] for spec in specsToTrain)).double()
 
         for jmp in range(N_ngb):
             state1Jmp = state1[JumpNewSites[jmp]]
@@ -150,7 +150,7 @@ def makeData(rank, world_size, state1List, state2List, allRates_st1, allRates_st
 
 # Compute the multipliers in a flattened manner without a neighbor axis
 def reshapeMults(state1NgbTens, state2NgbTens, rateProbTens_st1, rateProbTens_st2):
-    N_batch = state1NgbTens.shape[0]
+    N_samps = state1NgbTens.shape[0]
     N_Ngb = state1NgbTens.shape[1]
     NspecCh = state1NgbTens.shape[2]
     Nsites = state1NgbTens.shape[3]
@@ -160,6 +160,12 @@ def reshapeMults(state1NgbTens, state2NgbTens, rateProbTens_st1, rateProbTens_st
     # Then multiply with the jump probabilities -> (N_batch * N_ngb, 3)
     # Then change the view to (N_batch, N_ngb, 3)
     # Then sum axis 1 -> (N_batch, 3)
+
+    OnSites_st_1_ngbs = pt.zeros(N_samps, N_ngb, 3, Nsites)
+    OnSites_st_2_ngbs = pt.zeros(N_samps, N_ngb, 3, Nsites)
+
+    rateMult_st1 = pt.zeros(N_samps, 1)
+
 
 # The training function
 def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
