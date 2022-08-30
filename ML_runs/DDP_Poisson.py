@@ -68,7 +68,13 @@ def Load_Data(DataPath, f1, f2):
 def makeData(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
         JumpNewSites, NNsiteList, dispList, dxJumps, a0, escRateList, vacSpec, specsToTrain):
     
-    NStateSamples = state1List.shape[0]
+    chunkSize = state1List.shape[0] // world_size
+    startIndex = rank * chunkSize
+    endIndex = min((rank + 1) * chunkSize, state1List.shape[0])
+    if rank == world_size - 1 and endIndex < state1List.shape[0]:
+        print("Dropping last {} samples".format(state1List.shape[0] - endIndex))
+
+    NStateSamples = endIndex - startIndex
     N_ngb = dxJumps.shape[0]
     dispJumps = pt.tensor(dxJumps * a0)
     
@@ -104,7 +110,7 @@ def makeData(rank, world_size, state1List, state2List, allRates_st1, allRates_st
     dispTens = pt.zeros(NStateSamples, 3)
 
     # Now let's construct the tensors
-    for sampInd in tqdm(range(NStateSamples), position=0, leave=True):
+    for sampInd in tqdm(range(startIndex, endIndex), position=0, leave=True):
         state1 = state1List[sampInd]
         state2 = state2List[sampInd]
 
