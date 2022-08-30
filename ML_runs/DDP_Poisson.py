@@ -29,6 +29,37 @@ def setup(rank, world_size):
     os.environ['MASTER_PORT'] = '12355'
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
+# Function to load the data from the h5py files
+def Load_Data(DataPath, f1, f2):
+    with h5py.File(DataPath + f1, "r") as fl:
+        try:
+            perm_1 = fl["Permutation"]
+            print("found permuation for step 1")
+        except:        
+            perm_1 = np.arange(len(fl["InitStates"]))
+
+        state1List_1 = np.array(fl["InitStates"])[perm_1]
+        state2List_1 = np.array(fl["FinStates"])[perm_1]
+        dispList_1 = np.array(fl["SpecDisps"])[perm_1]
+        rateList_1 = np.array(fl["rates"])[perm_1]
+        AllJumpRates_1 = np.array(fl["AllJumpRates"])[perm_1]
+    
+    with h5py.File(DataPath + f2, "r") as fl:
+        try:
+            perm_2 = fl["Permutation"]
+            print("found permuation for step 2")
+        except:        
+            perm_2 = np.arange(len(fl["InitStates"]))
+
+        state1List_2 = np.array(fl["InitStates"])[perm_2]
+        AllJumpRates_2 = np.array(fl["AllJumpRates"])[perm_2]
+    
+    assert np.array_equa(state2List_1, state1List_2)
+    assert np.array_equal(perm_1, perm_2)
+
+    #state1List, state2List, allRates_st1, allRates_st2, dispList, escRateList = Load_Data(DataPath, f1, f2)
+    return state1Listi_1, state2List_1, AllJumpRates_1, AllJumpRates_2, dispList_1, rateList_1
+
 # The data partitioning function
 def splitData():
     pass
