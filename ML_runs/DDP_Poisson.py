@@ -62,7 +62,7 @@ def Load_Data(DataPath, f1, f2):
 
 # The data partitioning function
 def splitData(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
-        JumpNewSites, dispList, dxJumps, a0, escRateList, vacSpec, specsToTrain, mode, N_train):
+        JumpNewSites, dispList, dxJumps, a0, escRateList, vacSpec, specsToTrain):
     #state1NgbTens, state2NgbTens, avDispSpecTrain, rateProbTens, escTest, dispTens
     
     chunkSize_train = N_train // world_size
@@ -89,11 +89,13 @@ def splitData(rank, world_size, state1List, state2List, allRates_st1, allRates_s
 
 
 # The training function
-def train():
+def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
+        JumpNewSites, dispList, dxJumps, a0, escRateList, vacSpec, SpecsToTrain, N_train):
+    
     # Convert to necessary tensors - portions extracted based on rank
-    state1NgbTens, state2NgbTens, avDispSpecTrain, rateProbTens, escTest, dispTens =\
-            splitData(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
-                    JumpNewSites, dispList, dxJumps, a0, escRateList, vacSpec, SpecsToTrain, N_train)
+    state1NgbTens, state2NgbTens, avDispSpecTrain, rateProbTens_st1, rateProbTens_st2, escRateTens, dispTens =\
+            splitData(rank, world_size, state1List[:N_train], state2List[:N_train], allRates_st1[:N_train], allRates_st2[:N_train],
+                    JumpNewSites, dispList[:N_train], dxJumps, a0, escRateList[:N_train], vacSpec, SpecsToTrain)
     pass
 
 # The evaluation function
