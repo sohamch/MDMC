@@ -65,8 +65,14 @@ def splitData(rank, world_size, state1List, state2List, allRates_st1, allRates_s
         JumpNewSites, dispList, dxJumps, a0, escRateList, vacSpec, specsToTrain):
     #state1NgbTens, state2NgbTens, avDispSpecTrain, rateProbTens, escTest, dispTens
     
-    chunkSize_train = N_train // world_size
-    chunkSize_val = (state1List.shape[0] - N_train) // world_size
+    NStateSamples = state1List.shape[0]
+    chunkSize = NStateSamples // world_size
+    
+    startSample = rank * chunkSize
+    endSample = min((rank + 1)*chunkSize, NStateSamples)
+    NsamplesChunk = endSample - startSample
+    N_ngb = dxJumps.shape[0]
+    NsamplesNGB = NsamplesChunk * N_ngb
 
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
@@ -82,10 +88,9 @@ def splitData(rank, world_size, state1List, state2List, allRates_st1, allRates_s
         else:
             sp_ch[sp] = sp-1
 
-    N_ngb = dxJumps.shape[0]
 
-    state1NgbTens = pt.zeros(NStateSamples*N_ngb, NSpec, Nsites)
-    state1NgbTens = pt.zeros(NStateSamples*N_ngb, NSpec, Nsites)
+    state1NgbTens = pt.zeros(NsamplesNGB, NSpec, Nsites)
+    state1NgbTens = pt.zeros(NsamplesNGB, NSpec, Nsites)
 
 
 # The training function
