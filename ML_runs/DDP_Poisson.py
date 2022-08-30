@@ -165,6 +165,9 @@ def reshapeMults(state1NgbTens, state2NgbTens, rateProbTens_st1, rateProbTens_st
     OnSites_st_2_ngbs = pt.zeros(N_samps, N_ngb, 3, Nsites)
 
     rateMult_st1 = pt.zeros(N_samps, 1)
+    rateMult_st2 = pt.zeros(N_samps, 1)
+
+    # Now we fill them up
 
 
 # The training function
@@ -231,14 +234,14 @@ def main(rank, world_size, args):
    
     net_dir = "epochs_T_{0}_n{1}c{2}_NgbAvg".format(T_net, nch, nl)
     # if from scratch, create new network
-    gNet = GCNet_NgbAvg() # pass in arguments to make the GCNet
+    gNet = GCNet_NgbAvg().double() # pass in arguments to make the GCNet
     if not from_scratch:
         # load unwrapped state dict
         state_dict = torch.load(RunPath + net_dir + "/ep_{}.pt".format(sep))
         gNet.load_state_dict(state_dict)
 
     # send to ranked gpu
-    gNet.to(rank)
+    gNet.double().to(rank)
 
     # Wrap with DDP
     gNet = DDP(gNet, device_ids=[rank], output_device=rank) #, find_unused_parameters=True)
