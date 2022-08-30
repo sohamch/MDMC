@@ -54,22 +54,30 @@ def main(rank, world_size, args):
     
     # Get the arguments from argparse - things like batch size, interval to load etc
     parser = argparse.ArgumentParser()
-
+    # arguments needed:
+    #   a0 (float), from_scratch_bool, net_dir, DataPath (string), filter_nn
+    #   CrysDatPath
 
     # Load the crystal data
-
+    GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(filter_nn, CrysDatPath) 
+    
     # Load the KMC Trajectory data - we'll need rates from both state 1 and state 2
-    state1List, state2List, allRates_state1, allRates_state2, dispList, escRateList = Load_Data()
+    state1List, state2List, allRates_st1, allRates_st2, dispList, escRateList = Load_Data(DataPath)
 
-    # Convert to necessary tensors
-    state
+    # Convert to necessary tensors - portions extracted based on rank
+    state1NgbTens, state2NgbTens, avDispSpecTrain, rateProbTens, escTest, dispTens =\
+            splitData(rank, state1List, state2List, allRates_st1, allRates_st2, dispList, dxJumps, a0, escRateList)
+    
+    # if from scratch, create new network
+    if from_scratch:
+        gNet = GCNet().to(rank) # pass in arguments to make the GCNet
+    else:
+        # Figure out how to load DDP-trained model
+        # Load the model
+        # send to ranked gpu
 
-    gNet = GCNet() # pass in arguments to make the GCNet
     # Wrap the model with DDP
     gNet = DDP(gNet, device_ids=[rank], output_device=rank, find_unused_parameters=True)
-
-    # Training and evaluation will involve splitting the data based on rank,
-    # Partition the necessary data based on rank by calling SplitData
 
     # Pass the partitioned data to the training function
     if mode == "train":
