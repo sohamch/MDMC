@@ -64,7 +64,7 @@ def Load_Data(DataPath, f1, f2):
     #state1List, state2List, allRates_st1, allRates_st2, dispList, escRateList = Load_Data(DataPath, f1, f2)
     return state1Listi_1, state2List_1, AllJumpRates_1, AllJumpRates_2, dispList_1, rateList_1
 
-# The data partitioning function
+# The data partitioning function - extract necessary portion based on rank
 def makeData(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
         JumpNewSites, NNsiteList, dispList, dxJumps, a0, escRateList, vacSpec, specsToTrain):
     
@@ -148,6 +148,18 @@ def makeData(rank, world_size, state1List, state2List, allRates_st1, allRates_st
 
     return state1NgbTens, state2NgbTens, avDispSpecTrain, avDispSpecTrain_st2, rateProbTens_st1, rateProbTens_st2, escRateTens, dispTens, sp_ch
 
+# Compute the multipliers in a flattened manner without a neighbor axis
+def reshapeMults(state1NgbTens, state2NgbTens, rateProbTens_st1, rateProbTens_st2):
+    N_batch = state1NgbTens.shape[0]
+    N_Ngb = state1NgbTens.shape[1]
+    NspecCh = state1NgbTens.shape[2]
+    Nsites = state1NgbTens.shape[3]
+
+    # The goal is to have the site y vectors output as (N_batch * N_ngb, 3, Nsites)
+    # Then multiply with the OnSite multipliers and sum along sites -> (N_batch * N_ngb, 3)
+    # Then multiply with the jump probabilities -> (N_batch * N_ngb, 3)
+    # Then change the view to (N_batch, N_ngb, 3)
+    # Then sum axis 1 -> (N_batch, 3)
 
 # The training function
 def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
@@ -160,8 +172,9 @@ def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
             makeData(rank, world_size, state1List[:N_train], state2List[:N_train], allRates_st1[:N_train], allRates_st2[:N_train],
                     JumpNewSites, NNsiteList, dispList[:N_train], dxJumps, a0, escRateList[:N_train], vacSpec, SpecsToTrain)
         
-    OnSites_st1 = sum(state1NgbTens[:, :, sp_ch[spec], :] for spec in SpecsToTrain)
-    OnSites_st2 = sum(state2NgbTens[:, :, sp_ch[spec], :] for spec in SpecsToTrain)
+    OnSites_st1_ngbs, OnSites_st2_ngbs, rateMults_st1, rateMults_st2 =\
+            reshapeMults(state1NgbTens, state2NgbTens, rateProbTens_st1, rateProbTens_st2)
+
 
     # Now write the training loop
     for epoch in tqdm(range(start_ep, end_ep + 1, batch_size), position=0, leave=True):
@@ -176,8 +189,8 @@ def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
 
             end_samp = min(start_samp + batch_size, N_train)
 
-            state1Batch = state1NgbTens[start_samp : end_samp]
-            state2Batch = state2NgbTens[start_samp : end_samp]
+            state1Batch = state1NgbTens[start_samp : end_samp].to(rank)
+            state2Batch = state2NgbTens[start_samp : end_samp].to(rank)
 
             On_st1Ngb_Batch = 
 
