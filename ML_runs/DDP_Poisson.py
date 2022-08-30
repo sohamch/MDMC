@@ -61,8 +61,30 @@ def Load_Data(DataPath, f1, f2):
     return state1Listi_1, state2List_1, AllJumpRates_1, AllJumpRates_2, dispList_1, rateList_1
 
 # The data partitioning function
-def splitData():
-    pass
+def splitData(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
+        JumpNewSites, dispList, dxJumps, a0, escRateList, vacSpec, specsToTrain):
+    #state1NgbTens, state2NgbTens, avDispSpecTrain, rateProbTens, escTest, dispTens
+    
+    NStateSamples = state1List.shape[0]
+    specs = np.unique(state1List[0])
+    NSpec = specs.shape[0] - 1
+    Nsites = state1List.shape[1]
+    
+    sp_ch = {}
+    for sp in specs:
+        if sp == VacSpec:
+            continue
+        
+        if sp < VacSpec:
+            sp_ch[sp] = sp
+        else:
+            sp_ch[sp] = sp-1
+
+    N_ngb = dxJumps.shape[0]
+
+    state1NgbTens = pt.zeros(NStateSamples*N_ngb, NSpec, Nsites)
+    state1NgbTens = pt.zeros(NStateSamples*N_ngb, NSpec, Nsites)
+
 
 # The training function
 def train():
@@ -93,7 +115,8 @@ def main(rank, world_size, args):
 
     # Convert to necessary tensors - portions extracted based on rank
     state1NgbTens, state2NgbTens, avDispSpecTrain, rateProbTens, escTest, dispTens =\
-            splitData(rank, state1List, state2List, allRates_st1, allRates_st2, dispList, dxJumps, a0, escRateList)
+            splitData(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
+                    JumpNewSites, dispList, dxJumps, a0, escRateList, vacSpec, SpecsToTrain)
    
     net_dir = "epochs_T_{0}_n{1}c{2}_NgbAvg".format(T_net, nch, nl)
     # if from scratch, create new network
