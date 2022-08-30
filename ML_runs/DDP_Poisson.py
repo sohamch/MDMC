@@ -48,16 +48,12 @@ def getY():
 # Next, the main function - this main function is the one that will be
 # run on parallel instances of the code
 def main(rank, world_size, args):
+
+    # Extract parsed arguments
+
     # Initiate process group
     setup(rank, world_size)
     
-    # Get the arguments from argparse - things like batch size, interval to load etc
-    parser = argparse.ArgumentParser()
-    # arguments needed:
-    #   DataPath, f1, f2 - directory of data files, file for step 1 data, file for step 2 data
-    #   a0 (float), from_scratch_bool, T_data, T_net, filter_nn
-    #   CrysDatPath, sep (Start epoch - int), nch (int), nl(int)
-
     # Load the crystal data
     GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(filter_nn, CrysDatPath) 
     
@@ -94,10 +90,57 @@ def main(rank, world_size, args):
     # Lastly, clean things up by destroying the process group
     dist.destroy_process_group()
 
+
+# Add argument parser
+    # arguments needed:
+    #   DataPath, f1, f2 - directory of data files, file for step 1 data, file for step 2 data
+    #   a0 (float), from_scratch_bool, T_data, T_net, filter_nn
+    #   CrysDatPath, sep (Start epoch - int), nch (int), nl(int)
+parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str, help="Path to Data files.")
+parser.add_argument("-f1", "--FileStep1", metavar="data_stp1.h5", type=str, help="Data file for step 1.")
+parser.add_argument("-f2", "--FileStep2", metavar="data_stp2.h5", type=str, help="Data file for step 2.")
+parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
+
+parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
+
+parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
+parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, help="No. of representation channels in non-input layers.")
+parser.add_argument("-cngb", "--ConvNgbRange", type=int, default=1, metavar="NN", help="Nearest neighbor range of convolutional filters.")
+
+
+parser.add_argument("-scr", "--Scratch", action="store_true", help="Whether to create new network and start from scratch")
+
+parser.add_argument("-td", "--Tdata", metavar="T", type=int, help="Temperature to read data from")
+parser.add_argument("-tn", "--TNet", metavar="T", type=int, help="Temperature to use networks from\n For example one can evaluate a network trained on 1073 K data, on the 1173 K data, to see what it does.")
+parser.add_argument("-sep", "--Start_epoch", metavar="Ep", type=int, help="Starting epoch (for training, this network will be read in.)")
+parser.add_argument("-eep", "--End_epoch", metavar="Ep", type=int, help="Ending epoch (for training, this will be the last epoch.)")
+
+parser.add_argument("-sp", "--SpecTrain", metavar="s1s2s3", type=str, help="species to consider, order independent (Eg, 123 or 213 etc for species 1, 2 and 3")
+parser.add_argument("-vSp", "--VacSpec", metavar="SpV", type=int, default=0, help="species index of vacancy, must match dataset, default 0")
+
+parser.add_argument("-nt", "--N_train", type=int, default=10000, help="No. of training samples.")
+parser.add_argument("-i", "--Interval", type=int, default=1, help="Epoch intervals in which to save or load networks.")
+parser.add_argument("-lr", "--Learning_rate", type=float, default=0.001, help="Learning rate for Adam algorithm.")
+parser.add_argument("-bs", "--Batch_size", type=int, default=128, help="size of a single batch of samples.")
+parser.add_argument("-wm", "--Mean_wt", type=float, default=0.02, help="Initialization mean value of weights.")
+parser.add_argument("-ws", "--Std_wt", type=float, default=0.2, help="Initialization standard dev of weights.")
+
+parser.add_argument("-d", "--DumpArgs", action="store_true", help="Whether to dump arguments in a file")
+parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str, help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
+
 # Then, we need to spawm multiple processes to run the main function
 
 if __name__ == "__main__":
     
+    args = parser.parse_args()    
+    if args.DumpArgs:
+        print("Dumping arguments to: {}".format(args.DumpFile))
+        opts = vars(args)
+        with open(RunPath + args.DumpFile, "w") as fl:
+            for key, val in opts.items():
+                fl.write("{}: {}\n".format(key, val))
+
     if pt.cuda.is_available():
         DeviceIDList = list(range(pt.cuda.device_count()))
     if len(DeviceIDList == 0):
@@ -106,4 +149,4 @@ if __name__ == "__main__":
 
     # Then spawn processes - we'll do one GPU per process
     world_size = len(DeviceIDList)
-    mp.spawn(main, args=(world_size), nprocs=world_size)
+    mp.spawn(main, args=(world_size, args), nprocs=world_size)
