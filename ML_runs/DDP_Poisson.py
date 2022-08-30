@@ -65,12 +65,15 @@ def Load_Data(DataPath, f1, f2):
     return state1Listi_1, state2List_1, AllJumpRates_1, AllJumpRates_2, dispList_1, rateList_1
 
 # The data partitioning function
-def makeData(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
-        JumpNewSites, dispList, dxJumps, a0, escRateList, vacSpec, specsToTrain):
+def makeData(state1List, state2List, allRates_st1, allRates_st2,
+        JumpNewSites, NNsiteList, dispList, dxJumps, a0, escRateList, vacSpec, specsToTrain):
     
     NStateSamples = state1List.shape[0] 
     N_ngb = dxJumps.shape[0]
-     
+    dispJumps = pt.tensor(dxJumps * a0)
+    
+    jumpSites = NNsiteList[1:, 0]
+
     print("Process : {0}, splitting samples from {1} to {2}".format(rank, startSample, endSample))
 
     specs = np.unique(state1List[0])
@@ -88,22 +91,69 @@ def makeData(rank, world_size, state1List, state2List, allRates_st1, allRates_st
             sp_ch[sp] = sp-1
 
     # Tensors to make:
-    # state1NgbTens, state2NgbTens, avDispSpecTrain, rateProbTens_st1, rateProbTens_st2, escRateTens, dispTens
+    # state1NgbTens, state2NgbTens, avDispSpecTrain_st1, avDispSpecTrain_st2, rateProbTens_st1, rateProbTens_st2, escRateTens, dispTens
 
     state1NgbTens = pt.zeros(NStateSamples, N_ngb, NSpec, Nsites)
     state2NgbTens = pt.zeros(NStateSamples, N_ngb, NSpec, Nsites)
+    avDispSpecTrain_st1 = pt.zeros(NStateSamples, dxJumps.shape[1])
+    avDispSpecTrain_st2 = pt.zeros(NStateSamples, dxJumps.shape[1])
+    rateProbTens_st1 = pt.zeros(NStateSamples, N_ngb)
+    rateProbTens_st2 = pt.zeros(NStateSamples, N_ngb)
 
+    escRateTens = pt.tensor(escRateList)
+    dispTens = pt.zeros(NStateSamples, 3)
+
+    # Now let's construct the tensors
+    for sampInd in tqdm(range(NStateSamples), position=0, leave=True):
+        state1 = state1List[sampInd]
+        state2 = state2List[sampInd]
+
+        rateSum_st1 = np.sum(allRates_st1[sampInd])
+        rateSum_st2 = np.sum(allRates_st2[sampInd])
+        
+        jProbs_st1 = allRates_st1[sampInd]/rateSum_st1
+        jProbs_st2 = allRates_st2[sampInd]/rateSum_st2
+        
+        rateProbTens_st1[sampInd, :] = pt.tensor(jProbs_st1)
+        rateProbTens_st2[sampInd, :] = pt.tensor(jProbs_st2)
+        
+        dispTens[sampInd] = pt.tensor(sum(dispList[sampInd, spec, :] for spec in specsToTrain))
+
+        for jmp in range(N_ngb):
+            state1Jmp = state1[JumpNewSites[jmp]]
+            state2Jmp = state2[JumpNewSites[jmp]]
+
+            if specsToTrain == [VacSpec]:
+                avDispSpecTrain_st1[sampInd] += jProbs_st1[jmp] * dispJumps[jmp]
+                avDispSpecTrain_st2[sampInd] += jProbs_st2[jmp] * dispJumps[jmp]
+
+            else:
+                if state1[jumpSites[jmp]] in specsToTrain:
+                    avDispSpecTrain_st1[sampInd] -= jProbs_st1[jmp] * dispJumps[jmp]
+                if state2[jumpSites[jmp]] in specsToTrain:
+                    avDispSpecTrain_st2[sampInd] -= jProbs_st2[jmp] * dispJumps[jmp]
+
+            # Now we construct the neighbor tensors
+            for site in range(1, Nsites):
+                sp1_site_jmpState = state1Jmp[site]
+                sp2_site_jmpState = state2Jmp[site]
+                state1NgbTens[sampInd, jmp, sp_ch[sp1_site_jmpState], site] = 1.0
+                state2NgbTens[sampInd, jmp, sp_ch[sp2_site_jmpState], site] = 1.0
+
+    return state1NgbTens, state2NgbTens, avDispSpecTrain, avDispSpecTrain_st2, rateProbTens_st1, rateProbTens_st2, escRateTens, dispTens, sp_ch
 
 
 # The training function
 def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
-        JumpNewSites, dispList, dxJumps, a0, escRateList, vacSpec, SpecsToTrain, N_train):
+        JumpNewSites, NNsiteList, dispList, dxJumps, a0, escRateList, vacSpec, SpecsToTrain, N_train):
     
     # Convert to necessary tensors - portions extracted based on rank
-    state1NgbTens, state2NgbTens, avDispSpecTrain, rateProbTens_st1, rateProbTens_st2, escRateTens, dispTens =\
-            makeData(rank, world_size, state1List[:N_train], state2List[:N_train], allRates_st1[:N_train], allRates_st2[:N_train],
-                    JumpNewSites, dispList[:N_train], dxJumps, a0, escRateList[:N_train], vacSpec, SpecsToTrain)
-    pass
+    state1NgbTens, state2NgbTens, avDispSpecTrain_st1, avDispSpecTrain_st2, rateProbTens_st1, rateProbTens_st2, escRateTens, dispTens , sp_ch =\
+            makeData(state1List[:N_train], state2List[:N_train], allRates_st1[:N_train], allRates_st2[:N_train],
+                    JumpNewSites, NNsiteList, dispList[:N_train], dxJumps, a0, escRateList[:N_train], vacSpec, SpecsToTrain)
+        
+    OnSites_st1 = sum(state1NgbTens[:, :, sp_ch[spec], :] for spec in SpecsToTrain)
+    OnSites_st2 = sum(state2NgbTens[:, :, sp_ch[spec], :] for spec in SpecsToTrain)
 
 # The evaluation function
 def Eval():
@@ -141,7 +191,7 @@ def main(rank, world_size, args):
     gNet.to(rank)
 
     # Wrap with DDP
-    gNet = DDP(gNet, device_ids=[rank], output_device=rank)
+    gNet = DDP(gNet, device_ids=[rank], output_device=rank) #, find_unused_parameters=True)
 
     # Pass the partitioned data to the training function
     if mode == "train":
