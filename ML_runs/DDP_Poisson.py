@@ -19,7 +19,6 @@ import torch.multiprocessing as mp
 import h5py
 import pickle
 from tqdm import tqdm
-import matplotlib.pyplot as plt
 from SymmLayers import GCNet
 from GCNetRun import Load_crysDats
 import copy
@@ -56,7 +55,7 @@ def main(rank, world_size, args):
     parser = argparse.ArgumentParser()
     # arguments needed:
     #   a0 (float), from_scratch_bool, net_dir, DataPath (string), filter_nn
-    #   CrysDatPath
+    #   CrysDatPath, sep (Start epoch - int)
 
     # Load the crystal data
     GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(filter_nn, CrysDatPath) 
@@ -69,15 +68,17 @@ def main(rank, world_size, args):
             splitData(rank, state1List, state2List, allRates_st1, allRates_st2, dispList, dxJumps, a0, escRateList)
     
     # if from scratch, create new network
-    if from_scratch:
-        gNet = GCNet().to(rank) # pass in arguments to make the GCNet
-    else:
-        # Figure out how to load DDP-trained model
-        # Load the model
-        # send to ranked gpu
+    gNet = GCNet() # pass in arguments to make the GCNet
+    if not from_scratch:
+        # load unwrapped state dict
+        state_dict = torch.load(net_dir + "/ep_{}.pt".format(sep))
+        gNet.load_state_dict(state_dict)
 
-    # Wrap the model with DDP
-    gNet = DDP(gNet, device_ids=[rank], output_device=rank, find_unused_parameters=True)
+    # send to ranked gpu
+    gNet.to(rank)
+
+    # Wrap with DDP
+    gNet = DDP(gNet, device_ids=[rank], output_device=rank)
 
     # Pass the partitioned data to the training function
     if mode == "train":
