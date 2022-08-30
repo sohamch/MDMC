@@ -23,6 +23,10 @@ from SymmLayers import GCNet
 from GCNetRun import Load_crysDats
 import copy
 
+class GCNet_NgbAvg(GCNet):
+    def forward(self, InstateNgbs):
+        pass
+
 # Function to set up parallel process groups
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
@@ -61,7 +65,7 @@ def Load_Data(DataPath, f1, f2):
     return state1Listi_1, state2List_1, AllJumpRates_1, AllJumpRates_2, dispList_1, rateList_1
 
 # The data partitioning function
-def splitData(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
+def makeData(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
         JumpNewSites, dispList, dxJumps, a0, escRateList, vacSpec, specsToTrain):
     
     NStateSamples = state1List.shape[0] 
@@ -97,7 +101,7 @@ def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
     
     # Convert to necessary tensors - portions extracted based on rank
     state1NgbTens, state2NgbTens, avDispSpecTrain, rateProbTens_st1, rateProbTens_st2, escRateTens, dispTens =\
-            splitData(rank, world_size, state1List[:N_train], state2List[:N_train], allRates_st1[:N_train], allRates_st2[:N_train],
+            makeData(rank, world_size, state1List[:N_train], state2List[:N_train], allRates_st1[:N_train], allRates_st2[:N_train],
                     JumpNewSites, dispList[:N_train], dxJumps, a0, escRateList[:N_train], vacSpec, SpecsToTrain)
     pass
 
@@ -127,7 +131,7 @@ def main(rank, world_size, args):
    
     net_dir = "epochs_T_{0}_n{1}c{2}_NgbAvg".format(T_net, nch, nl)
     # if from scratch, create new network
-    gNet = GCNet() # pass in arguments to make the GCNet
+    gNet = GCNet_NgbAvg() # pass in arguments to make the GCNet
     if not from_scratch:
         # load unwrapped state dict
         state_dict = torch.load(RunPath + net_dir + "/ep_{}.pt".format(sep))
