@@ -62,7 +62,7 @@ def Load_Data(DataPath, f1, f2):
 
 # The data partitioning function
 def splitData(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
-        JumpNewSites, dispList, dxJumps, a0, escRateList, vacSpec, specsToTrain, N_train):
+        JumpNewSites, dispList, dxJumps, a0, escRateList, vacSpec, specsToTrain, mode, N_train):
     #state1NgbTens, state2NgbTens, avDispSpecTrain, rateProbTens, escTest, dispTens
     
     chunkSize_train = N_train // world_size
@@ -90,6 +90,10 @@ def splitData(rank, world_size, state1List, state2List, allRates_st1, allRates_s
 
 # The training function
 def train():
+    # Convert to necessary tensors - portions extracted based on rank
+    state1NgbTens, state2NgbTens, avDispSpecTrain, rateProbTens, escTest, dispTens =\
+            splitData(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
+                    JumpNewSites, dispList, dxJumps, a0, escRateList, vacSpec, SpecsToTrain, N_train)
     pass
 
 # The evaluation function
@@ -115,10 +119,6 @@ def main(rank, world_size, args):
     # Load the KMC Trajectory data - we'll need rates from both state 1 and state 2
     state1List, state2List, allRates_st1, allRates_st2, dispList, escRateList = Load_Data(DataPath, f1, f2)
 
-    # Convert to necessary tensors - portions extracted based on rank
-    state1NgbTens, state2NgbTens, avDispSpecTrain, rateProbTens, escTest, dispTens =\
-            splitData(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
-                    JumpNewSites, dispList, dxJumps, a0, escRateList, vacSpec, SpecsToTrain)
    
     net_dir = "epochs_T_{0}_n{1}c{2}_NgbAvg".format(T_net, nch, nl)
     # if from scratch, create new network
