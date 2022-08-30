@@ -63,7 +63,6 @@ def Load_Data(DataPath, f1, f2):
 # The data partitioning function
 def splitData(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
         JumpNewSites, dispList, dxJumps, a0, escRateList, vacSpec, specsToTrain):
-    #state1NgbTens, state2NgbTens, avDispSpecTrain, rateProbTens, escTest, dispTens
     
     NStateSamples = state1List.shape[0]
     chunkSize = NStateSamples // world_size
@@ -73,6 +72,8 @@ def splitData(rank, world_size, state1List, state2List, allRates_st1, allRates_s
     NsamplesChunk = endSample - startSample
     N_ngb = dxJumps.shape[0]
     NsamplesNGB = NsamplesChunk * N_ngb
+     
+    print("Process : {0}, splitting samples from {1} to {2}".format(rank, startSample, endSample))
 
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
@@ -88,9 +89,11 @@ def splitData(rank, world_size, state1List, state2List, allRates_st1, allRates_s
         else:
             sp_ch[sp] = sp-1
 
+    # Tensors to make:
+    # state1NgbTens, state2NgbTens, avDispSpecTrain, rateProbTens_st1, rateProbTens_st2, escRateTens, dispTens
 
     state1NgbTens = pt.zeros(NsamplesNGB, NSpec, Nsites)
-    state1NgbTens = pt.zeros(NsamplesNGB, NSpec, Nsites)
+    state2NgbTens = pt.zeros(NsamplesNGB, NSpec, Nsites)
 
 
 # The training function
