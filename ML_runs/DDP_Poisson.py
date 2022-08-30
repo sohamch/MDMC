@@ -54,24 +54,26 @@ def main(rank, world_size, args):
     # Get the arguments from argparse - things like batch size, interval to load etc
     parser = argparse.ArgumentParser()
     # arguments needed:
-    #   a0 (float), from_scratch_bool, net_dir, DataPath (string), filter_nn
-    #   CrysDatPath, sep (Start epoch - int)
+    #   DataPath, f1, f2 - directory of data files, file for step 1 data, file for step 2 data
+    #   a0 (float), from_scratch_bool, T_data, T_net, filter_nn
+    #   CrysDatPath, sep (Start epoch - int), nch (int), nl(int)
 
     # Load the crystal data
     GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(filter_nn, CrysDatPath) 
     
     # Load the KMC Trajectory data - we'll need rates from both state 1 and state 2
-    state1List, state2List, allRates_st1, allRates_st2, dispList, escRateList = Load_Data(DataPath)
+    state1List, state2List, allRates_st1, allRates_st2, dispList, escRateList = Load_Data(DataPath, f1, f2)
 
     # Convert to necessary tensors - portions extracted based on rank
     state1NgbTens, state2NgbTens, avDispSpecTrain, rateProbTens, escTest, dispTens =\
             splitData(rank, state1List, state2List, allRates_st1, allRates_st2, dispList, dxJumps, a0, escRateList)
-    
+   
+    net_dir = "epochs_T_{0}_n{1}c{2}_NgbAvg".format(T_net, nch, nl)
     # if from scratch, create new network
     gNet = GCNet() # pass in arguments to make the GCNet
     if not from_scratch:
         # load unwrapped state dict
-        state_dict = torch.load(net_dir + "/ep_{}.pt".format(sep))
+        state_dict = torch.load(RunPath + net_dir + "/ep_{}.pt".format(sep))
         gNet.load_state_dict(state_dict)
 
     # send to ranked gpu
