@@ -107,7 +107,7 @@ def makeData(rank, world_size, state1List, state2List, allRates_st1, allRates_st
     rateProbTens_st2 = pt.zeros(NStateSamples, N_ngb).double()
 
     escRateTens = pt.tensor(escRateList)
-    dispTens = pt.zeros(NStateSamples, 3).double()
+    dispTens = pt.zeros(NStateSamples, dxJumps.shape[1]).double()
 
     # Now let's construct the tensors
     for sampInd in tqdm(range(startIndex, endIndex), position=0, leave=True):
@@ -196,8 +196,10 @@ def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
     OnSites_st1_ngbs, OnSites_st2_ngbs, rateMult_st1, rateMult_st2 =\
             FlatMults(state1NgbTens, state2NgbTens, rateProbTens_st1, rateProbTens_st2, SpecsToTrain, sp_ch, dxJumps.shape[1])
 
-
+    N_ngb = dxJumps.shape[0]
+    Ndim = dxJumps.shape[1]
     # Now write the training loop
+    opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005) 
     for epoch in tqdm(range(start_ep, end_ep + 1, batch_size), position=0, leave=True):
 
         if ep % interval == 0:
@@ -207,18 +209,46 @@ def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
         dist.barrier() # Halt all processes under saving is complete
 
         for start_samp in range(0, N_train, batch_size):
+            
+            opt.zero_grad()
 
             end_samp = min(start_samp + batch_size, N_train)
-            
+            BS = end_samp - start_samp 
             # Flatten the samples
-            state1Batch = state1NgbTens[start_samp : end_samp].view().to(rank)
-            state2Batch = state2NgbTens[start_samp : end_samp].view().to(rank)
+            state1Batch = state1NgbTens[start_samp : end_samp].view(BS*N_ngb, len(sp_ch), state1List.shape[1]).double().to(rank)
+            state2Batch = state2NgbTens[start_samp : end_samp].view(BS*N_ngb, len(sp_ch), state1List.shape[1]).double().to(rank)
             
-            On_st1Ngb_Batch = 
+            On_st1Ngb_Batch = OnSites_st1_ngbs[start_samp * N_ngb : end_samp * N_ngb].double().to(rank) 
+            On_st2Ngb_Batch = OnSites_st2_ngbs[start_samp * N_ngb : end_samp * N_ngb].double().to(rank) 
+            
+            rateMults_st1_Batch = ratemult_st1[start_samp * N_ngb : end_samp * N_ngb].double().to(rank) 
+            rateMults_st2_Batch = ratemult_st2[start_samp * N_ngb : end_samp * N_ngb].double().to(rank)
 
+            avDisp_st1_Batch = avDispSpecTrain_st1[start_samp : end_samp]
+            avDisp_st2_Batch = avDispSpecTrain_st2[start_samp : end_samp]
 
-    
+            # Take in the constant parts
+            dispBatch = dispTens[start_samp : end_samp] + avDisp_st2_Batch - avDisp_st1_Batch
+            esc_ratesBatch = escRateTens[start_samp : end_samp]
 
+            y1Batch = gNet(state1Batch)
+            y2Batch = gNet(state2Batch)
+
+            y1Batch = pt.sum(y1Batch * On_st1Ngb_Batch, dim = 2)
+            y2Batch = pt.sum(y2Batch * On_st2Ngb_Batch, dim = 2)
+            
+            y1Batch = (y1Batch * rateMults_st1_Batch).view(BS, N_ngb, Ndim)
+            y2Batch = (y2Batch * rateMults_st2_Batch).view(Bs, N_ngb, Ndim)
+
+            y1Batch = pt.sum(y1Batch, dim=1)
+            y2Batch = pt.sum(y2Batch, dim=1)
+            
+            dy = y2Batch - y1Batch
+
+            diff = pt.sum(esc_ratesBatch * pt.norm(dispBatch + dy, dim=1)**2)/6.
+
+            diff.backward()
+            opt.step()
 
 
 # The evaluation function
