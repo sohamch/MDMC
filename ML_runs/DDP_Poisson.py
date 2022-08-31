@@ -201,7 +201,14 @@ def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
     # Now write the training loop
     opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005) 
     for epoch in tqdm(range(start_ep, end_ep + 1, batch_size), position=0, leave=True):
+        
+        if start_ep > 0:
+            # Load the starting model from device 0 to all devices
+            state_dict = torch.load(RunPath + net_dir + "ep_{}.pt".format(epoch), map_location={'cuda:0':'cuda:{}'.format(rank)})
+            gNet.load_state_dict(state_dict)
 
+        dist.barrier() # Halt all processes under loading is complete
+        
         if epoch % interval == 0:
             if rank == 0:
                 pt.save(gNet.module.state_dict(), RunPath + net_dir + "ep_{}.pt".format(epoch))
@@ -210,7 +217,7 @@ def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
                 pt.save(gNet.module.state_dict(), RunPath + net_dir + "ep_{}_{}.pt".format(epoch, rank))
 
             dist.barrier() # Halt all processes under saving is complete
-        
+
             # Load the saved model to all devices
             state_dict = torch.load(RunPath + net_dir + "ep_{}.pt".format(epoch), map_location={'cuda:0':'cuda:{}'.format(rank)})
             gNet.load_state_dict(state_dict)
@@ -277,13 +284,15 @@ def Eval(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
 
     def calcDiff(startSample, endSample):
         with pt.no_grad:
+            diff_eps = []
             for epoch in tqdm(range(start_ep, end_ep + 1, interval), position=0, leave=True):
 
-                if ep % interval == 0:
-                    if rank == 0:
-                        pt.save(gNet.module.state_dict(), savePath + "/ep_{}.pt".format(epoch))
+                # Load the starting model from device 0 to all devices
+                state_dict = torch.load(RunPath + net_dir + "ep_{}.pt".format(epoch), map_location={'cuda:0':'cuda:{}'.format(rank)})
+                gNet.load_state_dict(state_dict)
 
-                dist.barrier() # Halt all processes under saving is complete
+                dist.barrier() # Halt all processes under loading is complete
+                diffAll = 0
 
                 for start_samp in range(startSample, endSample, batch_size):
                     
@@ -324,8 +333,15 @@ def Eval(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
                     diff = pt.sum(esc_ratesBatch * pt.norm(dispBatch + dy, dim=1)**2)/6.
 
                     diffAll += diff.item()
+                
+                diff_eps.append(diffAll)
 
-    tr_loss = calcDiff(0, N_train)/(N_train)
+        return pt.tensor(diff_eps)
+
+    train_loss = calcDiff(0, N_train)/(1.0 * N_train)
+    val_loss = calcDiff(N_train, state1List.shape[0])/(1.0 * (state1List.shape[0] - N_train))
+
+    # Now reduce the tensors at rank 0 and divide by world size
 
 
 # The function to get the Y vectors
