@@ -202,11 +202,19 @@ def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
     opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005) 
     for epoch in tqdm(range(start_ep, end_ep + 1, batch_size), position=0, leave=True):
 
-        if ep % interval == 0:
+        if epoch % interval == 0:
             if rank == 0:
                 pt.save(gNet.module.state_dict(), RunPath + net_dir + "ep_{}.pt".format(epoch))
 
-        dist.barrier() # Halt all processes under saving is complete
+            elif epoch == 0:
+                pt.save(gNet.module.state_dict(), RunPath + net_dir + "ep_{}_{}.pt".format(epoch, rank))
+
+            dist.barrier() # Halt all processes under saving is complete
+        
+            # Load the saved model to all devices
+            state_dict = torch.load(RunPath + net_dir + "ep_{}.pt".format(epoch), map_location={'cuda:0':'cuda:{}'.format(rank)})
+            gNet.load_state_dict(state_dict)
+
 
         for start_samp in range(0, N_train, batch_size):
             
@@ -254,7 +262,7 @@ def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
 def Eval(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
         JumpNewSites, NNsiteList, dispList, dxJumps, a0, escRateList,
         vacSpec, SpecsToTrain, N_train, batch_size, start_ep, end_ep, interval, gNet,
-        savePath):
+        net_dir):
     
     # Convert to necessary tensors with  portions of the data extracted based on rank
     state1NgbTens, state2NgbTens, avDispSpecTrain_st1, avDispSpecTrain_st2, rateProbTens_st1, rateProbTens_st2, escRateTens, dispTens , sp_ch =\
@@ -342,17 +350,17 @@ def main(rank, world_size, args):
    
     net_dir = "epochs_T_{0}_n{1}c{2}_NgbAvg/".format(T_net, nch, nl)
     # if from scratch, create new network
-    gNet = GCNet_NgbAvg().double().to(rank) # pass in arguments to make the GCNet
+    gNet = GCNet().double().to(rank) # pass in arguments to make the GCNet
     
     # Wrap with DDP
     gNet = DDP(gNet, device_ids=[rank], output_device=rank) #, find_unused_parameters=True)
     
-    if not from_scratch and mode=="train":
-        # load unwrapped state dict
-        print("loading net from epoch : {}".format(sep))
-        state_dict = torch.load(RunPath + net_dir + "ep_{}.pt".format(sep))
-        gNet.load_state_dict(state_dict)
-
+#    if not from_scratch and mode=="train":
+#        # load unwrapped state dict
+#        print("loading net from epoch : {}".format(sep))
+#        state_dict = torch.load(RunPath + net_dir + "ep_{}.pt".format(sep))
+#        gNet.load_state_dict(state_dict)
+#
 
     # Pass the partitioned data to the training function
     if mode == "train":
