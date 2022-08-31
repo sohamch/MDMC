@@ -142,8 +142,8 @@ class GAvg(nn.Module):
 
 
 class GCNet(nn.Module):
-    def __init__(self, GnnPerms, gdiags, NNsites, SitesToShells,
-                dim, N_ngb, NSpec, mean=1.0, std=0.1, b=1.0, nl=3, nch=8):
+    def __init__(self, GnnPerms, gdiags, NNsites, dim, N_ngb,
+            NSpec, mean=1.0, std=0.1, b=1.0, nl=3, nch=8):
         
         super().__init__()
         modules = []
@@ -164,7 +164,7 @@ class GCNet(nn.Module):
             nn.Softplus(beta=b),
             GAvg()
         ]
-        modules.append(R3ConvSites(SitesToShells, GnnPerms, gdiags, NNsites, N_ngb,
+        modules.append(R3ConvSites(GnnPerms, gdiags, NNsites, N_ngb,
                         dim, mean=mean, std=std))
         
         self.net = nn.Sequential(*modules)
