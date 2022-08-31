@@ -57,8 +57,8 @@ class GCNetRes(GCNet):
         return y
 
 class GCSubNet(nn.Module):
-    def __init__(self, GnnPerms, gdiags, NNsites, SitesToShells,
-                dim, N_ngb, NSpec=5, specsToTrain=[5], mean=0.0, std=0.1, b=1.0, nl=3, nch=8):
+    def __init__(self, GnnPerms, gdiags, NNsites, dim, N_ngb,
+            NSpec=5, specsToTrain=[5], mean=0.0, std=0.1, b=1.0, nl=3, nch=8):
 
         super().__init__()
         
@@ -69,7 +69,7 @@ class GCSubNet(nn.Module):
         self.subNets = nn.ModuleList([])
         for subNetInd in range(NsubNets):
             # Create a subNetwork
-            subNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, dim, N_ngb,
+            subNet = GCNet(GnnPerms, gdiags, NNsites, dim, N_ngb,
                     NSpecChannels, mean=mean, std=std, b=b, nl=nl, nch=nch)
             # store it in the module list
             self.subNets.append(subNet)
@@ -89,8 +89,8 @@ class GCSubNet(nn.Module):
         return y
 
 class GCSubNetRes(nn.Module):
-    def __init__(self, GnnPerms, gdiags, NNsites, SitesToShells,
-                dim, N_ngb, NSpec=5, specsToTrain=[5], mean=0.0, std=0.1, b=1.0, nl=3, nch=8):
+    def __init__(self, GnnPerms, gdiags, NNsites, dim, N_ngb, NSpec=5,
+            specsToTrain=[5], mean=0.0, std=0.1, b=1.0, nl=3, nch=8):
         
         super().__init__()
 
@@ -101,7 +101,7 @@ class GCSubNetRes(nn.Module):
         self.subNets = nn.ModuleList([])
         for subNetInd in range(NsubNets):
             # Create a residual subNetwork
-            subNet = GCNetRes(GnnPerms, gdiags, NNsites, SitesToShells, dim, N_ngb,
+            subNet = GCNetRes(GnnPerms, gdiags, NNsites, dim, N_ngb,
                     NSpecChannels, mean=mean, std=std, b=b, nl=nl, nch=nch)
             # store it in the module list
             self.subNets.append(subNet)
@@ -132,12 +132,11 @@ def Load_crysDats(nn, CrysDatPath):
     else:
         raise ValueError("Filter range should be 1 or 2 nn. Entered: {}".format(nn))
 
-    siteShellIndices = np.load(CrysDatPath + "SitesToShells.npy")
     JumpNewSites = np.load(CrysDatPath + "JumpNewSiteIndices.npy")
     dxJumps = np.load(CrysDatPath + "dxList.npy")
     with open(CrysDatPath + "GroupCartIndices.pkl", "rb") as fl:
         GIndtoGDict = pickle.load(fl)
-    return GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps
+    return GpermNNIdx, NNsiteList, GIndtoGDict, JumpNewSites, dxJumps
 
 def Load_Data(DataPath):
     with h5py.File(DataPath, "r") as fl:
@@ -732,11 +731,10 @@ def main(args):
     print(pt.__version__)
     
     # Load crystal parameters
-    GpermNNIdx, NNsiteList, siteShellIndices, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(filter_nn, CrysPath)
+    GpermNNIdx, NNsiteList, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(filter_nn, CrysPath)
     N_ngb = NNsiteList.shape[0]
     print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(filter_nn, N_ngb - 1))
     Nsites = NNsiteList.shape[1]
-    SitesToShells = pt.tensor(siteShellIndices).long().to(device)
     GnnPerms = pt.tensor(GpermNNIdx).long().to(device)
     NNsites = pt.tensor(NNsiteList).long().to(device)
 
@@ -759,23 +757,23 @@ def main(args):
     if not Residual_training:
         if not subNetwork_training:
             print("Running in Non-Residual Non-Subnet Convolution mode")
-            gNet = GCNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
+            gNet = GCNet(GnnPerms, gdiags, NNsites, Ndim, N_ngb, NSpec,
                     mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
 
         else:
             print("Running in Non-Residual Binary SubNetwork Convolution mode")
-            gNet = GCSubNet(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
+            gNet = GCSubNet(GnnPerms, gdiags, NNsites, Ndim, N_ngb, NSpec,
                     specsToTrain, mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
 
     else:
         if not subNetwork_training:
             print("Running in Residual Convolution mode")
-            gNet = GCNetRes(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
+            gNet = GCNetRes(GnnPerms, gdiags, NNsites, Ndim, N_ngb, NSpec,
                     mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
 
         else:
             print("Running in Residual Binary SubNetwork Convolution mode")
-            gNet = GCSubNetRes(GnnPerms, gdiags, NNsites, SitesToShells, Ndim, N_ngb, NSpec,
+            gNet = GCSubNetRes(GnnPerms, gdiags, NNsites, Ndim, N_ngb, NSpec,
                     specsToTrain, mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
 
     # Call Training or evaluating or y-evaluating function here
