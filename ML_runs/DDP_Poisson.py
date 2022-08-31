@@ -186,7 +186,7 @@ def FlatMults(state1NgbTens, state2NgbTens, rateProbTens_st1, rateProbTens_st2, 
 def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
         JumpNewSites, NNsiteList, dispList, dxJumps, a0, escRateList,
         vacSpec, SpecsToTrain, N_train, batch_size, start_ep, end_ep, interval, gNet,
-        savePath):
+        net_dir):
     
     # Convert to necessary tensors with  portions of the data extracted based on rank
     state1NgbTens, state2NgbTens, avDispSpecTrain_st1, avDispSpecTrain_st2, rateProbTens_st1, rateProbTens_st2, escRateTens, dispTens , sp_ch =\
@@ -204,7 +204,7 @@ def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
 
         if ep % interval == 0:
             if rank == 0:
-                pt.save(gNet.module.state_dict(), savePath + "/ep_{}.pt".format(epoch))
+                pt.save(gNet.module.state_dict(), RunPath + net_dir + "ep_{}.pt".format(epoch))
 
         dist.barrier() # Halt all processes under saving is complete
 
@@ -251,9 +251,74 @@ def train(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
             opt.step()
 
 
-# The evaluation function
-def Eval():
-    pass
+def Eval(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
+        JumpNewSites, NNsiteList, dispList, dxJumps, a0, escRateList,
+        vacSpec, SpecsToTrain, N_train, batch_size, start_ep, end_ep, interval, gNet,
+        savePath):
+    
+    # Convert to necessary tensors with  portions of the data extracted based on rank
+    state1NgbTens, state2NgbTens, avDispSpecTrain_st1, avDispSpecTrain_st2, rateProbTens_st1, rateProbTens_st2, escRateTens, dispTens , sp_ch =\
+            makeData(rank, world_size, state1List, state2List, allRates_st1, allRates_st2,
+                    JumpNewSites, NNsiteList, dispList, dxJumps, a0, escRateList, vacSpec, SpecsToTrain)
+        
+    OnSites_st1_ngbs, OnSites_st2_ngbs, rateMult_st1, rateMult_st2 =\
+            FlatMults(state1NgbTens, state2NgbTens, rateProbTens_st1, rateProbTens_st2, SpecsToTrain, sp_ch, dxJumps.shape[1])
+
+    N_ngb = dxJumps.shape[0]
+    Ndim = dxJumps.shape[1]
+
+    def calcDiff(startSample, endSample):
+        with pt.no_grad:
+            for epoch in tqdm(range(start_ep, end_ep + 1, interval), position=0, leave=True):
+
+                if ep % interval == 0:
+                    if rank == 0:
+                        pt.save(gNet.module.state_dict(), savePath + "/ep_{}.pt".format(epoch))
+
+                dist.barrier() # Halt all processes under saving is complete
+
+                for start_samp in range(startSample, endSample, batch_size):
+                    
+
+                    end_samp = min(start_samp + batch_size, N_train)
+                    BS = end_samp - start_samp 
+                    # Flatten the samples
+                    state1Batch = state1NgbTens[start_samp : end_samp].view(BS*N_ngb, len(sp_ch), state1List.shape[1]).double().to(rank)
+                    state2Batch = state2NgbTens[start_samp : end_samp].view(BS*N_ngb, len(sp_ch), state1List.shape[1]).double().to(rank)
+                    
+                    On_st1Ngb_Batch = OnSites_st1_ngbs[start_samp * N_ngb : end_samp * N_ngb].double().to(rank) 
+                    On_st2Ngb_Batch = OnSites_st2_ngbs[start_samp * N_ngb : end_samp * N_ngb].double().to(rank) 
+                    
+                    rateMults_st1_Batch = ratemult_st1[start_samp * N_ngb : end_samp * N_ngb].double().to(rank) 
+                    rateMults_st2_Batch = ratemult_st2[start_samp * N_ngb : end_samp * N_ngb].double().to(rank)
+
+                    avDisp_st1_Batch = avDispSpecTrain_st1[start_samp : end_samp]
+                    avDisp_st2_Batch = avDispSpecTrain_st2[start_samp : end_samp]
+
+                    # Take in the constant parts
+                    dispBatch = dispTens[start_samp : end_samp] + avDisp_st2_Batch - avDisp_st1_Batch
+                    esc_ratesBatch = escRateTens[start_samp : end_samp]
+
+                    y1Batch = gNet(state1Batch)
+                    y2Batch = gNet(state2Batch)
+
+                    y1Batch = pt.sum(y1Batch * On_st1Ngb_Batch, dim = 2)
+                    y2Batch = pt.sum(y2Batch * On_st2Ngb_Batch, dim = 2)
+                    
+                    y1Batch = (y1Batch * rateMults_st1_Batch).view(BS, N_ngb, Ndim)
+                    y2Batch = (y2Batch * rateMults_st2_Batch).view(Bs, N_ngb, Ndim)
+
+                    y1Batch = pt.sum(y1Batch, dim=1)
+                    y2Batch = pt.sum(y2Batch, dim=1)
+                    
+                    dy = y2Batch - y1Batch
+
+                    diff = pt.sum(esc_ratesBatch * pt.norm(dispBatch + dy, dim=1)**2)/6.
+
+                    diffAll += diff.item()
+
+    tr_loss = calcDiff(0, N_train)/(N_train)
+
 
 # The function to get the Y vectors
 def getY():
@@ -275,19 +340,19 @@ def main(rank, world_size, args):
     state1List, state2List, allRates_st1, allRates_st2, dispList, escRateList = Load_Data(DataPath, f1, f2)
 
    
-    net_dir = "epochs_T_{0}_n{1}c{2}_NgbAvg".format(T_net, nch, nl)
+    net_dir = "epochs_T_{0}_n{1}c{2}_NgbAvg/".format(T_net, nch, nl)
     # if from scratch, create new network
-    gNet = GCNet_NgbAvg().double() # pass in arguments to make the GCNet
-    if not from_scratch:
-        # load unwrapped state dict
-        state_dict = torch.load(RunPath + net_dir + "/ep_{}.pt".format(sep))
-        gNet.load_state_dict(state_dict)
-
-    # send to ranked gpu
-    gNet.double().to(rank)
-
+    gNet = GCNet_NgbAvg().double().to(rank) # pass in arguments to make the GCNet
+    
     # Wrap with DDP
     gNet = DDP(gNet, device_ids=[rank], output_device=rank) #, find_unused_parameters=True)
+    
+    if not from_scratch and mode=="train":
+        # load unwrapped state dict
+        print("loading net from epoch : {}".format(sep))
+        state_dict = torch.load(RunPath + net_dir + "ep_{}.pt".format(sep))
+        gNet.load_state_dict(state_dict)
+
 
     # Pass the partitioned data to the training function
     if mode == "train":
