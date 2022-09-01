@@ -197,7 +197,6 @@ class GCNet(nn.Module):
         return self.NgbSum(y)
     
     def getRep(self, InState, LayerInd):
-        # get the last single channel representation of the state
         # LayerInd is counted starting from zero
         y = self.net[0](InState)
         for L in range(1, LayerInd + 1):
