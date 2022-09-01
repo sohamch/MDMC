@@ -60,12 +60,10 @@ def Load_Data(DataPath):
         rateList = np.array(fl["rates"])[perm]
         
         try:
-            AllJumpRates = np.array(fl["AllJumpRates"])[perm]
-        except:
-            AllJumpRates = None
-            print("All Jump Rates not provided in data set. Make sure AllJumps is not set to True with train or eval mode active.")
+            AllJumpRates_st1 = np.array(fl["AllJumpRates_initStates"])[perm]
+            AllJumpRates_st2 = np.array(fl["AllJumpRates_finStates"])[perm]
     
-    return state1List, state2List, dispList, rateList, AllJumpRates
+    return state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2
 
 def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
         AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False, mode="train"):
