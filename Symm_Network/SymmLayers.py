@@ -141,7 +141,7 @@ class GAvg(nn.Module):
         return pt.sum(In, dim=2)/Ng
 
 
-class GCNet(nn.Module):
+class GCNet_R3ConvSites(nn.Module):
     def __init__(self, GnnPerms, gdiags, NNsites, dim, N_ngb,
             NSpec, mean=1.0, std=0.1, b=1.0, nl=3, nch=8):
         
