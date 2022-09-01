@@ -28,98 +28,6 @@ else:
     device = pt.device("cpu")
 
 
-class WeightNet(nn.Module):
-    def __init__(self, width):
-        super().__init__()
-        self.L1 = nn.Linear(1, width)
-        self.L2 = nn.Linear(width, 1)
-
-    def forward(self, x):
-        return F.softplus(self.L2(F.softplus(self.L1(x))))
-
-
-
-class GCNetRes(GCNet):
-    
-    def forward(self, InState):
-        
-        layerInd = 0
-        y = self.net[layerInd + 2](self.net[layerInd + 1](self.net[layerInd](InState)))
-
-        for layerInd in range(3, len(self.net) - 4, 3):
-            y = y + self.net[layerInd + 2](self.net[layerInd + 1](self.net[layerInd](y)))
-        
-        layerInd = len(self.net) - 4
-        y = self.net[layerInd + 2](self.net[layerInd + 1](self.net[layerInd](y)))
-
-        y = self.net[-1](y)
-
-        return y
-
-class GCSubNet(nn.Module):
-    def __init__(self, GnnPerms, gdiags, NNsites, dim, N_ngb,
-            NSpec=5, specsToTrain=[5], mean=0.0, std=0.1, b=1.0, nl=3, nch=8):
-
-        super().__init__()
-        
-        NspecsTrain = len(specsToTrain)
-        NsubNets = NSpec - NspecsTrain
-        NSpecChannels = NspecsTrain + 1
-        
-        self.subNets = nn.ModuleList([])
-        for subNetInd in range(NsubNets):
-            # Create a subNetwork
-            subNet = GCNet(GnnPerms, gdiags, NNsites, dim, N_ngb,
-                    NSpecChannels, mean=mean, std=std, b=b, nl=nl, nch=nch)
-            # store it in the module list
-            self.subNets.append(subNet)
-    
-    def Distribute_subNets(self):
-        for subNetInd, subNet in enumerate(self.subNets):
-            subNet.to("cuda:{}".format(DeviceIDList[subNetInd % len(DeviceIDList)]))
-    
-    def forward(self, InState, specsToTrain_chIdx, BackgroundSpecs):
-        
-        Input = InState[:, specsToTrain_chIdx + BackgroundSpecs[0], :].to(device)
-        y = self.subNets[0](Input)
-        for bkgSpecInd in range(1, len(BackgroundSpecs)):
-            Input = InState[:, specsToTrain_chIdx + BackgroundSpecs[bkgSpecInd], :].to("cuda:{}".format(DeviceIDList[bkgSpecInd % len(DeviceIDList)]))
-            y += self.subNets[bkgSpecInd](Input).to(device)
-            
-        return y
-
-class GCSubNetRes(nn.Module):
-    def __init__(self, GnnPerms, gdiags, NNsites, dim, N_ngb, NSpec=5,
-            specsToTrain=[5], mean=0.0, std=0.1, b=1.0, nl=3, nch=8):
-        
-        super().__init__()
-
-        NspecsTrain = len(specsToTrain)
-        NsubNets = NSpec - NspecsTrain
-        NSpecChannels = NspecsTrain + 1
-        
-        self.subNets = nn.ModuleList([])
-        for subNetInd in range(NsubNets):
-            # Create a residual subNetwork
-            subNet = GCNetRes(GnnPerms, gdiags, NNsites, dim, N_ngb,
-                    NSpecChannels, mean=mean, std=std, b=b, nl=nl, nch=nch)
-            # store it in the module list
-            self.subNets.append(subNet)
-
-    def Distribute_subNets(self):
-        for subNetInd, subNet in enumerate(self.subNets):
-            subNet.to("cuda:{}".format(DeviceIDList[subNetInd % len(DeviceIDList)]))
-    
-    def forward(self, InState, specsToTrain_chIdx, BackgroundSpecs):
-        
-        Input = InState[:, specsToTrain_chIdx + BackgroundSpecs[0], :].to(device)
-        y = self.subNets[0](Input)
-        for bkgSpecInd in range(1, len(BackgroundSpecs)):
-            Input = InState[:, specsToTrain_chIdx + BackgroundSpecs[bkgSpecInd], :].to("cuda:{}".format(DeviceIDList[bkgSpecInd % len(DeviceIDList)]))
-            y += self.subNets[bkgSpecInd](Input).to(device)
-            
-        return y
-
 def Load_crysDats(nn, CrysDatPath):
     ## load the crystal data files
     if nn == 1:
@@ -296,16 +204,13 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
     N_batch = batch_size
 
-    if isinstance(gNet, GCNet):
-        if pt.cuda.device_count() > 1 and DPr:
-            print("Running on Devices : {}".format(DeviceIDList))
-            gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
-            gNet.to(device)
+    if pt.cuda.device_count() > 1 and DPr:
+        print("Running on Devices : {}".format(DeviceIDList))
+        gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
+        gNet.to(device)
 
     try:
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location=device))
-        if Learn_wt:
-            WeightSLP.load_state_dict(pt.load(dirPath + "/wt_ep_{1}.pt".format(T, start_ep), map_location="cpu"))
         print("Starting from epoch {}".format(start_ep), flush=True)
 
     except:
@@ -316,19 +221,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
     print("Batch size : {}".format(N_batch)) 
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
-    BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh] 
-    
-    if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
-        gNet.Distribute_subNets()
-        print("Species Channels to train: {}".format(specTrainCh))
-        print("Background species channels: {}".format(BackgroundSpecs))
-    
 
-    optims = [pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)]
-    if Learn_wt:
-        print("Learning sample reweighting with SLP.") 
-        WeightSLP.to(device)
-        optims.append(pt.optim.Adam(WeightSLP.parameters(), lr=0.0001))
+    opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
 
     print("Starting Training loop") 
 
@@ -337,15 +231,10 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         ## checkpoint
         if epoch%interval==0:
             pt.save(gNet.state_dict(), dirPath + "/ep_{0}.pt".format(epoch))
-            if Learn_wt:
-                pt.save(WeightSLP.state_dict(), dirPath + "/wt_ep_{0}.pt".format(epoch))
-
             
         for batch in range(0, N_train, N_batch):
             
-            for opt in optims:
-                opt.zero_grad()
-            
+            opt.zero_grad() 
             end = min(batch + N_batch, N_train)
 
             state1Batch = state1Data[batch : end].double().to(device)
@@ -354,13 +243,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             rateBatch = rateData[batch : end]
             dispBatch = dispData[batch : end]
             
-            if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes):
-                y1 = gNet.forward(state1Batch, specTrainCh, BackgroundSpecs)
-                y2 = gNet.forward(state2Batch, specTrainCh, BackgroundSpecs)
-            
-            else:
-                y1 = gNet(state1Batch)
-                y2 = gNet(state2Batch)
+            y1 = gNet(state1Batch)
+            y2 = gNet(state2Batch)
             
             # sum up everything except the vacancy site
             if SpecsToTrain==[VacSpec]:
@@ -368,25 +252,17 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                 y2 = -pt.sum(y2[:, :, 1:], dim=2)
             
             else:
+                # This part has to change in boundary state training
                 On_st1Batch = On_st1[batch : end].to(device)
                 On_st2Batch = On_st2[batch : end].to(device)
                 y1 = pt.sum(y1*On_st1Batch, dim=2)
                 y2 = pt.sum(y2*On_st2Batch, dim=2)
 
             dy = y2 - y1
-            sample_Losses = rateBatch * pt.norm((dispBatch + dy), dim=1)**2/6.
+            diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/6.
             
-            if Learn_wt:
-                sampleLossesInput = sample_Losses.data.clone().view(-1, 1).to(device)
-                SampleReWt = WeightSLP(sampleLossesInput).view(-1)
-                diff = pt.sum(SampleReWt * sample_Losses) # multiply sample losses with weight, and sum
-            else:
-                diff = pt.sum(sample_Losses) # just sum sample losses
-
             diff.backward()
-            # Propagate all optimizers
-            for opt in optims:
-                opt.step()
+            opt.step()
 
 
 def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
@@ -413,32 +289,20 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamples, Ndim=Ndim)
     
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
-    BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh] 
-    
-    if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
-        print("Species Channels to train: {}".format(specTrainCh))
-        print("Background species channels: {}".format(BackgroundSpecs))
     
     # pre-convert to data parallel if required
-
-    elif isinstance(gNet, GCNet):
-        if pt.cuda.device_count() > 1 and DPr:
-            print("Using data parallel")
-            print("Running on Devices : {}".format(DeviceIDList))
-            gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
+    if pt.cuda.device_count() > 1 and DPr:
+        print("Using data parallel")
+        print("Running on Devices : {}".format(DeviceIDList))
+        gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
 
     def compute(startSample, endSample):
         diff_epochs = []
         with pt.no_grad():
             for epoch in tqdm(range(start_ep, end_ep + 1, interval), position=0, leave=True):
                 ## load checkpoint
-                if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes):
-                    gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device)) 
-                    gNet.Distribute_subNets()
-                
-                else:
-                    gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
-                    gNet.to(device)
+                gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
+                gNet.to(device)
 
  
                 diff = 0 
@@ -451,13 +315,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                     rateBatch = rateData[batch : end].to(device)
                     dispBatch = dispData[batch : end].to(device)
                      
-                    if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes):
-                        y1 = gNet.forward(state1Batch, specTrainCh, BackgroundSpecs)
-                        y2 = gNet.forward(state2Batch, specTrainCh, BackgroundSpecs)
-            
-                    else:
-                        y1 = gNet(state1Batch)
-                        y2 = gNet(state2Batch)
+                    y1 = gNet(state1Batch)
+                    y2 = gNet(state2Batch)
             
                     # sum up everything except the vacancy site if vacancy is indicated
                     if SpecsToTrain==[VacSpec]:
@@ -465,6 +324,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                         y2 = -pt.sum(y2[:, :, 1:], dim=2)
                     
                     else:
+                        # This part will change based on boundary training
                         On_st1Batch = On_st1[batch : end].to(device)
                         On_st2Batch = On_st2[batch : end].to(device)
                         y1 = pt.sum(y1*On_st1Batch, dim=2)
@@ -517,24 +377,17 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_
             print("Loading epoch: {}".format(epoch))
             gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
              
-        if isinstance(gNet, GCSubNet) or isinstance(gNet, GCSubNetRes): 
-            gNet.Distribute_subNets()
-        
         for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
             end = min(batch + N_batch, Nsamples)
 
             state1Batch = state1Data[batch : end].double().to(device)
             state2Batch = state2Data[batch : end].double().to(device)
             
-            if isinstance(gNet, GCNet) or isinstance(gNet, GCNetRes):
-                y1 = gNet(state1Batch)
-                y2 = gNet(state2Batch)
+            y1 = gNet(state1Batch)
+            y2 = gNet(state2Batch)
 
-            else:
-                y1 = gNet.forward(state1Batch, specTrainCh, BackgroundSpecs)
-                y2 = gNet.forward(state2Batch, specTrainCh, BackgroundSpecs)
-            
             # sum up everything except the vacancy site if vacancy is indicated
+            # Change the parts below to accomodate boundary state training - figure out how
             if SpecsToTrain == [VacSpec]:
                 y1 = -pt.sum(y1[:, :, 1:], dim=2)
                 y2 = -pt.sum(y2[:, :, 1:], dim=2)
@@ -635,12 +488,6 @@ def main(args):
     
     filter_nn = args.ConvNgbRange
     
-    Residual_training = args.Residual
-    subNetwork_training = args.SubNet
-    
-    if Mode=="getRep" and (Residual_training or subNetwork_training):
-        raise NotImplementedError("getRep is not currently supported in residual and subnetwork training mode.")
-
     scratch_if_no_init = args.Scratch
 
     DPr = args.DatPar
@@ -815,11 +662,10 @@ parser.add_argument("-rlavg","--RepLayerAvg", action="store_true", help="Whether
 
 parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
 parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, help="No. of representation channels in non-input layers.")
+parser.add_argument("-ncL", "--NchLast", metavar="1", type=int, help="No. channels of the last layers - how many vectors to produce per site.")
 parser.add_argument("-cngb", "--ConvNgbRange", type=int, default=1, metavar="NN", help="Nearest neighbor range of convolutional filters.")
 
 
-parser.add_argument("-rn", "--Residual", action="store_true", help="Whether to do residual training.")
-parser.add_argument("-sn", "--SubNet", action="store_true", help="Whether to train pairwise subnetworks.")
 parser.add_argument("-scr", "--Scratch", action="store_true", help="Whether to create new network and start from scratch")
 parser.add_argument("-DPr", "--DatPar", action="store_true", help="Whether to use data parallelism. Note - does not work for residual or subnet models. Used only in Train and eval modes.")
 
