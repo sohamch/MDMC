@@ -161,7 +161,7 @@ parser = argparse.ArgumentParser(description="Input parameters for tracer traini
 parser.add_argument("-CP", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
 parser.add_argument("-ct", "--CrysType", metavar="FCC/BCC", type=str, help="Crystal type.")
 parser.add_argument("-sep", "--StartEpoch", metavar="eg: 0", default=0, type=int, help="starting epoch")
-parser.add_argument("-eep", "--EndEpoch", metavar="eg: 0", default=100, type=int, help="Ending epoch")
+parser.add_argument("-eep", "--EndEpoch", metavar="eg: 0", default=250, type=int, help="Ending epoch")
 parser.add_argument("-nl", "--NLayers", metavar="eg: 6", default=6, type=int, help="number of intermediate layers")
 parser.add_argument("-nch", "--NChannels", metavar="eg: 8", default=8, type=int, help="number of channels in intermediate layers.")
 parser.add_argument("-bep", "--BatchesPerEpoch", metavar="eg: 500", default=500, type=int, help="No. of times to do batch GD in each epoch.")
