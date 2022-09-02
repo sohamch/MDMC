@@ -112,11 +112,11 @@ def main(args):
                  NSpec=1, mean=0.0, std=0.2, nl=args.NLayers, nch=args.NChannels, nchLast=1).double()
 
     if args.StartEpoch > 0:
-        gNet.load_state_dict(pt.load(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, epoch_last),map_location="cpu"))
+        gNet.load_state_dict(pt.load(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, args.StartEpoch),map_location="cpu"))
     
     else:
-        if not os.path.isdir(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, epoch_last)):
-            os.mkdir(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, epoch_last))
+        if not os.path.isdir(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, args.StartEpoch)):
+            os.mkdir(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, args.StartEpoch))
     
     gNet.to(device)
 
@@ -127,7 +127,7 @@ def main(args):
     except:
         l_epoch = []
 
-    if epoch_last == 0:
+    if args.StartEpoch == 0:
         l_epoch = []
     
     l0 = np.linalg.norm(dxList[0])**2 / (Nsites)
