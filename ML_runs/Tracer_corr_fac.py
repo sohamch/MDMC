@@ -167,6 +167,16 @@ parser.add_argument("-nch", "--NChannels", metavar="eg: 8", default=8, type=int,
 parser.add_argument("-bep", "--BatchesPerEpoch", metavar="eg: 100", default=100, type=int, help="No. of times to do batch GD in each epoch.")
 parser.add_argument("-bs", "--BatchSize", metavar="eg: 10", default=10, type=int, help="No. of times each of the z jumps are considered in a batch.")
 
+parser.add_argument("-d", "--DumpArgs", action="store_true", help="Whether to dump arguments in a file")
+parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str, help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
+
 if __name__ == "__main__":
     args = parser.parse_args()
+    
+    if args.DumpArgs:
+        opts = vars(args)
+        with open(RunPath + args.DumpFile, "w") as fl:
+            for key, val in opts.items():
+                fl.write("{}: {}\n".format(key, val))
+
     main(args)
