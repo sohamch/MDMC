@@ -109,7 +109,7 @@ def main(args):
     hostState = hostState.to(device)
 
     gNet = GCNet(GnnPerms.long(), NNsites, JumpUnitVecs, dim=3, N_ngb=N_ngb,
-                 NSpec=1, mean=0.0, std=0.2, nl=args.Nlayers, nch=args.NChannels, nchLast=1).double()
+                 NSpec=1, mean=0.0, std=0.2, nl=args.NLayers, nch=args.NChannels, nchLast=1).double()
 
     if args.StartEpoch > 0:
         gNet.load_state_dict(pt.load(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, epoch_last),map_location="cpu"))
