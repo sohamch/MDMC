@@ -164,8 +164,8 @@ parser.add_argument("-sep", "--StartEpoch", metavar="eg: 0", default=0, type=int
 parser.add_argument("-eep", "--EndEpoch", metavar="eg: 0", default=100, type=int, help="Ending epoch")
 parser.add_argument("-nl", "--NLayers", metavar="eg: 6", default=6, type=int, help="number of intermediate layers")
 parser.add_argument("-nch", "--NChannels", metavar="eg: 8", default=8, type=int, help="number of channels in intermediate layers.")
-parser.add_argument("-bep", "--BatchesPerEpoch", metavar="eg: 100", default=100, type=int, help="No. of times to do batch GD in each epoch.")
-parser.add_argument("-bs", "--BatchSize", metavar="eg: 10", default=10, type=int, help="No. of times each of the z jumps are considered in a batch.")
+parser.add_argument("-bep", "--BatchesPerEpoch", metavar="eg: 500", default=500, type=int, help="No. of times to do batch GD in each epoch.")
+parser.add_argument("-bs", "--BatchSize", metavar="eg: 10", default=2, type=int, help="No. of times each of the z jumps are considered in a batch.")
 
 parser.add_argument("-d", "--DumpArgs", action="store_true", help="Whether to dump arguments in a file")
 parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str, help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
