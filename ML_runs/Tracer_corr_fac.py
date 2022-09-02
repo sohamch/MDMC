@@ -156,12 +156,12 @@ def main(args):
 parser = argparse.ArgumentParser(description="Input parameters for tracer training", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-CP", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
 parser.add_argument("-ct", "--CrysType", metavar="FCC/BCC", type=str, help="Crystal type.")
-parser.add_argument("-sep", "--StartEpoch", metavar="0", type=int, help="starting epoch")
-parser.add_argument("-eep", "--EndEpoch", metavar="0", type=int, help="Ending epoch")
-parser.add_argument("-nl", "--NLayers", metavar="3", type=int, help="number of intermediate layers")
-parser.add_argument("-nch", "--NChannels", metavar="8", type=int, help="number of channels in intermediate layers.")
-parser.add_argument("-bep", "--BatchesPerEpoch", metavar="100", type=int, help="No. of times to do batch GD in each epoch.")
-parser.add_argument("-bs", "--BatchSize", metavar="10", type=int, help="No. of times each jump is considered in a batch.")
+parser.add_argument("-sep", "--StartEpoch", metavar="eg: 0", default=0, type=int, help="starting epoch")
+parser.add_argument("-eep", "--EndEpoch", metavar="eg: 0", default=100, type=int, help="Ending epoch")
+parser.add_argument("-nl", "--NLayers", metavar="eg: 6", default=6, type=int, help="number of intermediate layers")
+parser.add_argument("-nch", "--NChannels", metavar="eg: 8", default=8, type=int, help="number of channels in intermediate layers.")
+parser.add_argument("-bep", "--BatchesPerEpoch", metavar="eg: 100", default=100, type=int, help="No. of times to do batch GD in each epoch.")
+parser.add_argument("-bs", "--BatchSize", metavar="eg: 10", default=10, type=int, help="No. of times each of the z jumps are considered in a batch.")
 
 if __name__ == "__main__":
     args = parser.parse_args()
