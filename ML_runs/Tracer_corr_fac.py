@@ -42,8 +42,6 @@ def main(args):
         jnet = pickle.load(fl)
 
     dxList = np.array([dx for (i,j), dx in jnet[0]])
-    norm = np.linalg.norm(dxList[0])
-    dxUnitVecs = dxList / norm
 
     N_ngb = NNsiteList.shape[0]
     z = N_ngb - 1
@@ -56,7 +54,7 @@ def main(args):
     # Convert to tensors
     GnnPerms = pt.tensor(GpermNNIdx).long()
     NNsites = pt.tensor(NNsiteList).long()
-    JumpUnitVecs = pt.tensor(dxUnitVecs.T).to(device)
+    JumpVecs = pt.tensor(dxList.T).to(device)
     Ng = GnnPerms.shape[0]
     Ndim = dxList.shape[1]
 
@@ -64,21 +62,21 @@ def main(args):
     dxLatVec = np.dot(np.linalg.inv(superCell.crys.lattice), dxList.T).round(decimals=4).T.astype(int)
     assert np.allclose(np.dot(superCell.crys.lattice, dxLatVec.T).T, dxList)
 
-    jumpNewSites = np.zeros((z, Nsites), dtype=int)
-
+    SitesJumpDests = np.zeros((z, Nsites), dtype=int)
     for jumpInd in range(z):
         Rjump = dxLatVec[jumpInd]
         RjumpNeg = -dxLatVec[jumpInd]
         siteExchange, _ = superCell.index(Rjump, (0,0))
+        assert siteExchange == NNsiteList[1 + jumpInd, 0]
         siteExchangeNew, _ = superCell.index(RjumpNeg, (0,0))
-        jumpNewSites[jumpInd, siteExchangeNew] = siteExchange
+        SitesJumpDests[jumpInd, siteExchange] = siteExchangeNew
         for siteInd in range(1, Nsites): # vacancy site is always origin
             if siteInd == siteExchange: # exchange site has already been moved so skip that
                 continue
             _, Rsite = superCell.ciR(siteInd)
             RsiteNew = Rsite - dxLatVec[jumpInd]
             siteIndNew, _ = superCell.index(RsiteNew, (0,0))
-            jumpNewSites[jumpInd, siteIndNew] = siteInd
+            SitesJumpDests[jumpInd, siteInd] = siteIndNew
 
     # Now convert the jump indexing into a form suitable for gathering batches of vectors
     jumpGather = np.zeros((args.BatchSize * z, Ndim, Nsites), dtype=int)
@@ -86,7 +84,7 @@ def main(args):
         for jumpInd in range(z):
             for site in range(Nsites):
                 for dim in range(Ndim):
-                    jumpGather[batch * z + jumpInd, dim, site] = jumpNewSites[jumpInd, site]
+                    jumpGather[batch * z + jumpInd, dim, site] = SitesJumpDests[JumpInd, site]
 
     GatherTensor = pt.tensor(jumpGather, dtype=pt.long).to(device)
 
@@ -104,11 +102,11 @@ def main(args):
     hostState = pt.ones(args.BatchSize*z, 1, Nsites, dtype=pt.double)
 
     # set the vacancy site to unoccupied
-    hostState[:, :, 0] = 0
+    hostState[:, :, 0] = 0.
 
     hostState = hostState.to(device)
 
-    gNet = GCNet(GnnPerms.long(), NNsites, JumpUnitVecs, dim=3, N_ngb=N_ngb,
+    gNet = GCNet(GnnPerms.long(), NNsites, JumpVecs, dim=3, N_ngb=N_ngb,
                  NSpec=1, mean=0.0, std=0.2, nl=args.NLayers, nch=args.NChannels, nchLast=1).double()
 
     if args.StartEpoch > 0:
