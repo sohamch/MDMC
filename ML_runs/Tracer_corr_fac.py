@@ -115,7 +115,7 @@ def main(args):
         gNet.load_state_dict(pt.load(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, epoch_last),map_location="cpu"))
     
     else:
-        if not os.exists(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, epoch_last)):
+        if not os.path.isdir(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, epoch_last)):
             os.mkdir(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, epoch_last))
     
     gNet.to(device)
