@@ -38,7 +38,7 @@ def main(args):
 
     NNsiteList = np.load(CrysDatPath + "NNsites_sitewise.npy")
 
-    with open(CrysDatPath + "jnet"+args.crysType+".pkl", "rb") as fl:
+    with open(CrysDatPath + "jnet"+args.CrysType+".pkl", "rb") as fl:
         jnet = pickle.load(fl)
 
     dxList = np.array([dx for (i,j), dx in jnet[0]])
@@ -50,7 +50,7 @@ def main(args):
     assert z == dxList.shape[0]
     Nsites = NNsiteList.shape[1]
 
-    with open(CrysDatPath + "supercell"+args.crysType+".pkl", "rb") as fl:
+    with open(CrysDatPath + "supercell"+args.CrysType+".pkl", "rb") as fl:
         superCell = pickle.load(fl)
 
     # Convert to tensors
@@ -112,7 +112,11 @@ def main(args):
                  NSpec=1, mean=0.0, std=0.2, nl=args.Nlayers, nch=args.NChannels, nchLast=1).double()
 
     if args.StartEpoch > 0:
-        gNet.load_state_dict(pt.load(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(crysType, epoch_last),map_location="cpu"))
+        gNet.load_state_dict(pt.load(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, epoch_last),map_location="cpu"))
+    
+    else:
+        if not os.exists(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, epoch_last)):
+            os.mkdir(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, epoch_last))
     
     gNet.to(device)
 
@@ -130,7 +134,7 @@ def main(args):
 
     opt = pt.optim.Adam(gNet.parameters(), lr=0.001)
     for epoch in tqdm(range(args.EndEpoch + 1), ncols=65, position=0, leave=True):
-        pt.save(gNet.state_dict(), RunPath + "epochs_tracer_BCC_16_Sup/ep_{}.pt".format(args.StartEpoch + epoch))
+        pt.save(gNet.state_dict(), RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, args.StartEpoch + epoch))
         for batch_pass in range(args.BatchesPerEpoch): 
             opt.zero_grad()    
             y_jump_init = gNet(hostState)[:, 0, :, :]
