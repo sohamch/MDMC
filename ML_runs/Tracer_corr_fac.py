@@ -24,7 +24,7 @@ if pt.cuda.is_available():
     DeviceIDList = list(range(pt.cuda.device_count()))
 else:
     device = pt.device("cpu")
-
+print(device, " - "pt.cuda.get_device_name())
 
 def main(args):
     # Read crystal data
