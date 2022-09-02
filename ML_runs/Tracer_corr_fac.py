@@ -56,7 +56,7 @@ def main(args):
     # Convert to tensors
     GnnPerms = pt.tensor(GpermNNIdx).long()
     NNsites = pt.tensor(NNsiteList).long()
-    JumpUnitVecs = pt.tensor(dxUnitVecs.T)
+    JumpUnitVecs = pt.tensor(dxUnitVecs.T).to(device)
     Ng = GnnPerms.shape[0]
     Ndim = dxList.shape[1]
 
@@ -81,27 +81,27 @@ def main(args):
             jumpNewSites[jumpInd, siteIndNew] = siteInd
 
     # Now convert the jump indexing into a form suitable for gathering batches of vectors
-    jumpGather = np.zeros((batch_size * z, Ndim, Nsites), dtype=int)
-    for batch in range(batch_size):
+    jumpGather = np.zeros((args.BatchSize * z, Ndim, Nsites), dtype=int)
+    for batch in range(args.BatchSize):
         for jumpInd in range(z):
             for site in range(Nsites):
                 for dim in range(Ndim):
-                    jumpGather[batch*z + jumpInd, dim, site] = jumpNewSites[jumpInd, site]
+                    jumpGather[batch * z + jumpInd, dim, site] = jumpNewSites[jumpInd, site]
 
-    GatherTensor = pt.tensor(jumpGather, dtype=pt.long)
+    GatherTensor = pt.tensor(jumpGather, dtype=pt.long).to(device)
 
     # Next, we'll record the displacement of the atoms at different sites after each jump
     # Only the neighboring sites of the vacancy move - the rest don't
-    dispSites = np.zeros((batch_size*z, Ndim, Nsites))
-    for batch in range(batch_size):
+    dispSites = np.zeros((args.BatchSize * z, Ndim, Nsites))
+    for batch in range(args.BatchSize):
         for jumpInd in range(z):
-            dispSites[batch*z + jumpInd, :, NNsiteList[1+jumpInd, 0]] = -dxList[jumpInd]
+            dispSites[batch * z + jumpInd, :, NNsiteList[1+jumpInd, 0]] = -dxList[jumpInd]
 
     dispTensor = pt.tensor(dispSites, dtype=pt.double).to(device)
 
     # Build the network and the host state with a single vacancy
     # we'll make "z" copies of the host for convenience
-    hostState = pt.ones(batch_size*z, 1, Nsites, dtype=pt.double)
+    hostState = pt.ones(args.BatchSize*z, 1, Nsites, dtype=pt.double)
 
     # set the vacancy site to unoccupied
     hostState[:, :, 0] = 0
@@ -111,7 +111,7 @@ def main(args):
     gNet = GCNet(GnnPerms.long(), NNsites, JumpUnitVecs, dim=3, N_ngb=N_ngb,
                  NSpec=1, mean=0.0, std=0.2, nl=args.Nlayers, nch=args.NChannels, nchLast=1).double()
 
-    if args.epoch_last > 0:
+    if args.StartEpoch > 0:
         gNet.load_state_dict(pt.load(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(crysType, epoch_last),map_location="cpu"))
     
     gNet.to(device)
@@ -129,9 +129,9 @@ def main(args):
     l0 = np.linalg.norm(dxList[0])**2 / (Nsites)
 
     opt = pt.optim.Adam(gNet.parameters(), lr=0.001)
-    for epoch in tqdm(range(args.epoch_end + 1), ncols=65, position=0, leave=True):
-        pt.save(gNet.state_dict(), RunPath + "epochs_tracer_BCC_16_Sup/ep_{}.pt".format(epoch_last + epoch))
-        for batch_pass in range(args.batches_per_epoch): 
+    for epoch in tqdm(range(args.EndEpoch + 1), ncols=65, position=0, leave=True):
+        pt.save(gNet.state_dict(), RunPath + "epochs_tracer_BCC_16_Sup/ep_{}.pt".format(args.StartEpoch + epoch))
+        for batch_pass in range(args.BatchesPerEpoch): 
             opt.zero_grad()    
             y_jump_init = gNet(hostState)[:, 0, :, :]
             y_jump_fin = pt.gather(y_jump_init, 2, GatherTensor)
@@ -142,7 +142,7 @@ def main(args):
             
             norm_sq_Sites = pt.norm(dispMod, dim=1)**2
             norm_sq_SiteAv = pt.sum(norm_sq_Sites, dim=1) / (1.0 * Nsites)
-            norm_sq_batchAv = pt.sum(norm_sq_SiteAv) / (1.0 * z * batch_size)
+            norm_sq_batchAv = pt.sum(norm_sq_SiteAv) / (1.0 * z * args.BatchSize)
             
             norm_sq_batchAv.backward()
         
@@ -151,3 +151,18 @@ def main(args):
         l_epoch.append(norm_sq_batchAv.item()/l0)
 
     np.save("tcf_epoch.npy", np.array(l_epoch))
+
+# Now set up the arg parser
+parser = argparse.ArgumentParser(description="Input parameters for tracer training", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument("-CP", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
+parser.add_argument("-ct", "--CrysType", metavar="FCC/BCC", type=str, help="Crystal type.")
+parser.add_argument("-sep", "--StartEpoch", metavar="0", type=int, help="starting epoch")
+parser.add_argument("-eep", "--EndEpoch", metavar="0", type=int, help="Ending epoch")
+parser.add_argument("-nl", "--NLayers", metavar="3", type=int, help="number of intermediate layers")
+parser.add_argument("-nch", "--NChannels", metavar="8", type=int, help="number of channels in intermediate layers.")
+parser.add_argument("-bep", "--BatchesPerEpoch", metavar="10", type=int, help="No. of times to do batch GD in each epoch.")
+parser.add_argument("-bs", "--BatchSize", metavar="10", type=int, help="No. of times each jump is considered in a batch.")
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    main(args)
