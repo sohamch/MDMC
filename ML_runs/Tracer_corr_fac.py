@@ -160,7 +160,7 @@ parser.add_argument("-sep", "--StartEpoch", metavar="0", type=int, help="startin
 parser.add_argument("-eep", "--EndEpoch", metavar="0", type=int, help="Ending epoch")
 parser.add_argument("-nl", "--NLayers", metavar="3", type=int, help="number of intermediate layers")
 parser.add_argument("-nch", "--NChannels", metavar="8", type=int, help="number of channels in intermediate layers.")
-parser.add_argument("-bep", "--BatchesPerEpoch", metavar="10", type=int, help="No. of times to do batch GD in each epoch.")
+parser.add_argument("-bep", "--BatchesPerEpoch", metavar="100", type=int, help="No. of times to do batch GD in each epoch.")
 parser.add_argument("-bs", "--BatchSize", metavar="10", type=int, help="No. of times each jump is considered in a batch.")
 
 if __name__ == "__main__":
