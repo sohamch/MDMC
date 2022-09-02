@@ -154,7 +154,7 @@ def main(args):
 
         l_epoch.append(norm_sq_batchAv.item()/l0)
 
-    np.save("tcf_epoch.npy", np.array(l_epoch))
+    np.save(RunPath + "tcf_epoch.npy", np.array(l_epoch))
 
 # Now set up the arg parser
 parser = argparse.ArgumentParser(description="Input parameters for tracer training", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
