@@ -197,8 +197,8 @@ def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites
         
         # Convert on-site tensor to boolean mask
         # Unsqueeze to add cartesian component dimensions and channel dimensions
-        On_st1 = pt.tensor(OnSites_st1[:Nsamps], dtype=pt.bool).unsqueeze(1).unsqueeze(1)
-        On_st2 = pt.tensor(OnSites_st2[:Nsamps], dtype=pt.bool).unsqueeze(1).unsqueeze(1)
+        On_st1 = pt.tensor(OnSites_st1[:Nsamps], dtype=pt.bool).unsqueeze(1)
+        On_st2 = pt.tensor(OnSites_st2[:Nsamps], dtype=pt.bool).unsqueeze(1)
 
     return state1Data, state2Data, dispData, rateData, On_st1, On_st2
 
@@ -237,6 +237,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
 
     # Do a check on the network before running
     if Boundary_train:
+        # Check that the last layer outputs as many representations as the
+        # number of jumps
         assert gNet.net[-3].Psi.shape[0] == jProbs_st1.shape[1] == jProbs_st2.shape[1]
         jProbs_st1 = jProbs_st1.unsqueeze(2)
         jProbs_st2 = jProbs_st2.unsqueeze(2)
@@ -261,17 +263,38 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
             y1 = gNet(state1Batch)
             y2 = gNet(state2Batch)
             
-            # sum up everything except the vacancy site
-            if SpecsToTrain==[VacSpec]:
-                y1 = -pt.sum(y1[:, :, 1:], dim=2)
-                y2 = -pt.sum(y2[:, :, 1:], dim=2)
-            
+            if not Boundary_train:
+                # sum up everything except the vacancy site
+                assert y1.shape[1] == 1
+                if SpecsToTrain==[VacSpec]:
+                    y1 = -pt.sum(y1[:, 0, :, 1:], dim=2)
+                    y2 = -pt.sum(y2[:, 0, :, 1:], dim=2)
+                
+                else:
+                    # This part has to change in boundary state training
+                    On_st1Batch = On_st1[batch : end].to(device)
+                    On_st2Batch = On_st2[batch : end].to(device)
+                    y1 = pt.sum(y1[:, 0, :, :]*On_st1Batch, dim=2)
+                    y2 = pt.sum(y2[:, 0, :, :]*On_st2Batch, dim=2)
+
             else:
-                # This part has to change in boundary state training
-                On_st1Batch = On_st1[batch : end].to(device)
-                On_st2Batch = On_st2[batch : end].to(device)
-                y1 = pt.sum(y1*On_st1Batch, dim=2)
-                y2 = pt.sum(y2*On_st2Batch, dim=2)
+                assert y1.shape[1] == jProbs_st1.shape[1]
+                # send the jump probabilities to the device
+                jPr_1_batch = jProbs_st1[batch : end].to(device)
+                jPr_2_batch = jProbs_st2[batch : end].to(device)
+
+                if SpecsToTrain==[VacSpec]:
+                    y1 = -pt.sum(y1[:, 0, :, 1:], dim=2)
+                    y2 = -pt.sum(y2[:, 0, :, 1:], dim=2)
+                
+                else:
+                    # This part has to change in boundary state training
+                    On_st1Batch = On_st1[batch : end].to(device)
+                    On_st2Batch = On_st2[batch : end].to(device)
+                    y1 = pt.sum(y1[:, 0, :, :]*On_st1Batch, dim=2)
+                    y2 = pt.sum(y2[:, 0, :, :]*On_st2Batch, dim=2)
+
+
 
             dy = y2 - y1
             diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/6.
