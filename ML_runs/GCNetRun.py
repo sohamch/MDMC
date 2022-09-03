@@ -59,14 +59,18 @@ def Load_Data(DataPath):
         dispList = np.array(fl["SpecDisps"])[perm]
         rateList = np.array(fl["rates"])[perm]
         
-        try:
-            AllJumpRates_st1 = np.array(fl["AllJumpRates_initStates"])[perm]
-            AllJumpRates_st2 = np.array(fl["AllJumpRates_finStates"])[perm]
+        AllJumpRates_st1 = np.array(fl["AllJumpRates_Init"])[perm]
+        AllJumpRates_st2 = np.array(fl["AllJumpRates_Fin"])[perm]
+        
+        avgDisps_st1 = np.array(fl["AvgDisps_Init"])[perm]
+        avgDisps_st2 = np.array(fl["AvgDisps_Fin"])[perm]
+
     
-    return state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2
+    return state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2
 
 def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
-        AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False, mode="train"):
+        AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2, JumpNewSites, 
+        dxJumps, NNsiteList, N_train, AllJumps=False, Boundary_train=False, mode="train"):
     
     if not isinstance(AllJumpRates, np.ndarray):
         if AllJumps and (mode=="train" or mode=="eval"):
@@ -74,6 +78,8 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
 
     # make the input tensors
     Nsamples = min(state1List.shape[0], 2*N_train)
+    if AllJumps and Boundary_train:
+        raise NotImplementedError("Cannot do all-jump training with boundary states yet.")
     if AllJumps:
         NJumps = Nsamples*dxJumps.shape[0]
     else:
@@ -115,8 +121,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
                 if JumpSpec in specsToTrain:
                     dispData[Idx, 1, :] -= dxJumps[jInd]*a
                 
-                if isinstance(AllJumpRates, np.ndarray):
-                    rateData[Idx] = AllJumpRates[samp, jInd]
+                rateData[Idx] = AllJumpRates_st1[samp, jInd]
                 
                 for site in range(1, Nsites): # exclude the vacancy site
                     spec1 = state1[site]
@@ -132,6 +137,12 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
                 State1_occs[samp, sp_ch[spec1], site] = 1
                 State2_occs[samp, sp_ch[spec2], site] = 1
             
+            if Boundary_Train:
+                print("Boundary Training indicated. Shifting displacements.")
+                dyAvg = avgDisps_st2[samp, :, :] - avgDisps_st1[samp, :, :]
+                dispData[samp, 0, :] = dispList[samp, VacSpec, :] + dyAvg[VacSpec, :]
+                dispData[samp, 1, :] = sum(dispList[samp, spec, :] + dyAvg[spec, :] for spec in specsToTrain)
+
             dispData[samp, 0, :] = dispList[samp, VacSpec, :]
             dispData[samp, 1, :] = sum(dispList[samp, spec, :] for spec in specsToTrain)
 
@@ -536,7 +547,7 @@ def main(args):
             raise ValueError("Training and Testing condition must be the same")
 
     # Load data
-    state1List, state2List, dispList, rateList, AllJumpRates = Load_Data(FileName)
+    state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2 = Load_Data(FileName)
     
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
