@@ -202,14 +202,15 @@ def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites
         if disps is not None:
             dispData = pt.tensor(disps[:Nsamps, 1, :]).double().to(device)
         
+        # Convert on-site tensor to boolean mask
         On_st1 = makeProdTensor(OnSites_st1[:Nsamps], Ndim).long()
         On_st2 = makeProdTensor(OnSites_st2[:Nsamps], Ndim).long()
 
     return state1Data, state2Data, dispData, rateData, On_st1, On_st2
 
 """## Write the training loop"""
-def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
-        rates, disps, avRates_st1, avRates_st2, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
+def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps, 
+        jProbs_st1, jProbs_st2, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
         gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False):
     Ndim = disps.shape[2] 
    
@@ -238,7 +239,13 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
     opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
 
-    print("Starting Training loop") 
+    print("Starting Training loop")
+
+    # Do a check on the network before running
+    if Boundary_train:
+        assert gNet.net[-3].Psi.shape[0] == jProbs_st1.shape[1] == jProbs_st2.shape[1]
+        jProbs_st1 = jProbs_st1.unsqueeze(2)
+        jProbs_st2 = jProbs_st2.unsqueeze(2)
 
     for epoch in tqdm(range(start_ep, end_ep + 1), position=0, leave=True):
         
