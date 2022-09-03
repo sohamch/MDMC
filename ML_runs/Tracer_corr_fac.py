@@ -84,7 +84,7 @@ def main(args):
         for jumpInd in range(z):
             for site in range(Nsites):
                 for dim in range(Ndim):
-                    jumpGather[batch * z + jumpInd, dim, site] = SitesJumpDests[JumpInd, site]
+                    jumpGather[batch * z + jumpInd, dim, site] = SitesJumpDests[jumpInd, site]
 
     GatherTensor = pt.tensor(jumpGather, dtype=pt.long).to(device)
 
