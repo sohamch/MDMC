@@ -166,13 +166,6 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     return State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch
 
 
-def makeProdTensor(OnSites, Ndim):
-    Onst = pt.tensor(OnSites)
-    Onst = Onst.repeat_interleave(Ndim, dim=0)
-    Onst = Onst.view(-1, Ndim, OnSites.shape[1])
-    return Onst
-
-
 def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamps, Ndim=3):
     # Do a small check that species channels were assigned correctly
     if sp_ch is not None:
@@ -203,8 +196,9 @@ def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites
             dispData = pt.tensor(disps[:Nsamps, 1, :]).double().to(device)
         
         # Convert on-site tensor to boolean mask
-        On_st1 = makeProdTensor(OnSites_st1[:Nsamps], Ndim).long()
-        On_st2 = makeProdTensor(OnSites_st2[:Nsamps], Ndim).long()
+        # Unsqueeze to add cartesian component dimensions and channel dimensions
+        On_st1 = pt.tensor(OnSites_st1[:Nsamps], dtype=pt.bool).unsqueeze(1).unsqueeze(1)
+        On_st2 = pt.tensor(OnSites_st2[:Nsamps], dtype=pt.bool).unsqueeze(1).unsqueeze(1)
 
     return state1Data, state2Data, dispData, rateData, On_st1, On_st2
 
