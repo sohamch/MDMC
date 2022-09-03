@@ -244,8 +244,16 @@ def SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1, jProbs_st2, Boun
         # rid of jump channels right away.
         On_st1Batch = On_st1[batch : end].unsqueeze(2).to(device)
         On_st2Batch = On_st2[batch : end].unsqueeze(2).to(device)
-        y1 = pt.sum(y1*On_st1Batch, dim=3) # sum across the sites
+        
+        y1 = pt.sum(y1*On_st1Batch, dim=3) # sum across the occupied sites
         y2 = pt.sum(y2*On_st2Batch, dim=3)
+
+        # Now average with the jump Probs
+        # y have dimensions (Nbatch, Njumps, 3)
+        # jPr have dimensions (Nbatch, Njumps, 1)
+        # Do a broadcasted multiply, followed by sum along jumps
+        y1 = pt.sum(y1 * jPr_1_batch, dim = 1)
+        y2 = pt.sum(y2 * jPr_2_batch, dim = 1)
     
     return y1, y2
     
