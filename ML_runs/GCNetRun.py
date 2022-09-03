@@ -213,8 +213,8 @@ def vacBatchOuts(y1, y2, jProbs_st1, jProbs_st2, Boundary_Train):
     else:
         assert y1.shape[1] == jProbs_st1.shape[1]
         # send the jump probabilities to the device
-        jPr_1_batch = jProbs_st1[batch : end].to(device)
-        jPr_2_batch = jProbs_st2[batch : end].to(device)
+        jPr_1_batch = jProbs_st1[batch : end].unsqueeze(2).to(device)
+        jPr_2_batch = jProbs_st2[batch : end].unsqueeze(2).to(device)
 
         y1 = -pt.sum(y1[:, :, :, 1:], dim=3) # take negative sum of all sites
         y2 = -pt.sum(y2[:, :, :, 1:], dim=3)
@@ -229,21 +229,19 @@ def vacBatchOuts(y1, y2, jProbs_st1, jProbs_st2, Boundary_Train):
 # All non-vacancy batch calculations to be done here
 def SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1, jProbs_st2, Boundary_train):
     if not Boundary_train:
-        On_st1Batch = On_st1[batch : end].to(device)
-        On_st2Batch = On_st2[batch : end].to(device)
         y1 = pt.sum(y1[:, 0, :, :]*On_st1Batch, dim=2)
         y2 = pt.sum(y2[:, 0, :, :]*On_st2Batch, dim=2)
                
     else:
         assert y1.shape[1] == jProbs_st1.shape[1]
         # send the jump probabilities to the device
-        jPr_1_batch = jProbs_st1[batch : end].to(device)
-        jPr_2_batch = jProbs_st2[batch : end].to(device)
+        jPr_1_batch = jProbs_st1[batch : end].unsqueeze(2).to(device)
+        jPr_2_batch = jProbs_st2[batch : end].unsqueeze(2).to(device)
 
         # Add another dimension for the indexing, since we're not getting
         # rid of jump channels right away.
-        On_st1Batch = On_st1[batch : end].unsqueeze(2).to(device)
-        On_st2Batch = On_st2[batch : end].unsqueeze(2).to(device)
+        On_st1Batch = On_st1Batch.unsqueeze(2).to(device)
+        On_st2Batch = On_st2Batch.unsqueeze(2).to(device)
         
         y1 = pt.sum(y1*On_st1Batch, dim=3) # sum across the occupied sites
         y2 = pt.sum(y2*On_st2Batch, dim=3)
@@ -267,6 +265,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, N_train, Ndim=Ndim)
 
+    jProbs_st1 = pt.tensor(jProbs_st1, dtype=pt.double)
+    jProbs_st2 = pt.tensor(jProbs_st2, dtype=pt.double)
     N_batch = batch_size
 
     if pt.cuda.device_count() > 1 and DPr:
@@ -296,8 +296,6 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
         # Check that the last layer outputs as many representations as the
         # number of jumps
         assert gNet.net[-3].Psi.shape[0] == jProbs_st1.shape[1] == jProbs_st2.shape[1]
-        jProbs_st1 = jProbs_st1.unsqueeze(2)
-        jProbs_st2 = jProbs_st2.unsqueeze(2)
 
     for epoch in tqdm(range(start_ep, end_ep + 1), position=0, leave=True):
         
@@ -334,8 +332,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
 
 
 def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
-        rates, disps, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
-        gNet, batch_size=512, DPr=False):
+        rates, disps, SpecsToTrain, jProbs_st1, jProbs_st2, sp_ch, VacSpec,
+        start_ep, end_ep, interval, N_train, gNet, batch_size=512, Boundary_Train=False, DPr=False):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -355,6 +353,9 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     Ndim = disps.shape[2] 
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamples, Ndim=Ndim)
+    
+    jProbs_st1 = pt.tensor(jProbs_st1, dtype=pt.double)
+    jProbs_st2 = pt.tensor(jProbs_st2, dtype=pt.double)
     
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
     
@@ -386,17 +387,11 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                     y1 = gNet(state1Batch)
                     y2 = gNet(state2Batch)
             
-                    # sum up everything except the vacancy site if vacancy is indicated
-                    if SpecsToTrain==[VacSpec]:
-                        y1 = -pt.sum(y1[:, :, 1:], dim=2)
-                        y2 = -pt.sum(y2[:, :, 1:], dim=2)
-                    
+                    if SpecsToTrain==[VacSpec]: 
+                        y1, y2 = vacBatchOuts(y1, y2, jProbs_st1, jProbs_st2, Boundary_Train)
+
                     else:
-                        # This part will change based on boundary training
-                        On_st1Batch = On_st1[batch : end].to(device)
-                        On_st2Batch = On_st2[batch : end].to(device)
-                        y1 = pt.sum(y1*On_st1Batch, dim=2)
-                        y2 = pt.sum(y2*On_st2Batch, dim=2)
+                        y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1, jProbs_st2, Boundary_train)
 
                     dy = y2 - y1
                     loss = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/6.
@@ -412,7 +407,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     return train_diff, test_diff
 
 
-def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, sp_ch, SpecsToTrain, VacSpec, gNet, Ndim, epoch=None, batch_size=256):
+def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jProbs_st1, jProbs_st2,
+        sp_ch, SpecsToTrain, VacSpec, gNet, Ndim, epoch=None, batch_size=256):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
