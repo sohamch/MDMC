@@ -284,8 +284,13 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
                 jPr_2_batch = jProbs_st2[batch : end].to(device)
 
                 if SpecsToTrain==[VacSpec]:
-                    y1 = -pt.sum(y1[:, 0, :, 1:], dim=2)
-                    y2 = -pt.sum(y2[:, 0, :, 1:], dim=2)
+                    y1 = -pt.sum(y1[:, :, :, 1:], dim=3) # take negative sum of all sites
+                    y2 = -pt.sum(y2[:, :, :, 1:], dim=3)
+
+                    # y have dimension (Nbatch, Njumps, 3)
+                    # jPr have dimension (Nbatch, Njumps, 1)
+                    y1 = pt.sum(y1*j_Pr_1_batch, dim = 1) # average across the jumps
+                    y2 = pt.sum(y2*j_Pr_2_batch, dim = 1)
                 
                 else:
                     # This part has to change in boundary state training
