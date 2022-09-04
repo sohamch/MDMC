@@ -616,12 +616,39 @@ def main(args):
         if T_data != T_net:
             raise ValueError("Training and Testing condition must be the same")
 
-    # Load data
+    
+    # 1. Load crystal parameters
+    GpermNNIdx, NNsiteList, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(filter_nn, CrysPath)
+    N_ngb = NNsiteList.shape[0]
+    print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(filter_nn, N_ngb - 1))
+    Nsites = NNsiteList.shape[1]
+    GnnPerms = pt.tensor(GpermNNIdx).long().to(device)
+    NNsites = pt.tensor(NNsiteList).long().to(device)
+
+    Ng = GnnPerms.shape[0]
+    Ndim = dispList.shape[2]
+
+    # 2. Load data
     state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2 = Load_Data(FileName)
     
+    # 2.1 Convert jump rates to probabilities
+    jProbs_st1 = AllJumpRates_st1 / np.sum(AllJumpRates_st1, axis=1).reshape(-1, 1)
+    jProbs_st2 = AllJumpRates_st2 / np.sum(AllJumpRates_st2, axis=1).reshape(-1, 1)
+    
+    assert np.allclose(np.sum(jProbs_st1, axis=1), 1.0)
+    assert np.allclose(np.sum(jProbs_st2, axis=1), 1.0)
+    
+    # 2.2 Make numpy arrays to feed into training/evaluation functions
+    State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = makeComputeData(state1List, state2List, dispList,
+            specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps, mode=Mode)
+    print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
+
+    
+    # 3. Next, make directories
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
     Nsites = state1List.shape[1]
+    
      
     specsToTrain = [int(specTrain[i]) for i in range(len(specTrain))]
     specsToTrain = sorted(specsToTrain)
@@ -633,7 +660,7 @@ def main(args):
         for spec in specsToTrain:
             direcString += "{}".format(spec)
 
-    # This is where networks will be saved to and loaded from
+    # 3.1 This is where networks will be saved to and loaded from
     dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(T_net, direcString, nLayers, int(AllJumps), ch)
     if Mode == "eval" or Mode == "getY" or Mode=="getRep":
         prepo = "saved at"
@@ -642,7 +669,7 @@ def main(args):
     if Mode == "train":
         prepo = "saving in"
 
-    # check if a run directory exists
+    # 3.2 check if a run directory exists
     dirPath = RunPath + dirNameNets
     exists = os.path.isdir(dirPath)
     
@@ -654,35 +681,10 @@ def main(args):
 
     print("Running in Mode {} with networks {} {}".format(Mode, prepo, dirPath))
 
-    print(pt.__version__)
-    
-    # Load crystal parameters
-    GpermNNIdx, NNsiteList, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(filter_nn, CrysPath)
-    N_ngb = NNsiteList.shape[0]
-    print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(filter_nn, N_ngb - 1))
-    Nsites = NNsiteList.shape[1]
-    GnnPerms = pt.tensor(GpermNNIdx).long().to(device)
-    NNsites = pt.tensor(NNsiteList).long().to(device)
-
-    Ng = GnnPerms.shape[0]
-    Ndim = dispList.shape[2]
-    gdiagsCpu = pt.zeros(Ng*Ndim, Ng*Ndim).double()
-    for gInd, gCart in GIndtoGDict.items():
-        rowStart = gInd * Ndim
-        rowEnd = (gInd + 1) * Ndim
-        gdiagsCpu[rowStart : rowEnd, rowStart : rowEnd] = pt.tensor(gCart)
-    gdiags = gdiagsCpu#.to(device)
-
-
-    # Call MakeComputeData here
-    State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = makeComputeData(state1List, state2List, dispList,
-            specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps, mode=Mode)
-    print("Done Creating occupancy tensors. Species channels: {}".format(sp_ch))
-
     gNet = GCNet(GnnPerms, gdiags, NNsites, Ndim, N_ngb, NSpec,
             mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
 
-    # Call Training or evaluating or y-evaluating function here
+    # 4. Call Training or evaluating or y-evaluating function here
     N_train_jumps = (N_ngb - 1)*N_train if AllJumps else N_train
     if Mode == "train":
         #def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps, 
@@ -714,49 +716,48 @@ def main(args):
 
     print("All done\n\n")
 
-# Add argument parser
-parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str, help="Path to Data file.")
-parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
-
-parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
-parser.add_argument("-rl","--RepLayer", metavar="[L1, L2,..]", type=int, nargs="+", help="Layers to extract representation from (count starts from 0)")
-parser.add_argument("-rlavg","--RepLayerAvg", action="store_true", help="Whether to average Representations across samples (training and validation will be made separate)")
-
-parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
-parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, help="No. of representation channels in non-input layers.")
-parser.add_argument("-ncL", "--NchLast", metavar="1", type=int, help="No. channels of the last layers - how many vectors to produce per site.")
-parser.add_argument("-cngb", "--ConvNgbRange", type=int, default=1, metavar="NN", help="Nearest neighbor range of convolutional filters.")
-
-
-parser.add_argument("-scr", "--Scratch", action="store_true", help="Whether to create new network and start from scratch")
-parser.add_argument("-DPr", "--DatPar", action="store_true", help="Whether to use data parallelism. Note - does not work for residual or subnet models. Used only in Train and eval modes.")
-
-parser.add_argument("-td", "--Tdata", metavar="T", type=int, help="Temperature to read data from")
-parser.add_argument("-tn", "--TNet", metavar="T", type=int, help="Temperature to use networks from\n For example one can evaluate a network trained on 1073 K data, on the 1173 K data, to see what it does.")
-parser.add_argument("-sep", "--Start_epoch", metavar="Ep", type=int, help="Starting epoch (for training, this network will be read in.)")
-parser.add_argument("-eep", "--End_epoch", metavar="Ep", type=int, help="Ending epoch (for training, this will be the last epoch.)")
-
-parser.add_argument("-sp", "--SpecTrain", metavar="s1s2s3", type=str, help="species to consider, order independent (Eg, 123 or 213 etc for species 1, 2 and 3")
-parser.add_argument("-vSp", "--VacSpec", metavar="SpV", type=int, default=0, help="species index of vacancy, must match dataset, default 0")
-
-
-parser.add_argument("-aj", "--AllJumps", action="store_true", help="Whether to train on all jumps, or single selected jumps out of a state.")
-parser.add_argument("-ajn", "--AllJumpsNetType", action="store_true", help="Whether to use network trained on all jumps, or single selected jumps out of a state.")
-
-parser.add_argument("-nt", "--N_train", type=int, default=10000, help="No. of training samples.")
-parser.add_argument("-i", "--Interval", type=int, default=1, help="Epoch intervals in which to save or load networks.")
-parser.add_argument("-lr", "--Learning_rate", type=float, default=0.001, help="Learning rate for Adam algorithm.")
-parser.add_argument("-bs", "--Batch_size", type=int, default=128, help="size of a single batch of samples.")
-parser.add_argument("-wm", "--Mean_wt", type=float, default=0.02, help="Initialization mean value of weights.")
-parser.add_argument("-ws", "--Std_wt", type=float, default=0.2, help="Initialization standard dev of weights.")
-parser.add_argument("-lw", "--Learn_weights", action="store_true", help="Whether to learn reweighting of samples.")
-
-parser.add_argument("-d", "--DumpArgs", action="store_true", help="Whether to dump arguments in a file")
-parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str, help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
 
 if __name__ == "__main__":
-    # main(list(sys.argv))
+    # Add argument parser
+    parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str, help="Path to Data file.")
+    parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
+
+    parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
+    parser.add_argument("-rl","--RepLayer", metavar="[L1, L2,..]", type=int, nargs="+", help="Layers to extract representation from (count starts from 0)")
+    parser.add_argument("-rlavg","--RepLayerAvg", action="store_true", help="Whether to average Representations across samples (training and validation will be made separate)")
+
+    parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
+    parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, help="No. of representation channels in non-input layers.")
+    parser.add_argument("-ncL", "--NchLast", metavar="1", type=int, help="No. channels of the last layers - how many vectors to produce per site.")
+    parser.add_argument("-cngb", "--ConvNgbRange", type=int, default=1, metavar="NN", help="Nearest neighbor range of convolutional filters.")
+
+
+    parser.add_argument("-scr", "--Scratch", action="store_true", help="Whether to create new network and start from scratch")
+    parser.add_argument("-DPr", "--DatPar", action="store_true", help="Whether to use data parallelism. Note - does not work for residual or subnet models. Used only in Train and eval modes.")
+
+    parser.add_argument("-td", "--Tdata", metavar="T", type=int, help="Temperature to read data from")
+    parser.add_argument("-tn", "--TNet", metavar="T", type=int, help="Temperature to use networks from\n For example one can evaluate a network trained on 1073 K data, on the 1173 K data, to see what it does.")
+    parser.add_argument("-sep", "--Start_epoch", metavar="Ep", type=int, help="Starting epoch (for training, this network will be read in.)")
+    parser.add_argument("-eep", "--End_epoch", metavar="Ep", type=int, help="Ending epoch (for training, this will be the last epoch.)")
+
+    parser.add_argument("-sp", "--SpecTrain", metavar="s1s2s3", type=str, help="species to consider, order independent (Eg, 123 or 213 etc for species 1, 2 and 3")
+    parser.add_argument("-vSp", "--VacSpec", metavar="SpV", type=int, default=0, help="species index of vacancy, must match dataset, default 0")
+
+
+    parser.add_argument("-aj", "--AllJumps", action="store_true", help="Whether to train on all jumps, or single selected jumps out of a state.")
+    parser.add_argument("-ajn", "--AllJumpsNetType", action="store_true", help="Whether to use network trained on all jumps, or single selected jumps out of a state.")
+
+    parser.add_argument("-nt", "--N_train", type=int, default=10000, help="No. of training samples.")
+    parser.add_argument("-i", "--Interval", type=int, default=1, help="Epoch intervals in which to save or load networks.")
+    parser.add_argument("-lr", "--Learning_rate", type=float, default=0.001, help="Learning rate for Adam algorithm.")
+    parser.add_argument("-bs", "--Batch_size", type=int, default=128, help="size of a single batch of samples.")
+    parser.add_argument("-wm", "--Mean_wt", type=float, default=0.02, help="Initialization mean value of weights.")
+    parser.add_argument("-ws", "--Std_wt", type=float, default=0.2, help="Initialization standard dev of weights.")
+    parser.add_argument("-lw", "--Learn_weights", action="store_true", help="Whether to learn reweighting of samples.")
+
+    parser.add_argument("-d", "--DumpArgs", action="store_true", help="Whether to dump arguments in a file")
+    parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str, help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
 
     args = parser.parse_args()    
     if args.DumpArgs:
