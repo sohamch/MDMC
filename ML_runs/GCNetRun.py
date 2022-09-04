@@ -553,77 +553,53 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
 def main(args):
     print("Running at : "+ RunPath)
 
-    # Get run parameters
+    # 0. Get run parameters
     FileName = args.DataPath # Name of data file to train on
-    
-    #CrystalType = args.Crys
     CrysPath = args.CrysDatPath
-    
     Mode = args.Mode # "train" mode or "eval" mode or "getY" mode
-    
     nLayers = args.Nlayers
-    
     ch = args.Nchannels
-    
+    chLast = args.Nchannels
     filter_nn = args.ConvNgbRange
-    
     scratch_if_no_init = args.Scratch
-
     DPr = args.DatPar
-
-    T_data = args.Tdata
-    # Note : for binary random alloys, this should is the training composition instead of temperature
-
+    T_data = args.Tdata # Note : for binary random alloys, this should is the training composition instead of temperature
     T_net = args.TNet # must be same as T_data if "train", can be different if "getY" or "eval"
-
     if Mode=="train" and T_data != T_net:
         raise ValueError("Different temperatures in training mode not allowed")
-    
     start_ep = args.Start_epoch
     end_ep = args.End_epoch
-
     if not (Mode == "train" or Mode == "eval"):
         print("Mode : {}, setting end epoch to start epoch".format(Mode))
         end_ep = start_ep
     
     specTrain = args.SpecTrain
-    
     VacSpec = args.VacSpec
-    
     AllJumps = args.AllJumps 
-    
     AllJumps_net_type = args.AllJumpsNetType
-    
     N_train = args.N_train
-
     batch_size = args.Batch_size
     interval = args.Interval # for train mode, interval to save and for eval mode, interval to load
     learning_Rate = args.Learning_rate
-
     wt_means = args.Mean_wt
     wt_std = args.Std_wt
-
-    Learn_wt = args.Learn_weights
-    
-    wtNet = None
-    if Learn_wt:
-        wtNet = WeightNet(width=128).double().to(device) 
+    a0 = args.LatParam # Lattice parameter
 
     if not (Mode == "train" or Mode == "eval" or Mode == "getY" or Mode == "getRep"):
         raise ValueError("Mode needs to be train, eval, getY or getRep but given : {}".format(Mode))
 
     if Mode == "train":
         if T_data != T_net:
-            raise ValueError("Training and Testing condition must be the same")
-
+            raise ValueError("Network and data temperature (arguments \"TNet\"/\"tn\" and \"Tdata\"/\"td\") must be the same in train mode")
     
     # 1. Load crystal parameters
     GpermNNIdx, NNsiteList, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(filter_nn, CrysPath)
     N_ngb = NNsiteList.shape[0]
     print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(filter_nn, N_ngb - 1))
     Nsites = NNsiteList.shape[1]
-    GnnPerms = pt.tensor(GpermNNIdx).long().to(device)
-    NNsites = pt.tensor(NNsiteList).long().to(device)
+    GnnPerms = pt.tensor(GpermNNIdx).long()
+    NNsites = pt.tensor(NNsiteList).long()
+    JumpVecs = pt.tensor(dxJumps.T * a0, dtype=pt.double)
 
     Ng = GnnPerms.shape[0]
     Ndim = dispList.shape[2]
@@ -680,9 +656,12 @@ def main(args):
             raise ValueError("Training directory does not exist but start epoch greater than zero: {}\ndirectory given: {}".format(start_ep, dirPath))
 
     print("Running in Mode {} with networks {} {}".format(Mode, prepo, dirPath))
+    
+    if args.BoundTrain:
+        assert chLast == N_ngb - 1
 
-    gNet = GCNet(GnnPerms, gdiags, NNsites, Ndim, N_ngb, NSpec,
-            mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
+    gNet = GCNet(GnnPerms.long(), NNsites, JumpVecs, dim=3, N_ngb=N_ngb, NSpec=NSpec,
+            mean=0.02, std=0.02, nl=nLayers, nch=ch, nchLast=chLast).double()
 
     # 4. Call Training or evaluating or y-evaluating function here
     N_train_jumps = (N_ngb - 1)*N_train if AllJumps else N_train
