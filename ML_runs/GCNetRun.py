@@ -64,8 +64,7 @@ def Load_Data(DataPath):
         
         avgDisps_st1 = np.array(fl["AvgDisps_Init"])[perm]
         avgDisps_st2 = np.array(fl["AvgDisps_Fin"])[perm]
-
-    
+ 
     return state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2
 
 def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
@@ -332,7 +331,6 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
 
                 y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
             
-
             dy = y2 - y1
             diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/6.
             
@@ -605,8 +603,8 @@ def main(args):
     Ndim = dispList.shape[2]
 
     # 2. Load data
-    state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2 = Load_Data(FileName)
-    
+    state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2 = Load_Data(FileName)
+
     # 2.1 Convert jump rates to probabilities
     jProbs_st1 = AllJumpRates_st1 / np.sum(AllJumpRates_st1, axis=1).reshape(-1, 1)
     jProbs_st2 = AllJumpRates_st2 / np.sum(AllJumpRates_st2, axis=1).reshape(-1, 1)
@@ -614,7 +612,11 @@ def main(args):
     assert np.allclose(np.sum(jProbs_st1, axis=1), 1.0)
     assert np.allclose(np.sum(jProbs_st2, axis=1), 1.0)
     
-    # 2.2 Make numpy arrays to feed into training/evaluation functions
+    # 2.2 shift displacements if boundary training
+    if args.BoundTrain:
+        dispList += avDisps_st2 - avDisps_st1
+
+    # 2.3 Make numpy arrays to feed into training/evaluation functions
     State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = makeComputeData(state1List, state2List, dispList,
             specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps, mode=Mode)
     print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
