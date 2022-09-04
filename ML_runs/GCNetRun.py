@@ -701,6 +701,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str, help="Path to Data file.")
     parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
+    parser.add_argument("-a0", "--LatParam",  metavar="L", type=float, help="Lattice parameter.")
 
     parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
     parser.add_argument("-rl","--RepLayer", metavar="[L1, L2,..]", type=int, nargs="+", help="Layers to extract representation from (count starts from 0)")
@@ -733,7 +734,6 @@ if __name__ == "__main__":
     parser.add_argument("-bs", "--Batch_size", type=int, default=128, help="size of a single batch of samples.")
     parser.add_argument("-wm", "--Mean_wt", type=float, default=0.02, help="Initialization mean value of weights.")
     parser.add_argument("-ws", "--Std_wt", type=float, default=0.2, help="Initialization standard dev of weights.")
-    parser.add_argument("-lw", "--Learn_weights", action="store_true", help="Whether to learn reweighting of samples.")
 
     parser.add_argument("-d", "--DumpArgs", action="store_true", help="Whether to dump arguments in a file")
     parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str, help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
