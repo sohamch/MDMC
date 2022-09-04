@@ -685,7 +685,7 @@ def main(args):
     # 4. Call Training or evaluating or y-evaluating function here
     N_train_jumps = (N_ngb - 1)*N_train if AllJumps else N_train
     if Mode == "train":
-        Train(T_data, dirPath, State1_Occs, State2_Occs, OnSites_state1, OnSites_state2,
+        Train(T_data, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2,
                 rateData, dispData, jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec,
                 start_ep, end_ep, interval, N_train_jumps, gNet,
                 lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size,
