@@ -631,6 +631,9 @@ def main(args):
         dispList += avDisps_st2 - avDisps_st1
 
     # 2.3 Make numpy arrays to feed into training/evaluation functions
+    specsToTrain = [int(specTrain[i]) for i in range(len(specTrain))]
+    specsToTrain = sorted(specsToTrain)
+
     State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = makeComputeData(state1List, state2List, dispList,
             specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps, mode=Mode)
     print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
@@ -640,9 +643,6 @@ def main(args):
     NSpec = specs.shape[0] - 1
     Nsites = state1List.shape[1]
      
-    specsToTrain = [int(specTrain[i]) for i in range(len(specTrain))]
-    specsToTrain = sorted(specsToTrain)
-    
     direcString=""
     if specsToTrain == [VacSpec]:
         direcString = "vac"
