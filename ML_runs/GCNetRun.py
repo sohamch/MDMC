@@ -263,9 +263,10 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     Ndim = disps.shape[2]
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
-
-    jProbs_st1 = pt.tensor(jProbs_st1[:N_train], dtype=pt.double)
-    jProbs_st2 = pt.tensor(jProbs_st2[:N_train], dtype=pt.double)
+    
+    if Boundary_train:
+        jProbs_st1 = pt.tensor(jProbs_st1[:N_train], dtype=pt.double)
+        jProbs_st2 = pt.tensor(jProbs_st2[:N_train], dtype=pt.double)
     N_batch = batch_size
 
     if pt.cuda.device_count() > 1 and DPr:
@@ -312,8 +313,12 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
             rateBatch = rateData[batch : end]
             dispBatch = dispData[batch : end]
             
-            jProbs_st1_batch = jProbs_st1[batch : end]
-            jProbs_st2_batch = jProbs_st2[batch : end]
+            if Boundary_train:
+                jProbs_st1_batch = jProbs_st1[batch : end]
+                jProbs_st2_batch = jProbs_st2[batch : end]
+            else:
+                jProbs_st1_batch = None
+                jProbs_st2_batch = None
 
             y1 = gNet(state1Batch)
             y2 = gNet(state2Batch)
@@ -357,8 +362,9 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
     
-    jProbs_st1 = pt.tensor(jProbs_st1, dtype=pt.double)
-    jProbs_st2 = pt.tensor(jProbs_st2, dtype=pt.double)
+    if Boundary_train:
+        jProbs_st1 = pt.tensor(jProbs_st1, dtype=pt.double)
+        jProbs_st2 = pt.tensor(jProbs_st2, dtype=pt.double)
     
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
     
@@ -386,9 +392,14 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                     
                     rateBatch = rateData[batch : end].to(device)
                     dispBatch = dispData[batch : end].to(device)
-                     
-                    jProbs_st1_batch = jProbs_st1[batch : end]
-                    jProbs_st2_batch = jProbs_st2[batch : end]
+                    
+                    if Boundary_train:
+                        jProbs_st1_batch = jProbs_st1[batch : end]
+                        jProbs_st2_batch = jProbs_st2[batch : end]
+                    
+                    else:
+                        jProbs_st1_batch = None
+                        jProbs_st2_batch = None
 
                     y1 = gNet(state1Batch)
                     y2 = gNet(state2Batch)
@@ -433,9 +444,10 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
 
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
-
-    jProbs_st1 = pt.tensor(jProbs_st1, dtype=pt.double)
-    jProbs_st2 = pt.tensor(jProbs_st2, dtype=pt.double)
+    
+    if Boundary_train:
+        jProbs_st1 = pt.tensor(jProbs_st1, dtype=pt.double)
+        jProbs_st2 = pt.tensor(jProbs_st2, dtype=pt.double)
 
     y1Vecs = np.zeros((Nsamples, 3))
     y2Vecs = np.zeros((Nsamples, 3))
@@ -458,8 +470,12 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
             state1Batch = state1Data[batch : end].double().to(device)
             state2Batch = state2Data[batch : end].double().to(device)
             
-            jProbs_st1_batch = jProbs_st1[batch : end]
-            jProbs_st2_batch = jProbs_st2[batch : end]
+            if Boundary_train:
+                jProbs_st1_batch = jProbs_st1[batch : end]
+                jProbs_st2_batch = jProbs_st2[batch : end]
+            else:
+                jProbs_st2_batch = None
+                jProbs_st1_batch = None
             
             y1 = gNet(state1Batch)
             y2 = gNet(state2Batch)
@@ -504,7 +520,7 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
     with pt.no_grad():
         ## load checkpoint
         gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
-        nLayers = (len(gNet.net)-7)//3
+        nLayers = (len(gNet.net)-6)//3
         for LayerInd in LayerIndList:
             ch = gNet.net[LayerInd - 2].Psi.shape[0]
             y1Reps = np.zeros((Nsamples, ch, Nsites))
