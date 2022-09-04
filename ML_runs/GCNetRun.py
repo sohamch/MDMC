@@ -136,7 +136,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
                 State1_occs[samp, sp_ch[spec1], site] = 1
                 State2_occs[samp, sp_ch[spec2], site] = 1
             
-            if Boundary_Train:
+            if Boundary_train:
                 print("Boundary Training indicated. Shifting displacements.")
                 dyAvg = avgDisps_st2[samp, :, :] - avgDisps_st1[samp, :, :]
                 dispData[samp, 0, :] = dispList[samp, VacSpec, :] + dyAvg[VacSpec, :]
