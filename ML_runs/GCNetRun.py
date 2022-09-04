@@ -692,7 +692,7 @@ def main(args):
                 DPr=DPr, Boundary_train=args.BoundTrain)
 
     elif Mode == "eval":
-        train_diff, valid_diff = Evaluate(T_net, dirPath, State1_Occs, State2_Occs,
+        train_diff, valid_diff = Evaluate(T_net, dirPath, State1_occs, State2_occs,
                 OnSites_state1, OnSites_state2, rateData, dispData,
                 specsToTrain, jProbs_st1, jProbs_st2, sp_ch, VacSpec, start_ep, end_ep,
                 interval, N_train_jumps, gNet, batch_size=batch_size, Boundary_train=args.BoundTrain, DPr=DPr)
@@ -700,7 +700,7 @@ def main(args):
         np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), valid_diff/(1.0*N_train))
 
     elif Mode == "getY":
-        y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_Occs, State2_Occs,
+        y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_occs, State2_occs,
                 OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
                 specsToTrain, VacSpec, gNet, Ndim, epoch=start_ep, Boundary_train=args.BoundTrain,
                 batch_size=batch_size)
@@ -708,7 +708,7 @@ def main(args):
         np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y2Vecs)
     
     elif Mode == "getRep":
-        GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, start_ep, gNet, args.RepLayer, N_train_jumps, batch_size=batch_size,
+        GetRep(T_net, T_data, dirPath, State1_occs, State2_occs, start_ep, gNet, args.RepLayer, N_train_jumps, batch_size=batch_size,
            avg=args.RepLayerAvg, AllJumps=AllJumps)
 
     print("All done\n\n")
