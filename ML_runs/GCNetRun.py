@@ -265,6 +265,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
     
     if Boundary_train:
+        print("Boundary training indicated. Using jump probabilities.")
         jProbs_st1 = pt.tensor(jProbs_st1[:N_train], dtype=pt.double)
         jProbs_st2 = pt.tensor(jProbs_st2[:N_train], dtype=pt.double)
     N_batch = batch_size
@@ -363,6 +364,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
     
     if Boundary_train:
+        print("Boundary training indicated. Using jump probabilities.")
         jProbs_st1 = pt.tensor(jProbs_st1, dtype=pt.double)
         jProbs_st2 = pt.tensor(jProbs_st2, dtype=pt.double)
     
@@ -446,6 +448,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
     
     if Boundary_train:
+        print("Boundary training indicated. Using jump probabilities.")
         jProbs_st1 = pt.tensor(jProbs_st1, dtype=pt.double)
         jProbs_st2 = pt.tensor(jProbs_st2, dtype=pt.double)
 
@@ -634,8 +637,10 @@ def main(args):
     specsToTrain = [int(specTrain[i]) for i in range(len(specTrain))]
     specsToTrain = sorted(specsToTrain)
 
-    State1_Occs, State2_Occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = makeComputeData(state1List, state2List, dispList,
-            specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps, mode=Mode)
+    State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch =\
+    makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
+                AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2, JumpNewSites,
+                dxJumps, NNsiteList, N_train, AllJumps=AllJumps, mode=Mode)
     print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
 
     # 3. Next, make directories
