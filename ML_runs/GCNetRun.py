@@ -289,15 +289,14 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     print("Batch size : {}".format(N_batch)) 
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
 
-    opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
-
-    print("Starting Training loop")
-
     # Do a check on the network before running
     if Boundary_train:
         # Check that the last layer outputs as many representations as the
         # number of jumps
         assert gNet.net[-3].Psi.shape[0] == jProbs_st1.shape[1] == jProbs_st2.shape[1]
+
+    opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
+    print("Starting Training loop")
 
     for epoch in tqdm(range(start_ep, end_ep + 1), position=0, leave=True):
         
@@ -550,7 +549,6 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
 
 def main(args):
     print("Running at : "+ RunPath)
-
     # 0. Get run parameters
     FileName = args.DataPath # Name of data file to train on
     CrysPath = args.CrysDatPath
@@ -598,7 +596,6 @@ def main(args):
     GnnPerms = pt.tensor(GpermNNIdx).long()
     NNsites = pt.tensor(NNsiteList).long()
     JumpVecs = pt.tensor(dxJumps.T * a0, dtype=pt.double)
-
     Ng = GnnPerms.shape[0]
     Ndim = dispList.shape[2]
 
@@ -621,12 +618,10 @@ def main(args):
             specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps, mode=Mode)
     print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
 
-    
     # 3. Next, make directories
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
     Nsites = state1List.shape[1]
-    
      
     specsToTrain = [int(specTrain[i]) for i in range(len(specTrain))]
     specsToTrain = sorted(specsToTrain)
@@ -668,9 +663,6 @@ def main(args):
     # 4. Call Training or evaluating or y-evaluating function here
     N_train_jumps = (N_ngb - 1)*N_train if AllJumps else N_train
     if Mode == "train":
-        #def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps, 
-        #        jProbs_st1, jProbs_st2, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
-        #        gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False):
         Train(T_data, dirPath, State1_Occs, State2_Occs, OnSites_state1, OnSites_state2,
                 rateData, dispData, jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec,
                 start_ep, end_ep, interval, N_train_jumps, gNet,
@@ -678,9 +670,6 @@ def main(args):
                 DPr=DPr, Boundary_train=args.BoundTrain)
 
     elif Mode == "eval":
-        #def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
-        #        rates, disps, SpecsToTrain, jProbs_st1, jProbs_st2, sp_ch, VacSpec,
-        #        start_ep, end_ep, interval, N_train, gNet, batch_size=512, Boundary_Train=False, DPr=False):
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_Occs, State2_Occs,
                 OnSites_state1, OnSites_state2, rateData, dispData,
                 specsToTrain, jProbs_st1, jProbs_st2, sp_ch, VacSpec, start_ep, end_ep,
@@ -689,8 +678,6 @@ def main(args):
         np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), valid_diff/(1.0*N_train))
 
     elif Mode == "getY":
-        #def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jProbs_st1, jProbs_st2,
-        #        sp_ch, SpecsToTrain, VacSpec, gNet, Ndim, epoch=None, Boundary_train=False, batch_size=256):
         y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_Occs, State2_Occs,
                 OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
                 specsToTrain, VacSpec, gNet, Ndim, epoch=start_ep, Boundary_train=args.BoundTrain,
