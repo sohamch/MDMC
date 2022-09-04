@@ -273,7 +273,6 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     if pt.cuda.device_count() > 1 and DPr:
         print("Running on Devices : {}".format(DeviceIDList))
         gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
-        gNet.to(device)
 
     try:
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location=device))
@@ -294,6 +293,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
         # number of jumps
         assert gNet.net[-3].Psi.shape[0] == jProbs_st1.shape[1] == jProbs_st2.shape[1]
 
+    gNet.to(device)
     opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
     print("Starting Training loop")
 
@@ -376,6 +376,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         print("Running on Devices : {}".format(DeviceIDList))
         gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
 
+    gNet.to(device)
     def compute(startSample, endSample):
         diff_epochs = []
         with pt.no_grad():
@@ -458,6 +459,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
     BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh] 
     
+    gNet.to(device)
     print("Evaluating network on species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
     if epoch is not None:
         print("Network: {}".format(dirPath))
@@ -519,6 +521,7 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
     
     print("computing Representations after layers: {}".format(LayerIndList))
     
+    gNet.to(device)
     glob_Nch = gNet.net[0].Psi.shape[0]
     with pt.no_grad():
         ## load checkpoint
