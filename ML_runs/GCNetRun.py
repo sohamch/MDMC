@@ -324,7 +324,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
             y2 = gNet(state2Batch)
                 
             if SpecsToTrain==[VacSpec]: 
-                y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_Train)
+                y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
 
             else:
                 On_st1Batch = On_st1[batch : end]
@@ -342,7 +342,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
 
 def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, jProbs_st1, jProbs_st2, sp_ch, VacSpec,
-        start_ep, end_ep, interval, N_train, gNet, batch_size=512, Boundary_Train=False, DPr=False):
+        start_ep, end_ep, interval, N_train, gNet, batch_size=512, Boundary_train=False, DPr=False):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -400,7 +400,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                     y2 = gNet(state2Batch)
             
                     if SpecsToTrain==[VacSpec]: 
-                        y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_Train)
+                        y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
 
                     else:
                         On_st1Batch = On_st1[batch : end]
@@ -422,7 +422,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 
 def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jProbs_st1, jProbs_st2,
-        sp_ch, SpecsToTrain, VacSpec, gNet, Ndim, epoch=None, batch_size=256):
+        sp_ch, SpecsToTrain, VacSpec, gNet, Ndim, epoch=None, Boundary_train=False, batch_size=256):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -470,7 +470,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
             # sum up everything except the vacancy site if vacancy is indicated
             # Change the parts below to accomodate boundary state training - figure out how
             if SpecsToTrain==[VacSpec]:
-                y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_Train)
+                y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
 
             else:
                 On_st1Batch = On_st1[batch : end]
@@ -676,16 +676,23 @@ def main(args):
                 DPr=DPr, Boundary_train=args.BoundTrain)
 
     elif Mode == "eval":
+        #def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
+        #        rates, disps, SpecsToTrain, jProbs_st1, jProbs_st2, sp_ch, VacSpec,
+        #        start_ep, end_ep, interval, N_train, gNet, batch_size=512, Boundary_Train=False, DPr=False):
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_Occs, State2_Occs,
                 OnSites_state1, OnSites_state2, rateData, dispData,
-                specsToTrain, sp_ch, VacSpec, start_ep, end_ep,
-                interval, N_train_jumps, gNet, batch_size=batch_size, DPr=DPr)
+                specsToTrain, jProbs_st1, jProbs_st2, sp_ch, VacSpec, start_ep, end_ep,
+                interval, N_train_jumps, gNet, batch_size=batch_size, Boundary_train=args.BoundTrain, DPr=DPr)
         np.save("tr_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), train_diff/(1.0*N_train))
         np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), valid_diff/(1.0*N_train))
 
     elif Mode == "getY":
+        #def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jProbs_st1, jProbs_st2,
+        #        sp_ch, SpecsToTrain, VacSpec, gNet, Ndim, epoch=None, Boundary_train=False, batch_size=256):
         y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_Occs, State2_Occs,
-                OnSites_state1, OnSites_state2, sp_ch, specsToTrain, VacSpec, gNet, Ndim, epoch=start_ep, batch_size=batch_size)
+                OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
+                specsToTrain, VacSpec, gNet, Ndim, epoch=start_ep, Boundary_train=args.BoundTrain,
+                batch_size=batch_size)
         np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y1Vecs)
         np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y2Vecs)
     
@@ -706,6 +713,7 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
     parser.add_argument("-rl","--RepLayer", metavar="[L1, L2,..]", type=int, nargs="+", help="Layers to extract representation from (count starts from 0)")
     parser.add_argument("-rlavg","--RepLayerAvg", action="store_true", help="Whether to average Representations across samples (training and validation will be made separate)")
+    parser.add_argument("-bt","--BoundTrain", action="store_true", help="Whether to train using boundary state averages.")
 
     parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
     parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, help="No. of representation channels in non-input layers.")
