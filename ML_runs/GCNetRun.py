@@ -161,7 +161,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     return State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch
 
 
-def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamps, Ndim=3):
+def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=3):
     # Do a small check that species channels were assigned correctly
     if sp_ch is not None:
         for key, item in sp_ch.items():
@@ -172,11 +172,11 @@ def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites
                 assert item == key
 
     # Convert compute data to pytorch tensors
-    state1Data = pt.tensor(State1_Occs[:Nsamps])
-    state2Data = pt.tensor(State2_Occs[:Nsamps])
+    state1Data = pt.tensor(State1_Occs)
+    state2Data = pt.tensor(State2_Occs)
     rateData=None
     if rates is not None:
-        rateData = pt.tensor(rates[:Nsamps]).double().to(device)
+        rateData = pt.tensor(rates).double().to(device)
     On_st1 = None 
     On_st2 = None
     dispData=None
@@ -184,15 +184,15 @@ def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites
         assert OnSites_st1 == OnSites_st2 == None
         print("Training on Vacancy".format(SpecsToTrain)) 
         if disps is not None:
-            dispData = pt.tensor(disps[:Nsamps, 0, :]).double().to(device)
+            dispData = pt.tensor(disps[:, 0, :]).double().to(device)
     else:
         print("Training Species : {}".format(SpecsToTrain))
         if disps is not None:
-            dispData = pt.tensor(disps[:Nsamps, 1, :]).double().to(device)
+            dispData = pt.tensor(disps[:, 1, :]).double().to(device)
         
         # Convert on-site tensor to boolean mask
-        On_st1 = pt.tensor(OnSites_st1[:Nsamps], dtype=pt.bool)
-        On_st2 = pt.tensor(OnSites_st2[:Nsamps], dtype=pt.bool)
+        On_st1 = pt.tensor(OnSites_st1, dtype=pt.bool)
+        On_st2 = pt.tensor(OnSites_st2, dtype=pt.bool)
 
     return state1Data, state2Data, dispData, rateData, On_st1, On_st2
 
