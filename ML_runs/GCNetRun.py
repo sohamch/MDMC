@@ -71,10 +71,6 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
         AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2, JumpNewSites, 
         dxJumps, NNsiteList, N_train, AllJumps=False, Boundary_train=False, mode="train"):
     
-    if not isinstance(AllJumpRates, np.ndarray):
-        if AllJumps and (mode=="train" or mode=="eval"):
-            raise ValueError("All Rates not provided. Cannot do training or evaluation.")
-
     # make the input tensors
     if mode=="train":
         Nsamples = N_train
@@ -267,8 +263,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, N_train, Ndim=Ndim)
 
-    jProbs_st1 = pt.tensor(jProbs_st1, dtype=pt.double)
-    jProbs_st2 = pt.tensor(jProbs_st2, dtype=pt.double)
+    jProbs_st1 = pt.tensor(jProbs_st1[:N_train], dtype=pt.double)
+    jProbs_st2 = pt.tensor(jProbs_st2[:N_train], dtype=pt.double)
     N_batch = batch_size
 
     if pt.cuda.device_count() > 1 and DPr:
@@ -436,6 +432,9 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
 
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamples, Ndim=Ndim)
+
+    jProbs_st1 = pt.tensor(jProbs_st1, dtype=pt.double)
+    jProbs_st2 = pt.tensor(jProbs_st2, dtype=pt.double)
 
     y1Vecs = np.zeros((Nsamples, 3))
     y2Vecs = np.zeros((Nsamples, 3))
