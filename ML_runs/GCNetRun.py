@@ -196,9 +196,8 @@ def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites
             dispData = pt.tensor(disps[:Nsamps, 1, :]).double().to(device)
         
         # Convert on-site tensor to boolean mask
-        # Unsqueeze to add cartesian component dimensions and channel dimensions
-        On_st1 = pt.tensor(OnSites_st1[:Nsamps], dtype=pt.bool).unsqueeze(1)
-        On_st2 = pt.tensor(OnSites_st2[:Nsamps], dtype=pt.bool).unsqueeze(1)
+        On_st1 = pt.tensor(OnSites_st1[:Nsamps], dtype=pt.bool)
+        On_st2 = pt.tensor(OnSites_st2[:Nsamps], dtype=pt.bool)
 
     return state1Data, state2Data, dispData, rateData, On_st1, On_st2
 
@@ -213,8 +212,8 @@ def vacBatchOuts(y1, y2, jProbs_st1, jProbs_st2, Boundary_Train):
     else:
         assert y1.shape[1] == jProbs_st1.shape[1]
         # send the jump probabilities to the device
-        jPr_1_batch = jProbs_st1[batch : end].unsqueeze(2).to(device)
-        jPr_2_batch = jProbs_st2[batch : end].unsqueeze(2).to(device)
+        jPr_1_batch = jProbs_st1.unsqueeze(2).to(device)
+        jPr_2_batch = jProbs_st2.unsqueeze(2).to(device)
 
         y1 = -pt.sum(y1[:, :, :, 1:], dim=3) # take negative sum of all sites
         y2 = -pt.sum(y2[:, :, :, 1:], dim=3)
@@ -229,19 +228,23 @@ def vacBatchOuts(y1, y2, jProbs_st1, jProbs_st2, Boundary_Train):
 # All non-vacancy batch calculations to be done here
 def SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1, jProbs_st2, Boundary_train):
     if not Boundary_train:
+        On_st1Batch = On_st1Batch.unsqueeze(1).to(device)
+        On_st2Batch = On_st2Batch.unsqueeze(1).to(device)
         y1 = pt.sum(y1[:, 0, :, :]*On_st1Batch, dim=2)
         y2 = pt.sum(y2[:, 0, :, :]*On_st2Batch, dim=2)
                
     else:
         assert y1.shape[1] == jProbs_st1.shape[1]
         # send the jump probabilities to the device
-        jPr_1_batch = jProbs_st1[batch : end].unsqueeze(2).to(device)
-        jPr_2_batch = jProbs_st2[batch : end].unsqueeze(2).to(device)
-
-        # Add another dimension for the indexing, since we're not getting
-        # rid of jump channels right away.
-        On_st1Batch = On_st1Batch.unsqueeze(2).to(device)
-        On_st2Batch = On_st2Batch.unsqueeze(2).to(device)
+        jPr_1_batch = jProbs_st1.unsqueeze(2).to(device)
+        jPr_2_batch = jProbs_st2.unsqueeze(2).to(device)
+        
+        # y have dimension (Nbacth, Njumps, Ndim, Nsites)
+        # On_stBatch have dimensions (Nbatch, Nsites)
+        # unsqueeze dim 1 twice to broadcast along jump channels and
+        # cartesian components
+        On_st1Batch = On_st1Batch.unsqueeze(1).unsqueeze(1).to(device)
+        On_st2Batch = On_st2Batch.unsqueeze(1).unsqueeze(1).to(device)
         
         y1 = pt.sum(y1*On_st1Batch, dim=3) # sum across the occupied sites
         y2 = pt.sum(y2*On_st2Batch, dim=3)
@@ -260,8 +263,8 @@ def SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1, jProbs_st2, Boun
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps, 
         jProbs_st1, jProbs_st2, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
         gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False):
-    Ndim = disps.shape[2] 
-   
+    
+    Ndim = disps.shape[2]
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, N_train, Ndim=Ndim)
 
@@ -314,14 +317,20 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
             rateBatch = rateData[batch : end]
             dispBatch = dispData[batch : end]
             
+            jProbs_st1_batch = jProbs_st1[batch : end]
+            jProbs_st2_batch = jProbs_st2[batch : end]
+
             y1 = gNet(state1Batch)
             y2 = gNet(state2Batch)
                 
             if SpecsToTrain==[VacSpec]: 
-                y1, y2 = vacBatchOuts(y1, y2, jProbs_st1, jProbs_st2, Boundary_Train)
+                y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_Train)
 
             else:
-                y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1, jProbs_st2, Boundary_train)
+                On_st1Batch = On_st1[batch : end]
+                On_st2Batch = On_st2[batch : end]
+
+                y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
             
 
             dy = y2 - y1
@@ -384,14 +393,19 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                     rateBatch = rateData[batch : end].to(device)
                     dispBatch = dispData[batch : end].to(device)
                      
+                    jProbs_st1_batch = jProbs_st1[batch : end]
+                    jProbs_st2_batch = jProbs_st2[batch : end]
+
                     y1 = gNet(state1Batch)
                     y2 = gNet(state2Batch)
             
                     if SpecsToTrain==[VacSpec]: 
-                        y1, y2 = vacBatchOuts(y1, y2, jProbs_st1, jProbs_st2, Boundary_Train)
+                        y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_Train)
 
                     else:
-                        y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1, jProbs_st2, Boundary_train)
+                        On_st1Batch = On_st1[batch : end]
+                        On_st2Batch = On_st2[batch : end]
+                        y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
 
                     dy = y2 - y1
                     loss = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/6.
@@ -447,21 +461,22 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
             state1Batch = state1Data[batch : end].double().to(device)
             state2Batch = state2Data[batch : end].double().to(device)
             
+            jProbs_st1_batch = jProbs_st1[batch : end]
+            jProbs_st2_batch = jProbs_st2[batch : end]
+            
             y1 = gNet(state1Batch)
             y2 = gNet(state2Batch)
 
             # sum up everything except the vacancy site if vacancy is indicated
             # Change the parts below to accomodate boundary state training - figure out how
-            if SpecsToTrain == [VacSpec]:
-                y1 = -pt.sum(y1[:, :, 1:], dim=2)
-                y2 = -pt.sum(y2[:, :, 1:], dim=2)
-            
+            if SpecsToTrain==[VacSpec]:
+                y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_Train)
+
             else:
-                On_st1Batch = On_st1[batch : end].to(device)
-                On_st2Batch = On_st2[batch : end].to(device)
-                y1 = pt.sum(y1*On_st1Batch, dim=2)
-                y2 = pt.sum(y2*On_st2Batch, dim=2)
-            
+                On_st1Batch = On_st1[batch : end]
+                On_st2Batch = On_st2[batch : end]
+                y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
+
             y1Vecs[batch : end] = y1.cpu().numpy()
             y2Vecs[batch : end] = y2.cpu().numpy()
 
@@ -664,36 +679,20 @@ def main(args):
             specsToTrain, VacSpec, rateList, AllJumpRates, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps, mode=Mode)
     print("Done Creating occupancy tensors. Species channels: {}".format(sp_ch))
 
-    # Make a network to either train from scratch or load saved state into
-    if not Residual_training:
-        if not subNetwork_training:
-            print("Running in Non-Residual Non-Subnet Convolution mode")
-            gNet = GCNet(GnnPerms, gdiags, NNsites, Ndim, N_ngb, NSpec,
-                    mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
-
-        else:
-            print("Running in Non-Residual Binary SubNetwork Convolution mode")
-            gNet = GCSubNet(GnnPerms, gdiags, NNsites, Ndim, N_ngb, NSpec,
-                    specsToTrain, mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
-
-    else:
-        if not subNetwork_training:
-            print("Running in Residual Convolution mode")
-            gNet = GCNetRes(GnnPerms, gdiags, NNsites, Ndim, N_ngb, NSpec,
-                    mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
-
-        else:
-            print("Running in Residual Binary SubNetwork Convolution mode")
-            gNet = GCSubNetRes(GnnPerms, gdiags, NNsites, Ndim, N_ngb, NSpec,
-                    specsToTrain, mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
+    gNet = GCNet(GnnPerms, gdiags, NNsites, Ndim, N_ngb, NSpec,
+            mean=wt_means, std=wt_std, b=1.0, nl=nLayers, nch=ch).double().to(device)
 
     # Call Training or evaluating or y-evaluating function here
     N_train_jumps = (N_ngb - 1)*N_train if AllJumps else N_train
     if Mode == "train":
+        #def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps, 
+        #        jProbs_st1, jProbs_st2, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
+        #        gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False):
         Train(T_data, dirPath, State1_Occs, State2_Occs, OnSites_state1, OnSites_state2,
-                rateData, dispData, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train_jumps,
-                gNet, lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size,
-                Learn_wt=Learn_wt, WeightSLP=wtNet, DPr=DPr)
+                rateData, dispData, jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec,
+                start_ep, end_ep, interval, N_train_jumps, gNet,
+                lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size,
+                DPr=DPr, Boundary_train=args.BoundTrain)
 
     elif Mode == "eval":
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_Occs, State2_Occs,
