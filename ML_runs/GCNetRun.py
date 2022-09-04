@@ -175,11 +175,12 @@ def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites
     state1Data = pt.tensor(State1_Occs)
     state2Data = pt.tensor(State2_Occs)
     rateData=None
-    if rates is not None:
-        rateData = pt.tensor(rates).double().to(device)
     On_st1 = None 
     On_st2 = None
     dispData=None
+
+    if rates is not None:
+        rateData = pt.tensor(rates).double().to(device)
     if SpecsToTrain == [VacSpec]:
         assert OnSites_st1 == OnSites_st2 == None
         print("Training on Vacancy".format(SpecsToTrain)) 
@@ -261,7 +262,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     
     Ndim = disps.shape[2]
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
-            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, N_train, Ndim=Ndim)
+            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
 
     jProbs_st1 = pt.tensor(jProbs_st1[:N_train], dtype=pt.double)
     jProbs_st2 = pt.tensor(jProbs_st2[:N_train], dtype=pt.double)
@@ -354,7 +355,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     
     Ndim = disps.shape[2] 
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
-            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamples, Ndim=Ndim)
+            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
     
     jProbs_st1 = pt.tensor(jProbs_st1, dtype=pt.double)
     jProbs_st2 = pt.tensor(jProbs_st2, dtype=pt.double)
@@ -431,7 +432,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
     disps=None
 
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
-            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Nsamples, Ndim=Ndim)
+            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
 
     jProbs_st1 = pt.tensor(jProbs_st1, dtype=pt.double)
     jProbs_st2 = pt.tensor(jProbs_st2, dtype=pt.double)
