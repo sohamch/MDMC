@@ -683,7 +683,7 @@ def main(args):
         assert chLast == N_ngb - 1
 
     gNet = GCNet(GnnPerms.long(), NNsites, JumpVecs, dim=3, N_ngb=N_ngb, NSpec=NSpec,
-            mean=0.02, std=0.02, nl=nLayers, nch=ch, nchLast=chLast).double()
+            mean=wt_means, std=wt_std, nl=nLayers, nch=ch, nchLast=chLast).double()
 
     # 4. Call Training or evaluating or y-evaluating function here
     N_train_jumps = (N_ngb - 1)*N_train if AllJumps else N_train
