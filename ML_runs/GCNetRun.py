@@ -612,8 +612,9 @@ def main(args):
     GnnPerms = pt.tensor(GpermNNIdx).long()
     NNsites = pt.tensor(NNsiteList).long()
     JumpVecs = pt.tensor(dxJumps.T * a0, dtype=pt.double)
+    print("Jump Vectors: \n", JumpVecs.T, "\n")
     Ng = GnnPerms.shape[0]
-    Ndim = dispList.shape[2]
+    Ndim = dxJumps.shape[1]
 
     # 2. Load data
     state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2 = Load_Data(FileName)
