@@ -16,7 +16,7 @@ import h5py
 import pickle
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from SymmLayers import GCNet_R3ConvSites as GCNet
+from SymmLayers import GCNet
 import copy
 
 device=None
