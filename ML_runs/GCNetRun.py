@@ -577,7 +577,7 @@ def main(args):
     Mode = args.Mode # "train" mode or "eval" mode or "getY" mode
     nLayers = args.Nlayers
     ch = args.Nchannels
-    chLast = args.Nchannels
+    chLast = args.NchLast
     filter_nn = args.ConvNgbRange
     scratch_if_no_init = args.Scratch
     DPr = args.DatPar
@@ -624,6 +624,10 @@ def main(args):
 
     # 2. Load data
     state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2 = Load_Data(FileName)
+    
+    if not args.JumpSort:
+        AllJumpRates_st1 = np.sort(AllJumpRates_st1, axis=1)
+        AllJumpRates_st2 = np.sort(AllJumpRates_st2, axis=1)
 
     # 2.1 Convert jump rates to probabilities
     jProbs_st1 = AllJumpRates_st1 / np.sum(AllJumpRates_st1, axis=1).reshape(-1, 1)
@@ -633,8 +637,8 @@ def main(args):
     assert np.allclose(np.sum(jProbs_st2, axis=1), 1.0)
     
     # 2.2 shift displacements if boundary training
-    if args.BoundTrain:
-        dispList += avDisps_st2 - avDisps_st1
+    if args.BoundTrain and args.DispShift:
+        dispList += avgDisps_st2 - avgDisps_st1
 
     # 2.3 Make numpy arrays to feed into training/evaluation functions
     specsToTrain = [int(specTrain[i]) for i in range(len(specTrain))]
@@ -685,6 +689,8 @@ def main(args):
     gNet = GCNet(GnnPerms.long(), NNsites, JumpVecs, dim=3, N_ngb=N_ngb, NSpec=NSpec,
             mean=wt_means, std=wt_std, nl=nLayers, nch=ch, nchLast=chLast).double()
 
+    print("No. of channels in last layer: {}".format(gNet.net[-3].Psi.shape[0]))
+
     # 4. Call Training or evaluating or y-evaluating function here
     N_train_jumps = (N_ngb - 1)*N_train if AllJumps else N_train
     if Mode == "train":
@@ -728,6 +734,8 @@ if __name__ == "__main__":
     parser.add_argument("-rl","--RepLayer", metavar="[L1, L2,..]", type=int, nargs="+", help="Layers to extract representation from (count starts from 0)")
     parser.add_argument("-rlavg","--RepLayerAvg", action="store_true", help="Whether to average Representations across samples (training and validation will be made separate)")
     parser.add_argument("-bt","--BoundTrain", action="store_true", help="Whether to train using boundary state averages.")
+    parser.add_argument("-js","--JumpSort", action="store_true", help="Whether to sort jumps by rates. Activating will cause symmetry to break.")
+    parser.add_argument("-xsh","--DispShift", action="store_true", help="Whether to shift displacements with state averages.")
 
     parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
     parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, help="No. of representation channels in non-input layers.")
