@@ -625,9 +625,12 @@ def main(args):
     # 2. Load data
     state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2 = Load_Data(FileName)
     
-    if not args.JumpSort:
+    if args.JumpSort:
+        print("Sorting Jump Rates.")
         AllJumpRates_st1 = np.sort(AllJumpRates_st1, axis=1)
         AllJumpRates_st2 = np.sort(AllJumpRates_st2, axis=1)
+    else:
+        print("Jump Rates unsorted. Values will be non-symmetric if boundary-training is active.")
 
     # 2.1 Convert jump rates to probabilities
     jProbs_st1 = AllJumpRates_st1 / np.sum(AllJumpRates_st1, axis=1).reshape(-1, 1)
@@ -638,7 +641,10 @@ def main(args):
     
     # 2.2 shift displacements if boundary training
     if args.BoundTrain and args.DispShift:
+        print("Shifting displacements by differences of initial and final state averages.")
         dispList += avgDisps_st2 - avgDisps_st1
+    else:
+        print("Displacements not shifted.")
 
     # 2.3 Make numpy arrays to feed into training/evaluation functions
     specsToTrain = [int(specTrain[i]) for i in range(len(specTrain))]
@@ -734,7 +740,7 @@ if __name__ == "__main__":
     parser.add_argument("-rl","--RepLayer", metavar="[L1, L2,..]", type=int, nargs="+", help="Layers to extract representation from (count starts from 0)")
     parser.add_argument("-rlavg","--RepLayerAvg", action="store_true", help="Whether to average Representations across samples (training and validation will be made separate)")
     parser.add_argument("-bt","--BoundTrain", action="store_true", help="Whether to train using boundary state averages.")
-    parser.add_argument("-js","--JumpSort", action="store_true", help="Whether to sort jumps by rates. Activating will cause symmetry to break.")
+    parser.add_argument("-js","--JumpSort", action="store_false", help="Whether to sort jumps by rates. Not doing it will cause symmetry to break.")
     parser.add_argument("-xsh","--DispShift", action="store_true", help="Whether to shift displacements with state averages.")
 
     parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
