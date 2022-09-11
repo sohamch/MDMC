@@ -58,18 +58,24 @@ def Load_Data(DataPath):
         state2List = np.array(fl["FinStates"])[perm]
         dispList = np.array(fl["SpecDisps"])[perm]
         rateList = np.array(fl["rates"])[perm]
+        try: 
+            AllJumpRates_st1 = np.array(fl["AllJumpRates_Init"])[perm]
+            AllJumpRates_st2 = np.array(fl["AllJumpRates_Fin"])[perm]
         
-        AllJumpRates_st1 = np.array(fl["AllJumpRates_Init"])[perm]
-        AllJumpRates_st2 = np.array(fl["AllJumpRates_Fin"])[perm]
-        
-        avgDisps_st1 = np.array(fl["AvgDisps_Init"])[perm]
-        avgDisps_st2 = np.array(fl["AvgDisps_Fin"])[perm]
+            avgDisps_st1 = np.array(fl["AvgDisps_Init"])[perm]
+            avgDisps_st2 = np.array(fl["AvgDisps_Fin"])[perm]
+
+        except:
+            AllJumpRates_st1 = np.array(fl["AllJumpRates"])[perm]
+            AllJumpRates_st2 = None
+            avgDisps_st1 = None
+            avgDisps_st2 = None
  
     return state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2
 
 def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
         AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2, JumpNewSites, 
-        dxJumps, NNsiteList, N_train, AllJumps=False, Boundary_train=False, mode="train"):
+        dxJumps, NNsiteList, N_train, AllJumps=False, mode="train"):
     
     # make the input tensors
     if mode=="train":
@@ -77,8 +83,6 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     else:
         Nsamples = state1List.shape[0]
 
-    if AllJumps and Boundary_train:
-        raise NotImplementedError("Cannot do all-jump training with boundary states yet.")
     if AllJumps:
         NJumps = Nsamples*dxJumps.shape[0]
     else:
@@ -136,12 +140,6 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
                 State1_occs[samp, sp_ch[spec1], site] = 1
                 State2_occs[samp, sp_ch[spec2], site] = 1
             
-            if Boundary_train:
-                print("Boundary Training indicated. Shifting displacements.")
-                dyAvg = avgDisps_st2[samp, :, :] - avgDisps_st1[samp, :, :]
-                dispData[samp, 0, :] = dispList[samp, VacSpec, :] + dyAvg[VacSpec, :]
-                dispData[samp, 1, :] = sum(dispList[samp, spec, :] + dyAvg[spec, :] for spec in specsToTrain)
-
             dispData[samp, 0, :] = dispList[samp, VacSpec, :]
             dispData[samp, 1, :] = sum(dispList[samp, spec, :] for spec in specsToTrain)
 
@@ -610,6 +608,9 @@ def main(args):
         if T_data != T_net:
             raise ValueError("Network and data temperature (arguments \"TNet\"/\"tn\" and \"Tdata\"/\"td\") must be the same in train mode")
     
+    if AllJumps and args.BoundTrain:
+        raise NotImplementedError("Cannot do all-jump training with boundary states yet.")
+    
     # 1. Load crystal parameters
     GpermNNIdx, NNsiteList, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(filter_nn, CrysPath)
     N_ngb = NNsiteList.shape[0]
@@ -625,19 +626,26 @@ def main(args):
     # 2. Load data
     state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2 = Load_Data(FileName)
     
-    if args.JumpSort:
-        print("Sorting Jump Rates.")
-        AllJumpRates_st1 = np.sort(AllJumpRates_st1, axis=1)
-        AllJumpRates_st2 = np.sort(AllJumpRates_st2, axis=1)
-    else:
-        print("Jump Rates unsorted. Values will be non-symmetric if boundary-training is active.")
+    if args.BoundTrain and (AllJumpRates_st2 is None or avgDisps_st1 is None or avgDisps_st2 is None):
+        raise ValueError("Insufficient data to do boundary training. Need jump rates and average displacements from both initial and final states.")
 
     # 2.1 Convert jump rates to probabilities
-    jProbs_st1 = AllJumpRates_st1 / np.sum(AllJumpRates_st1, axis=1).reshape(-1, 1)
-    jProbs_st2 = AllJumpRates_st2 / np.sum(AllJumpRates_st2, axis=1).reshape(-1, 1)
+    if args.BoundTrain:
+        jProbs_st1 = AllJumpRates_st1 / np.sum(AllJumpRates_st1, axis=1).reshape(-1, 1)
+        jProbs_st2 = AllJumpRates_st2 / np.sum(AllJumpRates_st2, axis=1).reshape(-1, 1)
+        if args.JumpSort:
+            print("Sorting Jump Rates.")
+            jProbs_st1 = np.sort(jProbs_st1, axis=1)
+            jProbs_st2 = np.sort(jProbs_st2, axis=1)
+        else:
+            print("Jump Rates unsorted. Values will be non-symmetric if boundary-training is active.")
+        
+        assert np.allclose(np.sum(jProbs_st1, axis=1), 1.0)
+        assert np.allclose(np.sum(jProbs_st2, axis=1), 1.0)
     
-    assert np.allclose(np.sum(jProbs_st1, axis=1), 1.0)
-    assert np.allclose(np.sum(jProbs_st2, axis=1), 1.0)
+    else:
+        jProbs_st1 = None
+        jProbs_st2 = None
     
     # 2.2 shift displacements if boundary training
     if args.BoundTrain and args.DispShift:
