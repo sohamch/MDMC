@@ -9,6 +9,7 @@ import unittest
 import time
 import warnings
 import collections
+from tqdm import tqdm
 
 warnings.filterwarnings('error', category=RuntimeWarning)
 
@@ -187,6 +188,40 @@ if __FCC__:
     DataClass = Test_Make_Arrays_FCC
 
 class Test_MC(DataClass):
+
+    def test_symm(self):
+        """
+        test the symmetry of the basis vectors
+        """
+        initState = self.initState
+
+        for g in tqdm(self.VclusExp.sup.crys.G, ncols=65, position=0, leave=True):
+            stateG = np.zeros_like(initState)
+
+            for site in range(initState.shape[0]):
+                ciSite, Rsite = self.VclusExp.sup.ciR(site)
+                Rnew, ciNew = self.VclusExp.sup.crys.g_pos(g, Rsite, ciSite)
+
+                assert ciNew == ciSite == (0, 0)
+                siteIndNew, _ = self.VclusExp.sup.index(Rnew, (0, 0))
+                stateG[siteIndNew] = initState[site]
+
+            # Now get their off site counts and basis vectors
+            offsc1 = MC_JIT.GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
+            offsc2 = MC_JIT.GetOffSite(stateG, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
+
+            # Now get their basis vectors
+            NVclus = len(self.VclusExp.vecClus)
+            print(NVclus)
+            lamb1 = self.MCSampler_Jit.getLambda(offsc1, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
+                                                 self.VecsInteracts)
+            lamb2 = self.MCSampler_Jit.getLambda(offsc2, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
+                                                 self.VecsInteracts)
+
+            # Rotate lamb1 by the group operation
+            lamb1G = np.dot(g.cartrot, lamb1.T).T
+            self.assertTrue(np.allclose(lamb1G, lamb2))
+
 
     def test_MC_step(self):
         # First, create a random state
