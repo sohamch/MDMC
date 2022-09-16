@@ -122,7 +122,7 @@ class R3ConvSites(nn.Module):
         Ng = GnnPerms.shape[0]
 
         self.RotateParams(GnnPerms)
-        out = self.RearrangeInput(In, NNsite)
+        out = self.RearrangeInput(In, NNsites)
 
         # Finally, do the R3 convolution
         out = pt.matmul(self.wtVC_repeat_transf, out).view(Nbatch, Ng, self.dim, NSites)
