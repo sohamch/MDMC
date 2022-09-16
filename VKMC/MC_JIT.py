@@ -383,8 +383,10 @@ class MCSamplerClass(object):
 
         for i in range(Nbasis):
             bBar[i] = np.dot(dx, del_lamb[i])*rate
-            for j in range(Nbasis):
+            WBar[i, i] = rate * np.dot(del_lamb[i], del_lamb[i])
+            for j in range(i):
                 WBar[i, j] = rate*np.dot(del_lamb[i], del_lamb[j])
+                WBar[j, i] = WBar[i, j]
 
         return WBar, bBar
 
