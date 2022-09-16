@@ -49,7 +49,7 @@ def Load_crysDats(nn, CrysDatPath):
 def Load_Data(DataPath):
     with h5py.File(DataPath, "r") as fl:
         try:
-            perm = fl["Permutation"]
+            perm = np.array(fl["Permutation"])
             print("found permuation")
         except:        
             perm = np.arange(len(fl["InitStates"]))
