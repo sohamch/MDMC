@@ -445,16 +445,33 @@ def main(args):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str, help="Path to Data file.")
-    parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
-    parser.add_argument("-a0", "--LatParam",  metavar="L", type=float, help="Lattice parameter.")
+    parser.add_argument("-T", "--Temp", metavar="eg. 1073/50", type=int,
+                        help="Temperature of data set (or composition for the binary alloys.")
+    parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str,
+                        help="Path to Data file.")
+    parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str,
+                        help="Path to crystal Data.")
+    parser.add_argument("-ct", "--CrysType", metavar="FCC/BCC", default=None, type=str,
+                        help="Type of crystal.")
+    parser.add_argument("-mo", "--MaxOrder", metavar="eg. 3", type=int, default=2,
+                        help="Maximum sites to consider in a cluster.")
+    parser.add_argument("-cc", "--ClustCut", metavar="eg. 2.0", type=float, default=5.0,
+                        help="Maximum distance between sites to consider in a cluster.")
+    parser.add_argument("-sp", "--SpecExpand", metavar="eg. 0", type=int, default=5,
+                        help="Which species to expand.")
+    parser.add_argument("-vsp", "--VacSpec", metavar="eg. 0", type=int, default=0,
+                        help="Index of vacancy species.")
+    parser.add_argument("-nt", "--NTrain", metavar="eg. 10000", type=int, default=10000,
+                        help="No. of training samples.")
+    parser.add_argument("-scr", "--Scratch", action="store_true",
+                        help="Whether to create new network and start from scratch")
+    parser.add_argument("-svc", "--SaveCE", action="store_true",
+                        help="Whether to save the cluster expansion.")
+    parser.add_argument("-svj", "--SaveJitArrays", action="store_true",
+                        help="Whether to store arrays for JIT calculations.")
 
-    parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
-    parser.add_argument("-rl","--RepLayer", metavar="[L1, L2,..]", type=int, nargs="+", help="Layers to extract representation from (count starts from 0)")
-    parser.add_argument("-rlavg","--RepLayerAvg", action="store_true", help="Whether to average Representations across samples (training and validation will be made separate)")
-    parser.add_argument("-bt","--BoundTrain", action="store_true", help="Whether to train using boundary state averages.")
-    parser.add_argument("-js","--JumpSort", action="store_false", help="Whether to sort jumps by rates. Not doing it will cause symmetry to break.")
-    parser.add_argument("-xsh","--DispShift", action="store_true", help="Whether to shift displacements with state averages.")
+    parser.add_argument("-nsj", "--AllJumpSwitch", action="store_false",
+                        help="Do not do single jump training if switched on.")
 
     args = parser.parse_args()
     if args.DumpArgs:
