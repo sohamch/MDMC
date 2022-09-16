@@ -8,9 +8,6 @@ sys.path.append("../")
 import os
 RunPath = os.getcwd() + "/"
 
-# CrysDatPath = "/home/sohamc2/HEA_FCC/MDMC/"
-# DataPath = "/home/sohamc2/HEA_FCC/MDMC/ML_runs/DataSets/"
-
 from onsager import crystal, supercell, cluster
 import numpy as np
 import scipy.linalg as spla
@@ -19,7 +16,6 @@ import MC_JIT
 import pickle
 import h5py
 from tqdm import tqdm
-from numba import jit, int64, float64
 import argparse
 import gc
 
@@ -201,13 +197,15 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jList, dxList, SpecExpand, AllJu
     
     assert np.all(state1List[:, vacsiteInd] == MCJit.Nspecs - 1)
 
+    state1ListCpy = state1List.copy()
+
     print("Calculating rate and velocity expansions")
     for samp in tqdm(range(Nsamples), position=0, leave=True):
     
         # In the cluster expander, the vacancy is the highest labelled species,
         # In our case, it is the lowest
         # So we'll change the numbering so that the vacancy is labelled 5
-        state = state1List[samp].copy()
+        state = state1ListCpy[samp]
     
         offsc = MC_JIT.GetOffSite(state, MCJit.numSitesInteracts, MCJit.SupSitesInteracts, MCJit.SpecOnInteractSites)
     
@@ -247,67 +245,6 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jList, dxList, SpecExpand, AllJu
     return totalW, totalB, Gbar, etaBar
 
 
-def Expand_1jmp(T, state1List, vacsiteInd, Nsamples, jSiteList, jSelectList, dispList, SpecExpand, rates, MCJit, NVclus,
-        numVecsInteracts, VecsInteracts, VecGroupInteracts):
-
-    # Get a dummy TS offsite counts
-    TSOffSc = np.zeros(MCJit.numSitesTSInteracts.shape[0], dtype=np.int8)
-
-    # Then we write the expansion loop
-    totalW = np.zeros((NVclus, NVclus))
-    totalB = np.zeros(NVclus)
-    
-    assert np.all(state1List[:, vacsiteInd] == MCJit.Nspecs - 1)
-
-    print("Calculating rate and velocity expansions")
-    for samp in tqdm(range(Nsamples), position=0, leave=True):
-    
-        # In the cluster expander, the vacancy is the highest labelled species,
-        # In our case, it is the lowest
-        # So we'll change the numbering so that the vacancy is labelled 5
-        state = state1List[samp].copy()
-        
-        jList = np.array([jSiteList[jSelectList[samp]]], dtype=int)
-        dxList = np.array([dispList[samp, -1, :]], dtype=float)
-        Rate = np.array([rates[samp]], dtype=float)
-
-        offsc = MC_JIT.GetOffSite(state, MCJit.numSitesInteracts, MCJit.SupSitesInteracts, MCJit.SpecOnInteractSites)
-    
-        WBar, bBar, rates_used, _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
-                                          TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
-                                          NVclus, 0, vacsiteInd, Rate)
-        
-        assert np.array_equal(state, state1List[samp]) # assert revertions
-        assert np.allclose(rates_used, Rate)
-        
-        totalW += WBar
-        totalB += bBar
-
-    totalW /= Nsamples
-    totalB /= Nsamples
-
-    # verify symmetry
-    print("verifying symmetry of rate expansion")
-    for i in tqdm(range(totalW.shape[0]), position=0, leave=True):
-        for j in range(i):
-            assert np.allclose(totalW[i,j], totalW[j,i])
-
-    Gbar = spla.pinvh(totalW, rcond=1e-8)
-
-    # Check pseudo-inverse relations
-    assert np.allclose(Gbar @ totalW @ Gbar, Gbar)
-    assert np.allclose(totalW @ Gbar @ totalW, totalW)
-
-    # Compute relaxation expansion
-    etaBar = -np.dot(Gbar, totalB)
-    
-    np.save(RunPath + "Wbar_{}.npy".format(T), totalW)
-    np.save(RunPath + "Gbar_{}.npy".format(T), Gbar)
-    np.save(RunPath + "etabar_{}.npy".format(T), etaBar)
-    np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
-
-    return totalW, totalB, Gbar, etaBar
-
 # Get the Transport coefficients
 def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
         jList, dxList, vacsiteInd, NVclus, MCJit, etaBar, start, end,
@@ -342,41 +279,26 @@ def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
 
     return L
 
-
 def main(args):
 
     T = args.Temp
-
     DataPath = args.DataPath
-
     MaxOrder = args.MaxOrder
-
     clustCut = args.ClustCut
-
     SpecExpand = args.SpecExpand
-
     VacSpec = args.VacSpec
-
     N_train = args.NTrain
-
     from_scratch = args.Scratch
-
     saveClusExp = args.SaveCE
-
     saveJit = args.SaveJitArrays
-    
-    singleJump_Train = args.AllJumpSwitch
-
     CrysDatPath = args.CrysDatPath
     CrysType = args.CrysType
-
     # Load Data
     specExpOriginal = SpecExpand
     state1List, dispList, rateList, AllJumpRates, jumpSelects = Load_Data(DataPath)
 
     AllSpecs = np.unique(state1List[0])
     NSpec = AllSpecs.shape[0]
-    Nsamples = state1List.shape[0]
 
     if VacSpec == 0:
         # Convert data so that vacancy is highest
@@ -411,17 +333,10 @@ def main(args):
     # Expand W and B
     # We need to scale displacements properly first
     a0 = np.linalg.norm(dispList[0, NSpec -1, :])/np.linalg.norm(dxList[0])
-    
-    if singleJump_Train:
-        print("Training to 1 jump")
 
-        Wbar, Bbar, Gbar, etaBar = Expand_1jmp(T, state1List, vacsiteInd, N_train, jList, jumpSelects, dispList, 
-                SpecExpand, rateList, MCJit, NVclus, numVecsInteracts, VecsInteracts, VecGroupInteracts) 
-
-    else:
-        print("Training to all jumps")
-        Wbar, Bbar, Gbar, etaBar = Expand(T, state1List, vacsiteInd, N_train, jList, dxList*a0, 
-                SpecExpand, AllJumpRates, MCJit, NVclus, numVecsInteracts, VecsInteracts, VecGroupInteracts) 
+    print("Training to all jumps.")
+    Wbar, Bbar, Gbar, etaBar = Expand(T, state1List, vacsiteInd, N_train, jList, dxList*a0,
+            SpecExpand, AllJumpRates, MCJit, NVclus, numVecsInteracts, VecsInteracts, VecGroupInteracts)
 
 
     # Calculate transport coefficients
@@ -470,8 +385,6 @@ if __name__ == "__main__":
     parser.add_argument("-svj", "--SaveJitArrays", action="store_true",
                         help="Whether to store arrays for JIT calculations.")
 
-    parser.add_argument("-nsj", "--AllJumpSwitch", action="store_false",
-                        help="Do not do single jump training if switched on.")
 
     args = parser.parse_args()
     if args.DumpArgs:
