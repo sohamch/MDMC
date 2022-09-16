@@ -258,9 +258,10 @@ class VectorClusterExpansion(object):
 
         return symClusterList, SiteSpecinteractIds, InteractionIdDict, clust2InteractId, maxinteractions
 
-    def generateSiteSpecInteracts(self):
+    def generateSiteSpecInteracts(self, reqSites=None):
         """
         generate interactions for every site - for MC moves
+        :param reqSites : list of required sites - if None (default), all sites will be considered
         """
         allLatTransTuples = [self.sup.ciR(siteInd) for siteInd in range(self.Nsites)]
         Id2InteractionDict = {}
@@ -268,6 +269,8 @@ class VectorClusterExpansion(object):
         SiteSpecInteractIds = collections.defaultdict(list)
         clust2InteractId = collections.defaultdict(list)
         InteractionId2ClusId = {}
+
+        n_req = 0 if reqSites is None else len(reqSites)
 
         count = 0
         # Traverse through all the unit cells in the supercell
@@ -280,13 +283,18 @@ class VectorClusterExpansion(object):
                 interactSupInd = tuple(sorted([(self.sup.index(st.R + R, st.ci)[0], spec)
                                                for st, spec in cl.SiteSpecs],
                                               key=lambda x: x[0]))
+
+                if n_req > 0 and not any([IntSite in reqSites for (IntSite, sp) in interactSupInd]):
+                    # skip the interaction if it doesn't contain required sites
+                    # beneficial for pre-made data sets, where only vacancy and its jump site need to be considered
+                    continue
+
                 if interactSupInd in Id2InteractionDict:
                     raise ValueError("Interaction encountered twice while either translating same cluster differently"
                                      "or different clusters.")
                 # give the new interaction an Index
                 Id2InteractionDict[count] = interactSupInd
                 Interaction2IdDict[interactSupInd] = count
-
 
                 # For every rep cluster, store which interactions they produce
                 clust2InteractId[clID].append(count)
