@@ -67,7 +67,7 @@ def Load_Data(DataPath):
     return state1List, dispList, rateList, AllJumpRates, jumpSelects
 
 
-def makeVClusExp(superCell, jnet, clustCut, MaxOrder, NSpec, vacsite):
+def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite):
     TScombShellRange = 1  # upto 1nn combined shell
     TSnnRange = 4
     TScutoff = np.sqrt(2)  # 4th nn cutoff - must be the same as TSnnRange
@@ -84,8 +84,9 @@ def makeVClusExp(superCell, jnet, clustCut, MaxOrder, NSpec, vacsite):
                                                     TSnnRange=TSnnRange, jumpnetwork=jnet,
                                                     OrigVac=False, zeroClusts=True)
 
-    print("generating interaction and vector basis data.")
-    VclusExp.generateSiteSpecInteracts()
+    reqSites = [vacsite] + list(jList)
+    print("generating interactions with required sites : {}".format(reqSites))
+    VclusExp.generateSiteSpecInteracts(reqSites=reqSites)
     # Generate the basis vectors for the clusters
     VclusExp.genVecClustBasis(VclusExp.SpecClusters)
     VclusExp.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
@@ -318,7 +319,7 @@ def main(args):
 
     if from_scratch:
         print("Generating New cluster expansion")
-        VclusExp = makeVClusExp(superCell, jnet, clustCut, MaxOrder, NSpec, vacsite)
+        VclusExp = makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite)
         if saveClusExp:
             with open(RunPath+"VclusExp.pkl", "wb") as fl:
                 pickle.dump(VclusExp, fl)
