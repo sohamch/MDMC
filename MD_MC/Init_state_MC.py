@@ -9,6 +9,8 @@ from ase.build import make_supercell
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 import sys
 from scipy.constants import physical_constants
+import os
+import glob
 
 # First, we write a lammps input script for this run
 def write_lammps_input(jobID):
@@ -34,17 +36,14 @@ def write_lammps_input(jobID):
 
 # Next, we write the MC loop
 def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
-           N_therm=2000, N_save=200, serial=True, __test__=False):
+           N_therm=2000, N_save=200, serial=True, lastChkPt=0):
     if serial:
         # cmdString = "mpirun -np 1 $LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
         cmdString = "$LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
     else:
         cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs, jobID)
 
-    if __test__:
-        N_therm = 1
-        N_save = 1
-
+    Natoms = len(ASE_Super)
     N_accept = 0
     N_total = 0
     Eng_steps_accept = []
@@ -68,9 +67,7 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
     cond = True  # condition for loop termination
     while cond:
         Eng_steps_all.append(e1)
-        if __test__:
-            write_lammps_data("inp_MC_init_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
-
+        
         # Now randomize the atomic occupancies
         site1 = np.random.randint(0, Natoms)
         site2 = np.random.randint(0, Natoms)
@@ -85,8 +82,6 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
 
         # write the supercell again as a lammps file
         write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
-        if __test__:
-            write_lammps_data("inp_MC_final_{0}.data".format(jobID), ASE_Super, specorder=elems)
 
         # evaluate the energy
         cmd = subprocess.Popen(cmdString, shell=True)
@@ -120,22 +115,16 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
                 t_now = time.time()
                 fl_timer.write("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
 
-            if N_total >= N_therm:
-                with open("chkpt/supercell_{}.pkl".format(N_total), "wb") as fl_sup:
+            if N_total + lastChkPt >= N_therm:
+                with open("chkpt/supercell_{}.pkl".format(N_total + lastChkPt), "wb") as fl_sup:
                     pickle.dump(ASE_Super, fl_sup)
 
                 with open("chkpt/counter.txt", "w") as fl_counter:
                     fl_counter.write("last step saved\n{}".format(N_total))
 
-        if __test__:
-            write_lammps_data("Result_{0}_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
-            rand_steps.append(rn)
-            swap_steps.append([site1, site2])
-
-            cond = N_total < 2
-
-        else:
-            cond = N_total <= SwapRun + 1
+        rand_steps.append(rn)
+        swap_steps.append([site1, site2])
+        cond = N_total <= SwapRun + 1
 
     return N_total, N_accept, Eng_steps_accept, Eng_steps_all, rand_steps, swap_steps
 
@@ -144,58 +133,100 @@ if __name__ == "__main__":
     kB = physical_constants["Boltzmann constant in eV/K"][0]
     args = list(sys.argv)
     T = float(args[1])
-    N_therm = int(args[2])  # thermalization steps (until this many moves accepted)
+    N_swap = int(args[2])
     N_units = int(args[3])  # dimensions of unit cell
     N_proc = int(args[4])  # No. of procs to parallelize over
     jobID = int(args[5])
+    N_save = int(args[6])
+    N_eqb = int(args[7])
+    allSave = bool(int(args[8]))
+    MakeVac = bool(int(args[9]))
+    MakeBinary = bool(int(args[10]))
+    comp = float(args[11])/100.
+    UseLastChkPt = bool(int(args[12])) if len(args)==13 else False
 
-    __test__ = False
-    chk_cmd = subprocess.Popen("mkdir chkpt", shell=True)
-    rt = chk_cmd.wait()
-    assert rt == 0
 
-    # Create an FCC primitive unit cell
-    a = 3.59
-    fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=True)
-
-    # Form a supercell with a vacancy at the centre
-    superlatt = np.identity(3) * N_units
-    superFCC = make_supercell(fcc, superlatt)
-    Nsites = len(superFCC.get_positions())
-    # randomize occupancies of the sites
-    Nperm = 10
-    Indices = np.arange(Nsites)
-    for i in range(Nperm):
-        Indices = np.random.permutation(Indices)
-
-    NSpec = 5
-    partition = Nsites // NSpec
+    print("Using CheckPoint : {}".format(UseLastChkPt))
 
     elems = ["Co", "Ni", "Cr", "Fe", "Mn"]
+
     elemsToNum = {}
     for elemInd, el in enumerate(elems):
         elemsToNum[el] = elemInd + 1
 
-    for i in range(NSpec):
-        for at_Ind in range(i * partition, (i + 1) * partition):
-            permInd = Indices[at_Ind]
-            superFCC[permInd].symbol = elems[i]
-    del (superFCC[0])
-    Natoms = len(superFCC)
 
-    # save the supercell: will be useful for getting site positions
-    with open("superInitial_{}.pkl".format(jobID), "wb") as fl:
-        pickle.dump(superFCC, fl)
+    if UseLastChkPt: 
+        ChkPtFiles=os.getcwd() + "/chkpt/*.pkl"
+        files=glob.glob(ChkPtFiles)
+        max_file = max(files, key=os.path.getctime) # Get the file created last
+        with open(max_file, "rb") as fl:
+            superFCC = pickle.load(fl)
+        
+        lastFlName=max_file.split("/")[-1]
+        lastSave=int(lastFlName[10:-4])
+        print("Loading checkpointed step : {} for run : {}".format(lastSave, jobID))
 
-    # First thermalize the starting state
+    else:
+        lastSave=0
+
+        # Create an FCC primitive unit cell
+        a = 3.59
+        fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=True)
+
+        # Form a supercell with a vacancy at the centre
+        superlatt = np.identity(3) * N_units
+        superFCC = make_supercell(fcc, superlatt)
+        Nsites = len(superFCC.get_positions())
+        Natoms = len(superFCC)
+        
+        # randomize occupancies of the sites
+        Nperm = 10
+        Indices = np.arange(Nsites)
+        for i in range(Nperm):
+            Indices = np.random.permutation(Indices)
+
+        print("No. of atoms : {}".format(Natoms))
+        # save the supercell: will be useful for getting site positions
+        with open("superInitial_{}.pkl".format(jobID), "wb") as fl:
+            pickle.dump(superFCC, fl)
+        
+        if not MakeBinary:
+            NSpec = len(elems)
+            partition = Nsites // NSpec
+
+            for i in range(NSpec):
+                for at_Ind in range(i * partition, (i + 1) * partition):
+                    permInd = Indices[at_Ind]
+                    superFCC[permInd].symbol = elems[i]
+        
+        else:
+            sites_Co = int(comp * Nsites)
+            for site in Indices[:sites_Co]:
+                superFCC[site].symbol = "Co"
+
+            for site in Indices[sites_Co:]:
+                superFCC[site].symbol="Mn"
+
+            
+        if MakeVac:
+            print("Putting vacancy at site 0")
+            del (superFCC[0])
+    
+    # Run MC
     write_lammps_input(jobID)
     start = time.time()
-    N_total, N_accept, Eng_steps, _, _, _ = MC_Run(N_therm, superFCC, N_proc, jobID, elems, __test__=__test__)
+    N_total, N_accept, Eng_steps_accept, Eng_steps_all, rand_steps, swap_steps =\
+            MC_Run(N_swap, superFCC, N_proc, jobID, elems, N_therm=N_eqb, N_save=N_save, lastChkPt=lastSave)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
     print("Thermalization Run total moves : {}".format(N_total))
     print("Thermalization Time Per iteration : {}".format((end-start)/N_total))
-    np.save("Eng_steps_therm.npy", np.array(Eng_steps))
+    np.save("Eng_steps_therm.npy", np.array(Eng_steps_accept))
     with open("superFCC_therm.pkl", "wb") as fl:
         pickle.dump(superFCC, fl)
+
+    if allSave:
+        np.save("Eng_all_steps.npy", np.array(Eng_steps_all))
+        np.save("rand_steps.npy", np.array(rand_steps))
+        np.save("swap_atoms.npy", np.array(swap_steps))

@@ -83,8 +83,8 @@ class GConv(nn.Module):
         return out.view(Nbatch, NchOut, Ng, NSites)
 
 
-class R3Conv(nn.Module):
-    def __init__(self, SitesToShells, GnnPerms, gdiags, NNsites,
+class R3ConvSites(nn.Module):
+    def __init__(self, GnnPerms, gdiags, NNsites,
                  N_ngb, dim, mean=1.0, std=0.1):
         super().__init__()
         Nsites = NNsites.shape[1]
@@ -97,14 +97,6 @@ class R3Conv(nn.Module):
         wtVC = nn.Parameter(pt.normal(mean, std, size=(dim, N_ngb), requires_grad=True))
         self.register_parameter("wtVC", wtVC)
         
-        # Make the shell parameters
-        Nshells = pt.max(SitesToShells)+1
-        
-        ShellWeights = nn.Parameter(pt.normal(mean, std, size=(Nshells,), requires_grad = True))
-        
-        self.register_buffer("SitesToShells", SitesToShells)
-        self.register_parameter("ShellWeights", ShellWeights)
-
     def RotateParams(self, GnnPerms):
         # First, we repeat the weights
         Ng = GnnPerms.shape[0]
@@ -114,38 +106,15 @@ class R3Conv(nn.Module):
         GnnPerm_repeat = self.GnnPerms.repeat_interleave(self.dim, dim=0)            
         self.wtVC_repeat_transf = pt.matmul(self.gdiags, pt.gather(wtVC_repeat, 1, GnnPerm_repeat))
         
-        # Repeat the shell indices
-        self.SiteShellWeights = self.ShellWeights[self.SitesToShells]
     
-    def RearrangeInput(self, In, NNsites, Ng):
+    def RearrangeInput(self, In, NNsites):
         N_ngb = NNsites.shape[0]        
         Nch = In.shape[1]
         In = In.repeat_interleave(N_ngb, dim=1)
         NNRepeat = NNsites.unsqueeze(0).repeat(In.shape[0], Nch, 1)
         return pt.gather(In, 2, NNRepeat)
     
-    def forward(self, In):
-        
-        NSites, GnnPerms, NNsites = self.NSites, self.GnnPerms, self.NNsites
-        
-        Nbatch = In.shape[0]
-        Ng = GnnPerms.shape[0]
-        
-        self.RotateParams(GnnPerms)
-        out = self.RearrangeInput(In, NNsites, Ng)
-        
-        # Finally, do the R3 convolution
-        out = pt.matmul(self.wtVC_repeat_transf, out).view(Nbatch, Ng, self.dim, NSites)
-        
-        # Then group average
-        out = pt.sum(out, dim=1)/Ng
-
-        # Site average with shell weights
-        out = pt.sum(out*self.SiteShellWeights, dim=2)/NSites
-        return out
-
-
-class R3ConvSites(R3Conv):
+    
     def forward(self, In):
         NSites, GnnPerms, NNsites = self.NSites, self.GnnPerms, self.NNsites
 
@@ -153,7 +122,7 @@ class R3ConvSites(R3Conv):
         Ng = GnnPerms.shape[0]
 
         self.RotateParams(GnnPerms)
-        out = self.RearrangeInput(In, NNsites, Ng)
+        out = self.RearrangeInput(In, NNsite)
 
         # Finally, do the R3 convolution
         out = pt.matmul(self.wtVC_repeat_transf, out).view(Nbatch, Ng, self.dim, NSites)
@@ -172,30 +141,96 @@ class GAvg(nn.Module):
         return pt.sum(In, dim=2)/Ng
 
 
+
 class GCNet(nn.Module):
-    def __init__(self, GnnPerms, gdiags, NNsites, SitesToShells,
-                dim, N_ngb, mean=1.0, std=0.1, NSpec=5, nl=3, nch=8):
+    def __init__(self, GnnPerms, NNsites, JumpUnitVecs, dim, N_ngb,
+            NSpec, mean=1.0, std=0.1, b=1.0, nl=3, nch=8, nchLast=1):
         
         super().__init__()
         modules = []
         modules += [
             GConv(NSpec, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
-            nn.Softplus(),
+            nn.Softplus(beta=b),
             GAvg()
         ]
         
         for l in range(nl):
             modules += [
                 GConv(nch, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
-                nn.Softplus(),
+                nn.Softplus(beta=b),
+                GAvg()
+            ]
+        modules += [
+            GConv(nch, nchLast, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
+            nn.Softplus(beta=b),
+            GAvg()
+        ]
+        
+        self.net = nn.Sequential(*modules)
+        # Store NNsites without the self terms for vector prediction
+        # Store them in a buffer so they are saved in the state_dict by pytorch
+        self.register_buffer("NNsites", NNsites[1:, :])
+        self.register_buffer("JumpUnitVecs", JumpUnitVecs)
+    
+    def RearrangeInput(self, In):
+        N_ngb = self.NNsites.shape[0]
+        Nch = In.shape[1]
+        Nsites = In.shape[2]
+        In = In.repeat_interleave(N_ngb, dim=1)
+        NNRepeat = self.NNsites.unsqueeze(0).repeat(In.shape[0], Nch, 1)
+        return pt.gather(In, 2, NNRepeat).view(In.shape[0], Nch, N_ngb, Nsites)
+
+    def NgbSum(self, In):
+        Nbatch = In.shape[0]
+        Nchannels = In.shape[1]
+        Nsites = In.shape[2]
+        
+        # The input has shape (N_batch, Nch, Nsites)
+        out = self.RearrangeInput(In)
+
+        out = pt.matmul(self.JumpUnitVecs, out)
+
+        return out
+
+    def forward(self, InState):
+        y = self.net(InState)
+        return self.NgbSum(y)
+    
+    def getRep(self, InState, LayerInd):
+        # LayerInd is counted starting from zero
+        y = self.net[0](InState)
+        for L in range(1, LayerInd + 1):
+            y = self.net[L](y)
+        return y
+
+
+# This network was used in previous runs. R3ConvSites is a redundant operation
+# for cubic systems, and not appropriate for non-cubic systems for relaxation vectors.
+# It is still kept here because it is more general
+class GCNet_R3ConvSites(nn.Module):
+    def __init__(self, GnnPerms, gdiags, NNsites, dim, N_ngb,
+            NSpec, mean=1.0, std=0.1, b=1.0, nl=3, nch=8):
+        
+        super().__init__()
+        modules = []
+        modules += [
+            GConv(NSpec, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
+            nn.Softplus(beta=b),
+            GAvg()
+        ]
+        
+        for l in range(nl):
+            modules += [
+                GConv(nch, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
+                nn.Softplus(beta=b),
                 GAvg()
             ]
         modules += [
             GConv(nch, 1, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
-            nn.Softplus(),
+            nn.Softplus(beta=b),
             GAvg()
         ]
-        modules.append(R3ConvSites(SitesToShells, GnnPerms, gdiags, NNsites, N_ngb,
+        modules.append(R3ConvSites(GnnPerms, gdiags, NNsites, N_ngb,
                         dim, mean=mean, std=std))
         
         self.net = nn.Sequential(*modules)
@@ -211,6 +246,3 @@ class GCNet(nn.Module):
         for L in range(1, LayerInd + 1):
             y = self.net[L](y)
         return y
-
-
-

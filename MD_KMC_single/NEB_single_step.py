@@ -16,7 +16,7 @@ from numba import jit, float64, int64
 from scipy.constants import physical_constants
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 
-MainPath = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC_single/"
+MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
 potPath = "/home/sohamc2/HEA_FCC/MDMC/" # path to MEAM pot and Crystal data
 KMC_funcs_path = "/home/sohamc2/HEA_FCC/MDMC/MD_KMC/"
 
@@ -50,13 +50,13 @@ with open(MainPath+"lammpsBox.txt", "r") as fl:
 SiteIndToPos = np.load(MainPath+"SiteIndToLmpCartPos.npy")  # lammps pos of sites
 SiteIndToNgb = np.load(MainPath+"siteIndtoNgbSiteInd.npy")  # Nsites x z array of site neighbors
 
-with open(potPath+"CrysDat/jnetFCC.pkl", "rb") as fl:
+with open(potPath+"CrysDat_FCC/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
 dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 
 
 # Load the starting data for the trajectories
-SiteIndToSpecAll = np.load(MainPath + "states_{}_{}.npy".format(T, startStep))[startIndex : startIndex + Ntraj].astype(np.int16)
+SiteIndToSpecAll = np.load(MainPath + "MD_KMC_single/states_{}_{}.npy".format(T, startStep))[startIndex : startIndex + Ntraj].astype(np.int16)
 # Ntraj x Nsites array of occupancies
 assert np.all(SiteIndToSpecAll[:, 0] == 0) # check that the vacancy is always at the 0th site in the initial states
 vacSiteIndAll = np.zeros(Ntraj, dtype=int) # Ntraj size array: contains where the vac is in each traj.
