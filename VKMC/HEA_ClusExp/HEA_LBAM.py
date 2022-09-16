@@ -3,7 +3,7 @@
 
 import sys
 # This is the path to the cluster expansion modules
-sys.path.append("../")
+sys.path.append("/mnt/WorkPartition/Work/Research/UIUC/MDMC/VKMC")
 
 import os
 RunPath = os.getcwd() + "/"
