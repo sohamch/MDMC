@@ -31,10 +31,10 @@ def Load_crys_Data(CrysDatPath, typ="FCC"):
     dxList = np.load(CrysDatPath+"CrysDat_{}/dxList.npy".format(typ))
     jumpNewIndices = np.load(CrysDatPath+"CrysDat_{}/JumpNewSiteIndices.npy".format(typ))
 
-    with open(CrysDatPath+"CrysDat_{}/supercellFCC.pkl".format(typ), "rb") as fl:
+    with open(CrysDatPath+"CrysDat_{0}/supercell{0}.pkl".format(typ), "rb") as fl:
         superFCC = pickle.load(fl)
 
-    with open(CrysDatPath+"CrysDat_{}/jnetFCC.pkl".format(typ), "rb") as fl:
+    with open(CrysDatPath+"CrysDat_{0}/jnet{0}.pkl".format(typ), "rb") as fl:
         jnetFCC = pickle.load(fl)
 
     vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
