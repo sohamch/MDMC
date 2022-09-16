@@ -84,7 +84,8 @@ def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite):
                                                     TSnnRange=TSnnRange, jumpnetwork=jnet,
                                                     OrigVac=False, zeroClusts=True)
 
-    reqSites = [vacsite] + list(jList)
+    vacSiteInd, _ = superCell.index(vacsite.R, vacsite.ci)
+    reqSites = [vacSiteInd] + list(jList)
     print("generating interactions with required sites : {}".format(reqSites))
     VclusExp.generateSiteSpecInteracts(reqSites=reqSites)
     # Generate the basis vectors for the clusters
