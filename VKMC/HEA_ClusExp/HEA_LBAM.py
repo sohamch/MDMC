@@ -88,6 +88,7 @@ def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite):
     reqSites = [vacSiteInd] + list(jList)
     print("generating interactions with required sites : {}".format(reqSites))
     VclusExp.generateSiteSpecInteracts(reqSites=reqSites)
+    print("No. of interactions : {}".format(len(VclusExp.Id2InteractionDict)))
     # Generate the basis vectors for the clusters
     VclusExp.genVecClustBasis(VclusExp.SpecClusters)
     VclusExp.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
