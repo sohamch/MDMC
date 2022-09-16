@@ -10,8 +10,8 @@ sys.path.append("/home/sohamc2/HEA_FCC/MDMC/ML_runs/")
 import os
 RunPath = os.getcwd() + "/"
 
-CrysDatPath = "/home/sohamc2/HEA_FCC/MDMC/" 
-DataPath = "/home/sohamc2/HEA_FCC/MDMC/ML_runs/DataSets/"
+# CrysDatPath = "/home/sohamc2/HEA_FCC/MDMC/"
+# DataPath = "/home/sohamc2/HEA_FCC/MDMC/ML_runs/DataSets/"
 
 from onsager import crystal, supercell, cluster
 import numpy as np
@@ -424,9 +424,6 @@ def main(args):
     # Expand W and B
     # We need to scale displacements properly first
     a0 = np.linalg.norm(dispList[0, NSpec -1 , :])/np.linalg.norm(dxList[0])
-    
-    #Expand(T, state1List, vacsiteInd, Nsamples, dxList, SpecExpand, AllJumpRates, MCJit, NVclus,
-    #    numVecsInteracts, VecsInteracts, VecGroupInteracts)
     
     if singleJump_Train:
         print("Training to 1 jump")
