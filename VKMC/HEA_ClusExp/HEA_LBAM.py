@@ -385,6 +385,10 @@ if __name__ == "__main__":
                         help="Whether to save the cluster expansion.")
     parser.add_argument("-svj", "--SaveJitArrays", action="store_true",
                         help="Whether to store arrays for JIT calculations.")
+    parser.add_argument("-d", "--DumpArgs", action="store_true",
+                        help="Whether to dump arguments in a file")
+    parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str,
+                        help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
 
 
     args = parser.parse_args()
