@@ -3,10 +3,8 @@
 
 import sys
 # This is the path to the cluster expansion modules
-sys.path.append("/home/sohamc2/HEA_FCC/MDMC/VKMC/")
+sys.path.append("../")
 
-# This is the path to the GCNetRun module - from which data loaders will be used
-sys.path.append("/home/sohamc2/HEA_FCC/MDMC/ML_runs/")
 import os
 RunPath = os.getcwd() + "/"
 
@@ -22,6 +20,7 @@ import pickle
 import h5py
 from tqdm import tqdm
 from numba import jit, int64, float64
+import argparse
 import gc
 
 
@@ -30,7 +29,7 @@ N_units = 8 # No. of unit cells along each axis in the supercell
             # So we restrict ourselves to that
 
 # Load all the crystal data
-def Load_crys_Data(typ="FCC"):
+def Load_crys_Data(CrysDatPath, typ="FCC"):
     print("Loading {} Crystal data".format(typ))
     jList = np.load(CrysDatPath+"CrysDat_{}/jList.npy".format(typ))
     dxList = np.load(CrysDatPath+"CrysDat_{}/dxList.npy".format(typ))
@@ -47,16 +46,15 @@ def Load_crys_Data(typ="FCC"):
     assert vacsiteInd == 0
     return jList, dxList, jumpNewIndices, superFCC, jnetFCC, vacsite, vacsiteInd
 
-def Load_Data(FileName):
-    with h5py.File(DataPath + FileName, "r") as fl:
+def Load_Data(DataPath):
+    with h5py.File(DataPath, "r") as fl:
         try:
-            perm = fl["Permutation"]
+            perm = np.array(fl["Permutation"])
             print("found permuation")
         except:
             perm = np.arange(len(fl["InitStates"]))
 
         state1List = np.array(fl["InitStates"])[perm]
-        state2List = np.array(fl["FinStates"])[perm]
         dispList = np.array(fl["SpecDisps"])[perm]
         rateList = np.array(fl["rates"])[perm]
 
@@ -70,7 +68,7 @@ def Load_Data(FileName):
         except:
             jumpSelects = np.array(fl["JumpSelection"])[perm].astype(np.int8)
 
-    return state1List, state2List, dispList, rateList, AllJumpRates, jumpSelects
+    return state1List, dispList, rateList, AllJumpRates, jumpSelects
 
 
 def makeVClusExp(superCell, jnet, clustCut, MaxOrder, NSpec, vacsite):
@@ -127,32 +125,31 @@ def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
         TSInteractSpecs, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups,\
         numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng = VclusExp.KRAexpander.makeTransJitData(KRACounterSpec, KRAEnergies)
     
-    if save:
-        print("Saving JIT arrays")
-        with h5py.File(RunPath+"JitArrays.h5", "w") as fl:
-            fl.create_dataset("numSitesInteracts", data = numSitesInteracts)
-            fl.create_dataset("SupSitesInteracts", data = SupSitesInteracts)
-            fl.create_dataset("SpecOnInteractSites", data=SpecOnInteractSites)
-            fl.create_dataset("numInteractsSiteSpec", data=numInteractsSiteSpec)
-            fl.create_dataset("SiteSpecInterArray", data=SiteSpecInterArray)
-            fl.create_dataset("numVecsInteracts", data=numVecsInteracts)
-            fl.create_dataset("VecsInteracts", data=VecsInteracts)
-            fl.create_dataset("VecGroupInteracts", data=VecGroupInteracts)
-            
-            fl.create_dataset("numSitesTSInteracts", data=numSitesTSInteracts)
-            fl.create_dataset("TSInteractSites", data=TSInteractSites)
-            fl.create_dataset("TSInteractSpecs", data=TSInteractSpecs)
-            fl.create_dataset("jumpFinSites", data=jumpFinSites)
-            fl.create_dataset("jumpFinSpec", data=jumpFinSpec)
-            fl.create_dataset("FinSiteFinSpecJumpInd", data=FinSiteFinSpecJumpInd)
-            fl.create_dataset("numJumpPointGroups", data=numJumpPointGroups)
-            fl.create_dataset("numTSInteractsInPtGroups", data=numTSInteractsInPtGroups)
-            fl.create_dataset("JumpInteracts", data=JumpInteracts)
-            fl.create_dataset("Jump2KRAEng", data=Jump2KRAEng)
-            fl.create_dataset("KRASpecConstants", data=KRASpecConstants)
-            fl.create_dataset("NVclus", data=np.array([NVclus], dtype=int))
+        if save:
+            print("Saving JIT arrays")
+            with h5py.File(RunPath+"JitArrays.h5", "w") as fl:
+                fl.create_dataset("numSitesInteracts", data=numSitesInteracts)
+                fl.create_dataset("SupSitesInteracts", data=SupSitesInteracts)
+                fl.create_dataset("SpecOnInteractSites", data=SpecOnInteractSites)
+                fl.create_dataset("numInteractsSiteSpec", data=numInteractsSiteSpec)
+                fl.create_dataset("SiteSpecInterArray", data=SiteSpecInterArray)
+                fl.create_dataset("numVecsInteracts", data=numVecsInteracts)
+                fl.create_dataset("VecsInteracts", data=VecsInteracts)
+                fl.create_dataset("VecGroupInteracts", data=VecGroupInteracts)
 
-    
+                fl.create_dataset("numSitesTSInteracts", data=numSitesTSInteracts)
+                fl.create_dataset("TSInteractSites", data=TSInteractSites)
+                fl.create_dataset("TSInteractSpecs", data=TSInteractSpecs)
+                fl.create_dataset("jumpFinSites", data=jumpFinSites)
+                fl.create_dataset("jumpFinSpec", data=jumpFinSpec)
+                fl.create_dataset("FinSiteFinSpecJumpInd", data=FinSiteFinSpecJumpInd)
+                fl.create_dataset("numJumpPointGroups", data=numJumpPointGroups)
+                fl.create_dataset("numTSInteractsInPtGroups", data=numTSInteractsInPtGroups)
+                fl.create_dataset("JumpInteracts", data=JumpInteracts)
+                fl.create_dataset("Jump2KRAEng", data=Jump2KRAEng)
+                fl.create_dataset("KRASpecConstants", data=KRASpecConstants)
+                fl.create_dataset("NVclus", data=np.array([NVclus], dtype=int))
+
     else:
         print("Attempting to load arrays")
         with h5py.File(RunPath+"JitArrays.h5", "r") as fl:
@@ -214,7 +211,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jList, dxList, SpecExpand, AllJu
     
         offsc = MC_JIT.GetOffSite(state, MCJit.numSitesInteracts, MCJit.SupSitesInteracts, MCJit.SpecOnInteractSites)
     
-        WBar, bBar, rates_used , _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
+        WBar, bBar, rates_used, _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
                                           TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
                                           NVclus, 0, vacsiteInd, AllJumpRates[samp])
         
@@ -276,7 +273,7 @@ def Expand_1jmp(T, state1List, vacsiteInd, Nsamples, jSiteList, jSelectList, dis
 
         offsc = MC_JIT.GetOffSite(state, MCJit.numSitesInteracts, MCJit.SupSitesInteracts, MCJit.SpecOnInteractSites)
     
-        WBar, bBar, rates_used , _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
+        WBar, bBar, rates_used, _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
                                           TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
                                           NVclus, 0, vacsiteInd, Rate)
         
@@ -347,54 +344,44 @@ def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
 
 
 def main(args):
-    count = 1
-    T = int(args[count])
-    count += 1
 
-    FileName = args[count]
-    count += 1
+    T = args.Temp
 
-    MaxOrder = int(args[count])
-    count += 1
+    DataPath = args.DataPath
 
-    clustCut = float(args[count])
-    count += 1
+    MaxOrder = args.MaxOrder
 
-    SpecExpand = int(args[count])
-    count += 1
+    clustCut = args.ClustCut
 
-    VacSpec = int(args[count])
-    count += 1
+    SpecExpand = args.SpecExpand
 
-    N_train = int(args[count])
-    count += 1
+    VacSpec = args.VacSpec
 
-    from_scratch = bool(int(args[count]))
-    count += 1
+    N_train = args.NTrain
 
-    saveClusExp = bool(int(args[count]))
-    count += 1
+    from_scratch = args.Scratch
 
-    saveJit = bool(int(args[count]))
-    count += 1
+    saveClusExp = args.SaveCE
+
+    saveJit = args.SaveJitArrays
     
-    singleJump_Train = bool(int(args[count]))
-    count += 1
+    singleJump_Train = args.AllJumpSwitch
 
-    CrysType = "FCC" if count == len(args) else args[count]
+    CrysDatPath = args.CrysDatPath
+    CrysType = args.CrysType
 
     # Load Data
     specExpOriginal = SpecExpand
-    state1List, state2List, dispList, rateList, AllJumpRates, jumpSelects = Load_Data(FileName)
+    state1List, dispList, rateList, AllJumpRates, jumpSelects = Load_Data(DataPath)
 
     AllSpecs = np.unique(state1List[0])
     NSpec = AllSpecs.shape[0]
     Nsamples = state1List.shape[0]
 
     if VacSpec == 0:
-        # Convert data so that vacancy is highest 
+        # Convert data so that vacancy is highest
+        # This is the convenience chosen in the MC_JIT code
         state1List = NSpec - 1 - state1List
-        state2List = NSpec - 1 - state2List
         dispListNew = np.zeros_like(dispList)
         for spec in range(NSpec):
             dispListNew[:, NSpec - 1 - spec, :] = dispList[:, spec, :]
@@ -405,7 +392,7 @@ def main(args):
         SpecExpand = NSpec - 1 - SpecExpand
 
     # Load Crystal Data
-    jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd = Load_crys_Data(typ=CrysType)
+    jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd = Load_crys_Data(CrysDatPath, typ=CrysType)
 
     if from_scratch:
         print("Generating New cluster expansion")
@@ -423,13 +410,11 @@ def main(args):
     
     # Expand W and B
     # We need to scale displacements properly first
-    a0 = np.linalg.norm(dispList[0, NSpec -1 , :])/np.linalg.norm(dxList[0])
+    a0 = np.linalg.norm(dispList[0, NSpec -1, :])/np.linalg.norm(dxList[0])
     
     if singleJump_Train:
         print("Training to 1 jump")
 
-        #Expand_1jmp(T, state1List, vacsiteInd, Nsamples, jSiteList, jSelectList, dispList, SpecExpand, rates, MCJit, NVclus,
-            #numVecsInteracts, VecsInteracts, VecGroupInteracts):
         Wbar, Bbar, Gbar, etaBar = Expand_1jmp(T, state1List, vacsiteInd, N_train, jList, jumpSelects, dispList, 
                 SpecExpand, rateList, MCJit, NVclus, numVecsInteracts, VecsInteracts, VecGroupInteracts) 
 
@@ -458,4 +443,25 @@ def main(args):
     print("All Done \n\n")
 
 if __name__ == "__main__":
-    main(list(sys.argv))
+
+    parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str, help="Path to Data file.")
+    parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
+    parser.add_argument("-a0", "--LatParam",  metavar="L", type=float, help="Lattice parameter.")
+
+    parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
+    parser.add_argument("-rl","--RepLayer", metavar="[L1, L2,..]", type=int, nargs="+", help="Layers to extract representation from (count starts from 0)")
+    parser.add_argument("-rlavg","--RepLayerAvg", action="store_true", help="Whether to average Representations across samples (training and validation will be made separate)")
+    parser.add_argument("-bt","--BoundTrain", action="store_true", help="Whether to train using boundary state averages.")
+    parser.add_argument("-js","--JumpSort", action="store_false", help="Whether to sort jumps by rates. Not doing it will cause symmetry to break.")
+    parser.add_argument("-xsh","--DispShift", action="store_true", help="Whether to shift displacements with state averages.")
+
+    args = parser.parse_args()
+    if args.DumpArgs:
+        print("Dumping arguments to: {}".format(args.DumpFile))
+        opts = vars(args)
+        with open(RunPath + args.DumpFile, "w") as fl:
+            for key, val in opts.items():
+                fl.write("{}: {}\n".format(key, val))
+
+    main(args)
