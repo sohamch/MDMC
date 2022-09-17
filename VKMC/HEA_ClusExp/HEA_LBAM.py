@@ -251,6 +251,9 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
     totalW /= Nsamples
     totalB /= Nsamples
 
+    np.save(RunPath + "Wbar_{}.npy".format(T), totalW)
+    np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
+
     Gbar = spla.pinvh(totalW, rtol=1e-8)
 
     # Check pseudo-inverse relations
@@ -259,11 +262,9 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
 
     # Compute relaxation expansion
     etaBar = -np.dot(Gbar, totalB)
-    
-    np.save(RunPath + "Wbar_{}.npy".format(T), totalW)
+
     np.save(RunPath + "Gbar_{}.npy".format(T), Gbar)
     np.save(RunPath + "etabar_{}.npy".format(T), etaBar)
-    np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
 
     return totalW, totalB, Gbar, etaBar
 
