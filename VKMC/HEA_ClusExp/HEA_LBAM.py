@@ -206,6 +206,8 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
     state1ListCpy = state1List.copy()
 
     print("Calculating rate and velocity expansions")
+    offscTime = 0.
+    expandTime = 0.
     for samp in tqdm(range(Nsamples), position=0, leave=True):
     
         # In the cluster expander, the vacancy is the highest labelled species,
@@ -213,8 +215,12 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
         # So we'll change the numbering so that the vacancy is labelled 5
         state = state1ListCpy[samp]
 
+        start = time.time()
         offsc = MC_JIT.GetOffSite(state, MCJit.numSitesInteracts, MCJit.SupSitesInteracts, MCJit.SpecOnInteractSites)
+        end = time.time()
+        offscTime += end - start
 
+        start = time.time()
         if aj:
             WBar, bBar, rates_used, _, _ = MCJit.Expand(state, jSiteList, dxList, SpecExpand, offsc,
                                               TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
@@ -233,8 +239,14 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
             assert np.array_equal(state, state1List[samp])  # assert revertions
             assert np.allclose(rates_used, Rate)
 
+        end = time.time()
+        expandTime += end - start
+
         totalW += WBar
         totalB += bBar
+
+    print("Off site counting time per sample: {}".format(offscTime / Nsamples))
+    print("Expansion time per sample: {}".format(expandTime / Nsamples))
 
     totalW /= Nsamples
     totalB /= Nsamples
