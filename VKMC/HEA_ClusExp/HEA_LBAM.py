@@ -188,8 +188,10 @@ def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
     return MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus
 
 
-def Expand(T, state1List, vacsiteInd, Nsamples, jList, dxList, SpecExpand, AllJumpRates, MCJit, NVclus,
-        numVecsInteracts, VecsInteracts, VecGroupInteracts):
+def Expand(T, state1List, vacsiteInd, Nsamples, jList, dxList, AllJumpRates,
+           jSelectList, dispSelects, ratesSelect, SpecExpand, MCJit, NVclus,
+           numVecsInteracts, VecsInteracts, VecGroupInteracts, aj=True):
+
 
     # Get a dummy TS offsite counts
     TSOffSc = np.zeros(MCJit.numSitesTSInteracts.shape[0], dtype=np.int8)
@@ -211,14 +213,25 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jList, dxList, SpecExpand, AllJu
         state = state1ListCpy[samp]
     
         offsc = MC_JIT.GetOffSite(state, MCJit.numSitesInteracts, MCJit.SupSitesInteracts, MCJit.SpecOnInteractSites)
-    
-        WBar, bBar, rates_used, _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
-                                          TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
-                                          NVclus, 0, vacsiteInd, AllJumpRates[samp])
-        
-        assert np.array_equal(state, state1List[samp]) # assert revertions
-        assert np.allclose(rates_used, AllJumpRates[samp])
-        
+
+        if aj:
+            WBar, bBar, rates_used, _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
+                                              TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
+                                              NVclus, 0, vacsiteInd, AllJumpRates[samp])
+
+            assert np.array_equal(state, state1List[samp])  # assert revertions
+            assert np.allclose(rates_used, AllJumpRates[samp])
+
+        else:
+            jList = np.array([jList[jSelectList[samp]]], dtype=int)
+            dxList = np.array([dispSelects[samp, -1, :]], dtype=float) # The last one is the vacancy jump
+            Rate = np.array([ratesSelect[samp]], dtype=float)
+            WBar, bBar, rates_used, _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
+                                                        TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
+                                                        NVclus, 0, vacsiteInd, Rate)
+            assert np.array_equal(state, state1List[samp])  # assert revertions
+            assert np.allclose(rates_used, Rate)
+
         totalW += WBar
         totalB += bBar
 
@@ -338,8 +351,12 @@ def main(args):
     a0 = np.linalg.norm(dispList[0, NSpec -1, :])/np.linalg.norm(dxList[0])
 
     print("Training to all jumps.")
+    #def Expand(T, state1List, vacsiteInd, Nsamples, jList, dxList, AllJumpRates,
+           #jSelectList, dispSelects, ratesSelect, SpecExpand, MCJit, NVclus,
+           #numVecsInteracts, VecsInteracts, VecGroupInteracts, aj=True):
     Wbar, Bbar, Gbar, etaBar = Expand(T, state1List, vacsiteInd, N_train, jList, dxList*a0,
-            SpecExpand, AllJumpRates, MCJit, NVclus, numVecsInteracts, VecsInteracts, VecGroupInteracts)
+                                      AllJumpRates, jumpSelects, dispList, rateList,SpecExpand, MCJit, NVclus,
+                                      numVecsInteracts, VecsInteracts, VecGroupInteracts, aj=args.AllJumps)
 
 
     # Calculate transport coefficients
@@ -381,6 +398,8 @@ if __name__ == "__main__":
                         help="Index of vacancy species.")
     parser.add_argument("-nt", "--NTrain", metavar="eg. 10000", type=int, default=10000,
                         help="No. of training samples.")
+    parser.add_argument("-aj", "--AllJumps", action="store_true",
+                        help="Whether to train on all jumps or train KMC-style.")
     parser.add_argument("-scr", "--Scratch", action="store_true",
                         help="Whether to create new network and start from scratch")
     parser.add_argument("-svc", "--SaveCE", action="store_true",
