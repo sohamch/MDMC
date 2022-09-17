@@ -251,12 +251,6 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
     totalW /= Nsamples
     totalB /= Nsamples
 
-    # verify symmetry
-    print("verifying symmetry of rate expansion")
-    for i in tqdm(range(totalW.shape[0]), position=0, leave=True):
-        for j in range(i):
-            assert np.allclose(totalW[i,j], totalW[j,i])
-
     Gbar = spla.pinvh(totalW, rtol=1e-8)
 
     # Check pseudo-inverse relations
