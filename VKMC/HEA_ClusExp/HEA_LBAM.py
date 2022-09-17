@@ -18,6 +18,7 @@ import h5py
 from tqdm import tqdm
 import argparse
 import gc
+import time
 
 
 N_units = 8 # No. of unit cells along each axis in the supercell
@@ -211,7 +212,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
         # In our case, it is the lowest
         # So we'll change the numbering so that the vacancy is labelled 5
         state = state1ListCpy[samp]
-    
+
         offsc = MC_JIT.GetOffSite(state, MCJit.numSitesInteracts, MCJit.SupSitesInteracts, MCJit.SpecOnInteractSites)
 
         if aj:
