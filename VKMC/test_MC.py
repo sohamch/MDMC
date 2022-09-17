@@ -634,6 +634,9 @@ class Test_MC(DataClass):
                                  self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts,
                                  lenVecClus, beta, self.vacsiteInd, None)
 
+        np.save("Wbar_unit_test.npy", Wbar)
+        np.save("Bbar_unit_test.npy", Bbar)
+
         offscjit2 = MC_JIT.GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
 
         # Check that the offsitecounts have been correctly reverted and state is unchanged.
