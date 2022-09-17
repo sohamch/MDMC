@@ -354,8 +354,10 @@ class MCSamplerClass(object):
 
         WBar = np.zeros((lenVecClus, lenVecClus))
         for i in range(lenVecClus):
-            for j in range(lenVecClus):
+            WBar[i, i] += np.dot(del_lamb_mat[i, i, :], ratelist)
+            for j in range(i):
                 WBar[i, j] += np.dot(del_lamb_mat[i, j, :], ratelist)
+                WBar[j, i] = WBar[i, j]
 
         BBar = np.zeros(lenVecClus)
         for i in range(lenVecClus):
