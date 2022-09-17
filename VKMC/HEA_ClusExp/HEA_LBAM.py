@@ -67,7 +67,7 @@ def Load_Data(DataPath):
     return state1List, dispList, rateList, AllJumpRates, jumpSelects
 
 
-def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite):
+def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite, AllInteracts=False):
     TScombShellRange = 1  # upto 1nn combined shell
     TSnnRange = 4
     TScutoff = np.sqrt(2)  # 4th nn cutoff - must be the same as TSnnRange
@@ -85,7 +85,7 @@ def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite):
                                                     OrigVac=False, zeroClusts=True)
 
     vacSiteInd, _ = superCell.index(vacsite.R, vacsite.ci)
-    reqSites = [vacSiteInd] + list(jList)
+    reqSites = [vacSiteInd] + list(jList) if not AllInteracts else None
     print("generating interactions with required sites : {}".format(reqSites))
     VclusExp.generateSiteSpecInteracts(reqSites=reqSites)
     print("No. of interactions : {}".format(len(VclusExp.Id2InteractionDict)))
@@ -334,7 +334,8 @@ def main(args):
 
     if from_scratch:
         print("Generating New cluster expansion with vacancy at {}, {}".format(vacsite.ci, vacsite.R))
-        VclusExp = makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite)
+        VclusExp = makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite,
+                                AllInteracts=args.AllInteracts)
         if saveClusExp:
             with open(RunPath+"VclusExp.pkl", "wb") as fl:
                 pickle.dump(VclusExp, fl)
@@ -399,6 +400,8 @@ if __name__ == "__main__":
                         help="Whether to train on all jumps or train KMC-style.")
     parser.add_argument("-scr", "--Scratch", action="store_true",
                         help="Whether to create new network and start from scratch")
+    parser.add_argument("-ait", "--AllInteracts", action="store_true",
+                        help="Whether to consider all interactions, or just the ones that contain the jump sites.")
     parser.add_argument("-svc", "--SaveCE", action="store_true",
                         help="Whether to save the cluster expansion.")
     parser.add_argument("-svj", "--SaveJitArrays", action="store_true",
