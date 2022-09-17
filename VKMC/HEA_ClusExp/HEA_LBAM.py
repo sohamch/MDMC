@@ -333,7 +333,7 @@ def main(args):
     jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd = Load_crys_Data(CrysDatPath, typ=CrysType)
 
     if from_scratch:
-        print("Generating New cluster expansion")
+        print("Generating New cluster expansion with vacancy at {}, {}".format(vacsite.ci, vacsite.R))
         VclusExp = makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite)
         if saveClusExp:
             with open(RunPath+"VclusExp.pkl", "wb") as fl:
@@ -351,9 +351,6 @@ def main(args):
     a0 = np.linalg.norm(dispList[0, NSpec -1, :])/np.linalg.norm(dxList[0])
 
     print("Training to all jumps.")
-    #def Expand(T, state1List, vacsiteInd, Nsamples, jList, dxList, AllJumpRates,
-           #jSelectList, dispSelects, ratesSelect, SpecExpand, MCJit, NVclus,
-           #numVecsInteracts, VecsInteracts, VecGroupInteracts, aj=True):
     Wbar, Bbar, Gbar, etaBar = Expand(T, state1List, vacsiteInd, N_train, jList, dxList*a0,
                                       AllJumpRates, jumpSelects, dispList, rateList,SpecExpand, MCJit, NVclus,
                                       numVecsInteracts, VecsInteracts, VecGroupInteracts, aj=args.AllJumps)
