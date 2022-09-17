@@ -627,7 +627,7 @@ class Test_MC(DataClass):
         # Now, do the expansion
         offscjit = MC_JIT.GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
         state = initState.copy()
-        spec = 2
+        spec = 1 # 2
         beta = 1.0
         Wbar, Bbar, rates_used, delEJumps, delEKRAJumps =\
             MCSampler_Jit.Expand(state, ijList, dxList, spec, offscjit, TransOffSiteCount,
@@ -645,7 +645,7 @@ class Test_MC(DataClass):
         self.assertTrue(np.array_equal(self.numInteractsSiteSpec, MCSampler_Jit.numInteractsSiteSpec))
         self.assertTrue(np.allclose(self.Interaction2En, MCSampler_Jit.Interaction2En))
 
-        print("Starting TS tests")
+        print("Starting LBAM tests")
         Wbar_test = np.zeros_like(Wbar, dtype=float)
         Bbar_test = np.zeros_like(Bbar, dtype=float)
 
@@ -803,7 +803,10 @@ class Test_MC(DataClass):
 
                     Wbar_test[vs1, vs2] += rate*dot
                     if vs1 == 0:
-                        Bbar_test[vs2] += rate*np.dot(dxList[TInd], vec2)
+                        if spec == specA:
+                            Bbar_test[vs2] += rate*np.dot(dxList[TInd], vec2)
+                        elif spec == specB:
+                            Bbar_test[vs2] += rate * np.dot(-dxList[TInd], vec2)
 
                 self.assertAlmostEqual(Wbar[vs1, vs2], Wbar_test[vs1, vs2], 8,
                                        msg="\n{} {}".format(Wbar[vs1, vs2], Wbar_test[vs1, vs2]))
