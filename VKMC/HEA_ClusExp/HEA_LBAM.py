@@ -358,7 +358,7 @@ def main(args):
     # We need to scale displacements properly first
     a0 = np.linalg.norm(dispList[0, NSpec -1, :])/np.linalg.norm(dxList[0])
 
-    print("Training to all jumps.")
+    print("Expanding.")
     Wbar, Bbar, Gbar, etaBar = Expand(T, state1List, vacsiteInd, N_train, jList, dxList*a0,
                                       AllJumpRates, jumpSelects, dispList, rateList,SpecExpand, MCJit, NVclus,
                                       numVecsInteracts, VecsInteracts, VecGroupInteracts, aj=args.AllJumps)
