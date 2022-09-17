@@ -83,13 +83,17 @@ def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite, All
 
     vacSiteInd, _ = superCell.index(vacsite.R, vacsite.ci)
     reqSites = [vacSiteInd] + list(jList) if not AllInteracts else None
-    print("generating interactions with required sites : {}".format(reqSites))
+    print("Generating interactions with required sites : {}".format(reqSites))
+    start = time.time()
     VclusExp.generateSiteSpecInteracts(reqSites=reqSites)
-    print("No. of interactions : {}".format(len(VclusExp.Id2InteractionDict)))
+    end = time.time()
+    print("No. of interactions : {}. Time : {:.4f seconds}".format(len(VclusExp.Id2InteractionDict), end-start))
     # Generate the basis vectors for the clusters
+    print("Generating and indexing vector basis data.")
     VclusExp.genVecClustBasis(VclusExp.SpecClusters)
     VclusExp.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
     VclusExp.indexClustertoVecClus()
+    print("No. of vector groups : {}. Time : {:.4f seconds}".format(len(VclusExp.vecClus), end - start))
 
     return VclusExp
 
@@ -346,6 +350,7 @@ def main(args):
 
         if saveJit and args.ArrayOnly:
             # If we only want to save the Jit arrays (so that later jobs can be run in parallel)
+            print("Created arrays. Terminating.")
             return
 
     else:
