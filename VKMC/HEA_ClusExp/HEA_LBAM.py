@@ -188,7 +188,7 @@ def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
     return MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus
 
 
-def Expand(T, state1List, vacsiteInd, Nsamples, jList, dxList, AllJumpRates,
+def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
            jSelectList, dispSelects, ratesSelect, SpecExpand, MCJit, NVclus,
            numVecsInteracts, VecsInteracts, VecGroupInteracts, aj=True):
 
@@ -215,7 +215,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jList, dxList, AllJumpRates,
         offsc = MC_JIT.GetOffSite(state, MCJit.numSitesInteracts, MCJit.SupSitesInteracts, MCJit.SpecOnInteractSites)
 
         if aj:
-            WBar, bBar, rates_used, _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
+            WBar, bBar, rates_used, _, _ = MCJit.Expand(state, jSiteList, dxList, SpecExpand, offsc,
                                               TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
                                               NVclus, 0, vacsiteInd, AllJumpRates[samp])
 
@@ -223,7 +223,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jList, dxList, AllJumpRates,
             assert np.allclose(rates_used, AllJumpRates[samp])
 
         else:
-            jList = np.array([jList[jSelectList[samp]]], dtype=int)
+            jList = np.array([jSiteList[jSelectList[samp]]], dtype=int)
             dxList = np.array([dispSelects[samp, -1, :]], dtype=float) # The last one is the vacancy jump
             Rate = np.array([ratesSelect[samp]], dtype=float)
             WBar, bBar, rates_used, _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
@@ -244,7 +244,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jList, dxList, AllJumpRates,
         for j in range(i):
             assert np.allclose(totalW[i,j], totalW[j,i])
 
-    Gbar = spla.pinvh(totalW, rcond=1e-8)
+    Gbar = spla.pinvh(totalW, rtol=1e-8)
 
     # Check pseudo-inverse relations
     assert np.allclose(Gbar @ totalW @ Gbar, Gbar)
