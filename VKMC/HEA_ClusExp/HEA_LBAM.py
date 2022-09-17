@@ -344,6 +344,10 @@ def main(args):
             with open(RunPath+"VclusExp.pkl", "wb") as fl:
                 pickle.dump(VclusExp, fl)
 
+        if saveJit and args.ArrayOnly:
+            # If we only want to save the Jit arrays (so that later jobs can be run in parallel)
+            return
+
     else:
         VclusExp = None
         saveJit = False
@@ -410,6 +414,8 @@ if __name__ == "__main__":
                         help="Whether to save the cluster expansion.")
     parser.add_argument("-svj", "--SaveJitArrays", action="store_true",
                         help="Whether to store arrays for JIT calculations.")
+    parser.add_argument("-ao", "--ArrayOnly", action="store_true",
+                        help="Use the run to only generate the Jit arrays - no transport calculation.")
     parser.add_argument("-d", "--DumpArgs", action="store_true",
                         help="Whether to dump arguments in a file")
     parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str,
