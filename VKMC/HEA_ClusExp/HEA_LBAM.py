@@ -87,13 +87,13 @@ def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite, All
     start = time.time()
     VclusExp.generateSiteSpecInteracts(reqSites=reqSites)
     end = time.time()
-    print("No. of interactions : {}. Time : {:.4f seconds}".format(len(VclusExp.Id2InteractionDict), end-start))
+    print("No. of interactions : {}. Time : {:.4f} seconds".format(len(VclusExp.Id2InteractionDict), end-start))
     # Generate the basis vectors for the clusters
     print("Generating and indexing vector basis data.")
     VclusExp.genVecClustBasis(VclusExp.SpecClusters)
     VclusExp.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
     VclusExp.indexClustertoVecClus()
-    print("No. of vector groups : {}. Time : {:.4f seconds}".format(len(VclusExp.vecClus), end - start))
+    print("No. of vector groups : {}. Time : {:.4f} seconds".format(len(VclusExp.vecClus), end - start))
 
     return VclusExp
 
