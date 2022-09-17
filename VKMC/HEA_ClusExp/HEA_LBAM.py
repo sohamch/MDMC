@@ -254,7 +254,10 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
     np.save(RunPath + "Wbar_{}.npy".format(T), totalW)
     np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
 
-    Gbar = spla.pinvh(totalW, rtol=1e-8)
+    try:
+        Gbar = spla.pinvh(totalW, rtol=1e-8)
+    except:
+        Gbar = spla.pinvh(totalW, rcond=1e-8)
 
     # Check pseudo-inverse relations
     assert np.allclose(Gbar @ totalW @ Gbar, Gbar)
