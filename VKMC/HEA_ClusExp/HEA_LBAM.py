@@ -21,11 +21,6 @@ import argparse
 import gc
 import time
 
-
-N_units = 8 # No. of unit cells along each axis in the supercell
-            # The HEA simulations were all done on 8x8x8 supercells
-            # So we restrict ourselves to that
-
 # Load all the crystal data
 def Load_crys_Data(CrysDatPath, typ="FCC"):
     print("Loading {} Crystal data".format(typ))
