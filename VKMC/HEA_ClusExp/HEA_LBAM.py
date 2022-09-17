@@ -348,18 +348,16 @@ def main(args):
             with open(RunPath+"VclusExp.pkl", "wb") as fl:
                 pickle.dump(VclusExp, fl)
 
-        if saveJit and args.ArrayOnly:
-            # If we only want to save the Jit arrays (so that later jobs can be run in parallel)
-            print("Created arrays. Terminating.")
-            return
-
     else:
         VclusExp = None
         saveJit = False
 
     # Make MCJIT
-    MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus = CreateJitCalculator(VclusExp, NSpec, T, scratch=from_scratch, save=saveJit) 
-    
+    MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus = CreateJitCalculator(VclusExp, NSpec, T, scratch=from_scratch, save=saveJit)
+    if from_scratch and saveJit and args.ArrayOnly:
+        # If we only want to save the Jit arrays (so that later jobs can be run in parallel)
+        print("Created arrays. Terminating.")
+        return
     # Expand W and B
     # We need to scale displacements properly first
     a0 = np.linalg.norm(dispList[0, NSpec -1, :])/np.linalg.norm(dxList[0])
