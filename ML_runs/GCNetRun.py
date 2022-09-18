@@ -268,6 +268,10 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
         jProbs_st2 = pt.tensor(jProbs_st2[:N_train], dtype=pt.double)
     N_batch = batch_size
 
+    if pt.cuda.device_count() > 1 and DPr:
+        print("Running on Devices : {}".format(DeviceIDList))
+        gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
+
     try:
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"))
         print("Starting from epoch {}".format(start_ep), flush=True)
@@ -277,10 +281,6 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
             print("No Network found. Starting from scratch", flush=True)
         else:
             raise ValueError("Required saved networks not found in {} at epoch {}".format(dirPath, start_ep))
-
-    if pt.cuda.device_count() > 1 and DPr:
-        print("Running on Devices : {}".format(DeviceIDList))
-        gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
 
     print("Batch size : {}".format(N_batch)) 
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
