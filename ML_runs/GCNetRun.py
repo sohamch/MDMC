@@ -381,8 +381,6 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
             for epoch in tqdm(range(start_ep, end_ep + 1, interval), position=0, leave=True):
                 ## load checkpoint
                 gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
-                gNet.to(device)
-
  
                 diff = 0 
                 for batch in range(startSample, endSample, N_batch):
