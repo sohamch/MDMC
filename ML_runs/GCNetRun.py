@@ -293,6 +293,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
         L0 = L0.item()
     else:
         L0 = 1.0
+    
+    print("L0 : {}".format(L0))
 
     NNsvac_st1 = None
     NNsvac_st2 = None
