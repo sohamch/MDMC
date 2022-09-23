@@ -792,7 +792,7 @@ if __name__ == "__main__":
     parser.add_argument("-rlavg","--RepLayerAvg", action="store_true", help="Whether to average Representations across samples (training and validation will be made separate)")
     parser.add_argument("-bt","--BoundTrain", action="store_true", help="Whether to train using boundary state averages.")
     parser.add_argument("-jsr","--JumpSort", action="store_false", help="Whether to switch on/off sort jumps by rates. Not doing it will cause symmetry to break.")
-    parser.add_argument("-jsw","--JumpSwitch", action="store_false", help="Whether to switch on/off jump channels in boundary mode depending on occupancy.")
+    parser.add_argument("-jsw","--JumpSwitch", action="store_true", help="Whether to switch on/off jump channels in boundary mode depending on occupancy.")
     parser.add_argument("-xsh","--DispShift", action="store_true", help="Whether to shift displacements with state averages.")
     parser.add_argument("-nosym","--NoSymmetry", action="store_true", help="Whether to switch off all symmetry operations except identity.")
 
