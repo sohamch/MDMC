@@ -281,11 +281,17 @@ def sort_jp(NNsvac_st1, NNsvac_st2, jProbs_st1, jProbs_st2, jumpSort):
 """## Write the training loop"""
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps, 
         jProbs_st1, jProbs_st2, NNsites, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
-        gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False, jumpSort=True, jumpSwitch=True):
+        gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False, jumpSort=True, jumpSwitch=True, scaleL0=False):
     
     Ndim = disps.shape[2]
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
+    
+    # scale with L0 if indicated
+    if scaleL0:
+        L0 = pt.dot(rateData, pt.norm(dispData, dim=1)**2)/(6.0 * dispData.shape[0])
+    else:
+        L0 = 1.0
 
     NNsvac_st1 = None
     NNsvac_st2 = None
@@ -361,7 +367,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
                 y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch, NNsvac_st1_batch, NNsvac_st2_batch, Boundary_train, jumpSwitch)
             
             dy = y2 - y1
-            diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/6.
+            diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/(6. * L0)
             
             diff.backward()
             opt.step()
@@ -753,7 +759,7 @@ def main(args):
                 rateData, dispData, jProbs_st1, jProbs_st2, NNsites, specsToTrain, sp_ch, VacSpec,
                 start_ep, end_ep, interval, N_train_jumps, gNet,
                 lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size,
-                DPr=DPr, Boundary_train=args.BoundTrain, jumpSort=args.JumpSort, jumpSwitch=args.JumpSwitch)
+                DPr=DPr, Boundary_train=args.BoundTrain, jumpSort=args.JumpSort, jumpSwitch=args.JumpSwitch, scaleL0=args.ScaleL0)
 
     elif Mode == "eval":
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_occs, State2_occs,
@@ -795,6 +801,7 @@ if __name__ == "__main__":
     parser.add_argument("-jsw","--JumpSwitch", action="store_true", help="Whether to switch on/off jump channels in boundary mode depending on occupancy.")
     parser.add_argument("-xsh","--DispShift", action="store_true", help="Whether to shift displacements with state averages.")
     parser.add_argument("-nosym","--NoSymmetry", action="store_true", help="Whether to switch off all symmetry operations except identity.")
+    parser.add_argument("-l0","--ScaleL0", action="store_true", help="Whether to scale transport coefficients during training with uncorrelated value.")
 
     parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
     parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, help="No. of representation channels in non-input layers.")
