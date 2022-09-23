@@ -218,7 +218,7 @@ def vacBatchOuts(y1, y2, jProbs_st1, jProbs_st2, Boundary_Train):
     return y1, y2
 
 # All non-vacancy batch calculations to be done here
-def SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1, jProbs_st2, Boundary_train):
+def SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1, jProbs_st2, NNsvac, Boundary_train):
     if not Boundary_train:
         On_st1Batch = On_st1Batch.unsqueeze(1).to(device)
         On_st2Batch = On_st2Batch.unsqueeze(1).to(device)
@@ -229,9 +229,12 @@ def SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1, jProbs_st2, Boun
         assert y1.shape[1] == jProbs_st1.shape[1]
 
         # First, select jump probs from those jumps which actually move the atom we want
-        # send the jump probs to the device
-        jPr_1_batch = jProbs_st1.unsqueeze(2).to(device)
-        jPr_2_batch = jProbs_st2.unsqueeze(2).to(device)
+        JumpOnSites_st1Batch = On_st1Batch[:, NNsvac]
+        JumpOnSites_st2Batch = On_st2Batch[:, NNsvac]
+
+        # select jumps with a masked multiply
+        jPr_1_batch = (jProbs_st1 * JumpOnSites_st1Batch).unsqueeze(2).to(device)
+        jPr_2_batch = (jProbs_st2 * JumpOnSites_st2Batch).unsqueeze(2).to(device)
         
         # y have dimension (Nbacth, Njumps, Ndim, Nsites)
         # On_stBatch have dimensions (Nbatch, Nsites)
@@ -261,6 +264,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     Ndim = disps.shape[2]
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
+
+    NNsvac = NNsites[1:, 0]
     
     if Boundary_train:
         print("Boundary training indicated. Using jump probabilities.")
@@ -329,7 +334,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
                 On_st1Batch = On_st1[batch : end]
                 On_st2Batch = On_st2[batch : end]
 
-                y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
+                y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch, NNsvac, Boundary_train)
             
             dy = y2 - y1
             diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/6.
@@ -360,6 +365,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     Ndim = disps.shape[2] 
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
+    
+    NNsvac = NNsites[1:, 0]
     
     if Boundary_train:
         print("Boundary training indicated. Using jump probabilities.")
@@ -409,7 +416,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                     else:
                         On_st1Batch = On_st1[batch : end]
                         On_st2Batch = On_st2[batch : end]
-                        y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
+                        y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch, NNsvac, Boundary_train)
 
                     dy = y2 - y1
                     loss = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/6.
@@ -443,6 +450,8 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
 
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
+    
+    NNsvac = NNsites[1:, 0]
     
     if Boundary_train:
         print("Boundary training indicated. Using jump probabilities.")
@@ -489,7 +498,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
             else:
                 On_st1Batch = On_st1[batch : end]
                 On_st2Batch = On_st2[batch : end]
-                y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
+                y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch, NNsvac, Boundary_train)
 
             y1Vecs[batch : end] = y1.cpu().numpy()
             y2Vecs[batch : end] = y2.cpu().numpy()
