@@ -255,7 +255,7 @@ def SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1, jProbs_st2, Boun
 
 """## Write the training loop"""
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps, 
-        jProbs_st1, jProbs_st2, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
+        jProbs_st1, jProbs_st2, NNsites, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
         gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False):
     
     Ndim = disps.shape[2]
@@ -339,7 +339,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
 
 
 def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
-        rates, disps, SpecsToTrain, jProbs_st1, jProbs_st2, sp_ch, VacSpec,
+        rates, disps, SpecsToTrain, jProbs_st1, jProbs_st2, NNsites, sp_ch, VacSpec,
         start_ep, end_ep, interval, N_train, gNet, batch_size=512, Boundary_train=False, DPr=False):
     
     for key, item in sp_ch.items():
@@ -426,7 +426,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 
 def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jProbs_st1, jProbs_st2,
-        sp_ch, SpecsToTrain, VacSpec, gNet, Ndim, epoch=None, Boundary_train=False, batch_size=256):
+        NNsites, sp_ch, SpecsToTrain, VacSpec, gNet, Ndim, epoch=None, Boundary_train=False, batch_size=256):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -707,7 +707,7 @@ def main(args):
     N_train_jumps = (N_ngb - 1)*N_train if AllJumps else N_train
     if Mode == "train":
         Train(T_data, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2,
-                rateData, dispData, jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec,
+                rateData, dispData, jProbs_st1, jProbs_st2, NNsites, specsToTrain, sp_ch, VacSpec,
                 start_ep, end_ep, interval, N_train_jumps, gNet,
                 lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size,
                 DPr=DPr, Boundary_train=args.BoundTrain)
@@ -715,14 +715,14 @@ def main(args):
     elif Mode == "eval":
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_occs, State2_occs,
                 OnSites_state1, OnSites_state2, rateData, dispData,
-                specsToTrain, jProbs_st1, jProbs_st2, sp_ch, VacSpec, start_ep, end_ep,
+                specsToTrain, jProbs_st1, jProbs_st2, NNsites, sp_ch, VacSpec, start_ep, end_ep,
                 interval, N_train_jumps, gNet, batch_size=batch_size, Boundary_train=args.BoundTrain, DPr=DPr)
         np.save("tr_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), train_diff/(1.0*N_train))
         np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), valid_diff/(1.0*N_train))
 
     elif Mode == "getY":
         y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_occs, State2_occs,
-                OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
+                OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, NNsites, sp_ch,
                 specsToTrain, VacSpec, gNet, Ndim, epoch=start_ep, Boundary_train=args.BoundTrain,
                 batch_size=batch_size)
         np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y1Vecs)
