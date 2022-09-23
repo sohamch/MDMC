@@ -760,7 +760,7 @@ def main(args):
                 OnSites_state1, OnSites_state2, rateData, dispData,
                 specsToTrain, jProbs_st1, jProbs_st2, NNsites, sp_ch, VacSpec, start_ep, end_ep,
                 interval, N_train_jumps, gNet, batch_size=batch_size, Boundary_train=args.BoundTrain,
-                DPr=DPr, jumpSort=args.JumpSort, jumpSwitch=args.jumpSwitch)
+                DPr=DPr, jumpSort=args.JumpSort, jumpSwitch=args.JumpSwitch)
         np.save("tr_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), train_diff/(1.0*N_train))
         np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), valid_diff/(1.0*N_train))
 
