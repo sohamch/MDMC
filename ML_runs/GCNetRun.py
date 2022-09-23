@@ -227,7 +227,9 @@ def SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1, jProbs_st2, Boun
                
     else:
         assert y1.shape[1] == jProbs_st1.shape[1]
-        # send the jump probabilities to the device
+
+        # First, select jump probs from those jumps which actually move the atom we want
+        # send the jump probs to the device
         jPr_1_batch = jProbs_st1.unsqueeze(2).to(device)
         jPr_2_batch = jProbs_st2.unsqueeze(2).to(device)
         
