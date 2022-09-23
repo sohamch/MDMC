@@ -42,9 +42,7 @@ def Load_crysDats(nn, CrysDatPath):
 
     JumpNewSites = np.load(CrysDatPath + "JumpNewSiteIndices.npy")
     dxJumps = np.load(CrysDatPath + "dxList.npy")
-    with open(CrysDatPath + "GroupCartIndices.pkl", "rb") as fl:
-        GIndtoGDict = pickle.load(fl)
-    return GpermNNIdx, NNsiteList, GIndtoGDict, JumpNewSites, dxJumps
+    return GpermNNIdx, NNsiteList, JumpNewSites, dxJumps
 
 def Load_Data(DataPath):
     with h5py.File(DataPath, "r") as fl:
@@ -610,7 +608,7 @@ def main(args):
         raise NotImplementedError("Cannot do all-jump training with boundary states yet.")
     
     # 1. Load crystal parameters
-    GpermNNIdx, NNsiteList, GIndtoGDict, JumpNewSites, dxJumps = Load_crysDats(filter_nn, CrysPath)
+    GpermNNIdx, NNsiteList, JumpNewSites, dxJumps = Load_crysDats(filter_nn, CrysPath)
     N_ngb = NNsiteList.shape[0]
     print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(filter_nn, N_ngb - 1))
     Nsites = NNsiteList.shape[1]
