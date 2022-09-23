@@ -259,18 +259,35 @@ def SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1, jProbs_st2, NNsv
 """## Write the training loop"""
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps, 
         jProbs_st1, jProbs_st2, NNsites, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
-        gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False):
+        gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False, jumpSort=True):
     
     Ndim = disps.shape[2]
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
 
-    NNsvac = NNsites[1:, 0]
+    NNsvac_st1 = NNsites[1:, 0].repeat(N_train, 1)
+    NNsvac_st2 = NNsites[1:, 0].repeat(N_train, 1)
     
     if Boundary_train:
+        assert gNet.net[-3].Psi.shape[0] == jProbs_st1.shape[1] == jProbs_st2.shape[1] 
         print("Boundary training indicated. Using jump probabilities.")
+        if args.JumpSort:
+            print("Sorting Jump Rates.")
+            jProbs_st1_args = pt.tensor(np.argsort(jProbs_st1, axis=1), dtype=pt.long)
+            jProbs_st2_args = pt.tensor(np.argsort(jProbs_st2, axis=1), dtype=pt.long)
+            
+            NNsvac_st1 = NNsvac_st1.gather(1, jProbs_st1_args)
+            NNsvac_st2 = NNsvac_st1.gather(1, jProbs_st2_args)
+
+            jProbs_st1 = np.sort(jProbs_st1, axis=1)
+            jProbs_st2 = np.sort(jProbs_st2, axis=1)
+        else:
+            print("Jump Rates unsorted. Values will be non-symmetric if boundary-training is active.")
+
+        
         jProbs_st1 = pt.tensor(jProbs_st1[:N_train], dtype=pt.double)
         jProbs_st2 = pt.tensor(jProbs_st2[:N_train], dtype=pt.double)
+
     N_batch = batch_size
 
     if pt.cuda.device_count() > 1 and DPr:
@@ -289,12 +306,6 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
 
     print("Batch size : {}".format(N_batch)) 
     specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
-
-    # Do a check on the network before running
-    if Boundary_train:
-        # Check that the last layer outputs as many representations as the
-        # number of jumps
-        assert gNet.net[-3].Psi.shape[0] == jProbs_st1.shape[1] == jProbs_st2.shape[1]
 
     gNet.to(device)
     opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
@@ -640,13 +651,6 @@ def main(args):
     if args.BoundTrain:
         jProbs_st1 = AllJumpRates_st1 / np.sum(AllJumpRates_st1, axis=1).reshape(-1, 1)
         jProbs_st2 = AllJumpRates_st2 / np.sum(AllJumpRates_st2, axis=1).reshape(-1, 1)
-        if args.JumpSort:
-            print("Sorting Jump Rates.")
-            jProbs_st1 = np.sort(jProbs_st1, axis=1)
-            jProbs_st2 = np.sort(jProbs_st2, axis=1)
-        else:
-            print("Jump Rates unsorted. Values will be non-symmetric if boundary-training is active.")
-        
         assert np.allclose(np.sum(jProbs_st1, axis=1), 1.0)
         assert np.allclose(np.sum(jProbs_st2, axis=1), 1.0)
     
@@ -719,13 +723,13 @@ def main(args):
                 rateData, dispData, jProbs_st1, jProbs_st2, NNsites, specsToTrain, sp_ch, VacSpec,
                 start_ep, end_ep, interval, N_train_jumps, gNet,
                 lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size,
-                DPr=DPr, Boundary_train=args.BoundTrain)
+                DPr=DPr, Boundary_train=args.BoundTrain, jumpSort=args.JumpSort)
 
     elif Mode == "eval":
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_occs, State2_occs,
                 OnSites_state1, OnSites_state2, rateData, dispData,
                 specsToTrain, jProbs_st1, jProbs_st2, NNsites, sp_ch, VacSpec, start_ep, end_ep,
-                interval, N_train_jumps, gNet, batch_size=batch_size, Boundary_train=args.BoundTrain, DPr=DPr)
+                interval, N_train_jumps, gNet, batch_size=batch_size, Boundary_train=args.BoundTrain, DPr=DPr, jumpSort=args.JumpSort)
         np.save("tr_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), train_diff/(1.0*N_train))
         np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), valid_diff/(1.0*N_train))
 
