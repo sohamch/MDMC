@@ -283,10 +283,14 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
         jProbs_st1, jProbs_st2, NNsites, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
         gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False, jumpSort=True, jumpSwitch=True, scaleL0=False):
     
+    print("Training conditions:")
+    print("scratch: {}, DPr: {}, Boundary_train: {}, jumpSort: {}, jumpSwitch: {}, scaleL0: {}".format(scratch_if_no_init, DPr, Boundary_train, jumpSort, jumpSwitch, scaleL0))
+
     Ndim = disps.shape[2]
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
-    
+
+
     # scale with L0 if indicated
     if scaleL0:
         L0 = pt.dot(rateData, pt.norm(dispData, dim=1)**2)/(6.0 * dispData.shape[0])
@@ -669,7 +673,7 @@ def main(args):
     if args.NoSymmetry:
         print("Switching off convolution symmetries (considering only identity operator).")
         GnnPerms = pt.tensor(GpermNNIdx[:1]).long()
-        assert pt.all(GnnPerms, pt.arange(N_ngb).unsqueeze(0))
+        assert pt.equal(GnnPerms, pt.arange(N_ngb).unsqueeze(0))
 
     else:
         print("Considering full symmetry group.")
