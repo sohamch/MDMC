@@ -224,8 +224,8 @@ def SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1, jProbs_st2, NNsv
                
     else:
         assert y1.shape[1] == jProbs_st1.shape[1]
+        assert y2.shape[1] == jProbs_st2.shape[1]
 
-        
         if jumpSwitch:
             # First, select jump probs from those jumps which actually move the atom we want
             JumpOnSites_st1Batch = On_st1Batch.gather(1, NNsvac_st1)
@@ -265,7 +265,7 @@ def sort_jp(NNsvac_st1, NNsvac_st2, jProbs_st1, jProbs_st2, jumpSort):
         jProbs_st2_args = pt.tensor(np.argsort(jProbs_st2, axis=1), dtype=pt.long)
         
         NNsvac_st1 = NNsvac_st1.gather(1, jProbs_st1_args)
-        NNsvac_st2 = NNsvac_st1.gather(1, jProbs_st2_args)
+        NNsvac_st2 = NNsvac_st2.gather(1, jProbs_st2_args)
 
         jProbs_st1 = np.sort(jProbs_st1, axis=1)
         jProbs_st2 = np.sort(jProbs_st2, axis=1)
