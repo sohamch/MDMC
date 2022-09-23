@@ -261,6 +261,26 @@ def SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1, jProbs_st2, NNsv
     return y1, y2
     
 
+def sort_jp(NNsvac_st1, NNsvac_st2, jProbs_st1, jProbs_st2, jumpSort):
+    if jumpSort:
+        print("Sorting Jump Rates.")
+        jProbs_st1_args = pt.tensor(np.argsort(jProbs_st1, axis=1), dtype=pt.long)
+        jProbs_st2_args = pt.tensor(np.argsort(jProbs_st2, axis=1), dtype=pt.long)
+        
+        NNsvac_st1 = NNsvac_st1.gather(1, jProbs_st1_args)
+        NNsvac_st2 = NNsvac_st1.gather(1, jProbs_st2_args)
+
+        jProbs_st1 = np.sort(jProbs_st1, axis=1)
+        jProbs_st2 = np.sort(jProbs_st2, axis=1)
+    else:
+        print("Jump Rates unsorted. Values will be non-symmetric if boundary-training is active.")
+    
+    jProbs_st1 = pt.tensor(jProbs_st1[:N_train], dtype=pt.double)
+    jProbs_st2 = pt.tensor(jProbs_st2[:N_train], dtype=pt.double)
+
+    return jProbs_st1, jProbs_st2, NNsvac_st1, NNsvac_st2
+
+
 """## Write the training loop"""
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps, 
         jProbs_st1, jProbs_st2, NNsites, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
@@ -277,20 +297,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
         print("Boundary training indicated. Using jump probabilities.")
         NNsvac_st1 = NNsites[1:, 0].repeat(N_train, 1)
         NNsvac_st2 = NNsites[1:, 0].repeat(N_train, 1)
-        if jumpSort:
-            print("Sorting Jump Rates.")
-            jProbs_st1_args = pt.tensor(np.argsort(jProbs_st1, axis=1), dtype=pt.long)
-            jProbs_st2_args = pt.tensor(np.argsort(jProbs_st2, axis=1), dtype=pt.long)
-            
-            NNsvac_st1 = NNsvac_st1.gather(1, jProbs_st1_args)
-            NNsvac_st2 = NNsvac_st1.gather(1, jProbs_st2_args)
-
-            jProbs_st1 = np.sort(jProbs_st1, axis=1)
-            jProbs_st2 = np.sort(jProbs_st2, axis=1)
-        else:
-            print("Jump Rates unsorted. Values will be non-symmetric if boundary-training is active.")
-        jProbs_st1 = pt.tensor(jProbs_st1[:N_train], dtype=pt.double)
-        jProbs_st2 = pt.tensor(jProbs_st2[:N_train], dtype=pt.double)
+        jProbs_st1, jProbs_st2, NNsvac_st1, NNsvac_st2 = sort_jp(NNsvac_st1, NNsvac_st2, jProbs_st1, jProbs_st2, jumpSort)
 
     N_batch = batch_size
 
@@ -388,26 +395,13 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     
     NNsvac_st1 = None
     NNsvac_st2 = None
+    
     if Boundary_train:
         assert gNet.net[-3].Psi.shape[0] == jProbs_st1.shape[1] == jProbs_st2.shape[1] 
         print("Boundary training indicated. Using jump probabilities.")
         NNsvac_st1 = NNsites[1:, 0].repeat(N_train, 1)
         NNsvac_st2 = NNsites[1:, 0].repeat(N_train, 1)
-        if jumpSort:
-            print("Sorting Jump Rates.")
-            jProbs_st1_args = pt.tensor(np.argsort(jProbs_st1, axis=1), dtype=pt.long)
-            jProbs_st2_args = pt.tensor(np.argsort(jProbs_st2, axis=1), dtype=pt.long)
-            
-            NNsvac_st1 = NNsvac_st1.gather(1, jProbs_st1_args)
-            NNsvac_st2 = NNsvac_st1.gather(1, jProbs_st2_args)
-
-            jProbs_st1 = np.sort(jProbs_st1, axis=1)
-            jProbs_st2 = np.sort(jProbs_st2, axis=1)
-        else:
-            print("Jump Rates unsorted. Values will be non-symmetric if boundary-training is active.")
-        jProbs_st1 = pt.tensor(jProbs_st1[:N_train], dtype=pt.double)
-        jProbs_st2 = pt.tensor(jProbs_st2[:N_train], dtype=pt.double)
-    specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
+        jProbs_st1, jProbs_st2, NNsvac_st1, NNsvac_st2 = sort_jp(NNsvac_st1, NNsvac_st2, jProbs_st1, jProbs_st2, jumpSort)
     
     # pre-convert to data parallel if required
     if pt.cuda.device_count() > 1 and DPr:
@@ -492,34 +486,18 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
     
     NNsvac_st1 = None
     NNsvac_st2 = None
+    
     if Boundary_train:
         assert gNet.net[-3].Psi.shape[0] == jProbs_st1.shape[1] == jProbs_st2.shape[1] 
         print("Boundary training indicated. Using jump probabilities.")
         NNsvac_st1 = NNsites[1:, 0].repeat(N_train, 1)
         NNsvac_st2 = NNsites[1:, 0].repeat(N_train, 1)
-        if jumpSort:
-            print("Sorting Jump Rates.")
-            jProbs_st1_args = pt.tensor(np.argsort(jProbs_st1, axis=1), dtype=pt.long)
-            jProbs_st2_args = pt.tensor(np.argsort(jProbs_st2, axis=1), dtype=pt.long)
-            
-            NNsvac_st1 = NNsvac_st1.gather(1, jProbs_st1_args)
-            NNsvac_st2 = NNsvac_st1.gather(1, jProbs_st2_args)
-
-            jProbs_st1 = np.sort(jProbs_st1, axis=1)
-            jProbs_st2 = np.sort(jProbs_st2, axis=1)
-        else:
-            print("Jump Rates unsorted. Values will be non-symmetric if boundary-training is active.")
-        jProbs_st1 = pt.tensor(jProbs_st1[:N_train], dtype=pt.double)
-        jProbs_st2 = pt.tensor(jProbs_st2[:N_train], dtype=pt.double)
+        jProbs_st1, jProbs_st2, NNsvac_st1, NNsvac_st2 = sort_jp(NNsvac_st1, NNsvac_st2, jProbs_st1, jProbs_st2, jumpSort)
     
     y1Vecs = np.zeros((Nsamples, 3))
     y2Vecs = np.zeros((Nsamples, 3))
 
-    specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
-    BackgroundSpecs = [[spec] for spec in range(state1Data.shape[1]) if spec not in specTrainCh] 
-    
     gNet.to(device)
-    print("Evaluating network on species: {}, Vacancy label: {}".format(SpecsToTrain, VacSpec))
     if epoch is not None:
         print("Network: {}".format(dirPath))
     with pt.no_grad():
