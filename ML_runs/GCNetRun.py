@@ -397,8 +397,8 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     if Boundary_train:
         assert gNet.net[-3].Psi.shape[0] == jProbs_st1.shape[1] == jProbs_st2.shape[1] 
         print("Boundary training indicated. Using jump probabilities.")
-        NNsvac_st1 = NNsites[1:, 0].repeat(N_train, 1)
-        NNsvac_st2 = NNsites[1:, 0].repeat(N_train, 1)
+        NNsvac_st1 = NNsites[1:, 0].repeat(state1Data.shape[0], 1)
+        NNsvac_st2 = NNsites[1:, 0].repeat(state2Data.shape[0], 1)
         jProbs_st1, jProbs_st2, NNsvac_st1, NNsvac_st2 = sort_jp(NNsvac_st1, NNsvac_st2, jProbs_st1, jProbs_st2, jumpSort)
     
     # pre-convert to data parallel if required
@@ -650,7 +650,7 @@ def main(args):
             raise ValueError("Network and data temperature (arguments \"TNet\"/\"tn\" and \"Tdata\"/\"td\") must be the same in train mode")
     
     if AllJumps and args.BoundTrain:
-        raise NotImplementedError("Cannot do all-jump training with boundary states yet.")
+        raise NotImplementedError("Cannot do all-jump training with boundary states.")
     
     # 1. Load crystal parameters
     GpermNNIdx, NNsiteList, JumpNewSites, dxJumps = Load_crysDats(filter_nn, CrysPath)
