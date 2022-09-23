@@ -290,6 +290,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     # scale with L0 if indicated
     if scaleL0:
         L0 = pt.dot(rateData, pt.norm(dispData, dim=1)**2)/(6.0 * dispData.shape[0])
+        L0 = L0.item()
     else:
         L0 = 1.0
 
