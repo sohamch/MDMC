@@ -659,11 +659,17 @@ def main(args):
     N_ngb = NNsiteList.shape[0]
     print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(filter_nn, N_ngb - 1))
     Nsites = NNsiteList.shape[1]
-    GnnPerms = pt.tensor(GpermNNIdx).long()
+    if args.NoSymmetry:
+        print("Switching off convolution symmetries (considering only identity operator)."
+        GnnPerms = pt.tensor(GpermNNIdx[:1]).long()
+        assert pt.all(GnnPerms, pt.arange(N_ngb).unsqueeze(0))
+    else:
+        print("Considering full symmetry group."
+        GnnPerms = pt.tensor(GpermNNIdx).long()
+
     NNsites = pt.tensor(NNsiteList).long()
     JumpVecs = pt.tensor(dxJumps.T * a0, dtype=pt.double)
     print("Jump Vectors: \n", JumpVecs.T, "\n")
-    Ng = GnnPerms.shape[0]
     Ndim = dxJumps.shape[1]
 
     # 2. Load data
@@ -789,6 +795,7 @@ if __name__ == "__main__":
     parser.add_argument("-jsr","--JumpSort", action="store_false", help="Whether to switch on/off sort jumps by rates. Not doing it will cause symmetry to break.")
     parser.add_argument("-jsw","--JumpSwitch", action="store_false", help="Whether to switch on/off jump channels in boundary mode depending on occupancy.")
     parser.add_argument("-xsh","--DispShift", action="store_true", help="Whether to shift displacements with state averages.")
+    parser.add_argument("-nosym","--NoSymmetry", action="store_true", help="Whether to switch off all symmetry operations except identity.")
 
     parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
     parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, help="No. of representation channels in non-input layers.")
