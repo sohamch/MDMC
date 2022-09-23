@@ -275,8 +275,8 @@ def sort_jp(NNsvac_st1, NNsvac_st2, jProbs_st1, jProbs_st2, jumpSort):
     else:
         print("Jump Rates unsorted. Values will be non-symmetric if boundary-training is active.")
     
-    jProbs_st1 = pt.tensor(jProbs_st1[:N_train], dtype=pt.double)
-    jProbs_st2 = pt.tensor(jProbs_st2[:N_train], dtype=pt.double)
+    jProbs_st1 = pt.tensor(jProbs_st1, dtype=pt.double)
+    jProbs_st2 = pt.tensor(jProbs_st2, dtype=pt.double)
 
     return jProbs_st1, jProbs_st2, NNsvac_st1, NNsvac_st2
 
@@ -297,7 +297,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
         print("Boundary training indicated. Using jump probabilities.")
         NNsvac_st1 = NNsites[1:, 0].repeat(N_train, 1)
         NNsvac_st2 = NNsites[1:, 0].repeat(N_train, 1)
-        jProbs_st1, jProbs_st2, NNsvac_st1, NNsvac_st2 = sort_jp(NNsvac_st1, NNsvac_st2, jProbs_st1, jProbs_st2, jumpSort)
+        jProbs_st1, jProbs_st2, NNsvac_st1, NNsvac_st2 =\
+            sort_jp(NNsvac_st1, NNsvac_st2, jProbs_st1[:N_train], jProbs_st2[:N_train], jumpSort)
 
     N_batch = batch_size
 
@@ -490,8 +491,8 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
     if Boundary_train:
         assert gNet.net[-3].Psi.shape[0] == jProbs_st1.shape[1] == jProbs_st2.shape[1] 
         print("Boundary training indicated. Using jump probabilities.")
-        NNsvac_st1 = NNsites[1:, 0].repeat(N_train, 1)
-        NNsvac_st2 = NNsites[1:, 0].repeat(N_train, 1)
+        NNsvac_st1 = NNsites[1:, 0].repeat(state1Data.shape[0], 1)
+        NNsvac_st2 = NNsites[1:, 0].repeat(state1Data.shape[0], 1)
         jProbs_st1, jProbs_st2, NNsvac_st1, NNsvac_st2 = sort_jp(NNsvac_st1, NNsvac_st2, jProbs_st1, jProbs_st2, jumpSort)
     
     y1Vecs = np.zeros((Nsamples, 3))
@@ -660,11 +661,12 @@ def main(args):
     print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(filter_nn, N_ngb - 1))
     Nsites = NNsiteList.shape[1]
     if args.NoSymmetry:
-        print("Switching off convolution symmetries (considering only identity operator)."
+        print("Switching off convolution symmetries (considering only identity operator).")
         GnnPerms = pt.tensor(GpermNNIdx[:1]).long()
         assert pt.all(GnnPerms, pt.arange(N_ngb).unsqueeze(0))
+
     else:
-        print("Considering full symmetry group."
+        print("Considering full symmetry group.")
         GnnPerms = pt.tensor(GpermNNIdx).long()
 
     NNsites = pt.tensor(NNsiteList).long()
