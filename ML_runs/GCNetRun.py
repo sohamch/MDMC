@@ -379,6 +379,9 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
             diff.backward()
             opt.step()
 
+    # For testing return y1 and y2 - we'll test on a single epoch, single batch sample.
+    return y1.cpu().detach().numpy(), y2.cpu().detach().numpy()
+
 
 def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, jProbs_st1, jProbs_st2, NNsites, sp_ch, VacSpec,
