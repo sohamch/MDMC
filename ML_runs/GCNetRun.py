@@ -754,7 +754,7 @@ def main(args):
     if args.BoundTrain:
         assert chLast == N_ngb - 1
 
-    gNet = GCNet(GnnPerms.long(), NNsites, JumpVecs, dim=3, N_ngb=N_ngb, NSpec=NSpec,
+    gNet = GCNet(GnnPerms.long(), NNsites, JumpVecs, N_ngb=N_ngb, NSpec=NSpec,
             mean=wt_means, std=wt_std, nl=nLayers, nch=ch, nchLast=chLast).double()
 
     print("No. of channels in last layer: {}".format(gNet.net[-3].Psi.shape[0]))

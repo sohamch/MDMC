@@ -143,35 +143,40 @@ class GAvg(nn.Module):
 
 
 class GCNet(nn.Module):
-    def __init__(self, GnnPerms, NNsites, JumpUnitVecs, dim, N_ngb,
-            NSpec, mean=1.0, std=0.1, b=1.0, nl=3, nch=8, nchLast=1):
+    def __init__(self, GnnPerms, NNsites, JumpVecs, N_ngb,
+            NSpec, mean=1.0, std=0.1, nl=3, nch=8, nchLast=1, relu=False):
         
         super().__init__()
         modules = []
-
+        
+        if relu:
+            nonLin = nn.ReLU
+        else:
+            nonLin = nn.Softplus
+        
         if nl == -1:
             modules = [
                 GConv(NSpec, nchLast, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
-                nn.Softplus(beta=b),
+                nonLin(),
                 GAvg()
             ]
 
         else:
             modules += [
                 GConv(NSpec, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
-                nn.Softplus(beta=b),
+                nonLin(),
                 GAvg()
             ]
 
             for l in range(nl):
                 modules += [
                     GConv(nch, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
-                    nn.Softplus(beta=b),
+                    nonLin(),
                     GAvg()
                 ]
             modules += [
                 GConv(nch, nchLast, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
-                nn.Softplus(beta=b),
+                nonLin(),
                 GAvg()
             ]
         
@@ -179,7 +184,7 @@ class GCNet(nn.Module):
         # Store NNsites without the self terms for vector prediction
         # Store them in a buffer so they are saved in the state_dict by pytorch
         self.register_buffer("NNsites", NNsites[1:, :])
-        self.register_buffer("JumpUnitVecs", JumpUnitVecs)
+        self.register_buffer("JumpVecs", JumpVecs)
     
     def RearrangeInput(self, In):
         N_ngb = self.NNsites.shape[0]
@@ -197,7 +202,7 @@ class GCNet(nn.Module):
         # The input has shape (N_batch, Nch, Nsites)
         out = self.RearrangeInput(In)
 
-        out = pt.matmul(self.JumpUnitVecs, out)
+        out = pt.matmul(self.JumpVecs, out)
 
         return out
 
