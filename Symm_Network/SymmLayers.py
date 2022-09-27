@@ -148,23 +148,32 @@ class GCNet(nn.Module):
         
         super().__init__()
         modules = []
-        modules += [
-            GConv(NSpec, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
-            nn.Softplus(beta=b),
-            GAvg()
-        ]
-        
-        for l in range(nl):
-            modules += [
-                GConv(nch, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
+
+        if nl == -1:
+            modules = [
+                GConv(NSpec, nchLast, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
                 nn.Softplus(beta=b),
                 GAvg()
             ]
-        modules += [
-            GConv(nch, nchLast, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
-            nn.Softplus(beta=b),
-            GAvg()
-        ]
+
+        else:
+            modules += [
+                GConv(NSpec, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
+                nn.Softplus(beta=b),
+                GAvg()
+            ]
+
+            for l in range(nl):
+                modules += [
+                    GConv(nch, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
+                    nn.Softplus(beta=b),
+                    GAvg()
+                ]
+            modules += [
+                GConv(nch, nchLast, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
+                nn.Softplus(beta=b),
+                GAvg()
+            ]
         
         self.net = nn.Sequential(*modules)
         # Store NNsites without the self terms for vector prediction
