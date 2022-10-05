@@ -141,9 +141,7 @@ if __name__ == "__main__":
     N_eqb = int(args[7])
     allSave = bool(int(args[8]))
     MakeVac = bool(int(args[9]))
-    MakeBinary = bool(int(args[10]))
-    comp = float(args[11])/100.
-    UseLastChkPt = bool(int(args[12])) if len(args)==13 else False
+    UseLastChkPt = bool(int(args[10])) if len(args)==11 else False
 
 
     print("Using CheckPoint : {}".format(UseLastChkPt))
@@ -190,24 +188,14 @@ if __name__ == "__main__":
         with open("superInitial_{}.pkl".format(jobID), "wb") as fl:
             pickle.dump(superFCC, fl)
         
-        if not MakeBinary:
-            NSpec = len(elems)
-            partition = Nsites // NSpec
+        NSpec = len(elems)
+        partition = Nsites // NSpec
 
-            for i in range(NSpec):
-                for at_Ind in range(i * partition, (i + 1) * partition):
-                    permInd = Indices[at_Ind]
-                    superFCC[permInd].symbol = elems[i]
+        for i in range(NSpec):
+            for at_Ind in range(i * partition, (i + 1) * partition):
+                permInd = Indices[at_Ind]
+                superFCC[permInd].symbol = elems[i]
         
-        else:
-            sites_Co = int(comp * Nsites)
-            for site in Indices[:sites_Co]:
-                superFCC[site].symbol = "Co"
-
-            for site in Indices[sites_Co:]:
-                superFCC[site].symbol="Mn"
-
-            
         if MakeVac:
             print("Putting vacancy at site 0")
             del (superFCC[0])
