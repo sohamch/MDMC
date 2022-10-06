@@ -137,7 +137,7 @@ class TestGCNetRun(unittest.TestCase):
 
         print("Done single jump data construction test")
 
-    def testBatchCalc_SpNN(self):
+    def testBatchCalc_SpNN_1Jump(self):
         specCheck = self.specCheck
         specsToTrain = [specCheck]
         VacSpec = self.VacSpec
