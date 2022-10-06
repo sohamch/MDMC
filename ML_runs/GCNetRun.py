@@ -327,8 +327,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
         else:
             raise ValueError("Required saved networks not found in {} at epoch {}".format(dirPath, start_ep))
 
-    print("Batch size : {}".format(N_batch)) 
-    specTrainCh = [sp_ch[spec] for spec in SpecsToTrain]
+    print("Batch size : {}".format(N_batch))
 
     gNet.to(device)
     opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
