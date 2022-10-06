@@ -186,7 +186,7 @@ class TestGCNetRun(unittest.TestCase):
         # Get the original network
         gNet2.load_state_dict(sd)
 
-        y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
+        y1, y2, r, dx = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
                        jProbs_st1, jProbs_st2, self.NNsites, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
                        N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False)
 
@@ -213,6 +213,16 @@ class TestGCNetRun(unittest.TestCase):
             self.assertTrue(np.allclose(y1[samp], y1_samp.detach().numpy()),
                             msg="{} \n {}".format(y1[samp], y1_samp.detach().numpy()))
             self.assertTrue(np.allclose(y2[samp], y2_samp.detach().numpy()))
+
+            # check the displacements
+            jSelect = None
+            count = 0
+            for jInd in range(self.JumpNewSites.shape[0]):
+                state2_try = self.state1List[samp][self.JumpNewSites[jInd]]
+                if np.all(state2_try == self.state2List[samp]):
+                    jSelect = jInd
+                    count += 1
+            self.assertEqual(count, 1)  # there should be exactly one match
 
     def testVacBatchCalc_SpNN_1Jump(self):
         VacSpec = self.VacSpec
@@ -272,6 +282,77 @@ class TestGCNetRun(unittest.TestCase):
             self.assertTrue(np.allclose(y1[samp], y1_samp.detach().numpy()),
                             msg="{} \n {}".format(y1[samp], y1_samp.detach().numpy()))
             self.assertTrue(np.allclose(y2[samp], y2_samp.detach().numpy()))
+
+    def test_Data_constr_AllJumps(self):
+        specCheck = self.specCheck
+        specsToTrain = [specCheck]
+        VacSpec = self.VacSpec
+        N_check = 200
+        N_train = 10000
+        AllJumps = True
+
+        for m in ["train", "all"]:
+            print("testing mode : {}".format(m))
+            State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+                makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
+                                self.AllJumpRates_st1, self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2,
+                                self.JumpNewSites, self.dxJumps, self.NNsiteList, N_train,
+                                AllJumps=AllJumps, mode=m)
+
+            if m == "all":
+                self.assertTrue(State1_occs.shape[0] == self.state1List.shape[0] * self.z == State2_occs.shape[0])
+                self.assertTrue(rates.shape[0] == self.state1List.shape[0] * self.z == disps.shape[0])
+                self.assertTrue(OnSites_state1.shape[0] == self.state1List.shape[0] * self.z == OnSites_state2.shape[0])
+                sampsCheck = np.random.randint(0, State1_occs.shape[0], N_check)
+
+            else:
+                self.assertTrue(State1_occs.shape[0] == N_train == State2_occs.shape[0])
+                self.assertTrue(rates.shape[0] == N_train == disps.shape[0])
+                self.assertTrue(OnSites_state1.shape[0] == N_train == OnSites_state2.shape[0])
+                sampsCheck = np.random.randint(0, N_train, N_check)
+
+            for stateInd in tqdm(sampsCheck, position=0, leave=True):
+                state1 = self.state1List[stateInd]
+                for jInd in range(self.z):
+                    state2 = state1.copy()
+                    NNsiteVac = self.NNsiteList[jInd + 1, 0]
+                    _, RsiteVacNN = self.superFCC.ciR(NNsiteVac)
+                    state2[0] = state2[NNsiteVac]
+                    state2[NNsiteVac] = 0
+
+                    for site in range(self.state1List.shape[1]):
+                        _, Rsite = self.superFCC.ciR(site)
+                        RsiteNew = (Rsite + RsiteVacNN) % self.N_units
+                        siteNew, _ = self.superFCC.index(RsiteNew, (0,0))
+                        spec1 = state1[site]
+                        spec2 = state2[siteNew]
+
+                        if site == 0:
+                            self.assertEqual(spec2, 0)
+                            self.assertTrue(np.all(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site] == 0))
+                            self.assertTrue(np.all(State2_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site] == 0))
+
+                        else:
+                            self.assertNotEqual(spec2, 0)
+                            self.assertEqual(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, spec1 - 1, site], 1)
+                            self.assertEqual(np.sum(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site]), 1)
+
+                            self.assertEqual(State2_occs[stateInd * self.dxJumps.shape[0] + jInd, spec2 - 1, site], 1)
+                            self.assertEqual(np.sum(State2_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site]), 1)
+
+                    # check the displacements
+                    NNR = np.dot(np.linalg.inv(self.superFCC.crys.lattice), self.dxJumps[jInd]).astype(int) % self.N_units
+                    NNsiteVac = self.NNsiteList[jInd + 1, 0]
+                    self.assertTrue(np.all(NNR == RsiteVacNN))
+                    spec = state1[NNsiteVac]
+                    self.assertTrue(np.allclose(disps[stateInd * self.dxJumps.shape[0] + jInd, 0],
+                                                self.a0 * self.dxJumps[jInd]))
+                    if spec == specCheck:
+                        self.assertTrue(np.allclose(disps[stateInd * self.dxJumps.shape[0] + jInd, 1],
+                                                    -self.a0 * self.dxJumps[jInd]))
+
+                    # check the rate
+                    assert np.allclose(rates[stateInd * self.dxJumps.shape[0] + jInd], self.AllJumpRates_st1[stateInd, jInd])
 
 
 
