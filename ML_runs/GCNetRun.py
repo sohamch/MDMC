@@ -780,14 +780,14 @@ def main(args):
                 rateData, dispData, jProbs_st1, jProbs_st2, NNsites, specsToTrain, sp_ch, VacSpec,
                 start_ep, end_ep, interval, N_train_jumps, gNet,
                 lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size,
-                DPr=DPr, Boundary_train=args.BoundTrain, jumpSort=args.JumpSort, jumpSwitch=args.JumpSwitch, scaleL0=args.ScaleL0)
+                DPr=DPr, Boundary_train=args.BoundTrain, jumpSort=args.JumpSort, jumpSwitch=args.AddOnSitesJPINN, scaleL0=args.ScaleL0)
 
     elif Mode == "eval":
         train_diff, valid_diff = Evaluate(T_net, dirPath, State1_occs, State2_occs,
                 OnSites_state1, OnSites_state2, rateData, dispData,
                 specsToTrain, jProbs_st1, jProbs_st2, NNsites, sp_ch, VacSpec, start_ep, end_ep,
                 interval, N_train_jumps, gNet, batch_size=batch_size, Boundary_train=args.BoundTrain,
-                DPr=DPr, jumpSort=args.JumpSort, jumpSwitch=args.JumpSwitch)
+                DPr=DPr, jumpSort=args.JumpSort, jumpSwitch=args.AddOnSitesJPINN)
         np.save("tr_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), train_diff/(1.0*N_train))
         np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), valid_diff/(1.0*N_train))
 
@@ -795,7 +795,7 @@ def main(args):
         y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_occs, State2_occs,
                 OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, NNsites, sp_ch,
                 specsToTrain, VacSpec, gNet, Ndim, batch_size=batch_size, epoch=start_ep,
-                Boundary_train=args.BoundTrain,jumpSwitch=args.JumpSwitch)
+                Boundary_train=args.BoundTrain,jumpSwitch=args.AddOnSitesJPINN)
 
         np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y1Vecs)
         np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y2Vecs)
@@ -819,7 +819,7 @@ if __name__ == "__main__":
     parser.add_argument("-rlavg","--RepLayerAvg", action="store_true", help="Whether to average Representations across samples (training and validation will be made separate)")
     parser.add_argument("-bt","--BoundTrain", action="store_true", help="Whether to train using boundary state averages.")
     parser.add_argument("-jsr","--JumpSort", action="store_false", help="Whether to switch on/off sort jumps by rates. Not doing it will cause symmetry to break.")
-    parser.add_argument("-jsw","--JumpSwitch", action="store_true", help="Whether to switch on/off jump channels in boundary mode depending on occupancy.")
+    parser.add_argument("-aos","--AddOnSitesJPINN", action="store_true", help="Whether to consider on sites along with vacancy sites in JPINN.")
     parser.add_argument("-xsh","--DispShift", action="store_true", help="Whether to shift displacements with state averages.")
     parser.add_argument("-nosym","--NoSymmetry", action="store_true", help="Whether to switch off all symmetry operations except identity.")
     parser.add_argument("-l0","--ScaleL0", action="store_true", help="Whether to scale transport coefficients during training with uncorrelated value.")
