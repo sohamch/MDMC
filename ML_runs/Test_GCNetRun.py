@@ -55,85 +55,100 @@ class TestGCNetRun(unittest.TestCase):
         specsToTrain = [specCheck]
         VacSpec = self.VacSpec
         N_check = 200
+        N_train = 1000
         AllJumps = False
 
-        State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
-            makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                            self.AllJumpRates_st1, self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2,
-                            self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
-                            AllJumps=AllJumps, mode="train")
+        for m in ["train", "all"]:
+            print("testing mode : {}".format(m))
+            State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+                makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
+                                self.AllJumpRates_st1, self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2,
+                                self.JumpNewSites, self.dxJumps, self.NNsiteList, N_train,
+                                AllJumps=AllJumps, mode=m)
 
-        for samp in tqdm(range(N_check), position=0, leave=True):
-            for site in range(self.state1List.shape[1]):
-                if site == 0:
-                    self.assertTrue(np.all(State1_occs[samp, :, site] == 0))
-                    self.assertTrue(np.all(State2_occs[samp, :, site] == 0))
-                else:
-                    spec1 = self.state1List[samp, site]
-                    self.assertEqual(State1_occs[samp, spec1 - 1, site], 1)
-                    self.assertEqual(np.sum(State1_occs[samp, :, site]), 1)
+            if m == "all":
+                self.assertTrue(State1_occs.shape[0] == self.state1List.shape[0] == State2_occs.shape[0])
+                self.assertTrue(rates.shape[0] == self.state1List.shape[0] == disps.shape[0])
+                self.assertTrue(OnSites_state1.shape[0] == self.state1List.shape[0] == OnSites_state2.shape[0])
+                sampsCheck = np.random.randint(0, State1_occs.shape[0], N_check)
 
-                    spec2 = self.state2List[samp, site]
-                    self.assertEqual(State2_occs[samp, spec2 - 1, site], 1)
-                    self.assertEqual(np.sum(State2_occs[samp, :, site]), 1)
-
-            # check the displacements
-            jSelect = None
-            count = 0
-            for jInd in range(self.JumpNewSites.shape[0]):
-                state2_try = self.state1List[samp][self.JumpNewSites[jInd]]
-                if np.all(state2_try == self.state2List[samp]):
-                    jSelect = jInd
-                    count += 1
-            self.assertEqual(count, 1) # there should be exactly one match
-
-            # Check occupancies using supercell
-            state1 = self.state1List[samp]
-            state2 = state1.copy()
-            NNsiteVac = self.NNsiteList[jSelect + 1, 0]
-            _, RsiteVac = self.superFCC.ciR(NNsiteVac)
-            state2[0] = state2[NNsiteVac]
-            state2[NNsiteVac] = 0
-
-            for site in range(self.state1List.shape[1]):
-                _, Rsite = self.superFCC.ciR(site)
-                RsiteNew = (Rsite + RsiteVac)
-                siteNew, _ = self.superFCC.index(RsiteNew, (0, 0))
-                spec1 = state1[site]
-                spec2 = state2[siteNew]
-
-                if site == 0:
-                    assert spec2 == 0
-                    assert np.all(State1_occs[samp, :, site] == 0)
-                    assert np.all(State2_occs[samp, :, site] == 0)
-
-                else:
-                    assert spec2 != 0
-                    assert State1_occs[samp, spec1 - 1, site] == 1
-                    assert np.sum(State1_occs[samp, :, site]) == 1
-
-                    assert State2_occs[samp, spec2 - 1, site] == 1
-                    assert np.sum(State2_occs[samp, :, site]) == 1
-
-            NNR = np.dot(np.linalg.inv(self.superFCC.crys.lattice), self.dxJumps[jSelect]).astype(int)
-            # Check that the displacements for each jump are okay
-            self.assertTrue(np.allclose(np.dot(self.superFCC.crys.lattice, NNR), self.dxJumps[jSelect]))
-            NNRSite = self.superFCC.index(NNR, (0, 0))[0]
-
-            NNsiteVac = self.NNsiteList[jSelect + 1, 0]
-            # check that NN sequence matches
-            self.assertTrue(np.all(NNRSite == NNsiteVac))
-
-            spec = self.state1List[samp, NNsiteVac]
-            assert np.allclose(disps[samp, 0], 3.59 * self.dxJumps[jSelect])
-            # Check that displacements are okay
-            if spec == specCheck:
-                self.assertTrue(np.allclose(disps[samp, 1], -3.59 * self.dxJumps[jSelect]))
             else:
-                self.assertTrue(np.allclose(disps[samp, 1], 0.0))
+                self.assertTrue(State1_occs.shape[0] == N_train == State2_occs.shape[0])
+                self.assertTrue(rates.shape[0] == N_train == disps.shape[0])
+                self.assertTrue(OnSites_state1.shape[0] == N_train == OnSites_state2.shape[0])
+                sampsCheck = np.random.randint(0, N_train, N_check)
 
-            # check the rate
-            self.assertTrue(np.math.isclose(rates[samp], self.rateList[samp]))
+            for samp in tqdm(sampsCheck, position=0, leave=True):
+                for site in range(self.state1List.shape[1]):
+                    if site == 0:
+                        self.assertTrue(np.all(State1_occs[samp, :, site] == 0))
+                        self.assertTrue(np.all(State2_occs[samp, :, site] == 0))
+                    else:
+                        spec1 = self.state1List[samp, site]
+                        self.assertEqual(State1_occs[samp, spec1 - 1, site], 1)
+                        self.assertEqual(np.sum(State1_occs[samp, :, site]), 1)
+
+                        spec2 = self.state2List[samp, site]
+                        self.assertEqual(State2_occs[samp, spec2 - 1, site], 1)
+                        self.assertEqual(np.sum(State2_occs[samp, :, site]), 1)
+
+                # check the displacements
+                jSelect = None
+                count = 0
+                for jInd in range(self.JumpNewSites.shape[0]):
+                    state2_try = self.state1List[samp][self.JumpNewSites[jInd]]
+                    if np.all(state2_try == self.state2List[samp]):
+                        jSelect = jInd
+                        count += 1
+                self.assertEqual(count, 1) # there should be exactly one match
+
+                # Check occupancies using supercell
+                state1 = self.state1List[samp]
+                state2 = state1.copy()
+                NNsiteVac = self.NNsiteList[jSelect + 1, 0]
+                _, RsiteVac = self.superFCC.ciR(NNsiteVac)
+                state2[0] = state2[NNsiteVac]
+                state2[NNsiteVac] = 0
+
+                for site in range(self.state1List.shape[1]):
+                    _, Rsite = self.superFCC.ciR(site)
+                    RsiteNew = (Rsite + RsiteVac)
+                    siteNew, _ = self.superFCC.index(RsiteNew, (0, 0))
+                    spec1 = state1[site]
+                    spec2 = state2[siteNew]
+
+                    if site == 0:
+                        assert spec2 == 0
+                        assert np.all(State1_occs[samp, :, site] == 0)
+                        assert np.all(State2_occs[samp, :, site] == 0)
+
+                    else:
+                        assert spec2 != 0
+                        assert State1_occs[samp, spec1 - 1, site] == 1
+                        assert np.sum(State1_occs[samp, :, site]) == 1
+
+                        assert State2_occs[samp, spec2 - 1, site] == 1
+                        assert np.sum(State2_occs[samp, :, site]) == 1
+
+                NNR = np.dot(np.linalg.inv(self.superFCC.crys.lattice), self.dxJumps[jSelect]).astype(int)
+                # Check that the displacements for each jump are okay
+                self.assertTrue(np.allclose(np.dot(self.superFCC.crys.lattice, NNR), self.dxJumps[jSelect]))
+                NNRSite = self.superFCC.index(NNR, (0, 0))[0]
+
+                NNsiteVac = self.NNsiteList[jSelect + 1, 0]
+                # check that NN sequence matches
+                self.assertTrue(np.all(NNRSite == NNsiteVac))
+
+                spec = self.state1List[samp, NNsiteVac]
+                assert np.allclose(disps[samp, 0], 3.59 * self.dxJumps[jSelect])
+                # Check that displacements are okay
+                if spec == specCheck:
+                    self.assertTrue(np.allclose(disps[samp, 1], -3.59 * self.dxJumps[jSelect]))
+                else:
+                    self.assertTrue(np.allclose(disps[samp, 1], 0.0))
+
+                # check the rate
+                self.assertTrue(np.math.isclose(rates[samp], self.rateList[samp]))
 
         print("Done single jump data construction test")
 
