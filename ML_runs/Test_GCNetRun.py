@@ -62,8 +62,7 @@ class TestGCNetRun(unittest.TestCase):
             print("testing mode : {}".format(m))
             State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
                 makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                                self.AllJumpRates_st1, self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2,
-                                self.JumpNewSites, self.dxJumps, self.NNsiteList, N_train,
+                                self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_train,
                                 AllJumps=AllJumps, mode=m)
 
             if m == "all":
@@ -161,8 +160,7 @@ class TestGCNetRun(unittest.TestCase):
         AllJumps = False
         State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                            self.AllJumpRates_st1, self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2,
-                            self.JumpNewSites, self.dxJumps, self.NNsiteList, N_train,
+                            self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_train,
                             AllJumps=AllJumps, mode="train")
 
         state1Data, state2Data, dispData, rateData, On_st1, On_st2 = \
@@ -180,8 +178,7 @@ class TestGCNetRun(unittest.TestCase):
 
         State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                            self.AllJumpRates_st1, self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2,
-                            self.JumpNewSites, self.dxJumps, self.NNsiteList, N_train,
+                            self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_train,
                             AllJumps=AllJumps, mode="train")
 
         state1Data, state2Data, dispData, rateData, On_st1, On_st2 = \
@@ -204,8 +201,7 @@ class TestGCNetRun(unittest.TestCase):
         AllJumps = False
         State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                            self.AllJumpRates_st1, self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2,
-                            self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
+                            self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
                             AllJumps=AllJumps, mode="train")
 
         # Everything related to JPINN will be None
@@ -231,7 +227,7 @@ class TestGCNetRun(unittest.TestCase):
         gNet2.load_state_dict(sd)
 
         y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
-                       jProbs_st1, jProbs_st2, self.NNsites, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
+                       jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
                        N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False)
 
         # Now for each sample, compute the y explicitly and match
@@ -275,8 +271,7 @@ class TestGCNetRun(unittest.TestCase):
         AllJumps = False
         State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                            self.AllJumpRates_st1, self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2,
-                            self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
+                            self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
                             AllJumps=AllJumps, mode="train")
 
         # Everything related to JPINN will be None
@@ -302,7 +297,7 @@ class TestGCNetRun(unittest.TestCase):
         gNet2.load_state_dict(sd)
 
         y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
-                       jProbs_st1, jProbs_st2, self.NNsites, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
+                       jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
                        N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False)
 
         # Now for each sample, compute the y explicitly and match
@@ -339,8 +334,7 @@ class TestGCNetRun(unittest.TestCase):
             print("testing mode : {}".format(m))
             State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
                 makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                                self.AllJumpRates_st1, self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2,
-                                self.JumpNewSites, self.dxJumps, self.NNsiteList, N_train,
+                                self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_train,
                                 AllJumps=AllJumps, mode=m)
 
             if m == "all":
@@ -406,8 +400,7 @@ class TestGCNetRun(unittest.TestCase):
         AllJumps = True
         State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                            self.AllJumpRates_st1, self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2,
-                            self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
+                            self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
                             AllJumps=AllJumps, mode="train")
 
         # Everything related to JPINN will be None
@@ -433,7 +426,7 @@ class TestGCNetRun(unittest.TestCase):
         gNet2.load_state_dict(sd)
 
         y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
-                              jProbs_st1, jProbs_st2, self.NNsites, specsToTrain, sp_ch, VacSpec, start_ep, end_ep,
+                              jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep,
                               interval, N_check * self.z, gNet,
                               lRate=0.001, batch_size=N_check * self.z, scratch_if_no_init=True, chkpt=False)
 
@@ -468,8 +461,7 @@ class TestGCNetRun(unittest.TestCase):
         AllJumps = True
         State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                            self.AllJumpRates_st1, self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2,
-                            self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
+                            self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
                             AllJumps=AllJumps, mode="train")
 
         for samp in range(N_check):
@@ -499,7 +491,7 @@ class TestGCNetRun(unittest.TestCase):
         gNet2.load_state_dict(sd)
 
         y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
-                              jProbs_st1, jProbs_st2, self.NNsites, specsToTrain, sp_ch, VacSpec, start_ep, end_ep,
+                              jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep,
                               interval, N_check * self.z, gNet,
                               lRate=0.001, batch_size=N_check * self.z, scratch_if_no_init=True, chkpt=False)
 
@@ -531,8 +523,7 @@ class TestGCNetRun(unittest.TestCase):
         AllJumps = False
         State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                            self.AllJumpRates_st1, self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2,
-                            self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
+                            self.AllJumpRates_st1,  self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
                             AllJumps=AllJumps, mode="train")
 
         # Everything related to JPINN will be None
@@ -559,7 +550,7 @@ class TestGCNetRun(unittest.TestCase):
         gNet2.load_state_dict(sd)
 
         y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
-                       jProbs_st1, jProbs_st2, self.NNsites, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
+                       jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
                        N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False)
 
         # Now for each sample, compute the y explicitly and match
