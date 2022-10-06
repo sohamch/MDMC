@@ -13,6 +13,7 @@ from tqdm import tqdm
 import pickle
 from GCNetRun import Load_Data, makeComputeData, makeDataTensors, Load_crysDats, SpecBatchOuts, vacBatchOuts
 from GCNetRun import Train
+from SymmLayers import GCNet
 
 class TestGCNetRun(unittest.TestCase):
     def setUp(self):
@@ -25,6 +26,21 @@ class TestGCNetRun(unittest.TestCase):
         self.GpermNNIdx, self.NNsiteList, self.JumpNewSites, self.dxJumps = Load_crysDats(1, CrysDatPath)
 
         self.z = self.dxJumps.shape[0]
+        self.N_ngb = self.NNsiteList.shape[0]
+
+        self.GnnPerms = pt.tensor(self.GpermNNIdx).long()
+
+        print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(1, self.N_ngb - 1))
+        self.Nsites = self.NNsiteList.shape[1]
+
+        self.assertEqual(self.Nsites, self.state1List.shape[1])
+        self.assertEqual(self.Nsites, self.state2List.shape[1])
+
+        self.a0 = 3.59
+        self.NNsites = pt.tensor(self.NNsiteList).long()
+        self.JumpVecs = pt.tensor(self.dxJumps.T * self.a0, dtype=pt.double)
+        print("Jump Vectors: \n", self.JumpVecs.T, "\n")
+        self.Ndim = self.dxJumps.shape[1]
 
         with open(CrysDatPath + "supercellFCC.pkl", "rb") as fl:
             self.superFCC = pickle.load(fl)
@@ -125,13 +141,69 @@ class TestGCNetRun(unittest.TestCase):
         specCheck = self.specCheck
         specsToTrain = [specCheck]
         VacSpec = self.VacSpec
-        N_check = 200
+        N_check = 50
         AllJumps = False
         State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
                             self.AllJumpRates_st1, self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2,
                             self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
                             AllJumps=AllJumps, mode="train")
+
+        # Everything related to JPINN will be None
+        jProbs_st1 = None
+        jProbs_st2 = None
+        start_ep = 0
+        end_ep = 0
+        interval = 100 # don't save networks
+        dirPath="."
+
+        # Make the network
+        specs = np.unique(self.state1List[0])
+        NSpec = specs.shape[0] - 1
+        gNet = GCNet(self.GnnPerms.long(), self.NNsites, self.JumpVecs, N_ngb=self.N_ngb, NSpec=NSpec,
+                     mean=0.02, std=0.2, nl=1, nch=8, nchLast=1).double()
+
+        sd = gNet.state_dict()
+
+        gNet2 = GCNet(self.GnnPerms.long(), self.NNsites, self.JumpVecs, N_ngb=self.N_ngb, NSpec=NSpec,
+                     mean=0.02, std=0.2, nl=1, nch=8, nchLast=1).double()
+
+        # Get the original network
+        gNet2.load_state_dict(sd)
+
+        y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
+                       jProbs_st1, jProbs_st2, self.NNsites, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
+                       N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False)
+
+        # Now for each sample, compute the y explicitly and match
+        for samp in tqdm(range(N_check)):
+            state1Input = pt.tensor(State1_occs[samp:samp + 1], dtype=pt.double)
+            state2Input = pt.tensor(State2_occs[samp:samp + 1], dtype=pt.double)
+
+            with pt.no_grad():
+                y1SampAllSites = gNet2(state1Input)
+                y2SampAllSites = gNet2(state2Input)
+
+            # Now sum explicitly
+            y1_samp = pt.zeros(3).double()
+            y2_samp = pt.zeros(3).double()
+            for site in range(self.Nsites):
+                occs1 = State1_occs[samp, :, site]
+                occs2 = State2_occs[samp, :, site]
+                if occs1[specCheck - 1] == 1:
+                    y1_samp += y1SampAllSites[0, 0, :, site]
+                if occs2[specCheck - 1] == 1:
+                    y2_samp += y2SampAllSites[0, 0, :, site]
+
+            self.assertTrue(np.allclose(y1[samp], y1_samp.detach().numpy()),
+                            msg="{} \n {}".format(y1[samp], y1_samp.detach().numpy()))
+            self.assertTrue(np.allclose(y2[samp], y2_samp.detach().numpy()))
+
+
+
+
+
+
 
 # Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps,
 #       jProbs_st1, jProbs_st2, NNsites, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
