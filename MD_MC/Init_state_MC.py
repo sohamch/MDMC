@@ -48,13 +48,20 @@ def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
     N_total = 0
     Eng_steps_accept = []
     Eng_steps_all = []
+    accepts = []
     
     if lastChkPt > 0:
-        Eng_steps_all = list(np.load("Eng_all_steps.npy")[:lastChkPt-1])
+        Eng_steps_all = list(np.load("Eng_all_steps.npy")[:lastChkPt])
+        accepts = list(np.load("accepts.npy")[:lastChkPt])
 
-    accepts = []
     rand_steps = []
     swap_steps = []
+    # Store the starting supercell in the test directory if doing from scratch
+    if lastChkPt == 0:
+        write_lammps_data("test/inp_MC_test_job_{0}_step_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
+        with open("test/supercell_{}_test.pkl".format(N_total), "wb") as fl_sup:
+            pickle.dump(ASE_Super, fl_sup)
+
     # write the supercell as a lammps file
     write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
 
@@ -128,15 +135,16 @@ def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
                 with open("chkpt/counter.txt", "w") as fl_counter:
                     fl_counter.write("last step saved\n{}".format(N_total))
 
-        rand_steps.append(rn)
-        swap_steps.append([site1, site2])
-        
         # save the energy at all steps after thermalization - can be loaded for checkpointing
         if N_total + lastChkPt >= N_therm:
             np.save("Eng_all_steps.npy", np.array(Eng_steps_all))
+            np.save("accepts.npy", np.array(accepts))
 
         # For the first 20 steps, store everything to test
-        if N_total < 20 and lastChkPt == 0:
+        if N_total <= 20 and lastChkPt == 0:
+            rand_steps.append(rn)
+            swap_steps.append([site1, site2])
+            
             np.save("Eng_steps_test.npy", np.array(Eng_steps_all))
             np.save("rand_steps_test.npy", np.array(rand_steps))
             np.save("swap_atoms_test.npy", np.array(swap_steps))
@@ -194,6 +202,12 @@ if __name__ == "__main__":
 
     if scratch:
         lastSave=0
+        
+        RunPath = os.getcwd() + "/"
+        if not os.path.isdir(RunPath + "chkpt"):
+            os.mkdir(RunPath + "chkpt")
+        if not os.path.isdir(RunPath + "test"):
+            os.mkdir(RunPath + "test")
 
         # Create an FCC primitive unit cell
         a = 3.59
