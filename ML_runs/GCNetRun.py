@@ -209,8 +209,8 @@ def vacBatchOuts(y1, y2, jProbs_st1, jProbs_st2, Boundary_Train):
 
         # y have dimension (Nbatch, Njumps, 3)
         # jPr have dimension (Nbatch, Njumps, 1)
-        y1 = pt.sum(y1*jPr_1_batch, dim = 1) # average across the jumps
-        y2 = pt.sum(y2*jPr_2_batch, dim = 1)
+        y1 = pt.sum(y1*jPr_1_batch, dim=1) # average across the jumps
+        y2 = pt.sum(y2*jPr_2_batch, dim=1)
     
     return y1, y2
 
@@ -252,8 +252,8 @@ def SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1, jProbs_st2, NNsv
         # y have dimensions (Nbatch, Njumps, 3)
         # jPr have dimensions (Nbatch, Njumps, 1)
         # Do a broadcasted multiply, followed by sum along jumps
-        y1 = pt.sum(y1 * jPr_1_batch, dim = 1)
-        y2 = pt.sum(y2 * jPr_2_batch, dim = 1)
+        y1 = pt.sum(y1 * jPr_1_batch, dim=1)
+        y2 = pt.sum(y2 * jPr_2_batch, dim=1)
     
     return y1, y2
     
