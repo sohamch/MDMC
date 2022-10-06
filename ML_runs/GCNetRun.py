@@ -328,7 +328,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     for epoch in tqdm(range(start_ep, end_ep + 1), position=0, leave=True):
         
         ## checkpoint
-        if epoch%interval==0 and chkpt:
+        if epoch % interval == 0 and chkpt:
             pt.save(gNet.state_dict(), dirPath + "/ep_{0}.pt".format(epoch))
             
         for batch in range(0, N_train, N_batch):
