@@ -279,9 +279,10 @@ def sort_jp(NNsvac_st1, NNsvac_st2, jProbs_st1, jProbs_st2, jumpSort):
 
 
 """## Write the training loop"""
-def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps, 
-        jProbs_st1, jProbs_st2, NNsites, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
-        gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False, jumpSort=True, jumpSwitch=True, scaleL0=False):
+def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps,
+          jProbs_st1, jProbs_st2, NNsites, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
+          gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False, jumpSort=True,
+          jumpSwitch=True, scaleL0=False, chkpt=True):
     
     print("Training conditions:")
     print("scratch: {}, DPr: {}, Boundary_train: {}, jumpSort: {}, jumpSwitch: {}, scaleL0: {}".format(scratch_if_no_init, DPr, Boundary_train, jumpSort, jumpSwitch, scaleL0))
@@ -339,7 +340,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     for epoch in tqdm(range(start_ep, end_ep + 1), position=0, leave=True):
         
         ## checkpoint
-        if epoch%interval==0:
+        if epoch%interval==0 and chkpt:
             pt.save(gNet.state_dict(), dirPath + "/ep_{0}.pt".format(epoch))
             
         for batch in range(0, N_train, N_batch):
