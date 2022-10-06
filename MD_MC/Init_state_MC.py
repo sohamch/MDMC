@@ -74,6 +74,8 @@ def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
         e1 = fl_en.readline().split()[0]
         e1 = float(e1)
     
+    beta = 1.0/(kB * T)
+
     while N_total + lastChkPt < SwapRun:
         Eng_steps_all.append(e1)
         
@@ -105,7 +107,7 @@ def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
         de = e2 - e1
         rn = np.random.rand()
 
-        if rn < np.exp(-de/(kB*T)):
+        if rn < np.exp(-beta * de):
             # Then accept the move
             N_accept += 1
             e1 = e2  # set the next initial state energy to the current final energy
@@ -212,18 +214,13 @@ if __name__ == "__main__":
         superlatt = np.identity(3) * N_units
         superFCC = make_supercell(fcc, superlatt)
         Nsites = len(superFCC.get_positions())
-        Natoms = len(superFCC)
+        
         
         # randomize occupancies of the sites
         Nperm = 10
         Indices = np.arange(Nsites)
         for i in range(Nperm):
             Indices = np.random.permutation(Indices)
-
-        print("No. of atoms : {}".format(Natoms))
-        # save the supercell: will be useful for getting site positions
-        with open("superInitial_{}.pkl".format(jobID), "wb") as fl:
-            pickle.dump(superFCC, fl)
         
         NSpec = len(elems)
         partition = Nsites // NSpec
@@ -232,10 +229,18 @@ if __name__ == "__main__":
             for at_Ind in range(i * partition, (i + 1) * partition):
                 permInd = Indices[at_Ind]
                 superFCC[permInd].symbol = elems[i]
-        
+ 
         if MakeVac:
             print("Putting vacancy at site 0")
             del (superFCC[0])
+        
+        Natoms = len(superFCC)
+
+        # save the initial supercell
+        with open("superInitial_{}.pkl".format(jobID), "wb") as fl:
+            pickle.dump(superFCC, fl)
+        
+        
     
     # Run MC
     write_lammps_input(jobID)
