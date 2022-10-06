@@ -376,16 +376,16 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
                 On_st2Batch = On_st2[batch : end]
 
                 y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch, NNsvac_st1_batch, NNsvac_st2_batch, Boundary_train, jumpSwitch)
-            
+
             dy = y2 - y1
             diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/(6. * L0)
+
+            diff.backward()
+            opt.step()
 
             if epoch == 0 and batch == 0:
                 y1BatchTest[:, :] = y1.cpu().detach().numpy()
                 y2BatchTest[:, :] = y2.cpu().detach().numpy()
-
-            diff.backward()
-            opt.step()
 
     # For testing return y1 and y2 - we'll test on a single epoch, single batch sample.
     return y1BatchTest, y2BatchTest
