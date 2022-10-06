@@ -9,6 +9,7 @@ from ase.build import make_supercell
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 import sys
 from scipy.constants import physical_constants
+kB = physical_constants["Boltzmann constant in eV/K"][0]
 import os
 import glob
 
@@ -35,7 +36,7 @@ def write_lammps_input(jobID):
 
 
 # Next, we write the MC loop
-def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
+def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
            N_therm=2000, N_save=200, serial=True, lastChkPt=0):
     if serial:
         cmdString = "$LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
@@ -151,7 +152,6 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
 
 
 if __name__ == "__main__":
-    kB = physical_constants["Boltzmann constant in eV/K"][0]
     args = list(sys.argv)
     T = float(args[1])
     N_swap = int(args[2])
@@ -231,7 +231,7 @@ if __name__ == "__main__":
     # Run MC
     write_lammps_input(jobID)
     start = time.time()
-    N_total, N_accept, Eng_steps_accept = MC_Run(N_swap, superFCC, N_proc, jobID, elems, N_therm=N_eqb, N_save=N_save, lastChkPt=lastSave)
+    N_total, N_accept, Eng_steps_accept = MC_Run(T, N_swap, superFCC, N_proc, jobID, elems, N_therm=N_eqb, N_save=N_save, lastChkPt=lastSave)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
