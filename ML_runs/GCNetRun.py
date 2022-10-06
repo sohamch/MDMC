@@ -293,6 +293,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
 
     if SpecsToTrain == [VacSpec]:
         assert pt.allclose(dispData.cpu(), pt.tensor(disps[:, 1, :], dtype=pt.double))
+    else:
+        assert pt.allclose(dispData.cpu(), pt.tensor(disps[:, 0, :], dtype=pt.double))
 
     # scale with L0 if indicated
     if scaleL0:
