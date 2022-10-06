@@ -69,8 +69,7 @@ def Load_Data(DataPath):
     return state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2
 
 def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
-        AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2, JumpNewSites, 
-        dxJumps, NNsiteList, N_train, AllJumps=False, mode="train"):
+        AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False, mode="train"):
     
     # make the input tensors
     if mode=="train":
@@ -692,8 +691,7 @@ def main(args):
 
     State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch =\
     makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
-                AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2, JumpNewSites,
-                dxJumps, NNsiteList, N_train, AllJumps=AllJumps, mode=Mode)
+                AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps, mode=Mode)
     print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
 
     # 3. Next, make directories
