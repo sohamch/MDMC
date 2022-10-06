@@ -50,7 +50,7 @@ class TestGCNetRun(unittest.TestCase):
         self.VacSpec = 0
         print("Setup complete.")
 
-    def test_Data_constr_singleJump(self):
+    def test_makeComputeData_singleJump(self):
         specCheck = self.specCheck
         specsToTrain = [specCheck]
         VacSpec = self.VacSpec
@@ -152,7 +152,51 @@ class TestGCNetRun(unittest.TestCase):
 
         print("Done single jump data construction test")
 
-    def testBatchCalc_SpNN_1Jump(self):
+    def test_makeDataTensor(self):
+        specCheck = self.specCheck
+        specsToTrain = [specCheck]
+        VacSpec = self.VacSpec
+        N_check = 200
+        N_train = 1000
+        AllJumps = False
+        State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+            makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
+                            self.AllJumpRates_st1, self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2,
+                            self.JumpNewSites, self.dxJumps, self.NNsiteList, N_train,
+                            AllJumps=AllJumps, mode="train")
+
+        state1Data, state2Data, dispData, rateData, On_st1, On_st2 = \
+            makeDataTensors(State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2,
+                            specsToTrain, VacSpec, sp_ch, Ndim=3)
+
+        self.assertTrue(pt.equal(pt.tensor(State1_occs), state1Data))
+        self.assertTrue(pt.equal(pt.tensor(State2_occs), state2Data))
+
+        self.assertTrue(pt.allclose(rateData, pt.tensor(rates)))
+
+        self.assertTrue(pt.allclose(dispData, pt.tensor(disps[:, 1, :])))
+
+        specsToTrain=[VacSpec]
+
+        State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+            makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
+                            self.AllJumpRates_st1, self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2,
+                            self.JumpNewSites, self.dxJumps, self.NNsiteList, N_train,
+                            AllJumps=AllJumps, mode="train")
+
+        state1Data, state2Data, dispData, rateData, On_st1, On_st2 = \
+            makeDataTensors(State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2,
+                            specsToTrain, VacSpec, sp_ch, Ndim=3)
+
+        self.assertTrue(pt.equal(pt.tensor(State1_occs), state1Data))
+        self.assertTrue(pt.equal(pt.tensor(State2_occs), state2Data))
+
+        self.assertTrue(pt.allclose(rateData, pt.tensor(rates)))
+
+        self.assertTrue(pt.allclose(dispData, pt.tensor(disps[:, 0, :])))
+
+
+    def test_Train_Batch_SpNN_1Jump(self):
         specCheck = self.specCheck
         specsToTrain = [specCheck]
         VacSpec = self.VacSpec
@@ -224,7 +268,7 @@ class TestGCNetRun(unittest.TestCase):
                     count += 1
             self.assertEqual(count, 1)  # there should be exactly one match
 
-    def testVacBatchCalc_SpNN_1Jump(self):
+    def test_Train_Vac_Batch_SpNN_1Jump(self):
         VacSpec = self.VacSpec
         specsToTrain = [VacSpec]
         N_check = 50
@@ -283,7 +327,7 @@ class TestGCNetRun(unittest.TestCase):
                             msg="{} \n {}".format(y1[samp], y1_samp.detach().numpy()))
             self.assertTrue(np.allclose(y2[samp], y2_samp.detach().numpy()))
 
-    def test_Data_constr_AllJumps(self):
+    def test_makeComputeData_AllJumps(self):
         specCheck = self.specCheck
         specsToTrain = [specCheck]
         VacSpec = self.VacSpec
@@ -354,7 +398,7 @@ class TestGCNetRun(unittest.TestCase):
                     # check the rate
                     assert np.allclose(rates[stateInd * self.dxJumps.shape[0] + jInd], self.AllJumpRates_st1[stateInd, jInd])
 
-    def testBatchCalc_SpNN_AllJumps(self):
+    def test_Train_Batch_SpNN_AllJumps(self):
         specCheck = self.specCheck
         specsToTrain = [specCheck]
         VacSpec = self.VacSpec
@@ -417,7 +461,7 @@ class TestGCNetRun(unittest.TestCase):
                             msg="{} \n {}".format(y1[samp], y1_samp.detach().numpy()))
             self.assertTrue(np.allclose(y2[samp], y2_samp.detach().numpy()))
 
-    def testVacBatchCalc_SpNN_AllJumps(self):
+    def test_Train_Vac_Batch_SpNN_AllJumps(self):
         VacSpec = self.VacSpec
         specsToTrain = [VacSpec]
         N_check = 20
