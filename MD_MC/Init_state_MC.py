@@ -140,8 +140,9 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
             np.save("rand_steps_test.npy", np.array(rand_steps))
             np.save("swap_atoms_test.npy", np.array(swap_steps))
             np.save("acceptances_test.npy", np.array(accepts))
-            # store the supercells too
-            with open("chkpt/supercell_{}_test.pkl".format(N_total + lastChkPt), "wb") as fl_sup:
+            # store the supercells and lammps files too
+            write_lammps_data("test/inp_MC_test_job_{0}_step_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
+            with open("test/supercell_{}_test.pkl".format(N_total), "wb") as fl_sup:
                 pickle.dump(ASE_Super, fl_sup)
 
         cond = N_total <= SwapRun + 1
@@ -159,9 +160,8 @@ if __name__ == "__main__":
     jobID = int(args[5])
     N_save = int(args[6])
     N_eqb = int(args[7])
-    allSave = bool(int(args[8]))
-    MakeVac = bool(int(args[9]))
-    UseLastChkPt = bool(int(args[10])) if len(args)==11 else False
+    MakeVac = bool(int(args[8]))
+    UseLastChkPt = bool(int(args[9])) if len(args)==10 else False
 
 
     print("Using CheckPoint : {}".format(UseLastChkPt))
