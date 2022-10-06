@@ -288,7 +288,7 @@ class TestGCNetRun(unittest.TestCase):
         specsToTrain = [specCheck]
         VacSpec = self.VacSpec
         N_check = 200
-        N_train = 10000
+        N_train = 1000
         AllJumps = True
 
         for m in ["train", "all"]:
@@ -303,12 +303,12 @@ class TestGCNetRun(unittest.TestCase):
                 self.assertTrue(State1_occs.shape[0] == self.state1List.shape[0] * self.z == State2_occs.shape[0])
                 self.assertTrue(rates.shape[0] == self.state1List.shape[0] * self.z == disps.shape[0])
                 self.assertTrue(OnSites_state1.shape[0] == self.state1List.shape[0] * self.z == OnSites_state2.shape[0])
-                sampsCheck = np.random.randint(0, State1_occs.shape[0], N_check)
+                sampsCheck = np.random.randint(0, self.state1List.shape[0], N_check)
 
             else:
-                self.assertTrue(State1_occs.shape[0] == N_train == State2_occs.shape[0])
-                self.assertTrue(rates.shape[0] == N_train == disps.shape[0])
-                self.assertTrue(OnSites_state1.shape[0] == N_train == OnSites_state2.shape[0])
+                self.assertTrue(State1_occs.shape[0] == N_train * self.z == State2_occs.shape[0])
+                self.assertTrue(rates.shape[0] == N_train * self.z == disps.shape[0])
+                self.assertTrue(OnSites_state1.shape[0] == N_train * self.z == OnSites_state2.shape[0])
                 sampsCheck = np.random.randint(0, N_train, N_check)
 
             for stateInd in tqdm(sampsCheck, position=0, leave=True):
