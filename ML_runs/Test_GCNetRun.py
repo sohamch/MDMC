@@ -417,15 +417,67 @@ class TestGCNetRun(unittest.TestCase):
                             msg="{} \n {}".format(y1[samp], y1_samp.detach().numpy()))
             self.assertTrue(np.allclose(y2[samp], y2_samp.detach().numpy()))
 
-            # check the displacements
-            jSelect = None
-            count = 0
-            for jInd in range(self.JumpNewSites.shape[0]):
-                state2_try = self.state1List[samp][self.JumpNewSites[jInd]]
-                if np.all(state2_try == self.state2List[samp]):
-                    jSelect = jInd
-                    count += 1
-            self.assertEqual(count, 1)  # there should be exactly one match
+    def testVacBatchCalc_SpNN_AllJumps(self):
+        VacSpec = self.VacSpec
+        specsToTrain = [VacSpec]
+        N_check = 20
+        AllJumps = True
+        State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+            makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
+                            self.AllJumpRates_st1, self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2,
+                            self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
+                            AllJumps=AllJumps, mode="train")
+
+        for samp in range(N_check):
+            for j in range(self.z):
+                self.assertTrue(np.allclose(disps[samp * self.z + j, 0], self.dxJumps[j] * self.a0))
+
+        # Everything related to JPINN will be None
+        jProbs_st1 = None
+        jProbs_st2 = None
+        start_ep = 0
+        end_ep = 0
+        interval = 100  # don't save networks
+        dirPath = "."
+
+        # Make the network
+        specs = np.unique(self.state1List[0])
+        NSpec = specs.shape[0] - 1
+        gNet = GCNet(self.GnnPerms.long(), self.NNsites, self.JumpVecs, N_ngb=self.N_ngb, NSpec=NSpec,
+                     mean=0.02, std=0.2, nl=1, nch=8, nchLast=1).double()
+
+        sd = gNet.state_dict()
+
+        gNet2 = GCNet(self.GnnPerms.long(), self.NNsites, self.JumpVecs, N_ngb=self.N_ngb, NSpec=NSpec,
+                      mean=0.02, std=0.2, nl=1, nch=8, nchLast=1).double()
+
+        # Get the original network
+        gNet2.load_state_dict(sd)
+
+        y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
+                              jProbs_st1, jProbs_st2, self.NNsites, specsToTrain, sp_ch, VacSpec, start_ep, end_ep,
+                              interval, N_check * self.z, gNet,
+                              lRate=0.001, batch_size=N_check * self.z, scratch_if_no_init=True, chkpt=False)
+
+        # Now for each sample, compute the y explicitly and match
+        for samp in tqdm(range(N_check * self.z)):
+            state1Input = pt.tensor(State1_occs[samp:samp + 1], dtype=pt.double)
+            state2Input = pt.tensor(State2_occs[samp:samp + 1], dtype=pt.double)
+
+            with pt.no_grad():
+                y1SampAllSites = gNet2(state1Input)
+                y2SampAllSites = gNet2(state2Input)
+
+            # Now sum explicitly
+            y1_samp = pt.zeros(3).double()
+            y2_samp = pt.zeros(3).double()
+            for site in range(1, self.Nsites):
+                y1_samp -= y1SampAllSites[0, 0, :, site]
+                y2_samp -= y2SampAllSites[0, 0, :, site]
+
+            self.assertTrue(np.allclose(y1[samp], y1_samp.detach().numpy()),
+                            msg="{} \n {}".format(y1[samp], y1_samp.detach().numpy()))
+            self.assertTrue(np.allclose(y2[samp], y2_samp.detach().numpy()))
 
 
 
