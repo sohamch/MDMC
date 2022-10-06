@@ -291,6 +291,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
 
+    if SpecsToTrain == [VacSpec]:
+        assert pt.allclose(dispData.cpu(), pt.tensor(disps[:, 1, :], dtype=pt.double))
 
     # scale with L0 if indicated
     if scaleL0:
@@ -413,7 +415,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
     Ndim = disps.shape[2] 
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
-    
+
     NNsvac_st1 = None
     NNsvac_st2 = None
     
