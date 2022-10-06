@@ -319,7 +319,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     print("Batch size : {}".format(N_batch))
 
     gNet.to(device)
-    opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
+    opt = pt.optim.Adam(gNet.parameters(), lr=lRate)
     print("Starting Training loop")
 
     y1BatchTest = np.zeros((N_batch, 3))
