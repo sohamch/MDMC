@@ -38,7 +38,6 @@ def write_lammps_input(jobID):
 def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
            N_therm=2000, N_save=200, serial=True, lastChkPt=0):
     if serial:
-        # cmdString = "mpirun -np 1 $LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
         cmdString = "$LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
     else:
         cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs, jobID)
@@ -48,7 +47,11 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
     N_total = 0
     Eng_steps_accept = []
     Eng_steps_all = []
+    
+    if lastChkPt > 0:
+        Eng_steps_all = list(np.load("Eng_all_steps.npy")[:lastChkPt-1])
 
+    accepts = []
     rand_steps = []
     swap_steps = []
     # write the supercell as a lammps file
@@ -101,12 +104,14 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
             N_accept += 1
             e1 = e2  # set the next initial state energy to the current final energy
             Eng_steps_accept.append(e1)
+            accepts.append(1)
 
         else:
             # reject the move by reverting the occupancies to initial state values
             tmp = ASE_Super[site1].symbol
             ASE_Super[site1].symbol = ASE_Super[site2].symbol
             ASE_Super[site2].symbol = tmp
+            accepts.append(0)
 
         N_total += 1
 
@@ -124,9 +129,24 @@ def MC_Run(SwapRun, ASE_Super, Nprocs, jobID, elems,
 
         rand_steps.append(rn)
         swap_steps.append([site1, site2])
+        
+        # save the energy at all steps after thermalization - can be loaded for checkpointing
+        if N_total + lastChkPt >= N_therm:
+            np.save("Eng_all_steps.npy", np.array(Eng_steps_all))
+
+        # For the first 20 steps, store everything to test
+        if N_total < 20 and lastChkPt == 0:
+            np.save("Eng_steps_test.npy", np.array(Eng_steps_all))
+            np.save("rand_steps_test.npy", np.array(rand_steps))
+            np.save("swap_atoms_test.npy", np.array(swap_steps))
+            np.save("acceptances_test.npy", np.array(accepts))
+            # store the supercells too
+            with open("chkpt/supercell_{}_test.pkl".format(N_total + lastChkPt), "wb") as fl_sup:
+                pickle.dump(ASE_Super, fl_sup)
+
         cond = N_total <= SwapRun + 1
 
-    return N_total, N_accept, Eng_steps_accept, Eng_steps_all, rand_steps, swap_steps
+    return N_total, N_accept, Eng_steps_accept
 
 
 if __name__ == "__main__":
@@ -152,19 +172,27 @@ if __name__ == "__main__":
     for elemInd, el in enumerate(elems):
         elemsToNum[el] = elemInd + 1
 
-
+    scratch = True
     if UseLastChkPt: 
         ChkPtFiles=os.getcwd() + "/chkpt/*.pkl"
         files=glob.glob(ChkPtFiles)
-        max_file = max(files, key=os.path.getctime) # Get the file created last
-        with open(max_file, "rb") as fl:
-            superFCC = pickle.load(fl)
         
-        lastFlName=max_file.split("/")[-1]
-        lastSave=int(lastFlName[10:-4])
-        print("Loading checkpointed step : {} for run : {}".format(lastSave, jobID))
+        if len(files) == 0:
+            print("Thermalization not reached. Starting from scratch")
+            scratch = True
 
-    else:
+        else:
+            scratch = False
+            max_file = max(files, key=os.path.getctime) # Get the file created last
+            with open(max_file, "rb") as fl:
+                superFCC = pickle.load(fl)
+        
+            lastFlName=max_file.split("/")[-1]
+            lastSave=int(lastFlName[10:-4])
+            print("Loading checkpointed step : {} for run : {}".format(lastSave, jobID))
+        
+
+    if scratch:
         lastSave=0
 
         # Create an FCC primitive unit cell
@@ -203,8 +231,7 @@ if __name__ == "__main__":
     # Run MC
     write_lammps_input(jobID)
     start = time.time()
-    N_total, N_accept, Eng_steps_accept, Eng_steps_all, rand_steps, swap_steps =\
-            MC_Run(N_swap, superFCC, N_proc, jobID, elems, N_therm=N_eqb, N_save=N_save, lastChkPt=lastSave)
+    N_total, N_accept, Eng_steps_accept = MC_Run(N_swap, superFCC, N_proc, jobID, elems, N_therm=N_eqb, N_save=N_save, lastChkPt=lastSave)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
@@ -214,7 +241,3 @@ if __name__ == "__main__":
     with open("superFCC_therm.pkl", "wb") as fl:
         pickle.dump(superFCC, fl)
 
-    if allSave:
-        np.save("Eng_all_steps.npy", np.array(Eng_steps_all))
-        np.save("rand_steps.npy", np.array(rand_steps))
-        np.save("swap_atoms.npy", np.array(swap_steps))
