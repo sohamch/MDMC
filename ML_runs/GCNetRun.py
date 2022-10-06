@@ -333,6 +333,9 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
     print("Starting Training loop")
 
+    y1BatchTest = np.zeros((N_batch, 3))
+    y2BatchTest = np.zeros((N_batch, 3))
+
     for epoch in tqdm(range(start_ep, end_ep + 1), position=0, leave=True):
         
         ## checkpoint
@@ -375,12 +378,16 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
             
             dy = y2 - y1
             diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/(6. * L0)
-            
+
+            if epoch == 0 and batch == 0:
+                y1BatchTest[:, :] = y1.cpu().detach().numpy()
+                y2BatchTest[:, :] = y2.cpu().detach().numpy()
+
             diff.backward()
             opt.step()
 
     # For testing return y1 and y2 - we'll test on a single epoch, single batch sample.
-    return y1.cpu().detach().numpy(), y2.cpu().detach().numpy()
+    return y1BatchTest, y2BatchTest
 
 
 def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
