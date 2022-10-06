@@ -46,7 +46,6 @@ def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
     Natoms = len(ASE_Super)
     N_accept = 0
     N_total = 0
-    Eng_steps_accept = []
     Eng_steps_all = []
     accepts = []
     
@@ -74,9 +73,8 @@ def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
     with open("Eng_{0}.txt".format(jobID), "r") as fl_en:
         e1 = fl_en.readline().split()[0]
         e1 = float(e1)
-    Eng_steps_accept.append(e1)
-    cond = True  # condition for loop termination
-    while cond:
+    
+    while N_total + lastChkPt < SwapRun:
         Eng_steps_all.append(e1)
         
         # Now randomize the atomic occupancies
@@ -111,7 +109,6 @@ def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
             # Then accept the move
             N_accept += 1
             e1 = e2  # set the next initial state energy to the current final energy
-            Eng_steps_accept.append(e1)
             accepts.append(1)
 
         else:
@@ -154,9 +151,7 @@ def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
             with open("test/supercell_{}_test.pkl".format(N_total), "wb") as fl_sup:
                 pickle.dump(ASE_Super, fl_sup)
 
-        cond = N_total <= SwapRun + 1
-
-    return N_total, N_accept, Eng_steps_accept
+    return N_total, N_accept
 
 
 if __name__ == "__main__":
@@ -245,13 +240,12 @@ if __name__ == "__main__":
     # Run MC
     write_lammps_input(jobID)
     start = time.time()
-    N_total, N_accept, Eng_steps_accept = MC_Run(T, N_swap, superFCC, N_proc, jobID, elems, N_therm=N_eqb, N_save=N_save, lastChkPt=lastSave)
+    N_total, N_accept = MC_Run(T, N_swap, superFCC, N_proc, jobID, elems, N_therm=N_eqb, N_save=N_save, lastChkPt=lastSave)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
     print("Thermalization Run total moves : {}".format(N_total))
     print("Thermalization Time Per iteration : {}".format((end-start)/N_total))
-    np.save("Eng_steps_therm.npy", np.array(Eng_steps_accept))
     with open("superFCC_therm.pkl", "wb") as fl:
         pickle.dump(superFCC, fl)
 
