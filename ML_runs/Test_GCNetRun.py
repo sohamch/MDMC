@@ -592,7 +592,7 @@ class TestGCNetRun(unittest.TestCase):
 
             with pt.no_grad():
                 y2SampAllSites = gNet2(state2Input).detach().numpy()
-            for site in range(1, self.Nsites):
+            for site in range(self.Nsites):
                 ci, R = self.superFCC.ciR(site)
                 Rnew, ciNew = self.superFCC.crys.g_pos(g, R, ci)
                 siteNew, _ = self.superFCC.index(Rnew, ciNew)
@@ -606,6 +606,130 @@ class TestGCNetRun(unittest.TestCase):
             y1_samp = -y1SampAllSites[0, :, :, 0]
             y2_samp = -y2SampAllSites[0, :, :, 0]
 
+            y1_jumpSum = np.zeros(3)
+            y2_jumpSum = np.zeros(3)
+
+            for jump in range(self.z):
+                # Since states are symmetric, jump probs in sorted order will be the same
+                y1_jumpSum += y1_samp[jump] * state1JumpProbs[jump]
+                y2_jumpSum += y2_samp[jump] * state1JumpProbs[jump]
+
+            assert np.allclose(y2_jumpSum, np.dot(g.cartrot, y1_jumpSum))
+
+    def test_Train_JPINN_1Jump_FullSym_Vac_and_Others(self):
+        specCheck = self.specCheck
+        specsToTrain = [specCheck]
+        VacSpec = self.VacSpec
+        N_check = 50
+        AllJumps = False
+        State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+            makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
+                            self.AllJumpRates_st1,  self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
+                            AllJumps=AllJumps, mode="train")
+
+        # Everything related to JPINN will be None
+        jProbs_st1 = self.AllJumpRates_st1 / np.sum(self.AllJumpRates_st1, axis=1).reshape(-1, 1)
+        jProbs_st2 = self.AllJumpRates_st1 / np.sum(self.AllJumpRates_st1, axis=1).reshape(-1, 1)
+
+        start_ep = 0
+        end_ep = 0
+        interval = 100  # don't save networks
+        dirPath = "."
+
+        # Make the network
+        specs = np.unique(self.state1List[0])
+        NSpec = specs.shape[0] - 1
+        gNet = GCNet(self.GnnPerms.long(), self.NNsites, self.JumpVecs, N_ngb=self.N_ngb, NSpec=NSpec,
+                     mean=0.02, std=0.2, nl=1, nch=8, nchLast=self.z).double()
+
+        sd = gNet.state_dict()
+
+        gNet2 = GCNet(self.GnnPerms.long(), self.NNsites, self.JumpVecs, N_ngb=self.N_ngb, NSpec=NSpec,
+                      mean=0.02, std=0.2, nl=1, nch=8, nchLast=self.z).double()
+
+        # Get the original network
+        gNet2.load_state_dict(sd)
+
+        # Compute vectors with only vacancy sites
+        y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
+                       jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
+                       N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False,
+                       Boundary_train=True, jumpSort=True, AddOnSites=True)
+
+        # Now for each sample, compute the y explicitly and match
+        for samp in tqdm(range(N_check)):
+            state1Input = pt.tensor(State1_occs[samp:samp + 1], dtype=pt.double)
+            state2Input = pt.tensor(State2_occs[samp:samp + 1], dtype=pt.double)
+            state1JumpProbs = np.sort(jProbs_st1[samp])
+            state2JumpProbs = np.sort(jProbs_st2[samp])
+
+            with pt.no_grad():
+                y1SampAllSites = gNet2(state1Input).detach().numpy()
+                y2SampAllSites = gNet2(state2Input).detach().numpy()
+
+            # Now sum explicitly with jump probs
+            y1_samp = -y1SampAllSites[0, :, :, 0]
+            y2_samp = -y2SampAllSites[0, :, :, 0]
+
+            for site in range(self.Nsites):
+                occs1 = State1_occs[samp, :, site]
+                occs2 = State2_occs[samp, :, site]
+                if occs1[specCheck - 1] == 1:
+                    y1_samp += y1SampAllSites[0, :, :, site]
+                if occs2[specCheck - 1] == 1:
+                    y2_samp += y2SampAllSites[0, :, :, site]
+
+            y1_jumpSum = np.zeros(3)
+            y2_jumpSum = np.zeros(3)
+
+            for jump in range(self.z):
+                y1_jumpSum += y1_samp[jump] * state1JumpProbs[jump]
+                y2_jumpSum += y2_samp[jump] * state2JumpProbs[jump]
+
+            self.assertTrue(np.allclose(y1[samp], y1_jumpSum),
+                            msg="{} \n {}".format(y1[samp], y1_jumpSum))
+            self.assertTrue(np.allclose(y2[samp], y2_jumpSum))
+
+        # Now check for symmetry
+        state1Input = pt.tensor(State1_occs[:1], dtype=pt.double)
+        state1JumpProbs = np.sort(jProbs_st1[0])
+
+        with pt.no_grad():
+            y1SampAllSites = gNet2(state1Input).detach().numpy()
+
+        for g in tqdm(self.superFCC.crys.G, position=0, leave=True, ncols=65):
+            state2Input = pt.zeros_like(state1Input)
+            for site in range(1, self.Nsites):
+                ci, R = self.superFCC.ciR(site)
+                Rnew, ciNew = self.superFCC.crys.g_pos(g, R, ci)
+                siteNew, _ = self.superFCC.index(Rnew, ciNew)
+                state2Input[:, :, siteNew] = state1Input[:, :, site]
+
+            if np.allclose(g.cartrot, np.eye(3)):
+                assert np.array_equal(state2Input, state1Input)
+
+            with pt.no_grad():
+                y2SampAllSites = gNet2(state2Input).detach().numpy()
+            for site in range(self.Nsites):
+                ci, R = self.superFCC.ciR(site)
+                Rnew, ciNew = self.superFCC.crys.g_pos(g, R, ci)
+                siteNew, _ = self.superFCC.index(Rnew, ciNew)
+                for jmp in range(self.z):
+                    self.assertTrue(np.allclose(
+                        y2SampAllSites[0, jmp, :, siteNew], np.dot(g.cartrot, y1SampAllSites[0, jmp, :, site])
+                    )
+                    )
+
+            # Now sum explicitly with jump probs
+            y1_samp = -y1SampAllSites[0, :, :, 0]
+            y2_samp = -y2SampAllSites[0, :, :, 0]
+            for site in range(self.Nsites):
+                occs1 = State1_occs[0, :, site]
+                occs2 = state2Input[0, :, site]
+                if occs1[specCheck - 1] == 1:
+                    y1_samp += y1SampAllSites[0, :, :, site]
+                if occs2[specCheck - 1] == 1:
+                    y2_samp += y2SampAllSites[0, :, :, site]
             y1_jumpSum = np.zeros(3)
             y2_jumpSum = np.zeros(3)
 
