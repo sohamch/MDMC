@@ -335,6 +335,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
 
     y1BatchTest = np.zeros((N_batch, 3))
     y2BatchTest = np.zeros((N_batch, 3))
+    dispBatchTest = np.zeros((N_batch, 3))
+    rateBatchTest = np.zeros(N_batch)
 
     for epoch in tqdm(range(start_ep, end_ep + 1), position=0, leave=True):
         
@@ -385,9 +387,11 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
             if epoch == 0 and batch == 0:
                 y1BatchTest[:, :] = y1.cpu().detach().numpy()
                 y2BatchTest[:, :] = y2.cpu().detach().numpy()
+                dispBatchTest[:, :] = dispBatch.cpu().detach().numpy()
+                rateBatchTest[:, :] = rateBatch.cpu().detach().numpy()
 
     # For testing return y1 and y2 - we'll test on a single epoch, single batch sample.
-    return y1BatchTest, y2BatchTest
+    return y1BatchTest, y2BatchTest, rateBatchTest, dispBatchTest
 
 
 def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
