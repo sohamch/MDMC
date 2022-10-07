@@ -237,6 +237,7 @@ if __name__ == "__main__":
  
         if MakeVac:
             print("Putting vacancy at site 0")
+            assert np.allclose(superFCC[0].position, 0)
             del (superFCC[0])
         
         Natoms = len(superFCC)
