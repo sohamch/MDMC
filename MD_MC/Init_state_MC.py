@@ -15,6 +15,7 @@ import glob
 
 # First, we write a lammps input script for this run
 def write_lammps_input(jobID):
+
     seed = np.random.randint(0, 10000)
     st = "units \t metal\n"
     st += "atom_style \t atomic\n"
@@ -173,7 +174,6 @@ if __name__ == "__main__":
     MakeVac = bool(int(args[8]))
     UseLastChkPt = bool(int(args[9])) if len(args)==10 else False
 
-
     print("Using CheckPoint : {}".format(UseLastChkPt))
 
     elems = ["Co", "Ni", "Cr", "Fe", "Mn"]
@@ -182,17 +182,14 @@ if __name__ == "__main__":
     for elemInd, el in enumerate(elems):
         elemsToNum[el] = elemInd + 1
 
-    scratch = True
     if UseLastChkPt: 
         ChkPtFiles=os.getcwd() + "/chkpt/*.pkl"
         files=glob.glob(ChkPtFiles)
         
         if len(files) == 0:
-            print("Thermalization not reached. Starting from scratch")
-            scratch = True
+            raise FileNotFoundError("No checkpoint found.")
 
         else:
-            scratch = False
             max_file = max(files, key=os.path.getctime) # Get the file created last
             with open(max_file, "rb") as fl:
                 superFCC = pickle.load(fl)
@@ -202,7 +199,7 @@ if __name__ == "__main__":
             print("Loading checkpointed step : {} for run : {}".format(lastSave, jobID))
         
 
-    if scratch:
+    else:
         lastSave=0
         
         RunPath = os.getcwd() + "/"
@@ -249,7 +246,10 @@ if __name__ == "__main__":
         
     
     # Run MC
-    write_lammps_input(jobID)
+    if not UseLastChkPt:
+        # A new random seed should not be generated if continuing.
+        write_lammps_input(jobID)
+
     start = time.time()
     N_total, N_accept = MC_Run(T, N_swap, superFCC, N_proc, jobID, elems, N_therm=N_eqb, N_save=N_save, lastChkPt=lastSave)
     end = time.time()
