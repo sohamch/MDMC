@@ -194,7 +194,7 @@ if __name__ == "__main__":
             with open(max_file, "rb") as fl:
                 superFCC = pickle.load(fl)
         
-            lastFlName=max_file.split("/")[-3] # start from 200 steps before the last saved on
+            lastFlName=max_file.split("/")[-2] # start from 200 steps before the last saved on
             lastSave=int(lastFlName[10:-4])
             print("Loading checkpointed step : {} for run : {}".format(lastSave, jobID))
         
