@@ -51,17 +51,18 @@ def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
     rand_steps = []
     swap_steps = []
     
-    if lastChkPt > 0:
-        Eng_steps_all = list(np.load("Eng_all_steps.npy")[:lastChkPt])
-        accepts = list(np.load("accepts.npy")[:lastChkPt])
-        rand_steps = list(np.load("rands_all_steps.npy")[:lastChkPt])
-        swap_steps = list(np.load("swap_atoms_all_steps.npy")[:lastChkPt])
-
     # Store the starting supercell in the test directory if doing from scratch
     if lastChkPt == 0:
         write_lammps_data("test/inp_MC_test_job_{0}_step_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
         with open("test/supercell_{}_test.pkl".format(N_total), "wb") as fl_sup:
             pickle.dump(ASE_Super, fl_sup)
+
+    else:
+        Eng_steps_all = list(np.load("Eng_all_steps.npy")[:lastChkPt])
+        accepts = list(np.load("accepts.npy")[:lastChkPt])
+        rand_steps = list(np.load("rands_all_steps.npy")[:lastChkPt])
+        swap_steps = list(np.load("swap_atoms_all_steps.npy")[:lastChkPt])
+
 
     # write the supercell as a lammps file
     write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
@@ -122,6 +123,15 @@ def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
             ASE_Super[site2].symbol = tmp
             accepts.append(0)
 
+        rand_steps.append(rn)
+        swap_steps.append([site1, site2])
+        
+        # save the history at all steps
+        np.save("Eng_all_steps.npy", np.array(Eng_steps_all))
+        np.save("accepts_all_steps.npy", np.array(accepts))
+        np.save("rands_all_steps.npy", np.array(rand_steps))
+        np.save("swap_atoms_all_steps.npy", np.array(swap_steps))
+
         N_total += 1
 
         if N_total%N_save == 0:
@@ -135,14 +145,6 @@ def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
 
                 with open("chkpt/counter.txt", "w") as fl_counter:
                     fl_counter.write("last step saved\n{}".format(N_total))
-
-        rand_steps.append(rn)
-        swap_steps.append([site1, site2])
-        # save the energy at all steps
-        np.save("Eng_all_steps.npy", np.array(Eng_steps_all))
-        np.save("accepts_all_steps.npy", np.array(accepts))
-        np.save("rands_all_steps.npy", np.array(rand_steps))
-        np.save("swap_atoms_all_steps.npy", np.array(swap_steps))
 
         # For the first 20 steps, store all the supercells as well to a test directory
         if N_total <= 20 and lastChkPt == 0:
