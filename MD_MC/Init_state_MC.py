@@ -190,11 +190,12 @@ if __name__ == "__main__":
             raise FileNotFoundError("No checkpoint found.")
 
         else:
-            max_file = max(files, key=os.path.getctime) # Get the file created last
+            files_sorted = sorted(files, key=os.path.getctime)
+            max_file = files_sorted[-3] # Get the file created 400 steps before last
             with open(max_file, "rb") as fl:
                 superFCC = pickle.load(fl)
         
-            lastFlName=max_file.split("/")[-2] # start from 200 steps before the last saved on
+            lastFlName=max_file.split("/")[-1]
             lastSave=int(lastFlName[10:-4])
             print("Loading checkpointed step : {} for run : {}".format(lastSave, jobID))
         
