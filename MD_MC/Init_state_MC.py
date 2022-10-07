@@ -60,7 +60,7 @@ def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
 
     else:
         Eng_steps_all = list(np.load("Eng_all_steps.npy")[:lastChkPt])
-        accepts = list(np.load("accepts.npy")[:lastChkPt])
+        accepts = list(np.load("accepts_all_steps.npy")[:lastChkPt])
         rand_steps = list(np.load("rands_all_steps.npy")[:lastChkPt])
         swap_steps = list(np.load("swap_atoms_all_steps.npy")[:lastChkPt])
 
