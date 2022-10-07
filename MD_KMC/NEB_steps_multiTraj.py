@@ -57,7 +57,12 @@ try:
 except:
     print("checkpoint not found or last step zero indicated. Starting from step zero.")
     allStates = np.load(InitPath + "states_{}_0.npy".format(T))
-    perm = np.arange(allStates.shape[0])
+    try:
+        perm = np.load(InitPath + "perm_{}.npy".format(T))
+    except:
+        perm = np.random.permuation(allStates.shape[0])
+        np.save(InitPath + "perm_{}.npy".format(T), perm)
+
     # Load the starting data for the trajectories
     SiteIndToSpec = allStates[perm][SampleStart: SampleStart + batchSize]
     vacSiteInd = np.zeros(SiteIndToSpec.shape[0], dtype = int)
