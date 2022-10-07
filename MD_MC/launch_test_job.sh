@@ -1,6 +1,6 @@
 #!/bin/bash
-mkdir test_MC_traj
-cd test_MC_traj
+mkdir MC_test_traj
+cd MC_test_traj
 
 mkdir 1
 cd 1
