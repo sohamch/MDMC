@@ -190,7 +190,7 @@ if __name__ == "__main__":
             raise FileNotFoundError("No checkpoint found.")
 
         else:
-            files_sorted = sorted(files, key=os.path.getctime)
+            files_sorted = sorted(files, key=lambda fl: int(fl.split("/")[-1][10:-4]))
             max_file = files_sorted[-3] # Get the file created 400 steps before last
             with open(max_file, "rb") as fl:
                 superFCC = pickle.load(fl)
