@@ -45,6 +45,7 @@ class test_KMC_funcs(unittest.TestCase):
             self.SiteIndToSpec[traj, self.vacSiteInd[traj]] = 0
 
         self.NNsites = np.load("../CrysDat_FCC/NNsites_sitewise.npy")[1:, :].T
+        self.dxList = np.load("../CrysDat_FCC/dxList.npy")
 
         np.save("TestOccs.npy", self.SiteIndToSpec)
 
@@ -169,7 +170,7 @@ class test_KMC_funcs(unittest.TestCase):
                     self.assertEqual(y, self.SiteIndToCartPos[mainSiteInd, 1])
                     self.assertEqual(z, self.SiteIndToCartPos[mainSiteInd, 2])
 
-    def test_getJumpSelects(self):
+    def test_JumpUpdates(self):
 
         # For each trajectory, we'll give some random rates
         rates = np.random.rand(self.NtrajTest, self.NNsites.shape[1])
@@ -190,3 +191,24 @@ class test_KMC_funcs(unittest.TestCase):
                 self.assertTrue(ratesProbSum[traj, id] <= rn[traj])
             for id in range(idx, self.NNsites.shape[1]):
                 self.assertTrue(ratesProbSum[traj, id] >= rn[traj])
+
+        Nspec = len(np.unique(self.SiteIndToSpec[0]))
+        vacSiteInd_init = self.vacSiteInd.copy()
+        SiteIndToSpec_init = self.SiteIndToSpec.copy()
+        jumpAtomSelectArray, X =\
+            updateStates(self.NNsites, Nspec, self.SiteIndToSpec, self.vacSiteInd, jumpID, self.dxList)
+
+        for traj in range(self.NtrajTest):
+            jSelect = jumpID[traj]
+            jSite = self.NNsites[vacSiteInd_init[traj], jSelect]
+            vacsiteInit = vacSiteInd_init[traj]
+            specJump = SiteIndToSpec_init[traj, jSite]
+            self.assertEqual(jumpAtomSelectArray[traj], specJump)
+            self.assertEqual(self.SiteIndToSpec[traj, jSite], 0)
+            self.assertEqual(self.SiteIndToSpec[traj, vacsiteInit], specJump)
+            self.assertEqual(self.vacSiteInd[traj], jSite)
+
+            self.assertTrue(np.array_equal(X[traj, 0, :], self.dxList[jSelect]))
+            self.assertTrue(np.array_equal(X[traj, specJump, :], -self.dxList[jSelect]))
+
+            self.assertTrue(np.allclose(np.sum(X[traj, :, :], axis=0), np.zeros(3)))
