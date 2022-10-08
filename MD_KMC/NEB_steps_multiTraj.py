@@ -110,87 +110,96 @@ start = time.time()
 NEB_count = 0
 
 Barriers_Spec = collections.defaultdict(list)
-
 for step in range(Nsteps):
-    # Write the initial states from last accepted state
-    write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, Initlines)
+    for batch in range(0, Ntraj, chunk):
+        # Write the initial states from last accepted state
+        sampleStart = batch * chunk
+        sampleEnd = min((batch + 1) * chunk, SiteIndToSpecAll.shape[0])
 
-    rates = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
-    barriers = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
-    for jumpInd in range(SiteIndToNgb.shape[1]):
-        # Write the final states in NEB format for lammps
-        write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd, writeAll=WriteAllJumps)
+        SiteIndToSpec = SiteIndToSpecAll[sampleStart: sampleEnd].copy()
+        vacSiteInd = vacSiteIndAll[sampleStart: sampleEnd].copy()
 
-        # Then run lammps
-        commands = [
-            "mpirun -np {0} $LMPPATH/lmp -p {0}x1 -in in.neb_{1} > out_{1}.txt".format(NImage, traj)
-            for traj in range(Ntraj)
-        ]
-        cmdList = [subprocess.Popen(cmd, shell=True) for cmd in commands]
-        # wait for the lammps commands to complete
-        for c in cmdList:
-            rt_code = c.wait()
-            assert rt_code == 0  # check for system errors
-        NEB_count += Ntraj
-        
-        # Then read the forward barrier -> ebf
-        for traj in range(Ntraj):
-            with open("out_{0}.txt".format(traj), "r") as fl:
-                for line in fl:
-                    continue
-            ebfLine = line.split()
-            ebf = float(ebfLine[6])
-            rates[traj, jumpInd] = np.exp(-ebf/(kB*T))
-            barriers[traj, jumpInd] = ebf
+        write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, Initlines)
 
-            # get the jumping species and store the barrier for later use
-            vInd = vacSiteInd[traj]
-            vacNgb = SiteIndToNgb[vInd, jumpInd]
-            jAtom = SiteIndToSpec[traj, vacNgb]
+        rates = np.zeros((batchSize, SiteIndToNgb.shape[1]))
+        barriers = np.zeros((batchSize, SiteIndToNgb.shape[1]))
+        for jumpInd in range(SiteIndToNgb.shape[1]):
+            # Write the final states in NEB format for lammps
+            write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd)
 
-    # Then do selection
-    jumpID, rateProbs, ratesCsum, rndNums, time_step = getJumpSelects(rates)
-    # store the selected jump
-    JumpSelection[:, step] = jumpID[:]
-    # Then do the final exchange
-    jumpAtomSelectArray, X_traj = updateStates(SiteIndToNgb, Nspec, SiteIndToSpec, vacSiteInd, jumpID, dxList)
-    # updateStates args : (SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList)
-    # Note the displacements and the time
-    X_steps[:, :, step, :] = X_traj[:, :, :]
-    t_steps[:, step] = time_step
-    
-    ratesTest[:, step, :] = rates[:, :]
-    barriersTest[:, step, :] = barriers[:, :]
-    randNumsTest[:, step] = rndNums[:]
+            # store the final lammps files for the first batch of states
+            if batch == 0:
+                # Store the final data for each traj, at each step and for each jump
+                for traj in range(batchSize):
+                    cmd = subprocess.Popen("cp final_{0}.data final_{0}_{1}.data".format(traj, jumpInd), shell=True)
+                    rt = cmd.wait()
+                    assert rt == 0
 
-    if (step+1)%10 == 0:
-        with open("timing_{}.txt".format(SampleStart), "a") as fl:
-            fl.write("Time for {} steps : {:.4f} seconds\n".format(step+1, time.time()-start))
+            # Then run lammps
+            commands = [
+                "mpirun -np {0} $LMPPATH/lmp -p {0}x1 -in in.neb_{1} > out_{1}.txt".format(NImage, traj)
+                for traj in range(batchSize)
+            ]
+            cmdList = [subprocess.Popen(cmd, shell=True) for cmd in commands]
 
-    if step % 10 == 0:
-        np.save(RunPath + "chkpt/StatesEnd_{}_{}.npy".format(SampleStart, stepsLast + step), SiteIndToSpec)
-        np.save(RunPath + "chkpt/vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast + step), vacSiteInd)
-        np.save(RunPath + "chkpt/Xsteps_{}_{}.npy".format(SampleStart, stepsLast + step), X_steps[:, :, :step, :])
-        np.save(RunPath + "chkpt/tsteps_{}_{}.npy".format(SampleStart, stepsLast + step), t_steps[:, :step])
-        np.save(RunPath + "chkpt/JumpSelects_{}_{}.npy".format(SampleStart, stepsLast + step), JumpSelection[:, :step])
-        if step == 10:
-            np.save(RunPath + "chkpt/ratesTest_{}_{}.npy".format(SampleStart, stepsLast + step), ratesTest[:, :step, :])
-            np.save(RunPath + "chkpt/barriersTest_{}_{}.npy".format(SampleStart, stepsLast + step), barriersTest[:, :step, :])
-            np.save(RunPath + "chkpt/randNumsTest_{}_{}.npy".format(SampleStart, stepsLast + step), randNumsTest[:, :step])
+            # wait for the lammps commands to complete
+            for c in cmdList:
+                rt_code = c.wait()
+                assert rt_code == 0  # check for system errors
 
+            # Then read the forward barrier -> ebf
+            for traj in range(batchSize):
+                with open("out_{0}.txt".format(traj), "r") as fl:
+                    for line in fl:
+                        continue
+                ebfLine = line.split()
+                ebf = float(ebfLine[6])
+                rates[traj, jumpInd] = np.exp(-ebf / (kB * T))
+                barriers[traj, jumpInd] = ebf
 
-end = time.time()
-print("time per step : {:.4f} seconds".format((end-start)/Nsteps))
-print("time per NEB calculation : {:.4f} seconds".format((end-start)/NEB_count))
+                # get the jumping species and store the barrier for later use
+                vInd = vacSiteInd[traj]
+                vacNgb = SiteIndToNgb[vInd, jumpInd]
+                jAtom = SiteIndToSpec[traj, vacNgb]
+                Barriers_Spec[jAtom].append(ebf)
 
-# save the end results.
-np.save(RunPath + "StatesEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), SiteIndToSpec)
-np.save(RunPath + "vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), vacSiteInd)
-np.save(RunPath + "Xsteps_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), X_steps)
-np.save(RunPath + "tsteps_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), t_steps)
-np.save(RunPath + "JumpSelects_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), JumpSelection)
-if storeRates:
-    np.save(RunPath + "ratesTest_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), ratesTest)
-    np.save(RunPath + "randNumsTest_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), randNumsTest)
-    np.save(RunPath + "barriersTest_{}_{}.npy".format(SampleStart, stepsLast + Nsteps), barriersTest)
-print("All done")
+        # store all the rates
+        AllJumpRates[sampleStart:sampleEnd] = rates[:, :]
+
+        # Then do selection
+        jumpID, rateProbs, ratesCsum, rndNums, time_step = getJumpSelects(rates)
+        # store the selected jumps
+        JumpSelects[sampleStart: sampleEnd] = jumpID[:]
+
+        # store the random numbers for the first set of jump
+        if batch == 0:
+            TestRates[:, :] = rates[:, :]
+            TestBarriers[:, :] = barriers[:, :]
+            TestRandomNums[:] = rndNums[:]
+
+        # Then do the final exchange
+        jumpAtomSelectArray, X_traj = updateStates(SiteIndToNgb, Nspec, SiteIndToSpec, vacSiteInd, jumpID, dxList)
+        # def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList):
+
+        # save final states, displacements and times
+        FinalStates[sampleStart: sampleEnd, :] = SiteIndToSpec[:, :]
+        SpecDisps[sampleStart:sampleEnd, :, :] = X_traj[:, :, :]
+        tarr[sampleStart:sampleEnd] = time_step[:]
+        with open("BatchTiming.txt", "a") as fl:
+            fl.write(
+                "batch {0} of {1} completed in : {2} seconds\n".format(batch + 1, Nbatch, time.time() - start_timer))
+
+    end_timer = time.time()
+    with open("SpecBarriers.pkl", "wb") as fl:
+        pickle.dump(Barriers_Spec, fl)
+
+    # Next, save all the arrays in an hdf5 file
+    with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep, startIndex), "w") as fl:
+        fl.create_dataset("FinalStates", data=FinalStates)
+        fl.create_dataset("SpecDisps", data=SpecDisps)
+        fl.create_dataset("times", data=tarr)
+        fl.create_dataset("AllJumpRates", data=AllJumpRates)
+        fl.create_dataset("JumpSelects", data=JumpSelects)
+        fl.create_dataset("TestRandNums", data=TestRandomNums)
+        fl.create_dataset("TestRates", data=TestRates)
+        fl.create_dataset("TestBarriers", data=TestBarriers)
