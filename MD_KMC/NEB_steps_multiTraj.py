@@ -26,8 +26,8 @@ if len(args) > 7:
 else:
     MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
 
-InitPath, _ = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
-InitPath += "/"
+SourcePath, _ = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
+SourcePath += "/"
 
 # Need to get rid of these argument
 NImage = 3
@@ -35,11 +35,14 @@ ProcPerImage = 1
 RunPath = os.getcwd()+'/'
 print("Running from : " + RunPath)
 
-with open(MainPath + "lammpsBox.txt", "r") as fl:
-    Initlines = fl.readlines()
+try:
+    with open(SourcePath + "lammpsBox.txt", "r") as fl:
+        Initlines = fl.readlines()
+except:
+    raise FileNotFoundError("Template lammps data file not found.")
 
 # Load the lammps cartesian positions and neighborhoods - pre-prepared
-SiteIndToPos = np.load(MainPath + "SiteIndToLmpCartPos.npy")  # lammps pos of sites
+SiteIndToPos = np.load(SourcePath + "SiteIndToLmpCartPos.npy")  # lammps pos of sites
 SiteIndToNgb = np.load(MainPath + "CrysDat_FCC/NNsites_sitewise.npy")[1:, :].T  # Nsites x z array of site neighbors
 
 with open(MainPath + "CrysDat_FCC/jnetFCC.pkl", "rb") as fl:
@@ -54,9 +57,14 @@ try:
     SiteIndToSpec = np.load(RunPath + "chkpt/StatesEnd_{}_{}.npy".format(SampleStart, stepsLast))
     vacSiteInd = np.load(RunPath + "chkpt/vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast))
     print("Starting from checkpointed step {}".format(stepsLast))
+
 except:
     print("checkpoint not found or last step zero indicated. Starting from step zero.")
-    allStates = np.load(InitPath + "states_{}_0.npy".format(T))
+    try:
+        allStates = np.load(SourcePath + "states_{}_0.npy".format(T))
+    except:
+        raise FileNotFoundError("Initial states not found.")
+
     try:
         perm = np.load("perm_{}.npy".format(T))
     except:
@@ -65,8 +73,11 @@ except:
 
     # Load the starting data for the trajectories
     SiteIndToSpec = allStates[perm][SampleStart: SampleStart + batchSize]
+    assert np.all(SiteIndToSpec[:, 0] == 0), msg="All vacancies must be at the 0th site initially."     
     vacSiteInd = np.zeros(SiteIndToSpec.shape[0], dtype = int)
-    assert np.all(SiteIndToSpec[:, 0] == 0)
+
+assert SiteIndToSpec.shape[1] == len(InitLines[12:])
+
 
 specs, counts = np.unique(SiteIndToSpec[0], return_counts=True)
 Nspec = len(specs)  # including the vacancy
