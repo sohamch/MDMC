@@ -6,6 +6,11 @@ from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 import sys
 from tqdm import tqdm
 from KMC_funcs import write_init_states, write_final_states, updateStates, getJumpSelects
+import os
+if not os.path.isdir(os.getcwd() + "/test_KMC_funcs_files"):
+    os.mkdir(os.getcwd() + "/test_KMC_funcs_files")
+
+import subprocess
 
 class test_KMC_funcs(unittest.TestCase):
     def setUp(self):
@@ -39,6 +44,8 @@ class test_KMC_funcs(unittest.TestCase):
         for traj in range(self.NtrajTest):
             self.SiteIndToSpec[traj, self.vacSiteInd[traj]] = 0
 
+        self.NNsites = np.load("../CrysDat_FCC/NNsites_sitewise.npy")[1:, :].T
+
         np.save("TestOccs.npy", self.SiteIndToSpec)
 
     def test_write_init_states(self):
@@ -62,18 +69,25 @@ class test_KMC_funcs(unittest.TestCase):
         # Write out the initial state
         write_init_states(self.SiteIndToSpec, self.SiteIndToCartPos, self.vacSiteInd, Initlines)
 
+        # Move the files to the test folder (to prevent cluttering of source directory)
+        cmd = "mv initial_* test_KMC_funcs_files"
+        c = subprocess.Popen(cmd, shell=True)
+        rt_code = c.wait()
+        assert rt_code == 0
+
         # Now read in the initial states and spot the coordinates
         for traj in range(self.NtrajTest):
+            print("testing traj: {}".format(traj), flush=True)
             vacInd = self.vacSiteInd[traj]
             # read the input file
-            with open("initial_{}.data".format(traj), "r") as fl:
+            with open("test_KMC_funcs_files/initial_{}.data".format(traj), "r") as fl:
                 fileLines = fl.readlines()
 
             self.assertEqual(fileLines[:12], Initlines[:12])
             atomLines = fileLines[12:]
             self.assertEqual(len(atomLines), self.Nsites - 1)
             # except the vacancy site, things should have been skipped
-            for lineInd, writtenSite in enumerate(atomLines):
+            for lineInd, writtenSite in enumerate(tqdm(atomLines, position=0, leave=True, ncols=65)):
                 splitInfo = writtenSite.split()
                 lammpsSiteInd = int(splitInfo[0])
                 WrittenSpec = int(splitInfo[1])
@@ -91,10 +105,66 @@ class test_KMC_funcs(unittest.TestCase):
                 self.assertEqual(x, self.SiteIndToCartPos[mainSiteInd, 0])
                 self.assertEqual(y, self.SiteIndToCartPos[mainSiteInd, 1])
                 self.assertEqual(z, self.SiteIndToCartPos[mainSiteInd, 2])
+        print("Initial state writing passed.", flush=True)
 
+    def test_write_final_states(self):
 
+        with open("test_KMC_funcs_files/vacneighbors.txt", "w") as fl:
+            for traj in range(self.NtrajTest):
+                vacSite = self.vacSiteInd[traj]
+                vacNgb = self.NNsites[vacSite, :]
+                st = ["{} ".format(i) for i in vacNgb]
+                st = "{} \t ".format(vacSite).join(st)
+                fl.write(st)
 
+        for jInd in range(self.NNsites.shape[1]):
+            write_final_states(self.SiteIndToCartPos, self.vacSiteInd, self.NNsites, jInd)
+            # Now go through each trajectory and check that the proper site has been translated
+            for traj in range(self.NtrajTest):
+                cmd = "cp final_{0}.data final_{0}_{1}.data".format(traj, jInd)
+                c = subprocess.Popen(cmd, shell=True)
+                rt_code = c.wait()
+                self.assertEqual(rt_code, 0)
 
+            cmd = "mv final_* test_KMC_funcs_files"
+            c = subprocess.Popen(cmd, shell=True)
+            rt_code = c.wait()
+            self.assertEqual(rt_code, 0)
 
+            for traj in range(self.NtrajTest):
+                print(jInd, traj, flush=True)
+                vacSite = self.vacSiteInd[traj]
+                vacCoords = self.SiteIndToCartPos[vacSite]
 
+                # Now read the file
+                with open("test_KMC_funcs_files/final_{}.data".format(traj), "r") as fl:
+                    finalLines = fl.readlines()
+                line0 = finalLines[0].split()
+                self.assertEqual(len(line0), 1)
+                self.assertEqual(int(line0[0]), self.Nsites - 1)
 
+                atomLines = finalLines[1:]
+
+                # Get the vacancy neighbor at this site
+                vacNgb = self.NNsites[vacSite, jInd]
+
+                # Now check that the correct positions are recorded
+                for lineInd, coords in enumerate(tqdm(atomLines)):
+                    splitInfo = coords.split()
+                    lammpsSiteInd = int(splitInfo[0])
+                    self.assertEqual(lammpsSiteInd, lineInd + 1)
+                    x = float(splitInfo[1])
+                    y = float(splitInfo[2])
+                    z = float(splitInfo[3])
+
+                    if lineInd >= vacSite:
+                        mainSiteInd = lammpsSiteInd
+                    else:
+                        mainSiteInd = lammpsSiteInd - 1
+
+                    if mainSiteInd == vacNgb:
+                        mainSiteInd = vacSite
+
+                    self.assertEqual(x, self.SiteIndToCartPos[mainSiteInd, 0])
+                    self.assertEqual(y, self.SiteIndToCartPos[mainSiteInd, 1])
+                    self.assertEqual(z, self.SiteIndToCartPos[mainSiteInd, 2])
