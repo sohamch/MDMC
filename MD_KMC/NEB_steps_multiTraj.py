@@ -9,6 +9,7 @@ import sys
 import time
 import pickle
 import collections
+import h5py
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 from KMC_funcs import *
 import os
@@ -18,7 +19,7 @@ kB = physical_constants["Boltzmann constant in eV/K"][0]
 
 args = list(sys.argv)
 T = int(args[1])
-stepsLast = int(args[2])
+startStep = int(args[2])
 Nsteps = int(args[3])
 SampleStart = int(args[4])
 batchSize = int(args[5])
@@ -95,13 +96,17 @@ Initlines[2] = "{} \t atoms\n".format(Nsites - 1)
 Initlines[3] = "{} atom types\n".format(Nspec-1)
 
 # Begin KMC loop below
-X_steps = np.zeros((Ntraj, Nspec, Nsteps, 3)) # 0th position will store vacancy jumps
-t_steps = np.zeros((Ntraj, Nsteps))
-JumpSelection = np.zeros((Ntraj, Nsteps), dtype=np.int8)
+FinalStates = np.zeros_like(SiteIndToSpecAll).astype(np.int16)
+FinalVacSites = np.zeros(Ntraj).astype(np.int16)
+SpecDisps = np.zeros((Ntraj, Nspec, 3))
+AllJumpRates = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
+tarr = np.zeros(Ntraj)
+JumpSelects = np.zeros(Ntraj, dtype=np.int8) # which jump is chosen for each trajectory
 
-ratesTest = np.zeros((Ntraj, Nsteps, SiteIndToNgb.shape[1]))
-barriersTest = np.zeros((Ntraj, Nsteps, SiteIndToNgb.shape[1]))
-randNumsTest = np.zeros((Ntraj, Nsteps))
+# rates will be stored for the first batch for testing
+TestRates = np.zeros((batchSize, 12)) # store all the rates to be tested
+TestBarriers = np.zeros((batchSize, 12)) # store all the barriers to be tested
+TestRandomNums = np.zeros(batchSize) # store the random numbers used in the test trajectories
 
 # Before starting, write the lammps input files
 write_input_files(Ntraj, potPath=MainPath)
@@ -171,7 +176,7 @@ for step in range(Nsteps):
         # store the selected jumps
         JumpSelects[sampleStart: sampleEnd] = jumpID[:]
 
-        # store the random numbers for the first set of jump
+        # store the random numbers for the first set of jumps
         if batch == 0:
             TestRates[:, :] = rates[:, :]
             TestBarriers[:, :] = barriers[:, :]
@@ -185,21 +190,31 @@ for step in range(Nsteps):
         FinalStates[sampleStart: sampleEnd, :] = SiteIndToSpec[:, :]
         SpecDisps[sampleStart:sampleEnd, :, :] = X_traj[:, :, :]
         tarr[sampleStart:sampleEnd] = time_step[:]
-        with open("BatchTiming.txt", "a") as fl:
-            fl.write(
-                "batch {0} of {1} completed in : {2} seconds\n".format(batch + 1, Nbatch, time.time() - start_timer))
+        if step == 0:
+            with open("BatchTiming.txt", "a") as fl:
+                fl.write(
+                    "batch {0} of {1} completed in : {2} seconds\n".format(batch + 1, int(np.ceil(Ntraj/chunk)), time.time() - start))
 
     end_timer = time.time()
     with open("SpecBarriers.pkl", "wb") as fl:
         pickle.dump(Barriers_Spec, fl)
 
     # Next, save all the arrays in an hdf5 file
-    with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep, startIndex), "w") as fl:
-        fl.create_dataset("FinalStates", data=FinalStates)
-        fl.create_dataset("SpecDisps", data=SpecDisps)
-        fl.create_dataset("times", data=tarr)
-        fl.create_dataset("AllJumpRates", data=AllJumpRates)
-        fl.create_dataset("JumpSelects", data=JumpSelects)
-        fl.create_dataset("TestRandNums", data=TestRandomNums)
-        fl.create_dataset("TestRates", data=TestRates)
-        fl.create_dataset("TestBarriers", data=TestBarriers)
+    # For the first 10 steps, store everything
+    if startStep + step <= 10:
+        with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep + step, SampleStart), "w") as fl:
+            fl.create_dataset("FinalStates", data=FinalStates)
+            fl.create_dataset("SpecDisps", data=SpecDisps)
+            fl.create_dataset("times", data=tarr)
+            fl.create_dataset("AllJumpRates", data=AllJumpRates)
+            fl.create_dataset("JumpSelects", data=JumpSelects)
+            fl.create_dataset("TestRandNums", data=TestRandomNums)
+            fl.create_dataset("TestRates", data=TestRates)
+            fl.create_dataset("TestBarriers", data=TestBarriers)
+    else:
+        with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep + step, SampleStart), "w") as fl:
+            fl.create_dataset("FinalStates", data=FinalStates)
+            fl.create_dataset("SpecDisps", data=SpecDisps)
+            fl.create_dataset("times", data=tarr)
+            fl.create_dataset("AllJumpRates", data=AllJumpRates)
+            fl.create_dataset("JumpSelects", data=JumpSelects)
