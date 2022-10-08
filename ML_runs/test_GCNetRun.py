@@ -437,8 +437,10 @@ class TestGCNetRun(unittest.TestCase):
                 occs1 = State1_occs[samp, :, site]
                 occs2 = State2_occs[samp, :, site]
                 if occs1[specCheck - 1] == 1:
+                    assert self.state1List[samp, site] == specCheck
                     y1_samp += y1SampAllSites[0, 0, :, site]
                 if occs2[specCheck - 1] == 1:
+                    assert self.state2List[samp, site] == specCheck
                     y2_samp += y2SampAllSites[0, 0, :, site]
 
             self.assertTrue(np.allclose(y1[samp], y1_samp.detach().numpy()),
