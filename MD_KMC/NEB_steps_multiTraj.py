@@ -143,7 +143,7 @@ for step in range(Nsteps):
         barriers = np.zeros((batchSize, SiteIndToNgb.shape[1]))
         for jumpInd in range(SiteIndToNgb.shape[1]):
             # Write the final states in NEB format for lammps
-            write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd)
+            write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd, writeAll=WriteAllJumps)
 
             # store the final lammps files for the first batch of states
             if batch == 0:
