@@ -766,9 +766,9 @@ if __name__ == "__main__":
     parser.add_argument("-nosym", "--NoSymmetry", action="store_true", help="Whether to switch off all symmetry operations except identity.")
     parser.add_argument("-l0", "--ScaleL0", action="store_true", help="Whether to scale transport coefficients during training with uncorrelated value.")
 
-    parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, help="No. of layers of the neural network.")
-    parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, help="No. of representation channels in non-input layers.")
-    parser.add_argument("-ncL", "--NchLast", metavar="1", type=int, help="No. channels of the last layers - how many vectors to produce per site.")
+    parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, default=1, help="No. of intermediate layers of the neural network.")
+    parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, default=4, help="No. of representation channels in non-input layers.")
+    parser.add_argument("-ncL", "--NchLast", metavar="1", type=int, default=1, help="No. channels of the last layers - how many vectors to produce per site.")
     parser.add_argument("-cngb", "--ConvNgbRange", type=int, default=1, metavar="NN", help="Nearest neighbor range of convolutional filters.")
 
     parser.add_argument("-scr", "--Scratch", action="store_true", help="Whether to create new network and start from scratch")
