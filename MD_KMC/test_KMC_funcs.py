@@ -3,7 +3,6 @@ import numpy as np
 from ase.spacegroup import crystal
 from ase.build import make_supercell
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
-import sys
 from tqdm import tqdm
 from KMC_funcs import write_init_states, write_final_states, updateStates, getJumpSelects
 import os
