@@ -114,7 +114,6 @@ write_input_files(Ntraj, potPath=MainPath)
 start = time.time()
 NEB_count = 0
 
-Barriers_Spec = collections.defaultdict(list)
 for step in range(Nsteps):
     for batch in range(0, Ntraj, chunk):
         # Write the initial states from last accepted state
@@ -166,7 +165,6 @@ for step in range(Nsteps):
                 vInd = vacSiteInd[traj]
                 vacNgb = SiteIndToNgb[vInd, jumpInd]
                 jAtom = SiteIndToSpec[traj, vacNgb]
-                Barriers_Spec[jAtom].append(ebf)
 
         # store all the rates
         AllJumpRates[sampleStart:sampleEnd] = rates[:, :]
@@ -197,9 +195,6 @@ for step in range(Nsteps):
 
     with open("StepTiming.txt", "a") as fl:
         fl.write("Time per step up to {0} of {1} steps : {2} seconds\n".format(step + 1, Nsteps, (time.time() - start)/(step + 1)))
-
-    with open("SpecBarriers.pkl", "wb") as fl:
-        pickle.dump(Barriers_Spec, fl)
 
     # Next, save all the arrays in an hdf5 file
     # For the first 10 steps, store everything
