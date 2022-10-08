@@ -25,43 +25,46 @@ SampleStart = int(args[4])
 batchSize = int(args[5])
 storeRates = bool(int(args[6])) # store the rates? 0 if False.
 if len(args) > 7:
-    MainPath = args[7]
+    MainPath = args[7] # The path where the potentail file is found
 else:
     MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
 
-InitPath = MainPath+"MD_KMC/" 
+InitPath, _ = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
+InitPath += "/"
+
 # Need to get rid of these argument
 NImage = 3
 ProcPerImage = 1
 RunPath = os.getcwd()+'/'
 print("Running from : " + RunPath)
 
-__test__ = False
-
 with open(MainPath + "lammpsBox.txt", "r") as fl:
     Initlines = fl.readlines()
 
 # Load the lammps cartesian positions and neighborhoods - pre-prepared
 SiteIndToPos = np.load(MainPath + "SiteIndToLmpCartPos.npy")  # lammps pos of sites
-SiteIndToNgb = np.load(MainPath + "siteIndtoNgbSiteInd.npy")  # Nsites x z array of site neighbors
+SiteIndToNgb = np.load(MainPath + "CrysDat_FCC/NNsites_sitewise.npy")[1:, :].T  # Nsites x z array of site neighbors
 
 with open(MainPath + "CrysDat_FCC/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
 dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 
+assert SiteIndToNgb.shape[0] = SiteIndToPos.shape[0]
+assert SiteIndToNgb.shape[1] = dxList.shape[0]
+
 # load the data
 try:
-    SiteIndToSpec = np.load(RunPath + "StatesEnd_{}_{}.npy".format(SampleStart, stepsLast))
-    vacSiteInd = np.load(RunPath + "vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast))
+    SiteIndToSpec = np.load(RunPath + "chkpt/StatesEnd_{}_{}.npy".format(SampleStart, stepsLast))
+    vacSiteInd = np.load(RunPath + "chkpt/vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast))
     print("Starting from checkpointed step {}".format(stepsLast))
 except:
     print("checkpoint not found or last step zero indicated. Starting from step zero.")
     allStates = np.load(InitPath + "states_{}_0.npy".format(T))
     try:
-        perm = np.load(InitPath + "perm_{}.npy".format(T))
+        perm = np.load("perm_{}.npy".format(T))
     except:
         perm = np.random.permuation(allStates.shape[0])
-        np.save(InitPath + "perm_{}.npy".format(T), perm)
+        np.save("perm_{}.npy".format(T), perm)
 
     # Load the starting data for the trajectories
     SiteIndToSpec = allStates[perm][SampleStart: SampleStart + batchSize]
@@ -81,10 +84,9 @@ X_steps = np.zeros((Ntraj, Nspec, Nsteps, 3)) # 0th position will store vacancy 
 t_steps = np.zeros((Ntraj, Nsteps))
 JumpSelection = np.zeros((Ntraj, Nsteps), dtype=np.int8)
 
-if storeRates:
-    ratesTest = np.zeros((Ntraj, Nsteps, SiteIndToNgb.shape[1]))
-    barriersTest = np.zeros((Ntraj, Nsteps, SiteIndToNgb.shape[1]))
-    randNumsTest = np.zeros((Ntraj, Nsteps))
+ratesTest = np.zeros((Ntraj, Nsteps, SiteIndToNgb.shape[1]))
+barriersTest = np.zeros((Ntraj, Nsteps, SiteIndToNgb.shape[1]))
+randNumsTest = np.zeros((Ntraj, Nsteps))
 
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 # Before starting, write the lammps input files
@@ -140,14 +142,25 @@ for step in range(Nsteps):
     X_steps[:, :, step, :] = X_traj[:, :, :]
     t_steps[:, step] = time_step
     
+    ratesTest[:, step, :] = rates[:, :]
+    barriersTest[:, step, :] = barriers[:, :]
+    randNumsTest[:, step] = rndNums[:]
+
     if (step+1)%10 == 0:
         with open("timing_{}.txt".format(SampleStart), "a") as fl:
             fl.write("Time for {} steps : {:.4f} seconds\n".format(step+1, time.time()-start))
 
-    if storeRates:
-        ratesTest[:, step, :] = rates[:, :]
-        barriersTest[:, step, :] = barriers[:, :]
-        randNumsTest[:, step] = rndNums[:]
+    if step % 10 == 0:
+        np.save(RunPath + "chkpt/StatesEnd_{}_{}.npy".format(SampleStart, stepsLast + step), SiteIndToSpec)
+        np.save(RunPath + "chkpt/vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast + step), vacSiteInd)
+        np.save(RunPath + "chkpt/Xsteps_{}_{}.npy".format(SampleStart, stepsLast + step), X_steps[:, :, :step, :])
+        np.save(RunPath + "chkpt/tsteps_{}_{}.npy".format(SampleStart, stepsLast + step), t_steps[:, :step])
+        np.save(RunPath + "chkpt/JumpSelects_{}_{}.npy".format(SampleStart, stepsLast + step), JumpSelection[:, :step])
+        if step == 10:
+            np.save(RunPath + "chkpt/ratesTest_{}_{}.npy".format(SampleStart, stepsLast + step), ratesTest[:, :step, :])
+            np.save(RunPath + "chkpt/barriersTest_{}_{}.npy".format(SampleStart, stepsLast + step), barriersTest[:, :step, :])
+            np.save(RunPath + "chkpt/randNumsTest_{}_{}.npy".format(SampleStart, stepsLast + step), randNumsTest[:, :step])
+
 
 end = time.time()
 print("time per step : {:.4f} seconds".format((end-start)/Nsteps))
@@ -163,4 +176,4 @@ if storeRates:
     np.save(RunPath + "ratesTest_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), ratesTest)
     np.save(RunPath + "randNumsTest_{}_{}.npy".format(SampleStart, stepsLast+Nsteps), randNumsTest)
     np.save(RunPath + "barriersTest_{}_{}.npy".format(SampleStart, stepsLast + Nsteps), barriersTest)
-print()
+print("All done")
