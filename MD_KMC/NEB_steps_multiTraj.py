@@ -59,8 +59,8 @@ assert SiteIndToNgb.shape[1] == dxList.shape[0]
 
 # load the data
 try:
-    SiteIndToSpec = np.load(RunPath + "chkpt/StatesEnd_{}_{}.npy".format(SampleStart, stepsLast))
-    vacSiteInd = np.load(RunPath + "chkpt/vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast))
+    SiteIndToSpecAll = np.load(RunPath + "chkpt/StatesEnd_{}_{}.npy".format(SampleStart, stepsLast))
+    vacSiteIndAll = np.load(RunPath + "chkpt/vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast))
     print("Starting from checkpointed step {}".format(stepsLast))
 
 except:
@@ -77,11 +77,11 @@ except:
         np.save("perm_{}.npy".format(T), perm)
 
     # Load the starting data for the trajectories
-    SiteIndToSpec = allStates[perm][SampleStart: SampleStart + batchSize]
-    assert np.all(SiteIndToSpec[:, 0] == 0), "All vacancies must be at the 0th site initially."
-    vacSiteInd = np.zeros(SiteIndToSpec.shape[0], dtype = int)
+    SiteIndToSpecAll = allStates[perm][SampleStart: SampleStart + batchSize]
+    assert np.all(SiteIndToSpecAll[:, 0] == 0), "All vacancies must be at the 0th site initially."
+    vacSiteIndAll = np.zeros(SiteIndToSpecAll.shape[0], dtype = int)
 
-assert SiteIndToSpec.shape[1] == len(Initlines[12:])
+assert SiteIndToSpecAll.shape[1] == len(Initlines[12:])
 
 
 specs, counts = np.unique(SiteIndToSpec[0], return_counts=True)
