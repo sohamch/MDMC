@@ -4,16 +4,13 @@
 # In[5]:
 import numpy as np
 import pickle
-import h5py
 import subprocess
 import sys
 import time
-import collections
 import pickle
-import h5py
-from numba import jit, float64, int64
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 from scipy.constants import physical_constants
+kB = physical_constants["Boltzmann constant in eV/K"][0]
 from KMC_funcs import  *
 import os
 
@@ -88,7 +85,6 @@ ratesTest = np.zeros((Ntraj, Nsteps, SiteIndToNgb.shape[1]))
 barriersTest = np.zeros((Ntraj, Nsteps, SiteIndToNgb.shape[1]))
 randNumsTest = np.zeros((Ntraj, Nsteps))
 
-kB = physical_constants["Boltzmann constant in eV/K"][0]
 # Before starting, write the lammps input files
 write_input_files(Ntraj, potPath=MainPath)
 
