@@ -621,11 +621,14 @@ def main(args):
     GpermNNIdx, NNsiteList, JumpNewSites, dxJumps = Load_crysDats(args.ConvNgbRange, args.CrysDatPath)
     N_ngb = NNsiteList.shape[0]
     print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(args.ConvNgbRange, N_ngb - 1))
-    Nsites = NNsiteList.shape[1]
+
     if args.NoSymmetry:
         print("Switching off convolution symmetries (considering only identity operator).")
         GnnPerms = pt.tensor(GpermNNIdx[:1]).long()
-        assert pt.equal(GnnPerms, pt.arange(N_ngb).unsqueeze(0))
+        try:
+            assert pt.equal(GnnPerms, pt.arange(N_ngb).unsqueeze(0))
+        except:
+            raise ValueError("The 0th group operation in GpermNNIdx needs to be the identity.")
 
     else:
         print("Considering full symmetry group.")
@@ -672,7 +675,6 @@ def main(args):
     # 3. Next, make directories
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
-    Nsites = state1List.shape[1]
      
     direcString=""
     if specsToTrain == [args.VacSpec]:
@@ -712,10 +714,11 @@ def main(args):
     N_train_jumps = (N_ngb - 1)*args.N_train if args.AllJumps else args.N_train
     if args.Mode == "train":
         Train(args.Tdata, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2,
-                rateData, dispData, jProbs_st1, jProbs_st2, specsToTrain, sp_ch, args.VacSpec,
-                args.Start_epoch, args.End_epoch, args.Interval, N_train_jumps, gNet,
-                lRate=args.Learning_rate, scratch_if_no_init=args.Scratch, batch_size=args.Batch_size,
-                DPr=args.DatPar, Boundary_train=args.BoundTrain, jumpSort=args.JumpSort, AddOnSites=args.AddOnSitesJPINN, scaleL0=args.ScaleL0)
+              rateData, dispData, jProbs_st1, jProbs_st2, specsToTrain, sp_ch, args.VacSpec,
+              args.Start_epoch, args.End_epoch, args.Interval, N_train_jumps, gNet,
+              lRate=args.Learning_rate, scratch_if_no_init=args.Scratch, batch_size=args.Batch_size,
+              DPr=args.DatPar, Boundary_train=args.BoundTrain, jumpSort=args.JumpSort, AddOnSites=args.AddOnSitesJPINN,
+              scaleL0=args.ScaleL0)
 
     elif args.Mode == "eval":
         train_diff, valid_diff = Evaluate(args.TNet, dirPath, State1_occs, State2_occs,
@@ -723,8 +726,10 @@ def main(args):
                 specsToTrain, jProbs_st1, jProbs_st2, sp_ch, args.VacSpec, args.Start_epoch, args.End_epoch,
                 args.Interval, N_train_jumps, gNet, batch_size=args.Batch_size, Boundary_train=args.BoundTrain,
                 DPr=args.DatPar, jumpSort=args.JumpSort, AddOnSites=args.AddOnSitesJPINN)
-        np.save("tr_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps), direcString, args.Nchannels), train_diff/(1.0*args.N_train))
-        np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps), direcString, args.Nchannels), valid_diff/(1.0*args.N_train))
+        np.save("tr_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+                                                             direcString, args.Nchannels), train_diff/(1.0*args.N_train))
+        np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+                                                              direcString, args.Nchannels), valid_diff/(1.0*args.N_train))
 
     elif args.Mode == "getY":
         y1Vecs, y2Vecs = Gather_Y(args.TNet, dirPath, State1_occs, State2_occs,
@@ -732,8 +737,10 @@ def main(args):
                 specsToTrain, args.VacSpec, gNet, Ndim, batch_size=args.Batch_size, epoch=args.Start_epoch,
                 Boundary_train=args.BoundTrain,AddOnSites=args.AddOnSitesJPINN)
 
-        np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps), direcString, args.Start_epoch, args.Nchannels), y1Vecs)
-        np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps), direcString, args.Start_epoch, args.Nchannels), y2Vecs)
+        np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+                                                                 direcString, args.Start_epoch, args.Nchannels), y1Vecs)
+        np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+                                                                 direcString, args.Start_epoch, args.Nchannels), y2Vecs)
     
     elif args.Mode == "getRep":
         GetRep(args.TNet, args.Tdata, dirPath, State1_occs, State2_occs, args.Start_epoch, gNet, args.RepLayer, N_train_jumps, batch_size=args.Batch_size,
@@ -764,7 +771,6 @@ if __name__ == "__main__":
     parser.add_argument("-ncL", "--NchLast", metavar="1", type=int, help="No. channels of the last layers - how many vectors to produce per site.")
     parser.add_argument("-cngb", "--ConvNgbRange", type=int, default=1, metavar="NN", help="Nearest neighbor range of convolutional filters.")
 
-
     parser.add_argument("-scr", "--Scratch", action="store_true", help="Whether to create new network and start from scratch")
     parser.add_argument("-DPr", "--DatPar", action="store_true", help="Whether to use data parallelism. Note - does not work for residual or subnet models. Used only in Train and eval modes.")
 
@@ -775,7 +781,6 @@ if __name__ == "__main__":
 
     parser.add_argument("-sp", "--SpecTrain", metavar="s1s2s3", type=str, help="species to consider, order independent (Eg, 123 or 213 etc for species 1, 2 and 3")
     parser.add_argument("-vSp", "--VacSpec", metavar="SpV", type=int, default=0, help="species index of vacancy, must match dataset, default 0")
-
 
     parser.add_argument("-aj", "--AllJumps", action="store_true", help="Whether to train on all jumps, or single selected jumps out of a state.")
     parser.add_argument("-ajn", "--AllJumpsNetType", action="store_true", help="Whether to use network trained on all jumps, or single selected jumps out of a state.")
