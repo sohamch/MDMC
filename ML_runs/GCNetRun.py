@@ -650,7 +650,7 @@ def main(args):
     Ndim = dxJumps.shape[1]
 
     # 2. Load data
-    state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2 = Load_Data(args.DataPat)
+    state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2 = Load_Data(args.DataPath)
     
     if args.BoundTrain and (AllJumpRates_st2 is None or avgDisps_st1 is None or avgDisps_st2 is None):
         raise ValueError("Insufficient data to do boundary training. Need jump rates and average displacements from both initial and final states.")
