@@ -62,13 +62,25 @@ assert SiteIndToNgb.shape[0] == SiteIndToPos.shape[0]
 assert SiteIndToNgb.shape[1] == dxList.shape[0]
 
 # load the data
-try:
-    SiteIndToSpecAll = np.load(RunPath + "chkpt/StatesEnd_{}_{}.npy".format(SampleStart, stepsLast))
-    vacSiteIndAll = np.load(RunPath + "chkpt/vacSiteIndEnd_{}_{}.npy".format(SampleStart, stepsLast))
-    print("Starting from checkpointed step {}".format(stepsLast))
+if startStep > 0:
+    SiteIndToSpecAll = np.zeros(batchSize, dtype=np.int8)
+    for batch in range(0, batchSize, chunk):
+        end = min((batch + 1) * chunk, batchSize)
+        with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep, SampleStart), "r") as fl:
+            batcStates = np.array(fl["FinalStates"])
 
-except:
-    print("checkpoint not found or last step zero indicated. Starting from step zero.")
+        SiteIndToSpecAll[batch : end, :] = batcStates[:, :]
+
+    vacSiteIndAll = np.zeros(batchSize, dtype=np.int8)
+    for stateInd in SiteIndToSpecAll.shape[0]:
+        state = SiteIndToSpecAll[stateInd]
+        vacSite = np.where(state == 0)[0][0]
+        vacSiteIndAll[stateInd] = vacSite
+
+    print("Starting from checkpointed step {}".format(startStep))
+
+else:
+    print("Starting from step zero.")
     try:
         allStates = np.load(SourcePath + "states_{}_0.npy".format(T))
     except:
@@ -90,6 +102,7 @@ assert SiteIndToSpecAll.shape[1] == len(Initlines[12:])
 specs, counts = np.unique(SiteIndToSpecAll[0], return_counts=True)
 Nspec = len(specs)  # including the vacancy
 Ntraj = SiteIndToSpecAll.shape[0]
+assert Ntraj == batchSize
 
 Nsites = SiteIndToSpecAll.shape[1]
 Initlines[2] = "{} \t atoms\n".format(Nsites - 1)
@@ -100,6 +113,7 @@ FinalStates = np.zeros_like(SiteIndToSpecAll).astype(np.int16)
 FinalVacSites = np.zeros(Ntraj).astype(np.int16)
 SpecDisps = np.zeros((Ntraj, Nspec, 3))
 AllJumpRates = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
+AllJumpBarriers = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
 tarr = np.zeros(Ntraj)
 JumpSelects = np.zeros(Ntraj, dtype=np.int8) # which jump is chosen for each trajectory
 
@@ -168,6 +182,7 @@ for step in range(Nsteps):
 
         # store all the rates
         AllJumpRates[sampleStart:sampleEnd] = rates[:, :]
+        AllJumpBarriers[sampleStart:sampleEnd] = barriers[:, :]
 
         # Then do selection
         jumpID, rateProbs, ratesCsum, rndNums, time_step = getJumpSelects(rates)
@@ -196,22 +211,24 @@ for step in range(Nsteps):
     with open("StepTiming.txt", "a") as fl:
         fl.write("Time per step up to {0} of {1} steps : {2} seconds\n".format(step + 1, Nsteps, (time.time() - start)/(step + 1)))
 
-    # Next, save all the arrays in an hdf5 file
-    # For the first 10 steps, store everything
+    # Next, save all the arrays in an hdf5 file for the current step.
+    # For the first 10 steps, store test random numbers.
     if startStep + step <= 10:
-        with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep + step, SampleStart), "w") as fl:
+        with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep + step + 1, SampleStart), "w") as fl:
             fl.create_dataset("FinalStates", data=FinalStates)
             fl.create_dataset("SpecDisps", data=SpecDisps)
             fl.create_dataset("times", data=tarr)
             fl.create_dataset("AllJumpRates", data=AllJumpRates)
+            fl.create_dataset("AllJumpBarriers", data=AllJumpBarriers)
             fl.create_dataset("JumpSelects", data=JumpSelects)
             fl.create_dataset("TestRandNums", data=TestRandomNums)
             fl.create_dataset("TestRates", data=TestRates)
             fl.create_dataset("TestBarriers", data=TestBarriers)
     else:
-        with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep + step, SampleStart), "w") as fl:
+        with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep + step + 1, SampleStart), "w") as fl:
             fl.create_dataset("FinalStates", data=FinalStates)
             fl.create_dataset("SpecDisps", data=SpecDisps)
             fl.create_dataset("times", data=tarr)
             fl.create_dataset("AllJumpRates", data=AllJumpRates)
+            fl.create_dataset("AllJumpBarriers", data=AllJumpBarriers)
             fl.create_dataset("JumpSelects", data=JumpSelects)
