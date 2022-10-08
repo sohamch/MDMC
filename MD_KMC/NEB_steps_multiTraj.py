@@ -49,8 +49,8 @@ with open(MainPath + "CrysDat_FCC/jnetFCC.pkl", "rb") as fl:
     jnetFCC = pickle.load(fl)
 dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
 
-assert SiteIndToNgb.shape[0] = SiteIndToPos.shape[0]
-assert SiteIndToNgb.shape[1] = dxList.shape[0]
+assert SiteIndToNgb.shape[0] == SiteIndToPos.shape[0]
+assert SiteIndToNgb.shape[1] == dxList.shape[0]
 
 # load the data
 try:
@@ -68,15 +68,15 @@ except:
     try:
         perm = np.load("perm_{}.npy".format(T))
     except:
-        perm = np.random.permuation(allStates.shape[0])
+        perm = np.random.permutation(allStates.shape[0])
         np.save("perm_{}.npy".format(T), perm)
 
     # Load the starting data for the trajectories
     SiteIndToSpec = allStates[perm][SampleStart: SampleStart + batchSize]
-    assert np.all(SiteIndToSpec[:, 0] == 0), msg="All vacancies must be at the 0th site initially."     
+    assert np.all(SiteIndToSpec[:, 0] == 0), "All vacancies must be at the 0th site initially."
     vacSiteInd = np.zeros(SiteIndToSpec.shape[0], dtype = int)
 
-assert SiteIndToSpec.shape[1] == len(InitLines[12:])
+assert SiteIndToSpec.shape[1] == len(Initlines[12:])
 
 
 specs, counts = np.unique(SiteIndToSpec[0], return_counts=True)
