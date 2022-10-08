@@ -44,12 +44,6 @@ ProcPerImage = 1
 RunPath = os.getcwd()+'/'
 print("Running from : " + RunPath)
 
-try:
-    with open(SourcePath + "lammpsBox.txt", "r") as fl:
-        Initlines = fl.readlines()
-except:
-    raise FileNotFoundError("Template lammps data file not found.")
-
 # Load the lammps cartesian positions and neighborhoods - pre-prepared
 SiteIndToPos = np.load(SourcePath + "SiteIndToLmpCartPos.npy")  # lammps pos of sites
 SiteIndToNgb = np.load(MainPath + "CrysDat_FCC/NNsites_sitewise.npy")[1:, :].T  # Nsites x z array of site neighbors
@@ -96,6 +90,13 @@ else:
     SiteIndToSpecAll = allStates[perm][SampleStart: SampleStart + batchSize]
     assert np.all(SiteIndToSpecAll[:, 0] == 0), "All vacancies must be at the 0th site initially."
     vacSiteIndAll = np.zeros(SiteIndToSpecAll.shape[0], dtype = int)
+
+
+try:
+    with open(SourcePath + "lammpsBox.txt", "r") as fl:
+        Initlines = fl.readlines()
+except:
+    raise FileNotFoundError("Template lammps data file not found.")
 
 assert SiteIndToSpecAll.shape[1] == len(Initlines[12:])
 
