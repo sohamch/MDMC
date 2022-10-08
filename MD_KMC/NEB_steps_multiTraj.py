@@ -26,6 +26,11 @@ if len(args) > 7:
 else:
     MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
 
+if len(args) > 8:
+    WriteAllJumps = bool(int(args[8])) # The path where the potentail file is found
+else:
+    WriteAllJumps = False
+
 SourcePath, _ = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
 SourcePath += "/"
 
@@ -109,7 +114,7 @@ for step in range(Nsteps):
     barriers = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
     for jumpInd in range(SiteIndToNgb.shape[1]):
         # Write the final states in NEB format for lammps
-        write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd)
+        write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd, writeAll=WriteAllJumps)
 
         # Then run lammps
         commands = [
