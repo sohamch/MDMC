@@ -8,11 +8,13 @@ import subprocess
 import sys
 import time
 import pickle
+import collections
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
+from KMC_funcs import *
+import os
 from scipy.constants import physical_constants
 kB = physical_constants["Boltzmann constant in eV/K"][0]
-from KMC_funcs import  *
-import os
+
 
 args = list(sys.argv)
 T = int(args[1])
@@ -20,14 +22,15 @@ stepsLast = int(args[2])
 Nsteps = int(args[3])
 SampleStart = int(args[4])
 batchSize = int(args[5])
-storeRates = bool(int(args[6])) # store the rates? 0 if False.
-if len(args) > 7:
-    MainPath = args[7] # The path where the potentail file is found
+chunk = int(args[6])
+storeRates = bool(int(args[7])) # store the rates? 0 if False.
+if len(args) > 8:
+    MainPath = args[8] # The path where the potentail file is found
 else:
     MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
 
-if len(args) > 8:
-    WriteAllJumps = bool(int(args[8])) # The path where the potentail file is found
+if len(args) > 9:
+    WriteAllJumps = bool(int(args[9])) # The path where the potentail file is found
 else:
     WriteAllJumps = False
 
@@ -83,16 +86,15 @@ except:
 
 assert SiteIndToSpecAll.shape[1] == len(Initlines[12:])
 
-
-specs, counts = np.unique(SiteIndToSpec[0], return_counts=True)
+specs, counts = np.unique(SiteIndToSpecAll[0], return_counts=True)
 Nspec = len(specs)  # including the vacancy
-Ntraj = SiteIndToSpec.shape[0]
+Ntraj = SiteIndToSpecAll.shape[0]
 
-Nsites = SiteIndToSpec.shape[1]
-
+Nsites = SiteIndToSpecAll.shape[1]
 Initlines[2] = "{} \t atoms\n".format(Nsites - 1)
 Initlines[3] = "{} atom types\n".format(Nspec-1)
 
+# Begin KMC loop below
 X_steps = np.zeros((Ntraj, Nspec, Nsteps, 3)) # 0th position will store vacancy jumps
 t_steps = np.zeros((Ntraj, Nsteps))
 JumpSelection = np.zeros((Ntraj, Nsteps), dtype=np.int8)
@@ -106,6 +108,9 @@ write_input_files(Ntraj, potPath=MainPath)
 
 start = time.time()
 NEB_count = 0
+
+Barriers_Spec = collections.defaultdict(list)
+
 for step in range(Nsteps):
     # Write the initial states from last accepted state
     write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, Initlines)
