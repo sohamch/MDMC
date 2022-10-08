@@ -629,10 +629,20 @@ def main(args):
             assert pt.equal(GnnPerms, pt.arange(N_ngb).unsqueeze(0))
         except:
             raise ValueError("The 0th group operation in GpermNNIdx needs to be the identity.")
+        print("Switching off jump due to under non-symmetric condition")
+        args.JumpSort = False
 
     else:
         print("Considering full symmetry group.")
         GnnPerms = pt.tensor(GpermNNIdx).long()
+
+    # Dump args to files if necessary.
+    if args.DumpArgs:
+        print("Dumping arguments to: {}".format(args.DumpFile))
+        opts = vars(args)
+        with open(RunPath + args.DumpFile, "w") as fl:
+            for key, val in opts.items():
+                fl.write("{}: {}\n".format(key, val))
 
     NNsites = pt.tensor(NNsiteList).long()
     JumpVecs = pt.tensor(dxJumps.T * args.LatParam, dtype=pt.double)
@@ -795,7 +805,8 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--DumpArgs", action="store_true", help="Whether to dump arguments in a file")
     parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str, help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
 
-    args = parser.parse_args()    
+    args = parser.parse_args()
+
     if args.DumpArgs:
         print("Dumping arguments to: {}".format(args.DumpFile))
         opts = vars(args)
