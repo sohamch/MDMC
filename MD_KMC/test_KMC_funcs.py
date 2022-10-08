@@ -114,7 +114,7 @@ class test_KMC_funcs(unittest.TestCase):
                 vacSite = self.vacSiteInd[traj]
                 vacNgb = self.NNsites[vacSite, :]
                 st = ["{} ".format(i) for i in vacNgb]
-                st = "{} \t ".format(vacSite).join(st)
+                st = "{}    ".format(vacSite) + "".join(st) + "\n"
                 fl.write(st)
 
         for jInd in range(self.NNsites.shape[1]):
@@ -168,3 +168,25 @@ class test_KMC_funcs(unittest.TestCase):
                     self.assertEqual(x, self.SiteIndToCartPos[mainSiteInd, 0])
                     self.assertEqual(y, self.SiteIndToCartPos[mainSiteInd, 1])
                     self.assertEqual(z, self.SiteIndToCartPos[mainSiteInd, 2])
+
+    def test_getJumpSelects(self):
+
+        # For each trajectory, we'll give some random rates
+        rates = np.random.rand(self.NtrajTest, self.NNsites.shape[1])
+        jumpID, ratesProb, ratesProbSum, rn, timeStep = getJumpSelects(rates)
+
+        # Now for each trajectory, test the selection
+        for traj in range(self.NtrajTest):
+            self.assertTrue(np.allclose(ratesProb[traj], rates[traj] / np.sum(rates[traj])))
+            self.assertTrue(np.allclose(ratesProbSum[traj], np.cumsum(rates[traj] / np.sum(rates[traj]))))
+            self.assertTrue(np.math.isclose(ratesProbSum[traj, -1], 1.))
+
+            self.assertTrue(np.math.isclose(timeStep[traj], 1./np.sum(rates[traj])))
+
+            idx = np.searchsorted(ratesProbSum[traj], rn[traj])
+            self.assertEqual(idx, jumpID[traj])
+
+            for id in range(idx):
+                self.assertTrue(ratesProbSum[traj, id] <= rn[traj])
+            for id in range(idx, self.NNsites.shape[1]):
+                self.assertTrue(ratesProbSum[traj, id] >= rn[traj])
