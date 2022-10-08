@@ -54,6 +54,11 @@ def write_final_states(SiteIndToPos, vacSiteInd, siteIndToNgb, jInd):
                 fl.write("{} {} {} {}\n".format(counter, pos[0], pos[1], pos[2]))
                 counter += 1
 
+        with open("final_{}.data".format(traj), "r") as fl:
+            lines = fl.readlines()
+        with open("final_{}_{}.data".format(traj, jInd), "w") as fl:
+            fl.writelines(lines)
+
 
 # @jit(nopython=True)
 def getJumpSelects(rates):
