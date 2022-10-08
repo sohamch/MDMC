@@ -600,52 +600,27 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
 
 def main(args):
     print("Running at : "+ RunPath)
-    # 0. Get run parameters
-    FileName = args.DataPath # Name of data file to train on
-    CrysPath = args.CrysDatPath
-    Mode = args.Mode # "train" mode or "eval" mode or "getY" mode
-    nLayers = args.Nlayers
-    ch = args.Nchannels
-    chLast = args.NchLast
-    filter_nn = args.ConvNgbRange
-    scratch_if_no_init = args.Scratch
-    DPr = args.DatPar
-    T_data = args.Tdata # Note : for binary random alloys, this should is the training composition instead of temperature
-    T_net = args.TNet # must be same as T_data if "train", can be different if "getY" or "eval"
-    if Mode=="train" and T_data != T_net:
+    if args.Mode=="train" and args.Tdata != args.TNet:
         raise ValueError("Different temperatures in training mode not allowed")
-    start_ep = args.Start_epoch
-    end_ep = args.End_epoch
-    if not (Mode == "train" or Mode == "eval"):
-        print("Mode : {}, setting end epoch to start epoch".format(Mode))
-        end_ep = start_ep
-    
-    specTrain = args.SpecTrain
-    VacSpec = args.VacSpec
-    AllJumps = args.AllJumps 
-    AllJumps_net_type = args.AllJumpsNetType
-    N_train = args.N_train
-    batch_size = args.Batch_size
-    interval = args.Interval # for train mode, interval to save and for eval mode, interval to load
-    learning_Rate = args.Learning_rate
-    wt_means = args.Mean_wt
-    wt_std = args.Std_wt
-    a0 = args.LatParam # Lattice parameter
 
-    if not (Mode == "train" or Mode == "eval" or Mode == "getY" or Mode == "getRep"):
-        raise ValueError("Mode needs to be train, eval, getY or getRep but given : {}".format(Mode))
+    if not (args.Mode == "train" or args.Mode == "eval"):
+        print("Mode : {}, setting end epoch to start epoch".format(args.Mode))
+        args.End_epoch = args.Start_epoch
 
-    if Mode == "train":
-        if T_data != T_net:
+    if not (args.Mode == "train" or args.Mode == "eval" or args.Mode == "getY" or args.Mode == "getRep"):
+        raise ValueError("Mode needs to be train, eval, getY or getRep but given : {}".format(args.Mode))
+
+    if args.Mode == "train":
+        if args.Tdata != args.TNet:
             raise ValueError("Network and data temperature (arguments \"TNet\"/\"tn\" and \"Tdata\"/\"td\") must be the same in train mode")
     
-    if AllJumps and args.BoundTrain:
+    if args.AllJumps and args.BoundTrain:
         raise NotImplementedError("Cannot do all-jump training with boundary states.")
     
     # 1. Load crystal parameters
-    GpermNNIdx, NNsiteList, JumpNewSites, dxJumps = Load_crysDats(filter_nn, CrysPath)
+    GpermNNIdx, NNsiteList, JumpNewSites, dxJumps = Load_crysDats(args.ConvNgbRange, args.CrysDatPath)
     N_ngb = NNsiteList.shape[0]
-    print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(filter_nn, N_ngb - 1))
+    print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(args.ConvNgbRange, N_ngb - 1))
     Nsites = NNsiteList.shape[1]
     if args.NoSymmetry:
         print("Switching off convolution symmetries (considering only identity operator).")
@@ -657,12 +632,12 @@ def main(args):
         GnnPerms = pt.tensor(GpermNNIdx).long()
 
     NNsites = pt.tensor(NNsiteList).long()
-    JumpVecs = pt.tensor(dxJumps.T * a0, dtype=pt.double)
+    JumpVecs = pt.tensor(dxJumps.T * args.LatParam, dtype=pt.double)
     print("Jump Vectors: \n", JumpVecs.T, "\n")
     Ndim = dxJumps.shape[1]
 
     # 2. Load data
-    state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2 = Load_Data(FileName)
+    state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2 = Load_Data(args.DataPat)
     
     if args.BoundTrain and (AllJumpRates_st2 is None or avgDisps_st1 is None or avgDisps_st2 is None):
         raise ValueError("Insufficient data to do boundary training. Need jump rates and average displacements from both initial and final states.")
@@ -686,12 +661,12 @@ def main(args):
         print("Displacements not shifted.")
 
     # 2.3 Make numpy arrays to feed into training/evaluation functions
-    specsToTrain = [int(specTrain[i]) for i in range(len(specTrain))]
+    specsToTrain = [int(args.SpecTrain[i]) for i in range(len(args.SpecTrain))]
     specsToTrain = sorted(specsToTrain)
 
     State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch =\
-    makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
-                AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=AllJumps, mode=Mode)
+    makeComputeData(state1List, state2List, dispList, specsToTrain, args.VacSpec, rateList,
+                AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, args.N_train, AllJumps=args.AllJumps, mode=args.Mode)
     print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
 
     # 3. Next, make directories
@@ -700,71 +675,69 @@ def main(args):
     Nsites = state1List.shape[1]
      
     direcString=""
-    if specsToTrain == [VacSpec]:
+    if specsToTrain == [args.VacSpec]:
         direcString = "vac"
     else:
         for spec in specsToTrain:
             direcString += "{}".format(spec)
 
     # 3.1 This is where networks will be saved to and loaded from
-    dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(T_net, direcString, nLayers, int(AllJumps), ch)
-    if Mode == "eval" or Mode == "getY" or Mode=="getRep":
+    dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(args.TNet, direcString, args.Nlayers, int(args.AllJumps), args.Nchannels)
+    if args.Mode == "eval" or args.Mode == "getY" or args.Mode=="getRep":
         prepo = "saved at"
-        dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(T_net, direcString, nLayers, int(AllJumps_net_type), ch)
+        dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(args.TNet, direcString, args.Nlayers, int(args.AllJumpsNetType), args.Nchannels)
     
-    if Mode == "train":
+    elif args.Mode == "train":
         prepo = "saving in"
 
     # 3.2 check if a run directory exists
     dirPath = RunPath + dirNameNets
-    exists = os.path.isdir(dirPath)
-    
-    if not exists:
-        if start_ep == 0:
+    if not os.path.isdir(dirPath):
+        if args.Start_epoch == 0:
             os.mkdir(dirPath)
-        elif start_ep > 0:
-            raise ValueError("Training directory does not exist but start epoch greater than zero: {}\ndirectory given: {}".format(start_ep, dirPath))
+        elif args.Start_epoch > 0:
+            raise ValueError("Training directory does not exist but start epoch greater than zero: {}\ndirectory given: {}".format(args.Start_epoch, dirPath))
 
-    print("Running in Mode {} with networks {} {}".format(Mode, prepo, dirPath))
+    print("Running in Mode {} with networks {} {}".format(args.Mode, prepo, dirPath))
     
     if args.BoundTrain:
-        assert chLast == N_ngb - 1
+        assert args.NchLast == N_ngb - 1
 
     gNet = GCNet(GnnPerms.long(), NNsites, JumpVecs, N_ngb=N_ngb, NSpec=NSpec,
-            mean=wt_means, std=wt_std, nl=nLayers, nch=ch, nchLast=chLast).double()
+            mean=args.Mean_wt, std=args.Std_wt, nl=args.Nlayers, nch=args.Nchannels, nchLast=args.NchLast).double()
 
     print("No. of channels in last layer: {}".format(gNet.net[-3].Psi.shape[0]))
 
     # 4. Call Training or evaluating or y-evaluating function here
-    N_train_jumps = (N_ngb - 1)*N_train if AllJumps else N_train
-    if Mode == "train":
-        Train(T_data, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2,
-                rateData, dispData, jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec,
-                start_ep, end_ep, interval, N_train_jumps, gNet,
-                lRate=learning_Rate, scratch_if_no_init=scratch_if_no_init, batch_size=batch_size,
-                DPr=DPr, Boundary_train=args.BoundTrain, jumpSort=args.JumpSort, AddOnSites=args.AddOnSitesJPINN, scaleL0=args.ScaleL0)
+    N_train_jumps = (N_ngb - 1)*args.N_train if args.AllJumps else args.N_train
+    if args.Mode == "train":
+        Train(args.Tdata, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2,
+                rateData, dispData, jProbs_st1, jProbs_st2, specsToTrain, sp_ch, args.VacSpec,
+                args.Start_epoch, args.End_epoch, args.Interval, N_train_jumps, gNet,
+                lRate=args.Learning_rate, scratch_if_no_init=args.Scratch, batch_size=args.Batch_size,
+                DPr=args.DatPar, Boundary_train=args.BoundTrain, jumpSort=args.JumpSort, AddOnSites=args.AddOnSitesJPINN, scaleL0=args.ScaleL0)
 
-    elif Mode == "eval":
-        train_diff, valid_diff = Evaluate(T_net, dirPath, State1_occs, State2_occs,
+    elif args.Mode == "eval":
+        train_diff, valid_diff = Evaluate(args.TNet, dirPath, State1_occs, State2_occs,
                 OnSites_state1, OnSites_state2, rateData, dispData,
-                specsToTrain, jProbs_st1, jProbs_st2, sp_ch, VacSpec, start_ep, end_ep,
-                interval, N_train_jumps, gNet, batch_size=batch_size, Boundary_train=args.BoundTrain,
-                DPr=DPr, jumpSort=args.JumpSort, AddOnSites=args.AddOnSitesJPINN)
-        np.save("tr_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), train_diff/(1.0*N_train))
-        np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, ch), valid_diff/(1.0*N_train))
+                specsToTrain, jProbs_st1, jProbs_st2, sp_ch, args.VacSpec, args.Start_epoch, args.End_epoch,
+                args.Interval, N_train_jumps, gNet, batch_size=args.Batch_size, Boundary_train=args.BoundTrain,
+                DPr=args.DatPar, jumpSort=args.JumpSort, AddOnSites=args.AddOnSitesJPINN)
+        np.save("tr_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps), direcString, args.Nchannels), train_diff/(1.0*args.N_train))
+        np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps), direcString, args.Nchannels), valid_diff/(1.0*args.N_train))
 
-    elif Mode == "getY":
-        y1Vecs, y2Vecs = Gather_Y(T_net, dirPath, State1_occs, State2_occs,
+    elif args.Mode == "getY":
+        y1Vecs, y2Vecs = Gather_Y(args.TNet, dirPath, State1_occs, State2_occs,
                 OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
-                specsToTrain, VacSpec, gNet, Ndim, batch_size=batch_size, epoch=start_ep,
+                specsToTrain, args.VacSpec, gNet, Ndim, batch_size=args.Batch_size, epoch=args.Start_epoch,
                 Boundary_train=args.BoundTrain,AddOnSites=args.AddOnSitesJPINN)
 
-        np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y1Vecs)
-        np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(T_data, T_net, nLayers, int(AllJumps), direcString, start_ep, ch), y2Vecs)
+        np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps), direcString, args.Start_epoch, args.Nchannels), y1Vecs)
+        np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps), direcString, args.Start_epoch, args.Nchannels), y2Vecs)
     
-    elif Mode == "getRep":
-        GetRep(T_net, T_data, dirPath, State1_occs, State2_occs, start_ep, gNet, args.RepLayer, N_train_jumps, batch_size=batch_size,
-           avg=args.RepLayerAvg, AllJumps=AllJumps)
+    elif args.Mode == "getRep":
+        GetRep(args.TNet, args.Tdata, dirPath, State1_occs, State2_occs, args.Start_epoch, gNet, args.RepLayer, N_train_jumps, batch_size=args.Batch_size,
+           avg=args.RepLayerAvg, AllJumps=args.AllJumps)
 
     print("All done\n\n")
 
@@ -774,7 +747,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str, help="Path to Data file.")
     parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
-    parser.add_argument("-a0", "--LatParam",  metavar="L", type=float, help="Lattice parameter.")
+    parser.add_argument("-a0", "--LatParam", type=float, default=1.0, metavar="3.59", help="Lattice parameter.")
 
     parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
     parser.add_argument("-rl","--RepLayer", metavar="[L1, L2,..]", type=int, nargs="+", help="Layers to extract representation from (count starts from 0)")
