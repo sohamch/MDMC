@@ -195,7 +195,9 @@ for step in range(Nsteps):
                 fl.write(
                     "batch {0} of {1} completed in : {2} seconds\n".format(batch + 1, int(np.ceil(Ntraj/chunk)), time.time() - start))
 
-    end_timer = time.time()
+    with open("StepTiming.txt", "a") as fl:
+        fl.write("Time per step up to {0} of {1} steps : {2} seconds\n".format(step + 1, Nsteps, (time.time() - start)/(step + 1)))
+
     with open("SpecBarriers.pkl", "wb") as fl:
         pickle.dump(Barriers_Spec, fl)
 
