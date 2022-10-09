@@ -11,7 +11,7 @@ import h5py
 import torch as pt
 from tqdm import tqdm
 import pickle
-from GCNetRun import Load_Data, makeComputeData, makeDataTensors, Load_crysDats, SpecBatchOuts, vacBatchOuts
+from GCNetRun import Load_Data, makeComputeData, makeDataTensors, Load_crysDats
 from GCNetRun import Train
 from SymmLayers import GCNet
 
@@ -48,6 +48,7 @@ class TestGCNetRun(unittest.TestCase):
 
         self.specCheck = 5
         self.VacSpec = 0
+        self.sp_ch = {1: 0, 2: 1, 3: 2, 4: 3, 5: 4}
         print("Setup complete.")
 
     def test_makeComputeData_singleJump(self):
@@ -84,11 +85,11 @@ class TestGCNetRun(unittest.TestCase):
                         self.assertTrue(np.all(State2_occs[samp, :, site] == 0))
                     else:
                         spec1 = self.state1List[samp, site]
-                        self.assertEqual(State1_occs[samp, spec1 - 1, site], 1)
+                        self.assertEqual(State1_occs[samp, self.sp_ch[spec1], site], 1)
                         self.assertEqual(np.sum(State1_occs[samp, :, site]), 1)
 
                         spec2 = self.state2List[samp, site]
-                        self.assertEqual(State2_occs[samp, spec2 - 1, site], 1)
+                        self.assertEqual(State2_occs[samp, self.sp_ch[spec2], site], 1)
                         self.assertEqual(np.sum(State2_occs[samp, :, site]), 1)
 
                 # check the displacements
@@ -123,10 +124,10 @@ class TestGCNetRun(unittest.TestCase):
 
                     else:
                         assert spec2 != 0
-                        assert State1_occs[samp, spec1 - 1, site] == 1
+                        assert State1_occs[samp, self.sp_ch[spec1], site] == 1
                         assert np.sum(State1_occs[samp, :, site]) == 1
 
-                        assert State2_occs[samp, spec2 - 1, site] == 1
+                        assert State2_occs[samp, self.sp_ch[spec2], site] == 1
                         assert np.sum(State2_occs[samp, :, site]) == 1
 
                 NNR = np.dot(np.linalg.inv(self.superFCC.crys.lattice), self.dxJumps[jSelect]).astype(int)
@@ -250,10 +251,10 @@ class TestGCNetRun(unittest.TestCase):
             for site in range(self.Nsites):
                 occs1 = State1_occs[samp, :, site]
                 occs2 = State2_occs[samp, :, site]
-                if occs1[specCheck - 1] == 1:
+                if occs1[self.sp_ch[specCheck]] == 1:
                     assert self.state1List[samp, site] == specCheck
                     y1_samp += y1SampAllSites[0, 0, :, site]
-                if occs2[specCheck - 1] == 1:
+                if occs2[self.sp_ch[specCheck]] == 1:
                     assert self.state2List[samp, site] == specCheck
                     y2_samp += y2SampAllSites[0, 0, :, site]
 
@@ -375,10 +376,10 @@ class TestGCNetRun(unittest.TestCase):
 
                         else:
                             self.assertNotEqual(spec2, 0)
-                            self.assertEqual(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, spec1 - 1, site], 1)
+                            self.assertEqual(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, self.sp_ch[spec1], site], 1)
                             self.assertEqual(np.sum(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site]), 1)
 
-                            self.assertEqual(State2_occs[stateInd * self.dxJumps.shape[0] + jInd, spec2 - 1, site], 1)
+                            self.assertEqual(State2_occs[stateInd * self.dxJumps.shape[0] + jInd, self.sp_ch[spec2], site], 1)
                             self.assertEqual(np.sum(State2_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site]), 1)
 
                     # check the displacements
@@ -453,9 +454,9 @@ class TestGCNetRun(unittest.TestCase):
             for site in range(self.Nsites):
                 occs1 = State1_occs[samp, :, site]
                 occs2 = State2_occs[samp, :, site]
-                if occs1[specCheck - 1] == 1:
+                if occs1[self.sp_ch[specCheck]] == 1:
                     y1_samp += y1SampAllSites[0, 0, :, site]
-                if occs2[specCheck - 1] == 1:
+                if occs2[self.sp_ch[specCheck]] == 1:
                     y2_samp += y2SampAllSites[0, 0, :, site]
 
             self.assertTrue(np.allclose(y1[samp], y1_samp.detach().numpy()),
@@ -704,9 +705,9 @@ class TestGCNetRun(unittest.TestCase):
             for site in range(self.Nsites):
                 occs1 = State1_occs[samp, :, site]
                 occs2 = State2_occs[samp, :, site]
-                if occs1[specCheck - 1] == 1:
+                if occs1[self.sp_ch[specCheck]] == 1:
                     y1_samp += y1SampAllSites[0, :, :, site]
-                if occs2[specCheck - 1] == 1:
+                if occs2[self.sp_ch[specCheck]] == 1:
                     y2_samp += y2SampAllSites[0, :, :, site]
 
             y1_jumpSum = np.zeros(3)
@@ -756,9 +757,9 @@ class TestGCNetRun(unittest.TestCase):
             for site in range(self.Nsites):
                 occs1 = State1_occs[0, :, site]
                 occs2 = state2Input[0, :, site]
-                if occs1[specCheck - 1] == 1:
+                if occs1[self.sp_ch[specCheck]] == 1:
                     y1_samp += y1SampAllSites[0, :, :, site]
-                if occs2[specCheck - 1] == 1:
+                if occs2[self.sp_ch[specCheck]] == 1:
                     y2_samp += y2SampAllSites[0, :, :, site]
             y1_jumpSum = np.zeros(3)
             y2_jumpSum = np.zeros(3)
