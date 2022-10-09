@@ -82,6 +82,36 @@ class TestGConv(unittest.TestCase):
                             self.assertTrue(pt.allclose(outl_Gconv[stateInd, chOut, gInd, site], sm + b))
             print("Gconv explicit symmetry test passed")
 
+    def test_GConv_noSym(self):
+        GnnPerms = self.GnnPerms[:1].long()
+        print(GnnPerms)
+        self.assertTrue(pt.equal(GnnPerms, pt.arange(GnnPerms.shape[1]).unsqueeze(0)))
+        gNet = GCNet(GnnPerms, self.NNsites, self.JumpVecs, N_ngb=self.N_ngb, NSpec=self.NspCh,
+                     mean=0.02, std=0.2, nl=1, nch=8, nchLast=5).double()
+
+        # Do the first Gconv explicitly
+        with pt.no_grad():
+            l = 0
+            outl_Gconv = gNet.net[l].forward(self.StateTensors[:1])
+            for stateInd in range(1):
+                for chOut in range(gNet.net[l].Psi.shape[0]):
+                    b = gNet.net[l].bias[chOut]
+                    for site in tqdm(range(self.Nsites), position=0, leave=True, ncols=65):
+                        sitesNgb = self.NNsites[:, site]
+                        sm = 0.
+                        for chIn in range(gNet.net[l].Psi.shape[1]):
+                            Psi_g = gNet.net[l].Psi[chOut, chIn]
+                            siteConv = pt.sum(Psi_g * self.StateTensors[stateInd, chIn, sitesNgb])
+                            sm += siteConv
+                        self.assertTrue(pt.allclose(outl_Gconv[stateInd, chOut, 0, site], sm + b))
+
+            out_non_lin = gNet.net[l+1].forward(outl_Gconv)
+            out_Gav = gNet.net[l+2].forward(out_non_lin)
+
+            self.assertTrue(pt.allclose(out_Gav, out_non_lin[:, :, 0, :]), msg="{} {}".format(out_Gav, out_non_lin))
+
+            print("Non-symmetry explicit symmetry test passed")
+
     def test_Symmetry(self):
         # here, we'll check the full symmetry of the network with the batch of symmetry-related states
         gNet = GCNet(self.GnnPerms.long(), self.NNsites, self.JumpVecs, N_ngb=self.N_ngb, NSpec=self.NspCh,
