@@ -230,6 +230,11 @@ class TestGCNetRun(unittest.TestCase):
                        jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
                        N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False)
 
+        print("Max, min and avg values")
+        print(np.max(y1), np.max(y2))
+        print(np.min(y1), np.min(y2))
+        print(np.mean(y1), np.mean(y2))
+
         # Now for each sample, compute the y explicitly and match
         for samp in tqdm(range(N_check)):
             state1Input = pt.tensor(State1_occs[samp:samp + 1], dtype=pt.double)
@@ -246,8 +251,10 @@ class TestGCNetRun(unittest.TestCase):
                 occs1 = State1_occs[samp, :, site]
                 occs2 = State2_occs[samp, :, site]
                 if occs1[specCheck - 1] == 1:
+                    assert self.state1List[samp, site] == specCheck
                     y1_samp += y1SampAllSites[0, 0, :, site]
                 if occs2[specCheck - 1] == 1:
+                    assert self.state2List[samp, site] == specCheck
                     y2_samp += y2SampAllSites[0, 0, :, site]
 
             self.assertTrue(np.allclose(y1[samp], y1_samp.detach().numpy()),
@@ -290,6 +297,11 @@ class TestGCNetRun(unittest.TestCase):
         y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
                        jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
                        N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False)
+
+        print("Max, min and avg values")
+        print(np.max(y1), np.max(y2))
+        print(np.min(y1), np.min(y2))
+        print(np.mean(y1), np.mean(y2))
 
         # Now for each sample, compute the y explicitly and match
         for samp in tqdm(range(N_check)):
@@ -421,6 +433,11 @@ class TestGCNetRun(unittest.TestCase):
                               interval, N_check * self.z, gNet,
                               lRate=0.001, batch_size=N_check * self.z, scratch_if_no_init=True, chkpt=False)
 
+        print("Max, min and avg values")
+        print(np.max(y1), np.max(y2))
+        print(np.min(y1), np.min(y2))
+        print(np.mean(y1), np.mean(y2))
+
         # Now for each sample, compute the y explicitly and match
         for samp in tqdm(range(N_check * self.z)):
             state1Input = pt.tensor(State1_occs[samp:samp + 1], dtype=pt.double)
@@ -437,10 +454,8 @@ class TestGCNetRun(unittest.TestCase):
                 occs1 = State1_occs[samp, :, site]
                 occs2 = State2_occs[samp, :, site]
                 if occs1[specCheck - 1] == 1:
-                    assert self.state1List[samp, site] == specCheck
                     y1_samp += y1SampAllSites[0, 0, :, site]
                 if occs2[specCheck - 1] == 1:
-                    assert self.state2List[samp, site] == specCheck
                     y2_samp += y2SampAllSites[0, 0, :, site]
 
             self.assertTrue(np.allclose(y1[samp], y1_samp.detach().numpy()),
@@ -487,6 +502,11 @@ class TestGCNetRun(unittest.TestCase):
                               jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep,
                               interval, N_check * self.z, gNet,
                               lRate=0.001, batch_size=N_check * self.z, scratch_if_no_init=True, chkpt=False)
+
+        print("Max, min and avg values")
+        print(np.max(y1), np.max(y2))
+        print(np.min(y1), np.min(y2))
+        print(np.mean(y1), np.mean(y2))
 
         # Now for each sample, compute the y explicitly and match
         for samp in tqdm(range(N_check * self.z)):
@@ -547,6 +567,10 @@ class TestGCNetRun(unittest.TestCase):
                        jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
                        N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False,
                        Boundary_train=True, jumpSort=True, AddOnSites=False)
+        print("Max, min and avg values")
+        print(np.max(y1), np.max(y2))
+        print(np.min(y1), np.min(y2))
+        print(np.mean(y1), np.mean(y2))
 
         # Now for each sample, compute the y explicitly and match
         for samp in tqdm(range(N_check)):
@@ -657,6 +681,10 @@ class TestGCNetRun(unittest.TestCase):
                        jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
                        N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False,
                        Boundary_train=True, jumpSort=True, AddOnSites=True)
+        print("Max, min and avg values")
+        print(np.max(y1), np.max(y2))
+        print(np.min(y1), np.min(y2))
+        print(np.mean(y1), np.mean(y2))
 
         # Now for each sample, compute the y explicitly and match
         for samp in tqdm(range(N_check)):
