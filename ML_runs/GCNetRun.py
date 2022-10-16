@@ -490,13 +490,13 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
             y1Vecs = np.zeros((Nsamples, gNet.net[-3].Psi.shape[0], 3, state1Data.shape[2]))
             y2Vecs = np.zeros((Nsamples, gNet.net[-3].Psi.shape[0], 3, state1Data.shape[2]))
         else:
-            y1Vecs = np.zeros((Nsamples, gNet.net[-3].Psi.shape[0], 3))
-            y2Vecs = np.zeros((Nsamples, gNet.net[-3].Psi.shape[0], 3))
+            y1Vecs = np.zeros((Nsamples, 3))
+            y2Vecs = np.zeros((Nsamples, 3))
 
     else:
         if siteWise:
-            y1Vecs = np.zeros((Nsamples, 3, state1Data.shape[2]))
-            y2Vecs = np.zeros((Nsamples, 3, state1Data.shape[2]))
+            y1Vecs = np.zeros((Nsamples, 1, 3, state1Data.shape[2]))
+            y2Vecs = np.zeros((Nsamples, 1, 3, state1Data.shape[2]))
         else:
             y1Vecs = np.zeros((Nsamples, 3))
             y2Vecs = np.zeros((Nsamples, 3))
@@ -526,16 +526,21 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
 
             y1 = gNet(state1Batch)
             y2 = gNet(state2Batch)
-                
-            if SpecsToTrain==[VacSpec]: 
-                y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
-
+            
+            if siteWise:
+                y1Vecs[batch : end] = y1.cpu().numpy()
+                y2Vecs[batch : end] = y2.cpu().numpy()
+            
             else:
-                On_st1Batch = On_st1[batch : end]
-                On_st2Batch = On_st2[batch : end]
+                if SpecsToTrain==[VacSpec]: 
+                    y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
 
-                y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch,
-                                       Boundary_train, AddOnSites)
+                else:
+                    On_st1Batch = On_st1[batch : end]
+                    On_st2Batch = On_st2[batch : end]
+
+                    y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch,
+                                           Boundary_train, AddOnSites)
 
             y1Vecs[batch : end] = y1.cpu().numpy()
             y2Vecs[batch : end] = y2.cpu().numpy()
