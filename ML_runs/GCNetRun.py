@@ -463,7 +463,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jProbs_st1, jProbs_st2,
         sp_ch, SpecsToTrain, VacSpec, gNet, Ndim, epoch=None, Boundary_train=False, batch_size=256,
-        jumpSort=True, siteWise=True, AddOnSites=True):
+        jumpSort=True, siteWise=False, AddOnSites=True):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -616,7 +616,7 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
                 np.save(storeDir + "/Rep2_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2Reps)
 
 
-def makeDir(state1List, args):
+def makeDir(state1List, args, specsToTrain):
 
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
@@ -732,7 +732,7 @@ def main(args):
     print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
 
     # 3. Make directories if needed
-    makeDir(state1List, args)
+    makeDir(state1List, args, specsToTrain)
     
     if args.BoundTrain:
         assert args.NchLast == N_ngb - 1
@@ -769,9 +769,15 @@ def main(args):
                 specsToTrain, args.VacSpec, gNet, Ndim, batch_size=args.Batch_size, epoch=args.Start_epoch,
                 Boundary_train=args.BoundTrain, AddOnSites=args.AddOnSitesJPINN, siteWise=args.SiteWiseY)
 
-        np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+        if args.SiteWiseY:
+            np.save("y1_sites_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
                                                                  direcString, args.Start_epoch, args.Nchannels), y1Vecs)
-        np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+            np.save("y2_sites_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+                                                                 direcString, args.Start_epoch, args.Nchannels), y2Vecs)
+        else:
+            np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+                                                                 direcString, args.Start_epoch, args.Nchannels), y1Vecs)
+            np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
                                                                  direcString, args.Start_epoch, args.Nchannels), y2Vecs)
     
     elif args.Mode == "getRep":
