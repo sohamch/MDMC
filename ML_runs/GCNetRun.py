@@ -651,7 +651,7 @@ def makeDir(spcs, NSpec, args, specsToTrain):
             raise ValueError("Training directory does not exist but start epoch greater than zero: {}\ndirectory given: {}".format(args.Start_epoch, dirPath))
 
     print("Running in Mode {} with networks {} {}".format(args.Mode, prepo, dirPath))
-    return dirPath
+    return dirPath, direcString
 
 def main(args):
     print("Running at : "+ RunPath)
@@ -740,7 +740,7 @@ def main(args):
     # 3. Make directories if needed
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
-    dirPath = makeDir(specs, NSpec, args, specsToTrain)
+    dirPath, direcString = makeDir(specs, NSpec, args, specsToTrain)
     
     if args.BoundTrain:
         assert args.NchLast == N_ngb - 1
