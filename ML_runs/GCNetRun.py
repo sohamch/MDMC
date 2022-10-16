@@ -306,7 +306,9 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
         gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
 
     try:
-        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"))
+        # strict=False to ignore the renamed buffer "JumpVecs" (renamed from JumpUnitVecs)
+        # As long as the same crysdats are used, this will not change
+        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"), strict=False)
         print("Starting from epoch {}".format(start_ep), flush=True)
 
     except:
@@ -416,7 +418,9 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         with pt.no_grad():
             for epoch in tqdm(range(start_ep, end_ep + 1, interval), position=0, leave=True):
                 ## load checkpoint
-                gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
+                # strict=False to ignore the renamed buffer "JumpVecs" (renamed from JumpUnitVecs)
+                # As long as the same crysdats are used, this will not change
+                gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device), strict=False)
  
                 diff = 0 
                 for batch in range(startSample, endSample, N_batch):
@@ -509,7 +513,9 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
         ## load checkpoint
         if epoch is not None:
             print("Loading epoch: {}".format(epoch))
-            gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
+            # strict=False to ignore the renamed buffer "JumpVecs" (renamed from JumpUnitVecs)
+            # As long as the same crysdats are used, this will not change
+            gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device), strict=False)
              
         for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
             end = min(batch + N_batch, Nsamples)
@@ -572,7 +578,10 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
     glob_Nch = gNet.net[0].Psi.shape[0]
     with pt.no_grad():
         ## load checkpoint
-        gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
+        # strict=False to ignore the renamed buffer "JumpVecs" (renamed from JumpUnitVecs)
+        # As long as the same crysdats are used, this will not change
+        gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device), strict=False)
+
         nLayers = (len(gNet.net)-6)//3
         for LayerInd in LayerIndList:
             ch = gNet.net[LayerInd - 2].Psi.shape[0]
