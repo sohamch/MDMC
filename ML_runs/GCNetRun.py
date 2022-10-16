@@ -763,7 +763,7 @@ def main(args):
         y1Vecs, y2Vecs = Gather_Y(args.TNet, dirPath, State1_occs, State2_occs,
                 OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
                 specsToTrain, args.VacSpec, gNet, Ndim, batch_size=args.Batch_size, epoch=args.Start_epoch,
-                Boundary_train=args.BoundTrain,AddOnSites=args.AddOnSitesJPINN)
+                Boundary_train=args.BoundTrain, AddOnSites=args.AddOnSitesJPINN, siteWise=args.SiteWiseY)
 
         np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
                                                                  direcString, args.Start_epoch, args.Nchannels), y1Vecs)
@@ -793,6 +793,7 @@ if __name__ == "__main__":
     parser.add_argument("-xsh", "--DispShift", action="store_true", help="Whether to shift displacements with state averages.")
     parser.add_argument("-nosym", "--NoSymmetry", action="store_true", help="Whether to switch off all symmetry operations except identity.")
     parser.add_argument("-l0", "--ScaleL0", action="store_true", help="Whether to scale transport coefficients during training with uncorrelated value.")
+    parser.add_argument("-swy", "--SiteWiseY", action="store_true", help="Whether to get y vectors for individual sites Applies to only getY mode.")
 
     parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, default=1, help="No. of intermediate layers of the neural network.")
     parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, default=4, help="No. of representation channels in non-input layers.")
