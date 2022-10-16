@@ -616,11 +616,7 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
                 np.save(storeDir + "/Rep2_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2Reps)
 
 
-def makeDir(state1List, args, specsToTrain):
-
-    specs = np.unique(state1List[0])
-    NSpec = specs.shape[0] - 1
-     
+def makeDir(spcs, NSpec, args, specsToTrain): 
     direcString=""
     if specsToTrain == [args.VacSpec]:
         direcString = "vac"
@@ -646,6 +642,7 @@ def makeDir(state1List, args, specsToTrain):
             raise ValueError("Training directory does not exist but start epoch greater than zero: {}\ndirectory given: {}".format(args.Start_epoch, dirPath))
 
     print("Running in Mode {} with networks {} {}".format(args.Mode, prepo, dirPath))
+    return dirPath
 
 def main(args):
     print("Running at : "+ RunPath)
@@ -732,7 +729,9 @@ def main(args):
     print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
 
     # 3. Make directories if needed
-    makeDir(state1List, args, specsToTrain)
+    specs = np.unique(state1List[0])
+    NSpec = specs.shape[0] - 1
+    dirPath = makeDir(specs, NSpec, args, specsToTrain)
     
     if args.BoundTrain:
         assert args.NchLast == N_ngb - 1
