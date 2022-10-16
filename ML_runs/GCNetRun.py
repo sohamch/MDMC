@@ -463,7 +463,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jProbs_st1, jProbs_st2,
         sp_ch, SpecsToTrain, VacSpec, gNet, Ndim, epoch=None, Boundary_train=False, batch_size=256,
-        jumpSort=True, AddOnSites=True):
+        jumpSort=True, siteWise=True, AddOnSites=True):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -485,9 +485,22 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
         assert gNet.net[-3].Psi.shape[0] == jProbs_st1.shape[1] == jProbs_st2.shape[1] 
         print("Boundary training indicated. Using jump probabilities.")
         jProbs_st1, jProbs_st2 = sort_jp(jProbs_st1, jProbs_st2, jumpSort)
-    
-    y1Vecs = np.zeros((Nsamples, 3))
-    y2Vecs = np.zeros((Nsamples, 3))
+        
+        if siteWise:
+            y1Vecs = np.zeros((Nsamples, gNet.net[-3].Psi.shape[0], 3, state1Data.shape[2]))
+            y2Vecs = np.zeros((Nsamples, gNet.net[-3].Psi.shape[0], 3, state1Data.shape[2]))
+        else:
+            y1Vecs = np.zeros((Nsamples, gNet.net[-3].Psi.shape[0], 3))
+            y2Vecs = np.zeros((Nsamples, gNet.net[-3].Psi.shape[0], 3))
+
+    else:
+        if siteWise:
+            y1Vecs = np.zeros((Nsamples, 3, state1Data.shape[2]))
+            y2Vecs = np.zeros((Nsamples, 3, state1Data.shape[2]))
+        else:
+            y1Vecs = np.zeros((Nsamples, 3))
+            y2Vecs = np.zeros((Nsamples, 3))
+
 
     gNet.to(device)
     if epoch is not None:
