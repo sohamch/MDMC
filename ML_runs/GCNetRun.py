@@ -616,6 +616,37 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
                 np.save(storeDir + "/Rep2_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2Reps)
 
 
+def makeDir(state1List, args):
+
+    specs = np.unique(state1List[0])
+    NSpec = specs.shape[0] - 1
+     
+    direcString=""
+    if specsToTrain == [args.VacSpec]:
+        direcString = "vac"
+    else:
+        for spec in specsToTrain:
+            direcString += "{}".format(spec)
+
+    # 1 This is where networks will be saved to and loaded from
+    dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(args.TNet, direcString, args.Nlayers, int(args.AllJumps), args.Nchannels)
+    if args.Mode == "eval" or args.Mode == "getY" or args.Mode=="getRep":
+        prepo = "saved at"
+        dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(args.TNet, direcString, args.Nlayers, int(args.AllJumpsNetType), args.Nchannels)
+    
+    elif args.Mode == "train":
+        prepo = "saving in"
+
+    # 2 check if a run directory exists
+    dirPath = RunPath + dirNameNets
+    if not os.path.isdir(dirPath):
+        if args.Start_epoch == 0:
+            os.mkdir(dirPath)
+        elif args.Start_epoch > 0:
+            raise ValueError("Training directory does not exist but start epoch greater than zero: {}\ndirectory given: {}".format(args.Start_epoch, dirPath))
+
+    print("Running in Mode {} with networks {} {}".format(args.Mode, prepo, dirPath))
+
 def main(args):
     print("Running at : "+ RunPath)
     if args.Mode=="train" and args.Tdata != args.TNet:
@@ -680,17 +711,17 @@ def main(args):
         assert np.allclose(np.sum(jProbs_st1, axis=1), 1.0)
         assert np.allclose(np.sum(jProbs_st2, axis=1), 1.0)
     
+        # 2.2 shift displacements if indicated
+        if args.DispShift:
+            print("Shifting displacements by differences of initial and final state averages.")
+            dispList += avgDisps_st2 - avgDisps_st1
+        else:
+            print("Displacements not shifted.")
+
     else:
         jProbs_st1 = None
         jProbs_st2 = None
     
-    # 2.2 shift displacements if boundary training
-    if args.BoundTrain and args.DispShift:
-        print("Shifting displacements by differences of initial and final state averages.")
-        dispList += avgDisps_st2 - avgDisps_st1
-    else:
-        print("Displacements not shifted.")
-
     # 2.3 Make numpy arrays to feed into training/evaluation functions
     specsToTrain = [int(args.SpecTrain[i]) for i in range(len(args.SpecTrain))]
     specsToTrain = sorted(specsToTrain)
@@ -700,35 +731,8 @@ def main(args):
                 AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, args.N_train, AllJumps=args.AllJumps, mode=args.Mode)
     print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
 
-    # 3. Next, make directories
-    specs = np.unique(state1List[0])
-    NSpec = specs.shape[0] - 1
-     
-    direcString=""
-    if specsToTrain == [args.VacSpec]:
-        direcString = "vac"
-    else:
-        for spec in specsToTrain:
-            direcString += "{}".format(spec)
-
-    # 3.1 This is where networks will be saved to and loaded from
-    dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(args.TNet, direcString, args.Nlayers, int(args.AllJumps), args.Nchannels)
-    if args.Mode == "eval" or args.Mode == "getY" or args.Mode=="getRep":
-        prepo = "saved at"
-        dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(args.TNet, direcString, args.Nlayers, int(args.AllJumpsNetType), args.Nchannels)
-    
-    elif args.Mode == "train":
-        prepo = "saving in"
-
-    # 3.2 check if a run directory exists
-    dirPath = RunPath + dirNameNets
-    if not os.path.isdir(dirPath):
-        if args.Start_epoch == 0:
-            os.mkdir(dirPath)
-        elif args.Start_epoch > 0:
-            raise ValueError("Training directory does not exist but start epoch greater than zero: {}\ndirectory given: {}".format(args.Start_epoch, dirPath))
-
-    print("Running in Mode {} with networks {} {}".format(args.Mode, prepo, dirPath))
+    # 3. Make directories if needed
+    makeDir(state1List, args)
     
     if args.BoundTrain:
         assert args.NchLast == N_ngb - 1
