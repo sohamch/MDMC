@@ -306,7 +306,9 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
         gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
 
     try:
-        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"))
+        # strict=False to ignore the renamed buffer "JumpVecs" (renamed from JumpUnitVecs)
+        # As long as the same crysdats are used, this will not change
+        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"), strict=False)
         print("Starting from epoch {}".format(start_ep), flush=True)
 
     except:
@@ -416,7 +418,9 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         with pt.no_grad():
             for epoch in tqdm(range(start_ep, end_ep + 1, interval), position=0, leave=True):
                 ## load checkpoint
-                gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
+                # strict=False to ignore the renamed buffer "JumpVecs" (renamed from JumpUnitVecs)
+                # As long as the same crysdats are used, this will not change
+                gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device), strict=False)
  
                 diff = 0 
                 for batch in range(startSample, endSample, N_batch):
@@ -463,7 +467,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jProbs_st1, jProbs_st2,
         sp_ch, SpecsToTrain, VacSpec, gNet, Ndim, epoch=None, Boundary_train=False, batch_size=256,
-        jumpSort=True, AddOnSites=True):
+        jumpSort=True, siteWise=False, AddOnSites=True):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -485,9 +489,22 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
         assert gNet.net[-3].Psi.shape[0] == jProbs_st1.shape[1] == jProbs_st2.shape[1] 
         print("Boundary training indicated. Using jump probabilities.")
         jProbs_st1, jProbs_st2 = sort_jp(jProbs_st1, jProbs_st2, jumpSort)
-    
-    y1Vecs = np.zeros((Nsamples, 3))
-    y2Vecs = np.zeros((Nsamples, 3))
+        
+        if siteWise:
+            y1Vecs = np.zeros((Nsamples, gNet.net[-3].Psi.shape[0], 3, state1Data.shape[2]))
+            y2Vecs = np.zeros((Nsamples, gNet.net[-3].Psi.shape[0], 3, state1Data.shape[2]))
+        else:
+            y1Vecs = np.zeros((Nsamples, 3))
+            y2Vecs = np.zeros((Nsamples, 3))
+
+    else:
+        if siteWise:
+            y1Vecs = np.zeros((Nsamples, 1, 3, state1Data.shape[2]))
+            y2Vecs = np.zeros((Nsamples, 1, 3, state1Data.shape[2]))
+        else:
+            y1Vecs = np.zeros((Nsamples, 3))
+            y2Vecs = np.zeros((Nsamples, 3))
+
 
     gNet.to(device)
     if epoch is not None:
@@ -496,7 +513,9 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
         ## load checkpoint
         if epoch is not None:
             print("Loading epoch: {}".format(epoch))
-            gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
+            # strict=False to ignore the renamed buffer "JumpVecs" (renamed from JumpUnitVecs)
+            # As long as the same crysdats are used, this will not change
+            gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device), strict=False)
              
         for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
             end = min(batch + N_batch, Nsamples)
@@ -513,16 +532,21 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
 
             y1 = gNet(state1Batch)
             y2 = gNet(state2Batch)
-                
-            if SpecsToTrain==[VacSpec]: 
-                y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
-
+            
+            if siteWise:
+                y1Vecs[batch : end] = y1.cpu().numpy()
+                y2Vecs[batch : end] = y2.cpu().numpy()
+            
             else:
-                On_st1Batch = On_st1[batch : end]
-                On_st2Batch = On_st2[batch : end]
+                if SpecsToTrain==[VacSpec]: 
+                    y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
 
-                y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch,
-                                       Boundary_train, AddOnSites)
+                else:
+                    On_st1Batch = On_st1[batch : end]
+                    On_st2Batch = On_st2[batch : end]
+
+                    y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch,
+                                           Boundary_train, AddOnSites)
 
             y1Vecs[batch : end] = y1.cpu().numpy()
             y2Vecs[batch : end] = y2.cpu().numpy()
@@ -554,7 +578,10 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
     glob_Nch = gNet.net[0].Psi.shape[0]
     with pt.no_grad():
         ## load checkpoint
-        gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
+        # strict=False to ignore the renamed buffer "JumpVecs" (renamed from JumpUnitVecs)
+        # As long as the same crysdats are used, this will not change
+        gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device), strict=False)
+
         nLayers = (len(gNet.net)-6)//3
         for LayerInd in LayerIndList:
             ch = gNet.net[LayerInd - 2].Psi.shape[0]
@@ -597,6 +624,34 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
                 np.save(storeDir + "/Rep1_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1Reps)
                 np.save(storeDir + "/Rep2_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2Reps)
 
+
+def makeDir(spcs, NSpec, args, specsToTrain): 
+    direcString=""
+    if specsToTrain == [args.VacSpec]:
+        direcString = "vac"
+    else:
+        for spec in specsToTrain:
+            direcString += "{}".format(spec)
+
+    # 1 This is where networks will be saved to and loaded from
+    dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(args.TNet, direcString, args.Nlayers, int(args.AllJumps), args.Nchannels)
+    if args.Mode == "eval" or args.Mode == "getY" or args.Mode=="getRep":
+        prepo = "saved at"
+        dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(args.TNet, direcString, args.Nlayers, int(args.AllJumpsNetType), args.Nchannels)
+    
+    elif args.Mode == "train":
+        prepo = "saving in"
+
+    # 2 check if a run directory exists
+    dirPath = RunPath + dirNameNets
+    if not os.path.isdir(dirPath):
+        if args.Start_epoch == 0:
+            os.mkdir(dirPath)
+        elif args.Start_epoch > 0:
+            raise ValueError("Training directory does not exist but start epoch greater than zero: {}\ndirectory given: {}".format(args.Start_epoch, dirPath))
+
+    print("Running in Mode {} with networks {} {}".format(args.Mode, prepo, dirPath))
+    return dirPath, direcString
 
 def main(args):
     print("Running at : "+ RunPath)
@@ -662,17 +717,17 @@ def main(args):
         assert np.allclose(np.sum(jProbs_st1, axis=1), 1.0)
         assert np.allclose(np.sum(jProbs_st2, axis=1), 1.0)
     
+        # 2.2 shift displacements if indicated
+        if args.DispShift:
+            print("Shifting displacements by differences of initial and final state averages.")
+            dispList += avgDisps_st2 - avgDisps_st1
+        else:
+            print("Displacements not shifted.")
+
     else:
         jProbs_st1 = None
         jProbs_st2 = None
     
-    # 2.2 shift displacements if boundary training
-    if args.BoundTrain and args.DispShift:
-        print("Shifting displacements by differences of initial and final state averages.")
-        dispList += avgDisps_st2 - avgDisps_st1
-    else:
-        print("Displacements not shifted.")
-
     # 2.3 Make numpy arrays to feed into training/evaluation functions
     specsToTrain = [int(args.SpecTrain[i]) for i in range(len(args.SpecTrain))]
     specsToTrain = sorted(specsToTrain)
@@ -682,35 +737,10 @@ def main(args):
                 AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, args.N_train, AllJumps=args.AllJumps, mode=args.Mode)
     print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
 
-    # 3. Next, make directories
+    # 3. Make directories if needed
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
-     
-    direcString=""
-    if specsToTrain == [args.VacSpec]:
-        direcString = "vac"
-    else:
-        for spec in specsToTrain:
-            direcString += "{}".format(spec)
-
-    # 3.1 This is where networks will be saved to and loaded from
-    dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(args.TNet, direcString, args.Nlayers, int(args.AllJumps), args.Nchannels)
-    if args.Mode == "eval" or args.Mode == "getY" or args.Mode=="getRep":
-        prepo = "saved at"
-        dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(args.TNet, direcString, args.Nlayers, int(args.AllJumpsNetType), args.Nchannels)
-    
-    elif args.Mode == "train":
-        prepo = "saving in"
-
-    # 3.2 check if a run directory exists
-    dirPath = RunPath + dirNameNets
-    if not os.path.isdir(dirPath):
-        if args.Start_epoch == 0:
-            os.mkdir(dirPath)
-        elif args.Start_epoch > 0:
-            raise ValueError("Training directory does not exist but start epoch greater than zero: {}\ndirectory given: {}".format(args.Start_epoch, dirPath))
-
-    print("Running in Mode {} with networks {} {}".format(args.Mode, prepo, dirPath))
+    dirPath, direcString = makeDir(specs, NSpec, args, specsToTrain)
     
     if args.BoundTrain:
         assert args.NchLast == N_ngb - 1
@@ -745,11 +775,17 @@ def main(args):
         y1Vecs, y2Vecs = Gather_Y(args.TNet, dirPath, State1_occs, State2_occs,
                 OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
                 specsToTrain, args.VacSpec, gNet, Ndim, batch_size=args.Batch_size, epoch=args.Start_epoch,
-                Boundary_train=args.BoundTrain,AddOnSites=args.AddOnSitesJPINN)
+                Boundary_train=args.BoundTrain, AddOnSites=args.AddOnSitesJPINN, siteWise=args.SiteWiseY)
 
-        np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+        if args.SiteWiseY:
+            np.save("y1_sites_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
                                                                  direcString, args.Start_epoch, args.Nchannels), y1Vecs)
-        np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+            np.save("y2_sites_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+                                                                 direcString, args.Start_epoch, args.Nchannels), y2Vecs)
+        else:
+            np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+                                                                 direcString, args.Start_epoch, args.Nchannels), y1Vecs)
+            np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
                                                                  direcString, args.Start_epoch, args.Nchannels), y2Vecs)
     
     elif args.Mode == "getRep":
@@ -775,6 +811,7 @@ if __name__ == "__main__":
     parser.add_argument("-xsh", "--DispShift", action="store_true", help="Whether to shift displacements with state averages.")
     parser.add_argument("-nosym", "--NoSymmetry", action="store_true", help="Whether to switch off all symmetry operations except identity.")
     parser.add_argument("-l0", "--ScaleL0", action="store_true", help="Whether to scale transport coefficients during training with uncorrelated value.")
+    parser.add_argument("-swy", "--SiteWiseY", action="store_true", help="Whether to get y vectors for individual sites Applies to only getY mode.")
 
     parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, default=1, help="No. of intermediate layers of the neural network.")
     parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, default=4, help="No. of representation channels in non-input layers.")
