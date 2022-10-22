@@ -50,7 +50,6 @@ assert SiteIndToNgb.shape[1] == dxList.shape[0]
 # Do a small check of the displacements and vacancy neighbors
 with open(MainPath + "CrysDat_FCC/supercellFCC.pkl", "rb") as fl:
     supFCC = pickle.load(fl)
-    latt = supFCC.crys.latt
 
 for siteInd in range(SiteIndToNgb.shape[0]):
     ciSite, Rsite = supFCC.ciR(siteInd)
@@ -58,8 +57,8 @@ for siteInd in range(SiteIndToNgb.shape[0]):
     for jmp in range(dxList.shape[0]):
         dxR, ci = supFCC.crys.cart2pos(dxList[jmp])
         assert ci == (0,0)
-        ngb = supFCC.index(dxR + Rsite, ci)
-        assert ngb = SiteIndToNgb[jmp, siteInd]
+        ngb, _ = supFCC.index(dxR + Rsite, ci)
+        assert ngb == SiteIndToNgb[siteInd, jmp]
 
 dxList *=  3.59
 
