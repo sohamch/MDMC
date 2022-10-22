@@ -23,7 +23,7 @@ startStep = int(args[2])
 Nsteps = int(args[3])
 StateStart = int(args[4])
 batchSize = int(args[5]) # Total samples in this batch of calculations.
-chunk = int(args[6]) # How many samples to do NEB on at a time.
+chunkSize = int(args[6]) # How many samples to do NEB on at a time.
 permuteStates = bool(int(args[7])) # permute the states (applicable if startStep is 0)? 0 if False.
 MainPath = args[8] # The path where the potential file is found
 #MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
@@ -68,12 +68,12 @@ dxList *=  3.59
 # load the data
 if startStep > 0:
     SiteIndToSpecAll = np.zeros(batchSize, dtype=np.int8)
-    for batch in range(0, batchSize, chunk):
-        end = min((batch + 1) * chunk, batchSize)
+    for chunk in range(0, batchSize, chunkSize):
+        end = min((chunk + 1) * chunkSize, batchSize)
         with h5py.File(RunPath + "data_{0}_{1}_{2}.h5".format(T, startStep, StateStart), "r") as fl:
             batcStates = np.array(fl["FinalStates"])
 
-        SiteIndToSpecAll[batch : end, :] = batcStates[:, :]
+        SiteIndToSpecAll[chunk : end, :] = batcStates[:, :]
 
     vacSiteIndAll = np.zeros(batchSize, dtype=np.int8)
     for stateInd in SiteIndToSpecAll.shape[0]:
@@ -135,10 +135,10 @@ start = time.time()
 NEB_count = 0
 
 for step in range(Nsteps):
-    for batch in range(0, Ntraj, chunk):
+    for chunk in range(0, Ntraj, chunkSize):
         # Write the initial states from last accepted state
-        sampleStart = batch * chunk
-        sampleEnd = min((batch + 1) * chunk, SiteIndToSpecAll.shape[0])
+        sampleStart = chunk * chunkSize
+        sampleEnd = min((chunk + 1) * chunkSize, SiteIndToSpecAll.shape[0])
 
         SiteIndToSpec = FinalStates[sampleStart: sampleEnd].copy()
         vacSiteInd = FinalVacSites[sampleStart: sampleEnd].copy()
@@ -152,7 +152,7 @@ for step in range(Nsteps):
             write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd, writeAll=WriteAllJumps)
             
             # store the final lammps files for the first batch of states at each step
-            if batch == 0:
+            if chunk == 0:
                 # Store the final data for each traj, at each step and for each jump
                 for traj in range(SiteIndToSpec.shape[0]):
                     cmd = subprocess.Popen("cp final_{0}.data step_finals/final_startSamp_{0}_stp_{1}_jInd_{2}.data".format(StateStart, step+1, jumpInd), shell=True)
@@ -209,7 +209,7 @@ for step in range(Nsteps):
         tarr[sampleStart:sampleEnd] = time_step[:]
         with open("ChunkTiming.txt", "w") as fl:
             fl.write(
-                "Chunk {0} of {1} in step {3} completed in : {2} seconds\n".format(batch + 1, int(np.ceil(Ntraj/chunk)), time.time() - start, step + 1))
+                "Chunk {0} of {1} in step {3} completed in : {2} seconds\n".format(chunk + 1, int(np.ceil(Ntraj/chunkSize)), time.time() - start, step + 1))
 
     with open("StepTiming.txt", "w") as fl:
         fl.write("Time per step up to {0} of {1} steps : {2} seconds\n".format(step + 1, Nsteps, (time.time() - start)/(step + 1)))
