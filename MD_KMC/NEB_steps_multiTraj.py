@@ -22,8 +22,8 @@ T = int(args[1])
 startStep = int(args[2])
 Nsteps = int(args[3])
 SampleStart = int(args[4])
-batchSize = int(args[5])
-chunk = int(args[6])
+batchSize = int(args[5]) # Total samples in this batch of calculations.
+chunk = int(args[6]) # How many samples to do NEB on at a time.
 permuteStates = bool(int(args[7])) # permute the states (applicable if startStep is 0)? 0 if False.
 MainPath = args[8] # The path where the potential file is found
 #MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
@@ -88,12 +88,7 @@ else:
     except:
         raise FileNotFoundError("Initial states not found.")
     if permuteStates:
-        try:
-            perm = np.load("perm_{}.npy".format(T))
-        except:
-            perm = np.random.permutation(allStates.shape[0])
-            np.save("perm_{}.npy".format(T), perm)
-
+        perm = np.load(SourcePath + "perm_{}.npy".format(T))
         SiteIndToSpecAll = allStates[perm][SampleStart: SampleStart + batchSize]
         np.save("states_perm_step0_{}.npy".format(T), SiteIndToSpecAll)
     else:
