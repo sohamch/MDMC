@@ -21,7 +21,7 @@ args = list(sys.argv)
 T = int(args[1])
 startStep = int(args[2])
 Nsteps = int(args[3])
-SampleStart = int(args[4])
+StateStart = int(args[4])
 batchSize = int(args[5]) # Total samples in this batch of calculations.
 chunk = int(args[6]) # How many samples to do NEB on at a time.
 permuteStates = bool(int(args[7])) # permute the states (applicable if startStep is 0)? 0 if False.
@@ -70,7 +70,7 @@ if startStep > 0:
     SiteIndToSpecAll = np.zeros(batchSize, dtype=np.int8)
     for batch in range(0, batchSize, chunk):
         end = min((batch + 1) * chunk, batchSize)
-        with h5py.File(RunPath + "data_{0}_{1}_{2}.h5".format(T, startStep, SampleStart), "r") as fl:
+        with h5py.File(RunPath + "data_{0}_{1}_{2}.h5".format(T, startStep, StateStart), "r") as fl:
             batcStates = np.array(fl["FinalStates"])
 
         SiteIndToSpecAll[batch : end, :] = batcStates[:, :]
@@ -84,6 +84,7 @@ if startStep > 0:
     print("Starting from checkpointed step {}".format(startStep))
 
 else:
+    assert startStep == 0
     print("Starting from step zero.")
     try:
         allStates = np.load(SourcePath + InitStateFile)
@@ -91,9 +92,9 @@ else:
         raise FileNotFoundError("Initial states not found.")
     if permuteStates:
         perm = np.load(SourcePath + "perm_{}.npy".format(T))
-        SiteIndToSpecAll = allStates[perm][SampleStart: SampleStart + batchSize]
+        SiteIndToSpecAll = allStates[perm][StateStart: StateStart + batchSize]
     else:
-        SiteIndToSpecAll = allStates[SampleStart: SampleStart + batchSize]
+        SiteIndToSpecAll = allStates[StateStart: StateStart + batchSize]
 
     assert np.all(SiteIndToSpecAll[:, 0] == 0), "All vacancies must be at the 0th site initially."
     vacSiteIndAll = np.zeros(SiteIndToSpecAll.shape[0], dtype = int)
@@ -149,19 +150,19 @@ for step in range(Nsteps):
         for jumpInd in range(SiteIndToNgb.shape[1]):
             # Write the final states in NEB format for lammps
             write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd, writeAll=WriteAllJumps)
-
-            # store the final lammps files for the first batch of states
+            
+            # store the final lammps files for the first batch of states at each step
             if batch == 0:
                 # Store the final data for each traj, at each step and for each jump
-                for traj in range(batchSize):
-                    cmd = subprocess.Popen("cp final_{0}.data final_{0}_{1}.data".format(traj, jumpInd), shell=True)
+                for traj in range(SiteIndToSpec.shape[0]):
+                    cmd = subprocess.Popen("cp final_{0}.data step_finals/final_startSamp_{0}_stp_{1}_jInd_{2}.data".format(StateStart, step+1, jumpInd), shell=True)
                     rt = cmd.wait()
                     assert rt == 0
 
             # Then run lammps
             commands = [
                 "mpirun -np {0} $LMPPATH/lmp -p {0}x1 -in in.neb_{1} > out_{1}.txt".format(NImage, traj)
-                for traj in range(batchSize)
+                for traj in range(SiteIndToSpec.shape[0])
             ]
             cmdList = [subprocess.Popen(cmd, shell=True) for cmd in commands]
 
@@ -215,7 +216,7 @@ for step in range(Nsteps):
 
     # Next, save all the arrays in an hdf5 file for the current step.
     # For the first 10 steps, store test random numbers.
-    with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep + step + 1, SampleStart), "w") as fl:
+    with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep + step + 1, StateStart), "w") as fl:
         fl.create_dataset("FinalStates", data=FinalStates)
         fl.create_dataset("SpecDisps", data=SpecDisps)
         fl.create_dataset("times", data=tarr)
