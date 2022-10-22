@@ -29,6 +29,9 @@ MainPath = args[8] # The path where the potential file is found
 #MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
 WriteAllJumps = bool(int(args[9]))
 
+if startStep == 0:
+    InitStateFile = args[10]
+
 SourcePath = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
 SourcePath += "/"
 
@@ -83,7 +86,7 @@ if startStep > 0:
 else:
     print("Starting from step zero.")
     try:
-        allStates = np.load(SourcePath + "states_{}.npy".format(T))
+        allStates = np.load(SourcePath + InitStateFile)
     except:
         raise FileNotFoundError("Initial states not found.")
     if permuteStates:
