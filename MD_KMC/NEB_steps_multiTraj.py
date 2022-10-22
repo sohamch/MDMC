@@ -24,12 +24,10 @@ Nsteps = int(args[3])
 SampleStart = int(args[4])
 batchSize = int(args[5])
 chunk = int(args[6])
-storeRates = bool(int(args[7])) # store the rates? 0 if False.
-permuteStates = bool(int(args[8])) # store the rates? 0 if False.
-MainPath = args[9] # The path where the potential file is found
+permuteStates = bool(int(args[7])) # store the rates? 0 if False.
+MainPath = args[8] # The path where the potential file is found
 #MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
-
-WriteAllJumps = bool(int(args[10]))
+WriteAllJumps = bool(int(args[9]))
 
 SourcePath, _ = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
 SourcePath += "/"
