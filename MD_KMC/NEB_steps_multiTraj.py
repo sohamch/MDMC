@@ -24,7 +24,7 @@ Nsteps = int(args[3])
 SampleStart = int(args[4])
 batchSize = int(args[5])
 chunk = int(args[6])
-permuteStates = bool(int(args[7])) # store the rates? 0 if False.
+permuteStates = bool(int(args[7])) # permute the states (applicable if startStep is 0)? 0 if False.
 MainPath = args[8] # The path where the potential file is found
 #MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
 WriteAllJumps = bool(int(args[9]))
@@ -68,7 +68,7 @@ if startStep > 0:
     SiteIndToSpecAll = np.zeros(batchSize, dtype=np.int8)
     for batch in range(0, batchSize, chunk):
         end = min((batch + 1) * chunk, batchSize)
-        with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep, SampleStart), "r") as fl:
+        with h5py.File(RunPath + "data_{0}_{1}_{2}.h5".format(T, startStep, SampleStart), "r") as fl:
             batcStates = np.array(fl["FinalStates"])
 
         SiteIndToSpecAll[batch : end, :] = batcStates[:, :]
@@ -87,15 +87,18 @@ else:
         allStates = np.load(SourcePath + "states_{}.npy".format(T))
     except:
         raise FileNotFoundError("Initial states not found.")
+    if permuteStates:
+        try:
+            perm = np.load("perm_{}.npy".format(T))
+        except:
+            perm = np.random.permutation(allStates.shape[0])
+            np.save("perm_{}.npy".format(T), perm)
 
-    try:
-        perm = np.load("perm_{}.npy".format(T))
-    except:
-        perm = np.random.permutation(allStates.shape[0])
-        np.save("perm_{}.npy".format(T), perm)
+        SiteIndToSpecAll = allStates[perm][SampleStart: SampleStart + batchSize]
+        np.save("states_perm_step0_{}.npy".format(T), SiteIndToSpecAll)
+    else:
+        SiteIndToSpecAll = allStates[SampleStart: SampleStart + batchSize]
 
-    # Load the starting data for the trajectories
-    SiteIndToSpecAll = allStates[perm][SampleStart: SampleStart + batchSize]
     assert np.all(SiteIndToSpecAll[:, 0] == 0), "All vacancies must be at the 0th site initially."
     vacSiteIndAll = np.zeros(SiteIndToSpecAll.shape[0], dtype = int)
 
