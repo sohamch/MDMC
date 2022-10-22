@@ -90,12 +90,12 @@ else:
     if permuteStates:
         perm = np.load(SourcePath + "perm_{}.npy".format(T))
         SiteIndToSpecAll = allStates[perm][SampleStart: SampleStart + batchSize]
-        np.save("states_perm_step0_{}.npy".format(T), SiteIndToSpecAll)
     else:
         SiteIndToSpecAll = allStates[SampleStart: SampleStart + batchSize]
 
     assert np.all(SiteIndToSpecAll[:, 0] == 0), "All vacancies must be at the 0th site initially."
     vacSiteIndAll = np.zeros(SiteIndToSpecAll.shape[0], dtype = int)
+    np.save("states_step0_{}.npy".format(T), SiteIndToSpecAll)
 
 
 try:
@@ -123,11 +123,7 @@ AllJumpRates = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
 AllJumpBarriers = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
 tarr = np.zeros(Ntraj)
 JumpSelects = np.zeros(Ntraj, dtype=np.int8) # which jump is chosen for each trajectory
-
-# rates will be stored for the first batch for testing
-TestRates = np.zeros((Ntraj, 12)) # store all the rates to be tested
-TestBarriers = np.zeros((Ntraj, 12)) # store all the barriers to be tested
-TestRandomNums = np.zeros(Ntraj) # store the random numbers used in the test trajectories
+TestRandomNums = np.zeros(Ntraj) # store the random numbers at all steps
 
 # Before starting, write the lammps input files
 write_input_files(Ntraj, potPath=MainPath)
@@ -208,11 +204,11 @@ for step in range(Nsteps):
         FinalVacSites[sampleStart: sampleEnd, :] = vacSiteInd[:, :]
         SpecDisps[sampleStart:sampleEnd, :, :] = X_traj[:, :, :]
         tarr[sampleStart:sampleEnd] = time_step[:]
-        with open("BatchTiming.txt", "a") as fl:
+        with open("ChunkTiming.txt", "w") as fl:
             fl.write(
-                "batch {0} of {1} in step {3} completed in : {2} seconds\n".format(batch + 1, int(np.ceil(Ntraj/chunk)), time.time() - start, step + 1))
+                "Chunk {0} of {1} in step {3} completed in : {2} seconds\n".format(batch + 1, int(np.ceil(Ntraj/chunk)), time.time() - start, step + 1))
 
-    with open("StepTiming.txt", "a") as fl:
+    with open("StepTiming.txt", "w") as fl:
         fl.write("Time per step up to {0} of {1} steps : {2} seconds\n".format(step + 1, Nsteps, (time.time() - start)/(step + 1)))
 
     # Next, save all the arrays in an hdf5 file for the current step.
