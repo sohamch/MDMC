@@ -61,7 +61,7 @@ for siteInd in range(SiteIndToNgb.shape[0]):
         ngb = supFCC.index(dxR + Rsite, ci)
         assert ngb = SiteIndToNgb[jmp, siteInd]
 
-dxList = dxList * 3.59
+dxList *=  3.59
 
 # load the data
 if startStep > 0:
