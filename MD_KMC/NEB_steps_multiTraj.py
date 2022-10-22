@@ -125,9 +125,9 @@ tarr = np.zeros(Ntraj)
 JumpSelects = np.zeros(Ntraj, dtype=np.int8) # which jump is chosen for each trajectory
 
 # rates will be stored for the first batch for testing
-TestRates = np.zeros((batchSize, 12)) # store all the rates to be tested
-TestBarriers = np.zeros((batchSize, 12)) # store all the barriers to be tested
-TestRandomNums = np.zeros(batchSize) # store the random numbers used in the test trajectories
+TestRates = np.zeros((Ntraj, 12)) # store all the rates to be tested
+TestBarriers = np.zeros((Ntraj, 12)) # store all the barriers to be tested
+TestRandomNums = np.zeros(Ntraj) # store the random numbers used in the test trajectories
 
 # Before starting, write the lammps input files
 write_input_files(Ntraj, potPath=MainPath)
@@ -196,11 +196,8 @@ for step in range(Nsteps):
         # store the selected jumps
         JumpSelects[sampleStart: sampleEnd] = jumpID[:]
 
-        # store the random numbers for the first set of jumps
-        if batch == 0:
-            TestRates[:, :] = rates[:, :]
-            TestBarriers[:, :] = barriers[:, :]
-            TestRandomNums[:] = rndNums[:]
+        # store the random numbers for testing
+        TestRandomNums[sampleStart: sampleEnd] = rndNums[:]
 
         # Then do the final exchange
         jumpAtomSelectArray, X_traj = updateStates(SiteIndToNgb, Nspec, SiteIndToSpec, vacSiteInd, jumpID, dxList)
@@ -211,32 +208,20 @@ for step in range(Nsteps):
         FinalVacSites[sampleStart: sampleEnd, :] = vacSiteInd[:, :]
         SpecDisps[sampleStart:sampleEnd, :, :] = X_traj[:, :, :]
         tarr[sampleStart:sampleEnd] = time_step[:]
-        if step == 0:
-            with open("BatchTiming.txt", "a") as fl:
-                fl.write(
-                    "batch {0} of {1} completed in : {2} seconds\n".format(batch + 1, int(np.ceil(Ntraj/chunk)), time.time() - start))
+        with open("BatchTiming.txt", "a") as fl:
+            fl.write(
+                "batch {0} of {1} in step {3} completed in : {2} seconds\n".format(batch + 1, int(np.ceil(Ntraj/chunk)), time.time() - start, step + 1))
 
     with open("StepTiming.txt", "a") as fl:
         fl.write("Time per step up to {0} of {1} steps : {2} seconds\n".format(step + 1, Nsteps, (time.time() - start)/(step + 1)))
 
     # Next, save all the arrays in an hdf5 file for the current step.
     # For the first 10 steps, store test random numbers.
-    if startStep + step <= 10:
-        with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep + step + 1, SampleStart), "w") as fl:
-            fl.create_dataset("FinalStates", data=FinalStates)
-            fl.create_dataset("SpecDisps", data=SpecDisps)
-            fl.create_dataset("times", data=tarr)
-            fl.create_dataset("AllJumpRates", data=AllJumpRates)
-            fl.create_dataset("AllJumpBarriers", data=AllJumpBarriers)
-            fl.create_dataset("JumpSelects", data=JumpSelects)
-            fl.create_dataset("TestRandNums", data=TestRandomNums)
-            fl.create_dataset("TestRates", data=TestRates)
-            fl.create_dataset("TestBarriers", data=TestBarriers)
-    else:
-        with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep + step + 1, SampleStart), "w") as fl:
-            fl.create_dataset("FinalStates", data=FinalStates)
-            fl.create_dataset("SpecDisps", data=SpecDisps)
-            fl.create_dataset("times", data=tarr)
-            fl.create_dataset("AllJumpRates", data=AllJumpRates)
-            fl.create_dataset("AllJumpBarriers", data=AllJumpBarriers)
-            fl.create_dataset("JumpSelects", data=JumpSelects)
+    with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep + step + 1, SampleStart), "w") as fl:
+        fl.create_dataset("FinalStates", data=FinalStates)
+        fl.create_dataset("SpecDisps", data=SpecDisps)
+        fl.create_dataset("times", data=tarr)
+        fl.create_dataset("AllJumpRates", data=AllJumpRates)
+        fl.create_dataset("AllJumpBarriers", data=AllJumpBarriers)
+        fl.create_dataset("JumpSelects", data=JumpSelects)
+        fl.create_dataset("TestRandNums", data=TestRandomNums)
