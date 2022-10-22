@@ -25,22 +25,17 @@ SampleStart = int(args[4])
 batchSize = int(args[5])
 chunk = int(args[6])
 storeRates = bool(int(args[7])) # store the rates? 0 if False.
-if len(args) > 8:
-    MainPath = args[8] # The path where the potentail file is found
-else:
-    MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
+permuteStates = bool(int(args[8])) # store the rates? 0 if False.
+MainPath = args[9] # The path where the potential file is found
+#MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
 
-if len(args) > 9:
-    WriteAllJumps = bool(int(args[9])) # The path where the potentail file is found
-else:
-    WriteAllJumps = False
+WriteAllJumps = bool(int(args[10]))
 
 SourcePath, _ = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
 SourcePath += "/"
 
 # Need to get rid of these argument
 NImage = 3
-ProcPerImage = 1
 RunPath = os.getcwd()+'/'
 print("Running from : " + RunPath)
 
@@ -48,12 +43,27 @@ print("Running from : " + RunPath)
 SiteIndToPos = np.load(SourcePath + "SiteIndToLmpCartPos.npy")  # lammps pos of sites
 SiteIndToNgb = np.load(MainPath + "CrysDat_FCC/NNsites_sitewise.npy")[1:, :].T  # Nsites x z array of site neighbors
 
-with open(MainPath + "CrysDat_FCC/jnetFCC.pkl", "rb") as fl:
-    jnetFCC = pickle.load(fl)
-dxList = np.array([dx*3.59 for (i, j), dx in jnetFCC[0]])
+dxList = np.load(MainPath + "CrysDat_FCC/dxList.npy")
 
 assert SiteIndToNgb.shape[0] == SiteIndToPos.shape[0]
 assert SiteIndToNgb.shape[1] == dxList.shape[0]
+
+
+# Do a small check of the displacements and vacancy neighbors
+with open(MainPath + "CrysDat_FCC/supercellFCC.pkl", "rb") as fl:
+    supFCC = pickle.load(fl)
+    latt = supFCC.crys.latt
+
+for siteInd in range(SiteIndToNgb.shape[0]):
+    ciSite, Rsite = supFCC.ciR(siteInd)
+    assert ciSite == (0,0)
+    for jmp in range(dxList.shape[0]):
+        dxR, ci = supFCC.crys.cart2pos(dxList[jmp])
+        assert ci == (0,0)
+        ngb = supFCC.index(dxR + Rsite, ci)
+        assert ngb = SiteIndToNgb[jmp, siteInd]
+
+dxList = dxList * 3.59
 
 # load the data
 if startStep > 0:
@@ -76,7 +86,7 @@ if startStep > 0:
 else:
     print("Starting from step zero.")
     try:
-        allStates = np.load(SourcePath + "states_{}_0.npy".format(T))
+        allStates = np.load(SourcePath + "states_{}.npy".format(T))
     except:
         raise FileNotFoundError("Initial states not found.")
 
@@ -110,8 +120,8 @@ Initlines[2] = "{} \t atoms\n".format(Nsites - 1)
 Initlines[3] = "{} atom types\n".format(Nspec-1)
 
 # Begin KMC loop below
-FinalStates = np.zeros_like(SiteIndToSpecAll).astype(np.int16)
-FinalVacSites = np.zeros(Ntraj).astype(np.int16)
+FinalStates = SiteIndToSpecAll
+FinalVacSites = vacSiteIndAll
 SpecDisps = np.zeros((Ntraj, Nspec, 3))
 AllJumpRates = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
 AllJumpBarriers = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
@@ -135,8 +145,8 @@ for step in range(Nsteps):
         sampleStart = batch * chunk
         sampleEnd = min((batch + 1) * chunk, SiteIndToSpecAll.shape[0])
 
-        SiteIndToSpec = SiteIndToSpecAll[sampleStart: sampleEnd].copy()
-        vacSiteInd = vacSiteIndAll[sampleStart: sampleEnd].copy()
+        SiteIndToSpec = FinalStates[sampleStart: sampleEnd].copy()
+        vacSiteInd = FinalVacSites[sampleStart: sampleEnd].copy()
 
         write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, Initlines)
 
@@ -202,6 +212,7 @@ for step in range(Nsteps):
 
         # save final states, displacements and times
         FinalStates[sampleStart: sampleEnd, :] = SiteIndToSpec[:, :]
+        FinalVacSites[sampleStart: sampleEnd, :] = vacSiteInd[:, :]
         SpecDisps[sampleStart:sampleEnd, :, :] = X_traj[:, :, :]
         tarr[sampleStart:sampleEnd] = time_step[:]
         if step == 0:
