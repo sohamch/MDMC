@@ -29,7 +29,7 @@ MainPath = args[8] # The path where the potential file is found
 #MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
 WriteAllJumps = bool(int(args[9]))
 
-SourcePath, _ = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
+SourcePath = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
 SourcePath += "/"
 
 # Need to get rid of these argument
