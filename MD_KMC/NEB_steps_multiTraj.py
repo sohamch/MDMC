@@ -40,6 +40,9 @@ NImage = 3
 RunPath = os.getcwd()+'/'
 print("Running from : " + RunPath)
 
+if not os.path.isdir(RunPath + "step_finals_chunk_0"):
+    os.makedirs(RunPath + "step_finals_chunk_0")
+
 # Load the lammps cartesian positions and neighborhoods - pre-prepared
 SiteIndToPos = np.load(SourcePath + "SiteIndToLmpCartPos.npy")  # lammps pos of sites
 SiteIndToNgb = np.load(MainPath + "CrysDat_FCC/NNsites_sitewise.npy")[1:, :].T  # Nsites x z array of site neighbors
@@ -132,7 +135,6 @@ TestRandomNums = np.zeros(Ntraj) # store the random numbers at all steps
 write_input_files(Ntraj, potPath=MainPath)
 
 start = time.time()
-NEB_count = 0
 
 for step in range(Nsteps):
     for chunk in range(0, Ntraj, chunkSize):
