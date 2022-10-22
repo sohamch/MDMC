@@ -155,7 +155,7 @@ for step in range(Nsteps):
             if chunk == 0:
                 # Store the final data for each traj, at each step and for each jump
                 for traj in range(SiteIndToSpec.shape[0]):
-                    cmd = subprocess.Popen("cp final_{0}.data step_finals/final_startSamp_{0}_stp_{1}_jInd_{2}.data".format(StateStart, step+1, jumpInd), shell=True)
+                    cmd = subprocess.Popen("cp final_{0}.data step_finals_chunk_0/final_startSamp_{0}_stp_{1}_jInd_{2}.data".format(StateStart, step+1, jumpInd), shell=True)
                     rt = cmd.wait()
                     assert rt == 0
 
