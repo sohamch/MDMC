@@ -96,7 +96,9 @@ else:
     if permuteStates:
         perm = np.load(SourcePath + "perm_{}.npy".format(T))
         SiteIndToSpecAll = allStates[perm][StateStart: StateStart + batchSize]
+        print("Permuting states with given indices.")
     else:
+        print("Not permuting states.")
         SiteIndToSpecAll = allStates[StateStart: StateStart + batchSize]
 
     assert np.all(SiteIndToSpecAll[:, 0] == 0), "All vacancies must be at the 0th site initially."
@@ -157,8 +159,8 @@ for step in range(Nsteps):
             # store the final lammps files for the first batch of states at each step
             if chunk == 0:
                 # Store the final data for each traj, at each step and for each jump
-                for traj in range(SiteIndToSpec.shape[0]):
-                    cmd = subprocess.Popen("cp final_{0}.data step_finals_chunk_0/final_startSamp_{0}_stp_{1}_jInd_{2}.data".format(StateStart, step+1, jumpInd), shell=True)
+                for traj in range(sampleStart, sampleEnd):
+                    cmd = subprocess.Popen("cp final_{0}.data step_finals_chunk_0/final_startSamp_{0}_stp_{1}_jInd_{2}.data".format(traj, step+1, jumpInd), shell=True)
                     rt = cmd.wait()
                     assert rt == 0
 
