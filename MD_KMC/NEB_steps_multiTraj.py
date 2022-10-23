@@ -132,7 +132,7 @@ JumpSelects = np.zeros(Ntraj, dtype=np.int8) # which jump is chosen for each tra
 TestRandomNums = np.zeros(Ntraj) # store the random numbers at all steps
 
 # Before starting, write the lammps input files
-write_input_files(Ntraj, potPath=MainPath)
+write_input_files(chunkSize, potPath=MainPath)
 
 start = time.time()
 
@@ -147,8 +147,8 @@ for step in range(Nsteps):
 
         write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, Initlines)
 
-        rates = np.zeros((batchSize, SiteIndToNgb.shape[1]))
-        barriers = np.zeros((batchSize, SiteIndToNgb.shape[1]))
+        rates = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
+        barriers = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
         for jumpInd in range(SiteIndToNgb.shape[1]):
             # Write the final states in NEB format for lammps
             write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd, writeAll=WriteAllJumps)
@@ -174,7 +174,7 @@ for step in range(Nsteps):
                 assert rt_code == 0  # check for system errors
 
             # Then read the forward barrier -> ebf
-            for traj in range(batchSize):
+            for traj in range(SiteIndToSpec.shape[0]):
                 with open("out_{0}.txt".format(traj), "r") as fl:
                     for line in fl:
                         continue
