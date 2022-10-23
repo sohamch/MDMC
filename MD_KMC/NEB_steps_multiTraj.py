@@ -116,6 +116,7 @@ specs, counts = np.unique(SiteIndToSpecAll[0], return_counts=True)
 Nspec = len(specs)  # including the vacancy
 Ntraj = SiteIndToSpecAll.shape[0]
 assert Ntraj == batchSize
+print("No. of samples : {}".format(Ntraj))
 
 Nsites = SiteIndToSpecAll.shape[1]
 Initlines[2] = "{} \t atoms\n".format(Nsites - 1)
@@ -139,8 +140,8 @@ start = time.time()
 for step in range(Nsteps):
     for chunk in range(0, Ntraj, chunkSize):
         # Write the initial states from last accepted state
-        sampleStart = chunk * chunkSize
-        sampleEnd = min((chunk + 1) * chunkSize, SiteIndToSpecAll.shape[0])
+        sampleStart = chunk
+        sampleEnd = min(chunk + chunkSize, Ntraj)
 
         SiteIndToSpec = FinalStates[sampleStart: sampleEnd].copy()
         vacSiteInd = FinalVacSites[sampleStart: sampleEnd].copy()
@@ -209,11 +210,11 @@ for step in range(Nsteps):
         FinalVacSites[sampleStart: sampleEnd] = vacSiteInd[:]
         SpecDisps[sampleStart:sampleEnd, :, :] = X_traj[:, :, :]
         tarr[sampleStart:sampleEnd] = time_step[:]
-        with open("ChunkTiming.txt", "w") as fl:
+        with open("ChunkTiming.txt", "a") as fl:
             fl.write(
                 "Chunk {0} of {1} in step {3} completed in : {2} seconds\n".format(chunk//chunkSize + 1, int(np.ceil(Ntraj/chunkSize)), time.time() - start, step + 1))
 
-    with open("StepTiming.txt", "w") as fl:
+    with open("StepTiming.txt", "a") as fl:
         fl.write("Time per step up to {0} of {1} steps : {2} seconds\n".format(step + 1, Nsteps, (time.time() - start)/(step + 1)))
 
     # Next, save all the arrays in an hdf5 file for the current step.
