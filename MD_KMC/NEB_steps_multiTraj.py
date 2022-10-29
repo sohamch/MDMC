@@ -71,20 +71,23 @@ dxList *=  3.59
 # load the data
 if startStep > 0:
     SiteIndToSpecAll = np.zeros(batchSize, dtype=np.int8)
-    for chunk in range(0, batchSize, chunkSize):
-        end = min((chunk + 1) * chunkSize, batchSize)
-        with h5py.File(RunPath + "data_{0}_{1}_{2}.h5".format(T, startStep, StateStart), "r") as fl:
-            batcStates = np.array(fl["FinalStates"])
+    
+    with h5py.File(RunPath + "data_{0}_{1}_{2}.h5".format(T, startStep, StateStart), "r") as fl:
+        batchStates = np.array(fl["FinalStates"])
+    
+    assert batchStates.shape[0] == batchSize
 
-        SiteIndToSpecAll[chunk : end, :] = batcStates[:, :]
+    SiteIndToSpecAll[:, :] = batchStates[:, :]
 
-    vacSiteIndAll = np.zeros(batchSize, dtype=np.int8)
+    vacSiteIndAll = np.zeros(batchSize, dtype=int)
     for stateInd in SiteIndToSpecAll.shape[0]:
         state = SiteIndToSpecAll[stateInd]
         vacSite = np.where(state == 0)[0][0]
         vacSiteIndAll[stateInd] = vacSite
 
     print("Starting from checkpointed step {}".format(startStep))
+    np.save("states_{0}_{1}_{2}.npy".format(T, startStep, StateStart), SiteIndToSpecAll)
+    np.save("vacSites_{0}_{1}_{2}.npy".format(T, startStep, StateStart), vacSiteIndAll)
 
 else:
     assert startStep == 0
