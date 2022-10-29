@@ -70,7 +70,6 @@ dxList *=  3.59
 
 # load the data
 if startStep > 0:
-    SiteIndToSpecAll = np.zeros(batchSize, dtype=np.int8)
     
     with h5py.File(RunPath + "data_{0}_{1}_{2}.h5".format(T, startStep, StateStart), "r") as fl:
         batchStates = np.array(fl["FinalStates"])
@@ -80,7 +79,7 @@ if startStep > 0:
     except AssertionError:
         raise AssertionError("The checkpointed number of states does not match batchSize argument.")
 
-    SiteIndToSpecAll[:, :] = batchStates[:, :]
+    SiteIndToSpecAll = batchStates
 
     vacSiteIndAll = np.zeros(batchSize, dtype=int)
     for stateInd in SiteIndToSpecAll.shape[0]:
