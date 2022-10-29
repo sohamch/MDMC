@@ -82,7 +82,7 @@ if startStep > 0:
     SiteIndToSpecAll = batchStates
 
     vacSiteIndAll = np.zeros(batchSize, dtype=int)
-    for stateInd in SiteIndToSpecAll.shape[0]:
+    for stateInd in range(SiteIndToSpecAll.shape[0]):
         state = SiteIndToSpecAll[stateInd]
         vacSite = np.where(state == 0)[0][0]
         vacSiteIndAll[stateInd] = vacSite
