@@ -75,7 +75,10 @@ if startStep > 0:
     with h5py.File(RunPath + "data_{0}_{1}_{2}.h5".format(T, startStep, StateStart), "r") as fl:
         batchStates = np.array(fl["FinalStates"])
     
-    assert batchStates.shape[0] == batchSize
+    try: 
+        assert batchStates.shape[0] == batchSize
+    except AssertionError:
+        raise AssertionError("The checkpointed number of states does not match batchSize argument.")
 
     SiteIndToSpecAll[:, :] = batchStates[:, :]
 
