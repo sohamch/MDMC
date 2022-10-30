@@ -53,16 +53,20 @@ def Load_Data(DataPath):
         state2List = np.array(fl["FinStates"])[perm]
         dispList = np.array(fl["SpecDisps"])[perm]
         rateList = np.array(fl["rates"])[perm]
-        try: 
-            AllJumpRates_st1 = np.array(fl["AllJumpRates_Init"])[perm]
-            AllJumpRates_st2 = np.array(fl["AllJumpRates_Fin"])[perm]
+        AllJumpRates_st1 = np.array(fl["AllJumpRates_Init"])[perm]
         
+        try: 
+            AllJumpRates_st2 = np.array(fl["AllJumpRates_Fin"])[perm]
+        except:
+            print("Second step rates not found.")
+            AllJumpRates_st2 = None
+        
+        try:
             avgDisps_st1 = np.array(fl["AvgDisps_Init"])[perm]
             avgDisps_st2 = np.array(fl["AvgDisps_Fin"])[perm]
 
         except:
-            AllJumpRates_st1 = np.array(fl["AllJumpRates"])[perm]
-            AllJumpRates_st2 = None
+            print("Average disps not found.")
             avgDisps_st1 = None
             avgDisps_st2 = None
  
