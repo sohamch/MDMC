@@ -172,7 +172,7 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
     vacSiteNow = vacSiteInit
 
     jmpSelectSteps = np.zeros(Nsteps, dtype=int64)  # To store which jump was selected in each step
-    randSteps = np.zeros(Nsteps, dtype=int64)  # To store which jump was selected in each step
+    randSteps = np.zeros(Nsteps, dtype=float64)  # To store which jump was selected in each step
     jumpAtomID = np.zeros(Nsteps, dtype=int64)
 
     # Make arrays to store every atom's information
@@ -204,7 +204,7 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
             jmpSelect = np.searchsorted(rates_cm, rn)
 
             jmpSelectSteps[step] = jmpSelect  # Store which jump was selected
-            randSteps[step] = jmpSelect  # Store random number used
+            randSteps[step] = rn # Store random number used
 
             # Store the displacement and the time for this step
             X[NSpec - 1, :] += dxList[jmpSelect]
