@@ -605,11 +605,11 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
         # As long as the same crysdats are used, this will not change
         gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device), strict=False)
 
-        nLayers = (len(gNet.net)-6)//3
+        nLayers = (len(gNet.net))//3 - 2 # excluding the input and output layers
         for LayerInd in LayerIndList:
             ch = gNet.net[LayerInd - 2].Psi.shape[0]
-            y1Reps = np.zeros((Nsamples, ch, Nsites))
-            y2Reps = np.zeros((Nsamples, ch, Nsites))
+            st1Reps = np.zeros((Nsamples, ch, Nsites))
+            st2Reps = np.zeros((Nsamples, ch, Nsites))
             for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
                 end = min(batch + N_batch, Nsamples)
 
@@ -619,33 +619,33 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
                 y1 = gNet.getRep(state1Batch, LayerInd)
                 y2 = gNet.getRep(state2Batch, LayerInd)
 
-                y1Reps[batch : end] = y1.cpu().numpy()
-                y2Reps[batch : end] = y2.cpu().numpy()
+                st1Reps[batch : end] = y1.cpu().numpy()
+                st2Reps[batch : end] = y2.cpu().numpy()
             
             if avg:
-                y1RepsTrain = np.mean(y1Reps[:N_train], axis = 0)
-                y2RepsTrain = np.mean(y2Reps[:N_train], axis = 0)
-                y1RepsVal = np.mean(y1Reps[N_train:], axis = 0)
-                y2RepsVal = np.mean(y2Reps[N_train:], axis = 0)
+                st1RepsTrain = np.mean(st1Reps[:N_train], axis = 0)
+                st2RepsTrain = np.mean(st2Reps[:N_train], axis = 0)
+                st1RepsVal = np.mean(st1Reps[N_train:], axis = 0)
+                st2RepsVal = np.mean(st2Reps[N_train:], axis = 0)
                 
-                y1RepsTrain_err = np.std(y1Reps[:N_train], axis = 0)/np.sqrt(N_train)
-                y2RepsTrain_err = np.std(y2Reps[:N_train], axis = 0)/np.sqrt(N_train)
-                y1RepsVal_err = np.std(y1Reps[N_train:], axis = 0)/np.sqrt((Nsamples - N_train))
-                y2RepsVal_err = np.std(y2Reps[N_train:], axis = 0)/np.sqrt((Nsamples - N_train))
+                st1RepsTrain_err = np.std(st1Reps[:N_train], axis = 0)/np.sqrt(N_train)
+                st2RepsTrain_err = np.std(st2Reps[:N_train], axis = 0)/np.sqrt(N_train)
+                st1RepsVal_err = np.std(st1Reps[N_train:], axis = 0)/np.sqrt((Nsamples - N_train))
+                st2RepsVal_err = np.std(st2Reps[N_train:], axis = 0)/np.sqrt((Nsamples - N_train))
                 
-                np.save(storeDir + "/Rep1_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1RepsTrain)
-                np.save(storeDir + "/Rep2_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2RepsTrain)
-                np.save(storeDir + "/Rep1_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1RepsVal)
-                np.save(storeDir + "/Rep2_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2RepsVal)
+                np.save(storeDir + "/Rep1_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st1RepsTrain)
+                np.save(storeDir + "/Rep2_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st2RepsTrain)
+                np.save(storeDir + "/Rep1_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st1RepsVal)
+                np.save(storeDir + "/Rep2_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st2RepsVal)
 
-                np.save(storeDir + "/Rep1_tr_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1RepsTrain_err)
-                np.save(storeDir + "/Rep2_tr_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2RepsTrain_err)
-                np.save(storeDir + "/Rep1_val_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1RepsVal_err)
-                np.save(storeDir + "/Rep2_val_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2RepsVal_err)
+                np.save(storeDir + "/Rep1_tr_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st1RepsTrain_err)
+                np.save(storeDir + "/Rep2_tr_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st2RepsTrain_err)
+                np.save(storeDir + "/Rep1_val_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st1RepsVal_err)
+                np.save(storeDir + "/Rep2_val_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st2RepsVal_err)
             
             else:
-                np.save(storeDir + "/Rep1_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1Reps)
-                np.save(storeDir + "/Rep2_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2Reps)
+                np.save(storeDir + "/Rep1_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st1Reps)
+                np.save(storeDir + "/Rep2_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st2Reps)
 
 
 def makeDir(spcs, NSpec, args, specsToTrain): 
