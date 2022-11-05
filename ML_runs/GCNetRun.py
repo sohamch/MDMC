@@ -76,6 +76,64 @@ def Load_Data(DataPath):
  
     return state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2
 
+def makeOnSites(stateOccs, specsToTrain, VacSpec, sp_ch):
+    OnSites = None
+    NJumps = stateOccs.shape[0]
+    Nsites = stateOccs.shape[2]
+    if specsToTrain != [VacSpec]:
+        OnSites = np.zeros((NJumps, Nsites), dtype=np.int8)
+
+        for spec in specsToTrain:
+            OnSites += stateOccs[:, sp_ch[spec], :]
+
+    return OnSites
+
+def makeStateTensors(stateList, specsToTrain, VacSpec, JumpNewSites, AllJumps=False):
+    Nsamples = stateList.shape[0]
+    Nj = JumpNewSites.shape[0]
+    specs = np.unique(stateList[0])
+    NSpec = specs.shape[0] - 1
+    Nsites = stateList.shape[1]
+
+    sp_ch = {}
+    for sp in specs:
+        if sp == VacSpec:
+            continue
+
+        if sp - VacSpec < 0:
+            sp_ch[sp] = sp
+        else:
+            sp_ch[sp] = sp - 1
+
+    if AllJumps:
+        stateOccs = np.zeros((Nsamples * Nj, NSpec, Nsites), dtype=np.int8)
+        stateExits = np.zeros((Nsamples * Nj, NSpec, Nsites), dtype=np.int8)
+        for stateInd in tqdm(range(Nsamples), position=0, leave=True):
+            state1 = stateList[stateInd]
+            for jmp in range(Nj):
+                state2 = state1[JumpNewSites[jmp]]
+                for site in range(1, Nsites):
+                    sp1 = state1[site]
+                    sp2 = state2[site]
+                    stateOccs[stateInd * Nj + jmp, sp_ch[sp1], site] = 1
+                    stateExits[stateInd * Nj + jmp, sp_ch[sp2], site] = 1
+
+        Onsites_st1 = makeOnSites(stateOccs, specsToTrain, VacSpec, sp_ch)
+        Onsites_st2 = makeOnSites(stateExits, specsToTrain, VacSpec, sp_ch)
+
+        return stateOccs, stateExits, Onsites_st1, Onsites_st2, sp_ch
+
+    else:
+        stateOccs = np.zeros((Nsamples, NSpec, Nsites), dtype=np.int8)
+        for stateInd in tqdm(range(Nsamples), position=0, leave=True):
+            state1 = stateList[stateInd]
+            for site in range(1, Nsites):
+                sp1 = state1[site]
+                stateOccs[stateInd, sp_ch[sp1], site] = 1
+
+        Onsites = makeOnSites(stateOccs, specsToTrain, VacSpec, sp_ch)
+        return stateOccs, Onsites, sp_ch
+
 def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
         AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False, mode="train"):
     
@@ -85,78 +143,52 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     else:
         Nsamples = state1List.shape[0]
 
-    if AllJumps:
-        NJumps = Nsamples*dxJumps.shape[0]
-    else:
-        NJumps = Nsamples
     a = np.linalg.norm(dispList[0, VacSpec, :])/np.linalg.norm(dxJumps[0]) 
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
     Nsites = state1List.shape[1]
     NNsvac = NNsiteList[1:, 0]
-    
-    sp_ch = {}
-    for sp in specs:
-        if sp == VacSpec:
-            continue
-        
-        if sp - VacSpec < 0:
-            sp_ch[sp] = sp
-        else:
-            sp_ch[sp] = sp-1
 
-    State1_occs = np.zeros((NJumps, NSpec, Nsites), dtype=np.int8)
-    State2_occs = np.zeros((NJumps, NSpec, Nsites), dtype=np.int8)
-    dispData = np.zeros((NJumps, 2, 3))
-    
+    NData = Nsamples
+    if AllJumps:
+        NData = Nsamples*dxJumps.shape[0]
 
-    rateData = np.zeros(NJumps)
+    dispData = np.zeros((NData, 2, 3))
+    rateData = np.zeros(NData)
     
     # Make the multichannel occupancies
     print("Building Occupancy Tensors for species : {}".format(specsToTrain))
-    print("No. of jumps : {}".format(NJumps))
-    for samp in tqdm(range(Nsamples), position=0, leave=True):
-        state1 = state1List[samp]
-        if AllJumps:
+    print("No. of jumps : {}".format(NData))
+
+    if AllJumps:
+        State1_occs, State2_occs, OnSites_state1, OnSites_state2, sp_ch =\
+            makeStateTensors(state1List[:Nsamples], specsToTrain, VacSpec, JumpNewSites, AllJumps=AllJumps)
+
+        # Next, Build the rates and displacements
+        for samp in tqdm(range(Nsamples), position=0, leave=True):
+            state1 = state1List[samp]
             for jInd in range(dxJumps.shape[0]):
                 JumpSpec = state1[NNsvac[jInd]]
-                state2 = state1[JumpNewSites[jInd]]
                 Idx = samp*dxJumps.shape[0]  + jInd
-                dispData[Idx, 0, :] =  dxJumps[jInd]*a
+                dispData[Idx, 0, :] = dxJumps[jInd]*a
                 if JumpSpec in specsToTrain:
                     dispData[Idx, 1, :] -= dxJumps[jInd]*a
-                
-                rateData[Idx] = AllJumpRates_st1[samp, jInd]
-                
-                for site in range(1, Nsites): # exclude the vacancy site
-                    spec1 = state1[site]
-                    spec2 = state2[site]
-                    State1_occs[Idx, sp_ch[spec1], site] = 1
-                    State2_occs[Idx, sp_ch[spec2], site] = 1
 
-        else:
-            state2 = state2List[samp]
-            for site in range(1, Nsites): # exclude the vacancy site
-                spec1 = state1[site]
-                spec2 = state2[site]
-                State1_occs[samp, sp_ch[spec1], site] = 1
-                State2_occs[samp, sp_ch[spec2], site] = 1
-            
+                rateData[Idx] = AllJumpRates_st1[samp, jInd]
+
+    else:
+        # Next, Build the rates and displacements
+        State1_occs, OnSites_state1, sp_ch = \
+            makeStateTensors(state1List[:Nsamples], specsToTrain, VacSpec, JumpNewSites, AllJumps=AllJumps)
+
+        State2_occs, OnSites_state2, _ = \
+            makeStateTensors(state2List[:Nsamples], specsToTrain, VacSpec, JumpNewSites, AllJumps=AllJumps)
+
+        for samp in tqdm(range(Nsamples), position=0, leave=True):
             dispData[samp, 0, :] = dispList[samp, VacSpec, :]
             dispData[samp, 1, :] = sum(dispList[samp, spec, :] for spec in specsToTrain)
-
             rateData[samp] = rateList[samp]
-    
-    # Make the numpy tensor to indicate "on" sites (i.e, those whose y vectors will be collected)
-    OnSites_state1 = None
-    OnSites_state2 = None
-    if specsToTrain != [VacSpec]:
-        OnSites_state1 = np.zeros((NJumps, Nsites), dtype=np.int8)
-        OnSites_state2 = np.zeros((NJumps, Nsites), dtype=np.int8)
-    
-        for spec in specsToTrain:
-            OnSites_state1 += State1_occs[:, sp_ch[spec], :]
-            OnSites_state2 += State2_occs[:, sp_ch[spec], :]
+
     
     return State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch
 
@@ -475,7 +507,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jProbs_st1, jProbs_st2,
         sp_ch, SpecsToTrain, VacSpec, gNet, Ndim, epoch=None, Boundary_train=False, batch_size=256,
-        jumpSort=True, siteWise=False, AddOnSites=True):
+        jumpSort=True, AddOnSites=True):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -497,21 +529,13 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
         assert gNet.net[-3].Psi.shape[0] == jProbs_st1.shape[1] == jProbs_st2.shape[1] 
         print("Boundary training indicated. Using jump probabilities.")
         jProbs_st1, jProbs_st2 = sort_jp(jProbs_st1, jProbs_st2, jumpSort)
-        
-        if siteWise:
-            y1Vecs = np.zeros((Nsamples, gNet.net[-3].Psi.shape[0], 3, state1Data.shape[2]))
-            y2Vecs = np.zeros((Nsamples, gNet.net[-3].Psi.shape[0], 3, state1Data.shape[2]))
-        else:
-            y1Vecs = np.zeros((Nsamples, 3))
-            y2Vecs = np.zeros((Nsamples, 3))
+
+        y1Vecs = np.zeros((Nsamples, 3))
+        y2Vecs = np.zeros((Nsamples, 3))
 
     else:
-        if siteWise:
-            y1Vecs = np.zeros((Nsamples, 1, 3, state1Data.shape[2]))
-            y2Vecs = np.zeros((Nsamples, 1, 3, state1Data.shape[2]))
-        else:
-            y1Vecs = np.zeros((Nsamples, 3))
-            y2Vecs = np.zeros((Nsamples, 3))
+        y1Vecs = np.zeros((Nsamples, 3))
+        y2Vecs = np.zeros((Nsamples, 3))
 
 
     gNet.to(device)
@@ -540,21 +564,16 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
 
             y1 = gNet(state1Batch)
             y2 = gNet(state2Batch)
-            
-            if siteWise:
-                y1Vecs[batch : end] = y1.cpu().numpy()
-                y2Vecs[batch : end] = y2.cpu().numpy()
-            
+
+            if SpecsToTrain==[VacSpec]:
+                y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
+
             else:
-                if SpecsToTrain==[VacSpec]: 
-                    y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
+                On_st1Batch = On_st1[batch : end]
+                On_st2Batch = On_st2[batch : end]
 
-                else:
-                    On_st1Batch = On_st1[batch : end]
-                    On_st2Batch = On_st2[batch : end]
-
-                    y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch,
-                                           Boundary_train, AddOnSites)
+                y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch,
+                                       Boundary_train, AddOnSites)
 
             y1Vecs[batch : end] = y1.cpu().numpy()
             y2Vecs[batch : end] = y2.cpu().numpy()
@@ -590,11 +609,11 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
         # As long as the same crysdats are used, this will not change
         gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device), strict=False)
 
-        nLayers = (len(gNet.net)-6)//3
+        nLayers = (len(gNet.net))//3 - 2 # excluding the input and output layers
         for LayerInd in LayerIndList:
             ch = gNet.net[LayerInd - 2].Psi.shape[0]
-            y1Reps = np.zeros((Nsamples, ch, Nsites))
-            y2Reps = np.zeros((Nsamples, ch, Nsites))
+            st1Reps = np.zeros((Nsamples, ch, Nsites))
+            st2Reps = np.zeros((Nsamples, ch, Nsites))
             for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
                 end = min(batch + N_batch, Nsamples)
 
@@ -604,33 +623,33 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
                 y1 = gNet.getRep(state1Batch, LayerInd)
                 y2 = gNet.getRep(state2Batch, LayerInd)
 
-                y1Reps[batch : end] = y1.cpu().numpy()
-                y2Reps[batch : end] = y2.cpu().numpy()
+                st1Reps[batch : end] = y1.cpu().numpy()
+                st2Reps[batch : end] = y2.cpu().numpy()
             
             if avg:
-                y1RepsTrain = np.mean(y1Reps[:N_train], axis = 0)
-                y2RepsTrain = np.mean(y2Reps[:N_train], axis = 0)
-                y1RepsVal = np.mean(y1Reps[N_train:], axis = 0)
-                y2RepsVal = np.mean(y2Reps[N_train:], axis = 0)
+                st1RepsTrain = np.mean(st1Reps[:N_train], axis = 0)
+                st2RepsTrain = np.mean(st2Reps[:N_train], axis = 0)
+                st1RepsVal = np.mean(st1Reps[N_train:], axis = 0)
+                st2RepsVal = np.mean(st2Reps[N_train:], axis = 0)
                 
-                y1RepsTrain_err = np.std(y1Reps[:N_train], axis = 0)/np.sqrt(N_train)
-                y2RepsTrain_err = np.std(y2Reps[:N_train], axis = 0)/np.sqrt(N_train)
-                y1RepsVal_err = np.std(y1Reps[N_train:], axis = 0)/np.sqrt((Nsamples - N_train))
-                y2RepsVal_err = np.std(y2Reps[N_train:], axis = 0)/np.sqrt((Nsamples - N_train))
+                st1RepsTrain_err = np.std(st1Reps[:N_train], axis = 0)/np.sqrt(N_train)
+                st2RepsTrain_err = np.std(st2Reps[:N_train], axis = 0)/np.sqrt(N_train)
+                st1RepsVal_err = np.std(st1Reps[N_train:], axis = 0)/np.sqrt((Nsamples - N_train))
+                st2RepsVal_err = np.std(st2Reps[N_train:], axis = 0)/np.sqrt((Nsamples - N_train))
                 
-                np.save(storeDir + "/Rep1_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1RepsTrain)
-                np.save(storeDir + "/Rep2_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2RepsTrain)
-                np.save(storeDir + "/Rep1_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1RepsVal)
-                np.save(storeDir + "/Rep2_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2RepsVal)
+                np.save(storeDir + "/Rep1_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st1RepsTrain)
+                np.save(storeDir + "/Rep2_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st2RepsTrain)
+                np.save(storeDir + "/Rep1_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st1RepsVal)
+                np.save(storeDir + "/Rep2_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st2RepsVal)
 
-                np.save(storeDir + "/Rep1_tr_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1RepsTrain_err)
-                np.save(storeDir + "/Rep2_tr_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2RepsTrain_err)
-                np.save(storeDir + "/Rep1_val_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1RepsVal_err)
-                np.save(storeDir + "/Rep2_val_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2RepsVal_err)
+                np.save(storeDir + "/Rep1_tr_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st1RepsTrain_err)
+                np.save(storeDir + "/Rep2_tr_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st2RepsTrain_err)
+                np.save(storeDir + "/Rep1_val_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st1RepsVal_err)
+                np.save(storeDir + "/Rep2_val_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st2RepsVal_err)
             
             else:
-                np.save(storeDir + "/Rep1_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y1Reps)
-                np.save(storeDir + "/Rep2_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), y2Reps)
+                np.save(storeDir + "/Rep1_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st1Reps)
+                np.save(storeDir + "/Rep2_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st2Reps)
 
 
 def makeDir(spcs, NSpec, args, specsToTrain): 
@@ -780,21 +799,59 @@ def main(args):
                                                               direcString, args.Nchannels), valid_diff/(1.0*args.N_train))
 
     elif args.Mode == "getY":
-        y1Vecs, y2Vecs = Gather_Y(args.TNet, dirPath, State1_occs, State2_occs,
-                OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
-                specsToTrain, args.VacSpec, gNet, Ndim, batch_size=args.Batch_size, epoch=args.Start_epoch,
-                Boundary_train=args.BoundTrain, AddOnSites=args.AddOnSitesJPINN, siteWise=args.SiteWiseY)
+        if args.AllJumps:
+            State1_occs, State2_occs, OnSites_state1, OnSites_state2, sp_ch = \
+                makeStateTensors(state1List, specsToTrain, args.VacSpec, JumpNewSites, AllJumps=True)
 
-        if args.SiteWiseY:
-            np.save("y1_sites_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
-                                                                 direcString, args.Start_epoch, args.Nchannels), y1Vecs)
-            np.save("y2_sites_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
-                                                                 direcString, args.Start_epoch, args.Nchannels), y2Vecs)
+            print("Calculating y for state 1  and state 1 exits for {}.".format(args.Tdata))
+            y_st1_Vecs, y_st1_Exits = Gather_Y(args.TNet, dirPath, State1_occs, State2_occs,
+                                      OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
+                                      specsToTrain, args.VacSpec, gNet, Ndim, batch_size=args.Batch_size,
+                                      epoch=args.Start_epoch,
+                                      Boundary_train=args.BoundTrain, AddOnSites=args.AddOnSitesJPINN)
+
+            State1_occs, State2_occs, OnSites_state1, OnSites_state2, sp_ch = \
+                makeStateTensors(state2List, specsToTrain, args.VacSpec, JumpNewSites, AllJumps=True)
+
+            print("Calculating y for state 2  and state 2 exits for {}.".format(args.Tdata))
+            y_st2_Vecs, y_st2_Exits = Gather_Y(args.TNet, dirPath, State1_occs, State2_occs,
+                                               OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
+                                               specsToTrain, args.VacSpec, gNet, Ndim, batch_size=args.Batch_size,
+                                               epoch=args.Start_epoch,
+                                               Boundary_train=args.BoundTrain, AddOnSites=args.AddOnSitesJPINN)
+
+            z = N_ngb - 1
+            np.save("y_st1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+                                                                 direcString, args.Start_epoch, args.Nchannels), y_st1_Vecs[::z])
+
+            np.save("y_st1_exits_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+                                                                 direcString, args.Start_epoch, args.Nchannels), y_st1_Exits)
+
+            np.save("y_st2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers,
+                                                                        int(args.AllJumps),
+                                                                        direcString, args.Start_epoch, args.Nchannels), y_st2_Vecs[::z])
+
+            np.save("y_st2_exits_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers,
+                                                                              int(args.AllJumps),
+                                                                              direcString, args.Start_epoch,
+                                                                              args.Nchannels), y_st2_Exits)
+
         else:
-            np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
-                                                                 direcString, args.Start_epoch, args.Nchannels), y1Vecs)
-            np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
-                                                                 direcString, args.Start_epoch, args.Nchannels), y2Vecs)
+            State1_occs, OnSites_state1, sp_ch = \
+                makeStateTensors(state1List, specsToTrain, args.VacSpec, JumpNewSites, AllJumps=False)
+
+            State2_occs, OnSites_state2, sp_ch = \
+                makeStateTensors(state2List, specsToTrain, args.VacSpec, JumpNewSites, AllJumps=False)
+
+            y1Vecs, y2Vecs = Gather_Y(args.TNet, dirPath, State1_occs, State2_occs,
+                    OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
+                    specsToTrain, args.VacSpec, gNet, Ndim, batch_size=args.Batch_size, epoch=args.Start_epoch,
+                    Boundary_train=args.BoundTrain, AddOnSites=args.AddOnSitesJPINN)
+
+            np.save("y_st1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+                                                                        direcString, args.Start_epoch, args.Nchannels), y1Vecs)
+            np.save("y_st2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+                                                                        direcString, args.Start_epoch, args.Nchannels), y2Vecs)
     
     elif args.Mode == "getRep":
         GetRep(args.TNet, args.Tdata, dirPath, State1_occs, State2_occs, args.Start_epoch, gNet, args.RepLayer, N_train_jumps, batch_size=args.Batch_size,
@@ -819,7 +876,6 @@ if __name__ == "__main__":
     parser.add_argument("-xsh", "--DispShift", action="store_true", help="Whether to shift displacements with state averages.")
     parser.add_argument("-nosym", "--NoSymmetry", action="store_true", help="Whether to switch off all symmetry operations except identity.")
     parser.add_argument("-l0", "--ScaleL0", action="store_true", help="Whether to scale transport coefficients during training with uncorrelated value.")
-    parser.add_argument("-swy", "--SiteWiseY", action="store_true", help="Whether to get y vectors for individual sites Applies to only getY mode.")
 
     parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, default=1, help="No. of intermediate layers of the neural network.")
     parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, default=4, help="No. of representation channels in non-input layers.")

@@ -111,9 +111,9 @@ class Test_latGasKMC(unittest.TestCase):
         vacSiteInit = self.vacsiteInd
         self.assertEqual(vacSiteInit, 0)
 
-        Nsteps = 5
+        Nsteps = 50
 
-        X_steps, t_steps, jmpSelectSteps, jmpFinSiteList, _, _ =\
+        X_steps, t_steps, jmpSelectSteps, randSteps, jmpFinSiteList =\
             LatGas.LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
                                  vacSiteInit, N_unit, siteIndtoR, RtoSiteInd)
 
@@ -156,17 +156,24 @@ class Test_latGasKMC(unittest.TestCase):
 
             # Check that the correct residence time is calculated
             rateTot = 0.
+            rates = np.zeros(ijList.shape[0])
             for jmp in range(ijList.shape[0]):
                 dxR = dxtoR[jmp]
                 # get the exchange site
                 REx = (Rvac + dxR) % N_unit
                 siteEx = RtoSiteInd[REx[0], REx[1], REx[2]]
                 specEx = state0[siteEx]
+                rates[jmp] = SpecRates[specEx]
                 rateTot += SpecRates[specEx]
 
             tRun += 1/rateTot
 
             self.assertAlmostEqual(tRun, t_steps[step])
+
+            rateProbs = rates / rateTot
+            rateSum = np.cumsum(rateProbs)
+            rn = randSteps[step]
+            self.assertEqual(np.searchsorted(rateSum, rn), jmpStep)
 
             # update the state
             temp = state0[vacNext]
