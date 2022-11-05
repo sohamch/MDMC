@@ -72,8 +72,64 @@ def Load_Data(DataPath):
  
     return state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2
 
-def makeYData(state1List, state2List, VacSpec, JumpNewSites):
-    pass
+def makeOnSites(stateOccs, specsToTrain, VacSpec, sp_ch):
+    OnSites = None
+    NJumps = stateOccs.shape[0]
+    Nsites = stateOccs.shape[2]
+    if specsToTrain != [VacSpec]:
+        OnSites = np.zeros((NJumps, Nsites), dtype=np.int8)
+
+        for spec in specsToTrain:
+            OnSites += stateOccs[:, sp_ch[spec], :]
+
+    return OnSites
+
+def makeStateTensors(stateList, specsToTrain, VacSpec, JumpNewSites, AllJumps=False):
+    Nsamples = stateList.shape[0]
+    Nj = JumpNewSites.shape[0]
+    specs = np.unique(stateList[0])
+    NSpec = specs.shape[0] - 1
+    Nsites = stateList.shape[1]
+
+    sp_ch = {}
+    for sp in specs:
+        if sp == VacSpec:
+            continue
+
+        if sp - VacSpec < 0:
+            sp_ch[sp] = sp
+        else:
+            sp_ch[sp] = sp - 1
+
+    NData = Nsamples * Nj if AllJumps else Nsamples
+    if AllJumps:
+        stateOccs = np.zeros((NData, NSpec, Nsites), dtype=np.int8)
+        stateExits = np.zeros((NData, NSpec, Nsites), dtype=np.int8)
+        for stateInd in tqdm(range(NData), position=0, leave=True):
+            state1 = stateList[stateInd]
+            for jmp in range(Nj):
+                state2 = state1[JumpNewSites[jmp]]
+                for site in range(1, Nsites):
+                    sp1 = state1[site]
+                    sp2 = state2[site]
+                    stateOccs[stateInd, sp_ch[sp1], site] = 1
+                    stateExits[stateInd, sp_ch[sp2], site] = 1
+
+        Onsites_st1 = makeOnSites(stateOccs, specsToTrain, VacSpec, sp_ch)
+        Onsites_st2 = makeOnSites(stateExits, specsToTrain, VacSpec, sp_ch)
+
+        return stateOccs, stateExits, Onsites_st1, Onsites_st2
+
+    else:
+        stateOccs = np.zeros((NData, NSpec, Nsites), dtype=np.int8)
+        for stateInd in tqdm(range(NData), position=0, leave=True):
+            state1 = stateList[stateInd]
+            for site in range(1, Nsites):
+                sp1 = state1[site]
+                stateOccs[stateInd, sp_ch[sp1], site] = 1
+
+        Onsites = makeOnSites(stateOccs, specsToTrain, VacSpec, sp_ch)
+        return stateOccs, Onsites
 
 def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
         AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False, mode="train"):
