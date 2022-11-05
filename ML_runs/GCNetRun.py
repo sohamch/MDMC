@@ -798,6 +798,8 @@ def main(args):
         if args.AllJumps:
             State1_occs, State2_occs, OnSites_state1, OnSites_state2, sp_ch = \
                 makeStateTensors(state1List, specsToTrain, args.VacSpec, JumpNewSites, AllJumps=True)
+
+            print("Calculating y for state 1  and state 1 exits for {}.".format(args.Tdata))
             y_st1_Vecs, y_st1_Exits = Gather_Y(args.TNet, dirPath, State1_occs, State2_occs,
                                       OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
                                       specsToTrain, args.VacSpec, gNet, Ndim, batch_size=args.Batch_size,
@@ -806,6 +808,8 @@ def main(args):
 
             State1_occs, State2_occs, OnSites_state1, OnSites_state2, sp_ch = \
                 makeStateTensors(state2List, specsToTrain, args.VacSpec, JumpNewSites, AllJumps=True)
+
+            print("Calculating y for state 2  and state 2 exits for {}.".format(args.Tdata))
             y_st2_Vecs, y_st2_Exits = Gather_Y(args.TNet, dirPath, State1_occs, State2_occs,
                                                OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
                                                specsToTrain, args.VacSpec, gNet, Ndim, batch_size=args.Batch_size,
