@@ -72,6 +72,9 @@ def Load_Data(DataPath):
  
     return state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2
 
+def makeYData(state1List, state2List, VacSpec, JumpNewSites):
+    pass
+
 def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
         AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False, mode="train"):
     
