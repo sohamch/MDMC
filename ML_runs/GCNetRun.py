@@ -101,19 +101,18 @@ def makeStateTensors(stateList, specsToTrain, VacSpec, JumpNewSites, AllJumps=Fa
         else:
             sp_ch[sp] = sp - 1
 
-    NData = Nsamples * Nj if AllJumps else Nsamples
     if AllJumps:
-        stateOccs = np.zeros((NData, NSpec, Nsites), dtype=np.int8)
-        stateExits = np.zeros((NData, NSpec, Nsites), dtype=np.int8)
-        for stateInd in tqdm(range(NData), position=0, leave=True):
+        stateOccs = np.zeros((Nsamples * Nj, NSpec, Nsites), dtype=np.int8)
+        stateExits = np.zeros((Nsamples * Nj, NSpec, Nsites), dtype=np.int8)
+        for stateInd in tqdm(range(Nsamples), position=0, leave=True):
             state1 = stateList[stateInd]
             for jmp in range(Nj):
                 state2 = state1[JumpNewSites[jmp]]
                 for site in range(1, Nsites):
                     sp1 = state1[site]
                     sp2 = state2[site]
-                    stateOccs[stateInd, sp_ch[sp1], site] = 1
-                    stateExits[stateInd, sp_ch[sp2], site] = 1
+                    stateOccs[stateInd * Nj + jmp, sp_ch[sp1], site] = 1
+                    stateExits[stateInd * Nj + jmp, sp_ch[sp2], site] = 1
 
         Onsites_st1 = makeOnSites(stateOccs, specsToTrain, VacSpec, sp_ch)
         Onsites_st2 = makeOnSites(stateExits, specsToTrain, VacSpec, sp_ch)
@@ -121,8 +120,8 @@ def makeStateTensors(stateList, specsToTrain, VacSpec, JumpNewSites, AllJumps=Fa
         return stateOccs, stateExits, Onsites_st1, Onsites_st2, sp_ch
 
     else:
-        stateOccs = np.zeros((NData, NSpec, Nsites), dtype=np.int8)
-        for stateInd in tqdm(range(NData), position=0, leave=True):
+        stateOccs = np.zeros((Nsamples, NSpec, Nsites), dtype=np.int8)
+        for stateInd in tqdm(range(Nsamples), position=0, leave=True):
             state1 = stateList[stateInd]
             for site in range(1, Nsites):
                 sp1 = state1[site]
