@@ -118,7 +118,7 @@ def makeStateTensors(stateList, specsToTrain, VacSpec, JumpNewSites, AllJumps=Fa
         Onsites_st1 = makeOnSites(stateOccs, specsToTrain, VacSpec, sp_ch)
         Onsites_st2 = makeOnSites(stateExits, specsToTrain, VacSpec, sp_ch)
 
-        return stateOccs, stateExits, Onsites_st1, Onsites_st2
+        return stateOccs, stateExits, Onsites_st1, Onsites_st2, sp_ch
 
     else:
         stateOccs = np.zeros((NData, NSpec, Nsites), dtype=np.int8)
@@ -129,7 +129,7 @@ def makeStateTensors(stateList, specsToTrain, VacSpec, JumpNewSites, AllJumps=Fa
                 stateOccs[stateInd, sp_ch[sp1], site] = 1
 
         Onsites = makeOnSites(stateOccs, specsToTrain, VacSpec, sp_ch)
-        return stateOccs, Onsites
+        return stateOccs, Onsites, sp_ch
 
 def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
         AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False, mode="train"):
@@ -140,78 +140,52 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     else:
         Nsamples = state1List.shape[0]
 
-    if AllJumps:
-        NJumps = Nsamples*dxJumps.shape[0]
-    else:
-        NJumps = Nsamples
     a = np.linalg.norm(dispList[0, VacSpec, :])/np.linalg.norm(dxJumps[0]) 
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
     Nsites = state1List.shape[1]
     NNsvac = NNsiteList[1:, 0]
-    
-    sp_ch = {}
-    for sp in specs:
-        if sp == VacSpec:
-            continue
-        
-        if sp - VacSpec < 0:
-            sp_ch[sp] = sp
-        else:
-            sp_ch[sp] = sp-1
 
-    State1_occs = np.zeros((NJumps, NSpec, Nsites), dtype=np.int8)
-    State2_occs = np.zeros((NJumps, NSpec, Nsites), dtype=np.int8)
-    dispData = np.zeros((NJumps, 2, 3))
-    
+    NData = Nsamples
+    if AllJumps:
+        NData = Nsamples*dxJumps.shape[0]
 
-    rateData = np.zeros(NJumps)
+    dispData = np.zeros((NData, 2, 3))
+    rateData = np.zeros(NData)
     
     # Make the multichannel occupancies
     print("Building Occupancy Tensors for species : {}".format(specsToTrain))
-    print("No. of jumps : {}".format(NJumps))
-    for samp in tqdm(range(Nsamples), position=0, leave=True):
-        state1 = state1List[samp]
-        if AllJumps:
+    print("No. of jumps : {}".format(NData))
+
+    if AllJumps:
+        State1_occs, State2_occs, OnSites_state1, OnSites_state2, sp_ch =\
+            makeStateTensors(state1List[:Nsamples], specsToTrain, VacSpec, JumpNewSites, AllJumps=AllJumps)
+
+        # Next, Build the rates and displacements
+        for samp in tqdm(range(Nsamples), position=0, leave=True):
+            state1 = state1List[samp]
             for jInd in range(dxJumps.shape[0]):
                 JumpSpec = state1[NNsvac[jInd]]
-                state2 = state1[JumpNewSites[jInd]]
                 Idx = samp*dxJumps.shape[0]  + jInd
-                dispData[Idx, 0, :] =  dxJumps[jInd]*a
+                dispData[Idx, 0, :] = dxJumps[jInd]*a
                 if JumpSpec in specsToTrain:
                     dispData[Idx, 1, :] -= dxJumps[jInd]*a
-                
-                rateData[Idx] = AllJumpRates_st1[samp, jInd]
-                
-                for site in range(1, Nsites): # exclude the vacancy site
-                    spec1 = state1[site]
-                    spec2 = state2[site]
-                    State1_occs[Idx, sp_ch[spec1], site] = 1
-                    State2_occs[Idx, sp_ch[spec2], site] = 1
 
-        else:
-            state2 = state2List[samp]
-            for site in range(1, Nsites): # exclude the vacancy site
-                spec1 = state1[site]
-                spec2 = state2[site]
-                State1_occs[samp, sp_ch[spec1], site] = 1
-                State2_occs[samp, sp_ch[spec2], site] = 1
-            
+                rateData[Idx] = AllJumpRates_st1[samp, jInd]
+
+    else:
+        # Next, Build the rates and displacements
+        State1_occs, OnSites_state1, sp_ch = \
+            makeStateTensors(state1List[:Nsamples], specsToTrain, VacSpec, JumpNewSites, AllJumps=AllJumps)
+
+        State2_occs, OnSites_state2, _ = \
+            makeStateTensors(state2List[:Nsamples], specsToTrain, VacSpec, JumpNewSites, AllJumps=AllJumps)
+
+        for samp in tqdm(range(Nsamples), position=0, leave=True):
             dispData[samp, 0, :] = dispList[samp, VacSpec, :]
             dispData[samp, 1, :] = sum(dispList[samp, spec, :] for spec in specsToTrain)
-
             rateData[samp] = rateList[samp]
-    
-    # Make the numpy tensor to indicate "on" sites (i.e, those whose y vectors will be collected)
-    OnSites_state1 = None
-    OnSites_state2 = None
-    if specsToTrain != [VacSpec]:
-        OnSites_state1 = np.zeros((NJumps, Nsites), dtype=np.int8)
-        OnSites_state2 = np.zeros((NJumps, Nsites), dtype=np.int8)
-    
-        for spec in specsToTrain:
-            OnSites_state1 += State1_occs[:, sp_ch[spec], :]
-            OnSites_state2 += State2_occs[:, sp_ch[spec], :]
+
     
     return State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch
 
