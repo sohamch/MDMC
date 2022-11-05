@@ -503,7 +503,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
 
 def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jProbs_st1, jProbs_st2,
         sp_ch, SpecsToTrain, VacSpec, gNet, Ndim, epoch=None, Boundary_train=False, batch_size=256,
-        jumpSort=True, siteWise=False, AddOnSites=True):
+        jumpSort=True, AddOnSites=True):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -525,21 +525,13 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
         assert gNet.net[-3].Psi.shape[0] == jProbs_st1.shape[1] == jProbs_st2.shape[1] 
         print("Boundary training indicated. Using jump probabilities.")
         jProbs_st1, jProbs_st2 = sort_jp(jProbs_st1, jProbs_st2, jumpSort)
-        
-        if siteWise:
-            y1Vecs = np.zeros((Nsamples, gNet.net[-3].Psi.shape[0], 3, state1Data.shape[2]))
-            y2Vecs = np.zeros((Nsamples, gNet.net[-3].Psi.shape[0], 3, state1Data.shape[2]))
-        else:
-            y1Vecs = np.zeros((Nsamples, 3))
-            y2Vecs = np.zeros((Nsamples, 3))
+
+        y1Vecs = np.zeros((Nsamples, 3))
+        y2Vecs = np.zeros((Nsamples, 3))
 
     else:
-        if siteWise:
-            y1Vecs = np.zeros((Nsamples, 1, 3, state1Data.shape[2]))
-            y2Vecs = np.zeros((Nsamples, 1, 3, state1Data.shape[2]))
-        else:
-            y1Vecs = np.zeros((Nsamples, 3))
-            y2Vecs = np.zeros((Nsamples, 3))
+        y1Vecs = np.zeros((Nsamples, 3))
+        y2Vecs = np.zeros((Nsamples, 3))
 
 
     gNet.to(device)
@@ -568,21 +560,16 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
 
             y1 = gNet(state1Batch)
             y2 = gNet(state2Batch)
-            
-            if siteWise:
-                y1Vecs[batch : end] = y1.cpu().numpy()
-                y2Vecs[batch : end] = y2.cpu().numpy()
-            
+
+            if SpecsToTrain==[VacSpec]:
+                y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
+
             else:
-                if SpecsToTrain==[VacSpec]: 
-                    y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
+                On_st1Batch = On_st1[batch : end]
+                On_st2Batch = On_st2[batch : end]
 
-                else:
-                    On_st1Batch = On_st1[batch : end]
-                    On_st2Batch = On_st2[batch : end]
-
-                    y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch,
-                                           Boundary_train, AddOnSites)
+                y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch,
+                                       Boundary_train, AddOnSites)
 
             y1Vecs[batch : end] = y1.cpu().numpy()
             y2Vecs[batch : end] = y2.cpu().numpy()
@@ -808,21 +795,55 @@ def main(args):
                                                               direcString, args.Nchannels), valid_diff/(1.0*args.N_train))
 
     elif args.Mode == "getY":
-        y1Vecs, y2Vecs = Gather_Y(args.TNet, dirPath, State1_occs, State2_occs,
-                OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
-                specsToTrain, args.VacSpec, gNet, Ndim, batch_size=args.Batch_size, epoch=args.Start_epoch,
-                Boundary_train=args.BoundTrain, AddOnSites=args.AddOnSitesJPINN, siteWise=args.SiteWiseY)
+        if args.AllJumps:
+            State1_occs, State2_occs, OnSites_state1, OnSites_state2, sp_ch = \
+                makeStateTensors(state1List, specsToTrain, args.VacSpec, JumpNewSites, AllJumps=True)
+            y_st1_Vecs, y_st1_Exits = Gather_Y(args.TNet, dirPath, State1_occs, State2_occs,
+                                      OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
+                                      specsToTrain, args.VacSpec, gNet, Ndim, batch_size=args.Batch_size,
+                                      epoch=args.Start_epoch,
+                                      Boundary_train=args.BoundTrain, AddOnSites=args.AddOnSitesJPINN)
 
-        if args.SiteWiseY:
-            np.save("y1_sites_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
-                                                                 direcString, args.Start_epoch, args.Nchannels), y1Vecs)
-            np.save("y2_sites_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
-                                                                 direcString, args.Start_epoch, args.Nchannels), y2Vecs)
+            State1_occs, State2_occs, OnSites_state1, OnSites_state2, sp_ch = \
+                makeStateTensors(state2List, specsToTrain, args.VacSpec, JumpNewSites, AllJumps=True)
+            y_st2_Vecs, y_st2_Exits = Gather_Y(args.TNet, dirPath, State1_occs, State2_occs,
+                                               OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
+                                               specsToTrain, args.VacSpec, gNet, Ndim, batch_size=args.Batch_size,
+                                               epoch=args.Start_epoch,
+                                               Boundary_train=args.BoundTrain, AddOnSites=args.AddOnSitesJPINN)
+
+            z = N_ngb - 1
+            np.save("y_st1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+                                                                 direcString, args.Start_epoch, args.Nchannels), y_st1_Vecs[::z])
+
+            np.save("y_st1_exits_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+                                                                 direcString, args.Start_epoch, args.Nchannels), y_st1_Exits)
+
+            np.save("y_st2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers,
+                                                                        int(args.AllJumps),
+                                                                        direcString, args.Start_epoch, args.Nchannels), y_st2_Vecs[::z])
+
+            np.save("y_st2_exits_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers,
+                                                                              int(args.AllJumps),
+                                                                              direcString, args.Start_epoch,
+                                                                              args.Nchannels), y_st2_Exits)
+
         else:
-            np.save("y1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
-                                                                 direcString, args.Start_epoch, args.Nchannels), y1Vecs)
-            np.save("y2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
-                                                                 direcString, args.Start_epoch, args.Nchannels), y2Vecs)
+            State1_occs, OnSites_state1, sp_ch = \
+                makeStateTensors(state1List, specsToTrain, args.VacSpec, JumpNewSites, AllJumps=False)
+
+            State2_occs, OnSites_state2, sp_ch = \
+                makeStateTensors(state2List, specsToTrain, args.VacSpec, JumpNewSites, AllJumps=False)
+
+            y1Vecs, y2Vecs = Gather_Y(args.TNet, dirPath, State1_occs, State2_occs,
+                    OnSites_state1, OnSites_state2, jProbs_st1, jProbs_st2, sp_ch,
+                    specsToTrain, args.VacSpec, gNet, Ndim, batch_size=args.Batch_size, epoch=args.Start_epoch,
+                    Boundary_train=args.BoundTrain, AddOnSites=args.AddOnSitesJPINN)
+
+            np.save("y_st1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+                                                                        direcString, args.Start_epoch, args.Nchannels), y1Vecs)
+            np.save("y_st2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
+                                                                        direcString, args.Start_epoch, args.Nchannels), y2Vecs)
     
     elif args.Mode == "getRep":
         GetRep(args.TNet, args.Tdata, dirPath, State1_occs, State2_occs, args.Start_epoch, gNet, args.RepLayer, N_train_jumps, batch_size=args.Batch_size,
@@ -847,7 +868,6 @@ if __name__ == "__main__":
     parser.add_argument("-xsh", "--DispShift", action="store_true", help="Whether to shift displacements with state averages.")
     parser.add_argument("-nosym", "--NoSymmetry", action="store_true", help="Whether to switch off all symmetry operations except identity.")
     parser.add_argument("-l0", "--ScaleL0", action="store_true", help="Whether to scale transport coefficients during training with uncorrelated value.")
-    parser.add_argument("-swy", "--SiteWiseY", action="store_true", help="Whether to get y vectors for individual sites Applies to only getY mode.")
 
     parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, default=1, help="No. of intermediate layers of the neural network.")
     parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, default=4, help="No. of representation channels in non-input layers.")
