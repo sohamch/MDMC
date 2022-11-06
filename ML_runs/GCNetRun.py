@@ -850,12 +850,12 @@ def main(args):
                                                                                 int(args.AllJumps), args.Start_epoch),
                     stReps_st1_exits)
 
-            np.save("Rep_L_{0}_st1_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
+            np.save("Rep_L_{0}_st2_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
                                                                                 args.TNet, args.Nlayers,args.Nchannels,
                                                                                 int(args.AllJumps), args.Start_epoch),
                     stReps_st2)
 
-            np.save("Rep_L_{0}_st1_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
+            np.save("Rep_L_{0}_st2_exits_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
                                                                                 args.TNet, args.Nlayers,args.Nchannels,
                                                                                 int(args.AllJumps), args.Start_epoch),
                     stReps_st2_exits)
@@ -878,7 +878,7 @@ def main(args):
             stReps_st2 = GetRep(dirPath, State1_occs, args.Start_epoch, gNet, args.RepLayer,
                                 batch_size=args.Batch_size)
 
-            np.save("Rep_L_{0}_st1_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
+            np.save("Rep_L_{0}_st2_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
                                                                                 args.TNet, args.Nlayers,args.Nchannels,
                                                                                 int(args.AllJumps), args.Start_epoch),
                     stReps_st2)
