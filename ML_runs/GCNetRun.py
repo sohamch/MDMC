@@ -580,7 +580,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
 
     return y1Vecs, y2Vecs
 
-def GetRep(T_net, dirPath, State_Occs, epoch, gNet, LayerIndList, N_train, batch_size=1000):
+def GetRep(T_net, dirPath, State_Occs, epoch, gNet, LayerInd, N_train, batch_size=1000):
     
     N_batch = batch_size
     # Convert compute data to pytorch tensors
@@ -588,7 +588,7 @@ def GetRep(T_net, dirPath, State_Occs, epoch, gNet, LayerIndList, N_train, batch
     Nsamples = state1Data.shape[0]
     Nsites = state1Data.shape[2]
     
-    print("computing Representations after layers: {}".format(LayerIndList))
+    print("computing Representations after layer: {}".format(LayerInd))
     
     gNet.to(device)
     glob_Nch = gNet.net[0].Psi.shape[0]
@@ -599,28 +599,27 @@ def GetRep(T_net, dirPath, State_Occs, epoch, gNet, LayerIndList, N_train, batch
         gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device), strict=False)
 
         nLayers = (len(gNet.net))//3 - 2 # excluding the input and output layers
-        for LayerInd in LayerIndList:
-            ch = gNet.net[LayerInd - 2].Psi.shape[0]
-            stReps = np.zeros((Nsamples, ch, Nsites))
-            for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
-                end = min(batch + N_batch, Nsamples)
+        ch = gNet.net[LayerInd - 2].Psi.shape[0]
+        stReps = np.zeros((Nsamples, ch, Nsites))
+        for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
+            end = min(batch + N_batch, Nsamples)
 
-                state1Batch = state1Data[batch : end].double().to(device)
+            state1Batch = state1Data[batch : end].double().to(device)
 
-                y1 = gNet.getRep(state1Batch, LayerInd)
-                stReps[batch : end] = y1.cpu().numpy()
-            
-            if avg:
-                stRepsTrain = np.mean(stReps[:N_train], axis = 0)
-                stRepsVal = np.mean(stReps[N_train:], axis = 0)
-                
-                stRepsTrain_err = np.std(stReps[:N_train], axis = 0)/np.sqrt(N_train)
-                stRepsVal_err = np.std(stReps[N_train:], axis = 0)/np.sqrt((Nsamples - N_train))
+            y1 = gNet.getRep(state1Batch, LayerInd)
+            stReps[batch : end] = y1.cpu().numpy()
 
-                return stRepsTrain, stRepsVal, stRepsTrain_err, stRepsVal_err
+        if avg:
+            stRepsTrain = np.mean(stReps[:N_train], axis = 0)
+            stRepsVal = np.mean(stReps[N_train:], axis = 0)
 
-            else:
-                return stReps
+            stRepsTrain_err = np.std(stReps[:N_train], axis = 0)/np.sqrt(N_train)
+            stRepsVal_err = np.std(stReps[N_train:], axis = 0)/np.sqrt((Nsamples - N_train))
+
+            return stRepsTrain, stRepsVal, stRepsTrain_err, stRepsVal_err
+
+        else:
+            return stReps
                 # np.save(storeDir + "/Rep1_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), stReps)
 
 
