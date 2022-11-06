@@ -902,7 +902,7 @@ if __name__ == "__main__":
 
     parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
     parser.add_argument("-rl", "--RepLayer", metavar="L (int)", type=int, help="Which Layer to extract representation from (count starts from 0). Must be (0 or 2 or 5 or 8 ...)")
-    parser.add_argument("-rStart", "--RepStart", action="store_true", help="Which sample to start computing representations onward (N_train no. of samples will be computed).")
+    parser.add_argument("-rStart", "--RepStart", metavar="L (int)", type=int, default=0, help="Which sample to start computing representations onward (N_train no. of samples will be computed).")
     parser.add_argument("-bt","--BoundTrain", action="store_true", help="Whether to train using boundary state averages.")
     parser.add_argument("-nojsr", "--JumpSort", action="store_false", help="Whether to switch on/off sort jumps by rates. Not doing it will cause symmetry to break.")
     parser.add_argument("-aos","--AddOnSitesJPINN", action="store_true", help="Whether to consider on sites along with vacancy sites in JPINN.")
