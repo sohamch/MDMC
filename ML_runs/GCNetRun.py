@@ -825,6 +825,9 @@ def main(args):
                     y2Vecs)
     
     elif args.Mode == "getRep":
+        if args.RepLayer == len(gNet.net):
+            print("site wise y vectors will be computed for indicated samples")
+
         if args.AllJumps:
             State1_occs, State1_exit_occs, _, _, _ = \
                 makeStateTensors(state1List[args.RepStart : args.RepStart + args.N_train], specsToTrain, args.VacSpec,
