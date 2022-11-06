@@ -822,29 +822,43 @@ def main(args):
     
     elif args.Mode == "getRep":
         if args.AllJumps:
-            State1_occs, State2_occs, _, _, _ = \
-                makeStateTensors(state1List[args.RepStart : args.RepStart + args.N_train], specsToTrain, args.VacSpec, JumpNewSites, AllJumps=True)
+            State1_occs, State1_exit_occs, _, _, _ = \
+                makeStateTensors(state1List[args.RepStart : args.RepStart + args.N_train], specsToTrain, args.VacSpec,
+                                 JumpNewSites, AllJumps=True)
+
             stReps_st1 = GetRep(dirPath, State1_occs, args.Start_epoch, gNet, args.RepLayer,
                                  batch_size=args.Batch_size)
-            stReps_st1_exits = GetRep(dirPath, State2_occs, args.Start_epoch, gNet, args.RepLayer,
+            stReps_st1_exits = GetRep(dirPath, State1_exit_occs, args.Start_epoch, gNet, args.RepLayer,
                                    batch_size=args.Batch_size)
 
-            State1_occs, State2_occs, _, _, _ = \
-                makeStateTensors(state2List[args.RepStart: args.RepStart + args.N_train], specsToTrain, args.VacSpec,
+            State2_occs, State2_exit_occs, _, _, _ = \
+                makeStateTensors(state2List[args.RepStart : args.RepStart + args.N_train], specsToTrain, args.VacSpec,
                                  JumpNewSites, AllJumps=True)
-            stReps_st2 = GetRep(dirPath, State1_occs, args.Start_epoch, gNet, args.RepLayer,
+            stReps_st2 = GetRep(dirPath, State2_occs, args.Start_epoch, gNet, args.RepLayer,
                                    batch_size=args.Batch_size)
 
-            stReps_st2_exits = GetRep(dirPath, State2_occs, args.Start_epoch, gNet, args.RepLayer,
+            stReps_st2_exits = GetRep(dirPath, State2_exit_occs, args.Start_epoch, gNet, args.RepLayer,
                                 batch_size=args.Batch_size)
-
 
             np.save("Rep_L_{0}_st1_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
                                                                                 args.TNet, args.Nlayers,args.Nchannels,
                                                                                 int(args.AllJumps), args.Start_epoch),
                     stReps_st1)
 
+            np.save("Rep_L_{0}_st1Exits_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
+                                                                                args.TNet, args.Nlayers,args.Nchannels,
+                                                                                int(args.AllJumps), args.Start_epoch),
+                    stReps_st1_exits)
 
+            np.save("Rep_L_{0}_st1_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
+                                                                                args.TNet, args.Nlayers,args.Nchannels,
+                                                                                int(args.AllJumps), args.Start_epoch),
+                    stReps_st2)
+
+            np.save("Rep_L_{0}_st1_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
+                                                                                args.TNet, args.Nlayers,args.Nchannels,
+                                                                                int(args.AllJumps), args.Start_epoch),
+                    stReps_st2_exits)
 
         else:
             State1_occs, _, _ = \
@@ -853,11 +867,21 @@ def main(args):
             stReps_st1 = GetRep(dirPath, State1_occs, args.Start_epoch, gNet, args.RepLayer,
                                 batch_size=args.Batch_size)
 
+            np.save("Rep_L_{0}_st1_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
+                                                                                args.TNet, args.Nlayers,args.Nchannels,
+                                                                                int(args.AllJumps), args.Start_epoch),
+                    stReps_st1)
+
             State2_occs, _, _ = \
                 makeStateTensors(state2List[args.RepStart: args.RepStart + args.N_train],
                                  specsToTrain, args.VacSpec, JumpNewSites, AllJumps=False)
             stReps_st2 = GetRep(dirPath, State1_occs, args.Start_epoch, gNet, args.RepLayer,
                                 batch_size=args.Batch_size)
+
+            np.save("Rep_L_{0}_st1_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
+                                                                                args.TNet, args.Nlayers,args.Nchannels,
+                                                                                int(args.AllJumps), args.Start_epoch),
+                    stReps_st2)
 
     print("All done\n\n")
 
@@ -870,7 +894,7 @@ if __name__ == "__main__":
     parser.add_argument("-a0", "--LatParam", type=float, default=1.0, metavar="3.59", help="Lattice parameter.")
 
     parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
-    parser.add_argument("-rl", "--RepLayer", metavar="L (int)", type=int, help="Which Layer to extract representation from (count starts from 0)")
+    parser.add_argument("-rl", "--RepLayer", metavar="L (int)", type=int, help="Which Layer to extract representation from (count starts from 0). Must be (0 or 2 or 5 or 8 ...)")
     parser.add_argument("-rStart", "--RepStart", action="store_true", help="Which sample to start computing representations onward (N_train no. of samples will be computed).")
     parser.add_argument("-bt","--BoundTrain", action="store_true", help="Whether to train using boundary state averages.")
     parser.add_argument("-nojsr", "--JumpSort", action="store_false", help="Whether to switch on/off sort jumps by rates. Not doing it will cause symmetry to break.")
