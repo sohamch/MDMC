@@ -589,7 +589,12 @@ def GetRep(dirPath, State_Occs, epoch, gNet, LayerInd, batch_size=1000):
     Nsites = state1Data.shape[2]
     
     print("computing Representations after layer: {}".format(LayerInd))
-    ch = gNet.net[LayerInd - 2].Psi.shape[0]
+
+    if LayerInd == len(gNet.net):
+        ch = 3
+    else:
+        ch = gNet.net[LayerInd - 2].Psi.shape[0]
+
     stReps = np.zeros((Nsamples, ch, Nsites))
 
     gNet.to(device)
@@ -607,7 +612,6 @@ def GetRep(dirPath, State_Occs, epoch, gNet, LayerInd, batch_size=1000):
             stReps[batch : end] = y1.cpu().numpy()
 
     return stReps
-    # np.save(storeDir + "/Rep1_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), stReps)
 
 def makeDir(spcs, NSpec, args, specsToTrain): 
     direcString=""
