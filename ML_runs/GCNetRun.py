@@ -580,8 +580,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
 
     return y1Vecs, y2Vecs
 
-def GetRep(T_net, dirPath, State_Occs, epoch, gNet, LayerIndList, N_train, batch_size=1000,
-           avg=True, AllJumps=False):
+def GetRep(T_net, dirPath, State_Occs, epoch, gNet, LayerIndList, N_train, batch_size=1000):
     
     N_batch = batch_size
     # Convert compute data to pytorch tensors
@@ -843,14 +842,9 @@ def main(args):
 
             State2_occs, _, _ = \
                 makeStateTensors(state2List, specsToTrain, args.VacSpec, JumpNewSites, AllJumps=False)
-        if args.RepLayerAvg:
-            st1RepsTrain, st1RepsVal, st1RepsTrain_err, st1RepsVal_err =\
-                GetRep(args.TNet, dirPath, State1_occs, args.Start_epoch, gNet, args.RepLayer,
-                       N_train_jumps, batch_size=args.Batch_size, AllJumps=args.AllJumps)
 
-            st2RepsTrain, st2RepsVal, st2RepsTrain_err, st2RepsVal_err = \
-                GetRep(args.TNet, dirPath, State2_occs, args.Start_epoch, gNet, args.RepLayer,
-                       N_train_jumps, batch_size=args.Batch_size, AllJumps=args.AllJumps)
+            stRepsTrain = GetRep(args.TNet, dirPath, State2_occs, args.Start_epoch, gNet, args.RepLayer,
+                       N_train_jumps, batch_size=args.Batch_size)
 
     print("All done\n\n")
 
@@ -863,8 +857,8 @@ if __name__ == "__main__":
     parser.add_argument("-a0", "--LatParam", type=float, default=1.0, metavar="3.59", help="Lattice parameter.")
 
     parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
-    parser.add_argument("-rl", "--RepLayer", metavar="[L1, L2,..]", type=int, nargs="+", help="Layers to extract representation from (count starts from 0)")
-    parser.add_argument("-rStart", "--RepStart", action="store_true", help="Which sample to start computing representations onward.")
+    parser.add_argument("-rl", "--RepLayer", metavar="L (int)", type=int, help="Which Layer to extract representation from (count starts from 0)")
+    parser.add_argument("-rStart", "--RepStart", action="store_true", help="Which sample to start computing representations onward (N_train no. of samples will be computed).")
     parser.add_argument("-bt","--BoundTrain", action="store_true", help="Whether to train using boundary state averages.")
     parser.add_argument("-nojsr", "--JumpSort", action="store_false", help="Whether to switch on/off sort jumps by rates. Not doing it will cause symmetry to break.")
     parser.add_argument("-aos","--AddOnSitesJPINN", action="store_true", help="Whether to consider on sites along with vacancy sites in JPINN.")
