@@ -659,7 +659,8 @@ def main(args):
     # 1. Load crystal parameters
     GpermNNIdx, NNsiteList, JumpNewSites, dxJumps = Load_crysDats(args.ConvNgbRange, args.CrysDatPath)
     N_ngb = NNsiteList.shape[0]
-    print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(args.ConvNgbRange, N_ngb - 1))
+    z = N_ngb - 1
+    print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(args.ConvNgbRange, z))
 
     if args.NoSymmetry:
         print("Switching off convolution symmetries (considering only identity operator).")
@@ -722,7 +723,7 @@ def main(args):
     dirPath, direcString = makeDir(specs, NSpec, args, specsToTrain)
     
     if args.BoundTrain:
-        assert args.NchLast == N_ngb - 1
+        assert args.NchLast == z
 
     gNet = GCNet(GnnPerms.long(), NNsites, JumpVecs, N_ngb=N_ngb, NSpec=NSpec,
             mean=args.Mean_wt, std=args.Std_wt, nl=args.Nlayers, nch=args.Nchannels, nchLast=args.NchLast).double()
@@ -730,7 +731,7 @@ def main(args):
     print("No. of channels in last layer: {}".format(gNet.net[-3].Psi.shape[0]))
 
     # 4. Call Training or evaluating or y-evaluating function here
-    N_train_jumps = (N_ngb - 1)*args.N_train if args.AllJumps else args.N_train
+    N_train_jumps = z*args.N_train if args.AllJumps else args.N_train
     if args.Mode == "train":
         State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(state1List, state2List, dispList, specsToTrain, args.VacSpec, rateList,
@@ -784,7 +785,6 @@ def main(args):
                                                epoch=args.Start_epoch,
                                                Boundary_train=args.BoundTrain, AddOnSites=args.AddOnSitesJPINN)
 
-            z = N_ngb - 1
             np.save("y_st1_{0}_{1}_{2}_n{3}c{4}_all_{5}_{6}.npy".format(args.RepLayer, direcString, args.Tdata,
                                                                                 args.TNet, args.Nlayers,args.Nchannels,
                                                                                 int(args.AllJumps), args.Start_epoch), y_st1_Vecs[::z])
@@ -843,7 +843,7 @@ def main(args):
             np.save("Rep_L_{0}_st1_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
                                                                                 args.TNet, args.Nlayers,args.Nchannels,
                                                                                 int(args.AllJumps), args.Start_epoch),
-                    stReps_st1)
+                    stReps_st1[::z])
 
             np.save("Rep_L_{0}_st1Exits_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
                                                                                 args.TNet, args.Nlayers,args.Nchannels,
@@ -853,7 +853,7 @@ def main(args):
             np.save("Rep_L_{0}_st2_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
                                                                                 args.TNet, args.Nlayers,args.Nchannels,
                                                                                 int(args.AllJumps), args.Start_epoch),
-                    stReps_st2)
+                    stReps_st2[::z])
 
             np.save("Rep_L_{0}_st2_exits_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
                                                                                 args.TNet, args.Nlayers,args.Nchannels,
