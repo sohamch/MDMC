@@ -169,7 +169,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
             state1 = state1List[samp]
             for jInd in range(dxJumps.shape[0]):
                 JumpSpec = state1[NNsvac[jInd]]
-                Idx = samp*dxJumps.shape[0]  + jInd
+                Idx = samp*dxJumps.shape[0] + jInd
                 dispData[Idx, 0, :] = dxJumps[jInd]*a
                 if JumpSpec in specsToTrain:
                     dispData[Idx, 1, :] -= dxJumps[jInd]*a
@@ -580,7 +580,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
 
     return y1Vecs, y2Vecs
 
-def GetRep(T_net, dirPath, State_Occs, epoch, gNet, LayerInd, N_train, batch_size=1000):
+def GetRep(dirPath, State_Occs, epoch, gNet, LayerInd, batch_size=1000):
     
     N_batch = batch_size
     # Convert compute data to pytorch tensors
@@ -589,18 +589,15 @@ def GetRep(T_net, dirPath, State_Occs, epoch, gNet, LayerInd, N_train, batch_siz
     Nsites = state1Data.shape[2]
     
     print("computing Representations after layer: {}".format(LayerInd))
-    
+    ch = gNet.net[LayerInd - 2].Psi.shape[0]
+    stReps = np.zeros((Nsamples, ch, Nsites))
+
     gNet.to(device)
-    glob_Nch = gNet.net[0].Psi.shape[0]
     with pt.no_grad():
         ## load checkpoint
         # strict=False to ignore the renamed buffer "JumpVecs" (renamed from JumpUnitVecs)
         # As long as the same crysdats are used, this will not change
         gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device), strict=False)
-
-        nLayers = (len(gNet.net))//3 - 2 # excluding the input and output layers
-        ch = gNet.net[LayerInd - 2].Psi.shape[0]
-        stReps = np.zeros((Nsamples, ch, Nsites))
         for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
             end = min(batch + N_batch, Nsamples)
 
@@ -609,19 +606,8 @@ def GetRep(T_net, dirPath, State_Occs, epoch, gNet, LayerInd, N_train, batch_siz
             y1 = gNet.getRep(state1Batch, LayerInd)
             stReps[batch : end] = y1.cpu().numpy()
 
-        if avg:
-            stRepsTrain = np.mean(stReps[:N_train], axis = 0)
-            stRepsVal = np.mean(stReps[N_train:], axis = 0)
-
-            stRepsTrain_err = np.std(stReps[:N_train], axis = 0)/np.sqrt(N_train)
-            stRepsVal_err = np.std(stReps[N_train:], axis = 0)/np.sqrt((Nsamples - N_train))
-
-            return stRepsTrain, stRepsVal, stRepsTrain_err, stRepsVal_err
-
-        else:
-            return stReps
-                # np.save(storeDir + "/Rep1_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), stReps)
-
+    return stReps
+    # np.save(storeDir + "/Rep1_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), stReps)
 
 def makeDir(spcs, NSpec, args, specsToTrain): 
     direcString=""
@@ -771,10 +757,10 @@ def main(args):
                 specsToTrain, jProbs_st1, jProbs_st2, sp_ch, args.VacSpec, args.Start_epoch, args.End_epoch,
                 args.Interval, N_train_jumps, gNet, batch_size=args.Batch_size, Boundary_train=args.BoundTrain,
                 DPr=args.DatPar, jumpSort=args.JumpSort, AddOnSites=args.AddOnSitesJPINN)
-        np.save("tr_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
-                                                             direcString, args.Nchannels), train_diff/(1.0*args.N_train))
-        np.save("val_{4}_{0}_{1}_n{2}c{5}_all_{3}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
-                                                              direcString, args.Nchannels), valid_diff/(1.0*args.N_train))
+        np.save("tr_{0}_{1}_{2}_n{3}c{4}_all_{5}.npy".format(direcString, args.Tdata, args.TNet, args.Nlayers, args.Nchannels,
+                                                             int(args.AllJumps)), train_diff/(1.0*args.N_train))
+        np.save("val_{0}_{1}_{2}_n{3}c{4}_all_{5}.npy".format(direcString, args.Tdata, args.TNet, args.Nlayers, args.Nchannels,
+                                                              int(args.AllJumps)), valid_diff/(1.0*args.N_train))
 
     elif args.Mode == "getY":
         if args.AllJumps:
@@ -799,20 +785,21 @@ def main(args):
                                                Boundary_train=args.BoundTrain, AddOnSites=args.AddOnSitesJPINN)
 
             z = N_ngb - 1
-            np.save("y_st1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
-                                                                 direcString, args.Start_epoch, args.Nchannels), y_st1_Vecs[::z])
+            np.save("y_st1_{0}_{1}_{2}_n{3}c{4}_all_{5}_{6}.npy".format(args.RepLayer, direcString, args.Tdata,
+                                                                                args.TNet, args.Nlayers,args.Nchannels,
+                                                                                int(args.AllJumps), args.Start_epoch), y_st1_Vecs[::z])
 
-            np.save("y_st1_exits_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
-                                                                 direcString, args.Start_epoch, args.Nchannels), y_st1_Exits)
+            np.save("y_st1_exits_{0}_{1}_{2}_n{3}c{4}_all_{5}_{6}.npy".format(direcString, args.Tdata,
+                                                                                args.TNet, args.Nlayers,args.Nchannels,
+                                                                                int(args.AllJumps), args.Start_epoch), y_st1_Exits)
 
-            np.save("y_st2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers,
-                                                                        int(args.AllJumps),
-                                                                        direcString, args.Start_epoch, args.Nchannels), y_st2_Vecs[::z])
+            np.save("y_st2_{0}_{1}_{2}_n{3}c{4}_all_{5}_{6}.npy".format(direcString, args.Tdata,
+                                                                        args.TNet, args.Nlayers,args.Nchannels,
+                                                                        int(args.AllJumps), args.Start_epoch), y_st2_Vecs[::z])
 
-            np.save("y_st2_exits_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers,
-                                                                              int(args.AllJumps),
-                                                                              direcString, args.Start_epoch,
-                                                                              args.Nchannels), y_st2_Exits)
+            np.save("y_st2_exits_{0}_{1}_{2}_n{3}c{4}_all_{5}_{6}.npy".format(direcString, args.Tdata,
+                                                                                args.TNet, args.Nlayers,args.Nchannels,
+                                                                                int(args.AllJumps), args.Start_epoch), y_st2_Exits)
 
         else:
             State1_occs, OnSites_state1, sp_ch = \
@@ -826,24 +813,51 @@ def main(args):
                     specsToTrain, args.VacSpec, gNet, Ndim, batch_size=args.Batch_size, epoch=args.Start_epoch,
                     Boundary_train=args.BoundTrain, AddOnSites=args.AddOnSitesJPINN)
 
-            np.save("y_st1_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
-                                                                        direcString, args.Start_epoch, args.Nchannels), y1Vecs)
-            np.save("y_st2_{4}_{0}_{1}_n{2}c{6}_all_{3}_{5}.npy".format(args.Tdata, args.TNet, args.Nlayers, int(args.AllJumps),
-                                                                        direcString, args.Start_epoch, args.Nchannels), y2Vecs)
+            np.save("y_st1_{0}_{1}_{2}_n{3}c{4}_all_{5}_{6}.npy".format(direcString, args.Tdata, args.TNet, args.Nlayers,
+                                                                        args.Nchannels, int(args.AllJumps), args.Start_epoch),
+                    y1Vecs)
+            np.save("y_st2_{0}_{1}_{2}_n{3}c{4}_all_{5}_{6}.npy".format(direcString, args.Tdata, args.TNet, args.Nlayers,
+                                                                        args.Nchannels, int(args.AllJumps), args.Start_epoch),
+                    y2Vecs)
     
     elif args.Mode == "getRep":
         if args.AllJumps:
             State1_occs, State2_occs, _, _, _ = \
                 makeStateTensors(state1List[args.RepStart : args.RepStart + args.N_train], specsToTrain, args.VacSpec, JumpNewSites, AllJumps=True)
+            stReps_st1 = GetRep(dirPath, State1_occs, args.Start_epoch, gNet, args.RepLayer,
+                                 batch_size=args.Batch_size)
+            stReps_st1_exits = GetRep(dirPath, State2_occs, args.Start_epoch, gNet, args.RepLayer,
+                                   batch_size=args.Batch_size)
+
+            State1_occs, State2_occs, _, _, _ = \
+                makeStateTensors(state2List[args.RepStart: args.RepStart + args.N_train], specsToTrain, args.VacSpec,
+                                 JumpNewSites, AllJumps=True)
+            stReps_st2 = GetRep(dirPath, State1_occs, args.Start_epoch, gNet, args.RepLayer,
+                                   batch_size=args.Batch_size)
+
+            stReps_st2_exits = GetRep(dirPath, State2_occs, args.Start_epoch, gNet, args.RepLayer,
+                                batch_size=args.Batch_size)
+
+
+            np.save("Rep_L_{0}_st1_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
+                                                                                args.TNet, args.Nlayers,args.Nchannels,
+                                                                                int(args.AllJumps), args.Start_epoch),
+                    stReps_st1)
+
+
+
         else:
             State1_occs, _, _ = \
-                makeStateTensors(state1List, specsToTrain, args.VacSpec, JumpNewSites, AllJumps=False)
+                makeStateTensors(state1List[args.RepStart: args.RepStart + args.N_train],
+                                 specsToTrain, args.VacSpec, JumpNewSites, AllJumps=False)
+            stReps_st1 = GetRep(dirPath, State1_occs, args.Start_epoch, gNet, args.RepLayer,
+                                batch_size=args.Batch_size)
 
             State2_occs, _, _ = \
-                makeStateTensors(state2List, specsToTrain, args.VacSpec, JumpNewSites, AllJumps=False)
-
-            stRepsTrain = GetRep(args.TNet, dirPath, State2_occs, args.Start_epoch, gNet, args.RepLayer,
-                       N_train_jumps, batch_size=args.Batch_size)
+                makeStateTensors(state2List[args.RepStart: args.RepStart + args.N_train],
+                                 specsToTrain, args.VacSpec, JumpNewSites, AllJumps=False)
+            stReps_st2 = GetRep(dirPath, State1_occs, args.Start_epoch, gNet, args.RepLayer,
+                                batch_size=args.Batch_size)
 
     print("All done\n\n")
 
