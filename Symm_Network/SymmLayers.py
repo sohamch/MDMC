@@ -212,6 +212,10 @@ class GCNet(nn.Module):
     
     def getRep(self, InState, LayerInd):
         # LayerInd is counted starting from zero
+        if LayerInd == len(self.net):
+            # Just do a forward pass
+            return self.forward(InState)
+
         y = self.net[0](InState)
         for L in range(1, LayerInd + 1):
             y = self.net[L](y)
