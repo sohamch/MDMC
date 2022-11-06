@@ -613,7 +613,7 @@ def GetRep(dirPath, State_Occs, epoch, gNet, LayerInd, batch_size=1000):
 
     return stReps
 
-def makeDir(spcs, NSpec, args, specsToTrain): 
+def makeDir(args, specsToTrain):
     direcString=""
     if specsToTrain == [args.VacSpec]:
         direcString = "vac"
@@ -724,7 +724,7 @@ def main(args):
     # 3. Make directories if needed
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
-    dirPath, direcString = makeDir(specs, NSpec, args, specsToTrain)
+    dirPath, direcString = makeDir(args, specsToTrain)
     
     if args.BoundTrain:
         assert args.NchLast == z
