@@ -591,9 +591,11 @@ def GetRep(dirPath, State_Occs, epoch, gNet, LayerInd, batch_size=1000):
     print("computing Representations after layer: {}".format(LayerInd))
 
     if LayerInd == len(gNet.net):
-        ch = 3
+        ch = gNet.net[LayerInd - 3].Psi.shape[0]
+        stReps = np.zeros((Nsamples, ch, 3, Nsites))
     else:
         ch = gNet.net[LayerInd - 2].Psi.shape[0]
+        stReps = np.zeros((Nsamples, ch, Nsites))
 
     stReps = np.zeros((Nsamples, ch, Nsites))
 
