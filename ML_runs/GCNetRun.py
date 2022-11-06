@@ -597,8 +597,6 @@ def GetRep(dirPath, State_Occs, epoch, gNet, LayerInd, batch_size=1000):
         ch = gNet.net[LayerInd - 2].Psi.shape[0]
         stReps = np.zeros((Nsamples, ch, Nsites))
 
-    stReps = np.zeros((Nsamples, ch, Nsites))
-
     gNet.to(device)
     with pt.no_grad():
         ## load checkpoint
