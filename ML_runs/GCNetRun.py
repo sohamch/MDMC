@@ -580,24 +580,14 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
 
     return y1Vecs, y2Vecs
 
-def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerIndList, N_train, batch_size=1000,
+def GetRep(T_net, dirPath, State_Occs, epoch, gNet, LayerIndList, N_train, batch_size=1000,
            avg=True, AllJumps=False):
     
     N_batch = batch_size
     # Convert compute data to pytorch tensors
-    state1Data = pt.tensor(State1_Occs)
+    state1Data = pt.tensor(State_Occs)
     Nsamples = state1Data.shape[0]
     Nsites = state1Data.shape[2]
-    state2Data = pt.tensor(State2_Occs)
-    
-    if avg:
-        storeDir = RunPath + "StateReps_avg_{}".format(T_net)
-    else:
-        storeDir = RunPath + "StateReps_{}".format(T_net)
-
-    exists = os.path.isdir(storeDir)
-    if not exists:
-        os.mkdir(storeDir)
     
     print("computing Representations after layers: {}".format(LayerIndList))
     
@@ -612,44 +602,27 @@ def GetRep(T_net, T_data, dirPath, State1_Occs, State2_Occs, epoch, gNet, LayerI
         nLayers = (len(gNet.net))//3 - 2 # excluding the input and output layers
         for LayerInd in LayerIndList:
             ch = gNet.net[LayerInd - 2].Psi.shape[0]
-            st1Reps = np.zeros((Nsamples, ch, Nsites))
-            st2Reps = np.zeros((Nsamples, ch, Nsites))
+            stReps = np.zeros((Nsamples, ch, Nsites))
             for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
                 end = min(batch + N_batch, Nsamples)
 
                 state1Batch = state1Data[batch : end].double().to(device)
-                state2Batch = state2Data[batch : end].double().to(device)
 
                 y1 = gNet.getRep(state1Batch, LayerInd)
-                y2 = gNet.getRep(state2Batch, LayerInd)
-
-                st1Reps[batch : end] = y1.cpu().numpy()
-                st2Reps[batch : end] = y2.cpu().numpy()
+                stReps[batch : end] = y1.cpu().numpy()
             
             if avg:
-                st1RepsTrain = np.mean(st1Reps[:N_train], axis = 0)
-                st2RepsTrain = np.mean(st2Reps[:N_train], axis = 0)
-                st1RepsVal = np.mean(st1Reps[N_train:], axis = 0)
-                st2RepsVal = np.mean(st2Reps[N_train:], axis = 0)
+                stRepsTrain = np.mean(stReps[:N_train], axis = 0)
+                stRepsVal = np.mean(stReps[N_train:], axis = 0)
                 
-                st1RepsTrain_err = np.std(st1Reps[:N_train], axis = 0)/np.sqrt(N_train)
-                st2RepsTrain_err = np.std(st2Reps[:N_train], axis = 0)/np.sqrt(N_train)
-                st1RepsVal_err = np.std(st1Reps[N_train:], axis = 0)/np.sqrt((Nsamples - N_train))
-                st2RepsVal_err = np.std(st2Reps[N_train:], axis = 0)/np.sqrt((Nsamples - N_train))
-                
-                np.save(storeDir + "/Rep1_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st1RepsTrain)
-                np.save(storeDir + "/Rep2_trAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st2RepsTrain)
-                np.save(storeDir + "/Rep1_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st1RepsVal)
-                np.save(storeDir + "/Rep2_valAvg_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st2RepsVal)
+                stRepsTrain_err = np.std(stReps[:N_train], axis = 0)/np.sqrt(N_train)
+                stRepsVal_err = np.std(stReps[N_train:], axis = 0)/np.sqrt((Nsamples - N_train))
 
-                np.save(storeDir + "/Rep1_tr_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st1RepsTrain_err)
-                np.save(storeDir + "/Rep2_tr_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st2RepsTrain_err)
-                np.save(storeDir + "/Rep1_val_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st1RepsVal_err)
-                np.save(storeDir + "/Rep2_val_stderr_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st2RepsVal_err)
-            
+                return stRepsTrain, stRepsVal, stRepsTrain_err, stRepsVal_err
+
             else:
-                np.save(storeDir + "/Rep1_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st1Reps)
-                np.save(storeDir + "/Rep2_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), st2Reps)
+                return stReps
+                # np.save(storeDir + "/Rep1_l{6}_{0}_{1}_n{2}c{5}_all_{3}_{4}.npy".format(T_data, T_net, nLayers, int(AllJumps), epoch, glob_Nch, LayerInd), stReps)
 
 
 def makeDir(spcs, NSpec, args, specsToTrain): 
@@ -759,11 +732,6 @@ def main(args):
     specsToTrain = [int(args.SpecTrain[i]) for i in range(len(args.SpecTrain))]
     specsToTrain = sorted(specsToTrain)
 
-    State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch =\
-    makeComputeData(state1List, state2List, dispList, specsToTrain, args.VacSpec, rateList,
-                AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, args.N_train, AllJumps=args.AllJumps, mode=args.Mode)
-    print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
-
     # 3. Make directories if needed
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
@@ -780,6 +748,12 @@ def main(args):
     # 4. Call Training or evaluating or y-evaluating function here
     N_train_jumps = (N_ngb - 1)*args.N_train if args.AllJumps else args.N_train
     if args.Mode == "train":
+        State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = \
+            makeComputeData(state1List, state2List, dispList, specsToTrain, args.VacSpec, rateList,
+                            AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, args.N_train, AllJumps=args.AllJumps,
+                            mode=args.Mode)
+        print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
+
         Train(args.Tdata, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2,
               rateData, dispData, jProbs_st1, jProbs_st2, specsToTrain, sp_ch, args.VacSpec,
               args.Start_epoch, args.End_epoch, args.Interval, N_train_jumps, gNet,
@@ -788,6 +762,12 @@ def main(args):
               scaleL0=args.ScaleL0)
 
     elif args.Mode == "eval":
+        State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = \
+            makeComputeData(state1List, state2List, dispList, specsToTrain, args.VacSpec, rateList,
+                            AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, args.N_train, AllJumps=args.AllJumps,
+                            mode=args.Mode)
+        print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
+
         train_diff, valid_diff = Evaluate(args.TNet, dirPath, State1_occs, State2_occs,
                 OnSites_state1, OnSites_state2, rateData, dispData,
                 specsToTrain, jProbs_st1, jProbs_st2, sp_ch, args.VacSpec, args.Start_epoch, args.End_epoch,
@@ -854,8 +834,23 @@ def main(args):
                                                                         direcString, args.Start_epoch, args.Nchannels), y2Vecs)
     
     elif args.Mode == "getRep":
-        GetRep(args.TNet, args.Tdata, dirPath, State1_occs, State2_occs, args.Start_epoch, gNet, args.RepLayer, N_train_jumps, batch_size=args.Batch_size,
-           avg=args.RepLayerAvg, AllJumps=args.AllJumps)
+        if args.AllJumps:
+            State1_occs, State2_occs, _, _, _ = \
+                makeStateTensors(state1List[args.RepStart : args.RepStart + args.N_train], specsToTrain, args.VacSpec, JumpNewSites, AllJumps=True)
+        else:
+            State1_occs, _, _ = \
+                makeStateTensors(state1List, specsToTrain, args.VacSpec, JumpNewSites, AllJumps=False)
+
+            State2_occs, _, _ = \
+                makeStateTensors(state2List, specsToTrain, args.VacSpec, JumpNewSites, AllJumps=False)
+        if args.RepLayerAvg:
+            st1RepsTrain, st1RepsVal, st1RepsTrain_err, st1RepsVal_err =\
+                GetRep(args.TNet, dirPath, State1_occs, args.Start_epoch, gNet, args.RepLayer,
+                       N_train_jumps, batch_size=args.Batch_size, AllJumps=args.AllJumps)
+
+            st2RepsTrain, st2RepsVal, st2RepsTrain_err, st2RepsVal_err = \
+                GetRep(args.TNet, dirPath, State2_occs, args.Start_epoch, gNet, args.RepLayer,
+                       N_train_jumps, batch_size=args.Batch_size, AllJumps=args.AllJumps)
 
     print("All done\n\n")
 
@@ -869,7 +864,7 @@ if __name__ == "__main__":
 
     parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
     parser.add_argument("-rl", "--RepLayer", metavar="[L1, L2,..]", type=int, nargs="+", help="Layers to extract representation from (count starts from 0)")
-    parser.add_argument("-rlavg", "--RepLayerAvg", action="store_true", help="Whether to average Representations across samples (training and validation will be made separate)")
+    parser.add_argument("-rStart", "--RepStart", action="store_true", help="Which sample to start computing representations onward.")
     parser.add_argument("-bt","--BoundTrain", action="store_true", help="Whether to train using boundary state averages.")
     parser.add_argument("-nojsr", "--JumpSort", action="store_false", help="Whether to switch on/off sort jumps by rates. Not doing it will cause symmetry to break.")
     parser.add_argument("-aos","--AddOnSitesJPINN", action="store_true", help="Whether to consider on sites along with vacancy sites in JPINN.")
