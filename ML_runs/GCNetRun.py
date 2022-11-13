@@ -789,7 +789,7 @@ def main(args):
                                                epoch=args.Start_epoch,
                                                Boundary_train=args.BoundTrain, AddOnSites=args.AddOnSitesJPINN)
 
-            np.save("y_st1_{0}_{1}_{2}_n{3}c{4}_all_{5}_{6}.npy".format(args.RepLayer, direcString, args.Tdata,
+            np.save("y_st1_{0}_{1}_{2}_n{3}c{4}_all_{5}_{6}.npy".format(direcString, args.Tdata,
                                                                                 args.TNet, args.Nlayers,args.Nchannels,
                                                                                 int(args.AllJumps), args.Start_epoch), y_st1_Vecs[::z])
 
