@@ -319,38 +319,29 @@ def getNewSpecs(state1List, dispList, SpecExpand):
 
 def main(args):
 
-    T = args.Temp
-    DataPath = args.DataPath
-    MaxOrder = args.MaxOrder
-    clustCut = args.ClustCut
-    SpecExpand = args.SpecExpand
-    VacSpec = args.VacSpec
-    N_train = args.NTrain
-    from_scratch = args.Scratch
-    saveClusExp = args.SaveCE
-    saveJit = args.SaveJitArrays
-    CrysDatPath = args.CrysDatPath
-    CrysType = args.CrysType
     # Load Data
-    specExpOriginal = SpecExpand
-    state1List, dispList, rateList, AllJumpRates, jumpSelects = Load_Data(DataPath)
+    specExpOriginal = args.SpecExpand
+    state1List, dispList, rateList, AllJumpRates, jumpSelects = Load_Data(args.DataPath)
 
     AllSpecs = np.unique(state1List[0])
     NSpec = AllSpecs.shape[0]
 
-    if VacSpec == 0:
+    SpecExpand = args.SpecExpand
+    if args.VacSpec == 0:
         # Convert data so that vacancy is highest
         # This is the convenience chosen in the MC_JIT code
-        state1List, dispList, SpecExpand = getNewSpecs(state1List, dispList, SpecExpand)
+        state1List, dispList, SpecExpand = getNewSpecs(state1List, dispList, args.SpecExpand)
 
     # Load Crystal Data
-    jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd = Load_crys_Data(CrysDatPath, typ=CrysType)
+    jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd = Load_crys_Data(args.CrysDatPath,
+                                                                                         typ=args.CrysType)
 
-    if from_scratch:
+    if args.Scratch:
         # (superCell, jList, clustCut, MaxOrder, NSpec, vacsite, AllInteracts=False):
         print("Generating New cluster expansion with vacancy at {}, {}".format(vacsite.ci, vacsite.R))
-        VclusExp = makeVClusExp(superCell, jList, clustCut, MaxOrder, NSpec, vacsite, AllInteracts=args.AllInteracts)
-        if saveClusExp:
+        VclusExp = makeVClusExp(superCell, jnet, jList, args.ClustCut, args.MaxOrder, NSpec, vacsite,
+                                AllInteracts=args.AllInteracts)
+        if args.SaveCE:
             with open(RunPath+"VclusExp.pkl", "wb") as fl:
                 pickle.dump(VclusExp, fl)
 
@@ -359,8 +350,11 @@ def main(args):
         saveJit = False
 
     # Make MCJIT
-    MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus = CreateJitCalculator(VclusExp, NSpec, T, scratch=from_scratch, save=saveJit)
-    if from_scratch and saveJit and args.ArrayOnly:
+    MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus = CreateJitCalculator(VclusExp, NSpec,
+                                                                                            args.Temp,
+                                                                                            scratch=args.Scratch,
+                                                                                            save=args.SaveJitArrays)
+    if args.Scratch and args.SaveJitArrays and args.ArrayOnly:
         # If we only want to save the Jit arrays (so that later jobs can be run in parallel)
         print("Created arrays. Terminating.")
         return
@@ -369,8 +363,8 @@ def main(args):
     a0 = np.linalg.norm(dispList[0, NSpec -1, :])/np.linalg.norm(dxList[0])
 
     print("Expanding.")
-    Wbar, Bbar, Gbar, etaBar, offscTime, expandTime = Expand(T, state1List, vacsiteInd, N_train, jList, dxList*a0,
-                                      AllJumpRates, jumpSelects, dispList, rateList,SpecExpand, MCJit, NVclus,
+    Wbar, Bbar, Gbar, etaBar, offscTime, expandTime = Expand(args.Temp, state1List, vacsiteInd, args.NTrain, jList, dxList*a0,
+                                      AllJumpRates, jumpSelects, dispList, rateList, SpecExpand, MCJit, NVclus,
                                       numVecsInteracts, VecsInteracts, VecGroupInteracts, aj=args.AllJumps)
 
     print("Off site counting time per sample: {}".format(offscTime))
@@ -382,18 +376,18 @@ def main(args):
     L_train, L_train_samples = Calculate_L(state1List, SpecExpand, rateList,
             dispList, jumpSelects, jList, dxList*a0,
             vacsiteInd, NVclus, MCJit, 
-            etaBar, 0, N_train,
+            etaBar, 0, args.NTrain,
             numVecsInteracts, VecGroupInteracts, VecsInteracts)
 
     L_val, L_val_samples = Calculate_L(state1List, SpecExpand, rateList,
             dispList, jumpSelects, jList, dxList*a0,
             vacsiteInd, NVclus, MCJit, 
-            etaBar, N_train, state1List.shape[0],
+            etaBar, args.NTrain, state1List.shape[0],
             numVecsInteracts, VecGroupInteracts, VecsInteracts)
 
-    np.save("L{0}{0}_{1}.npy".format(specExpOriginal, T), np.array([L_train, L_val]))
-    np.save("L_trSamps_{0}{0}_{1}.npy".format(specExpOriginal, T), np.array([L_train, L_val]))
-    np.save("L_valSamps_{0}{0}_{1}.npy".format(specExpOriginal, T), np.array([L_train, L_val]))
+    np.save("L{0}{0}_{1}.npy".format(specExpOriginal, args.Temp), np.array([L_train, L_val]))
+    np.save("L_trSamps_{0}{0}_{1}.npy".format(specExpOriginal, args.Temp), np.array([L_train, L_val]))
+    np.save("L_valSamps_{0}{0}_{1}.npy".format(specExpOriginal, args.Temp), np.array([L_train, L_val]))
 
     print("All Done \n\n")
 
