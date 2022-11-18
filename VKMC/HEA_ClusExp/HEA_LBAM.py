@@ -260,7 +260,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
     # Compute relaxation expansion
     etaBar = -np.dot(Gbar, totalB)
 
-    np.save(RunPath + "Gbar_{}.npy".format(T), Gbar)
+    np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
     np.save(RunPath + "etabar_{}.npy".format(T), etaBar)
 
     return totalW, totalB, Gbar, etaBar, offscTime / Nsamples, expandTime / Nsamples
