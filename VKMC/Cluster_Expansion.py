@@ -43,7 +43,6 @@ class VectorClusterExpansion(object):
         self.NSpec = NSpec
         self.mobList = list(range(NSpec))
         self.vacSite = vacSite  # This stays fixed throughout the simulation, so makes sense to store it.
-        self.jumpnetwork = jumpnetwork
         self.zeroClusts = zeroClusts
         self.OrigVac = OrigVac
 
