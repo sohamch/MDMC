@@ -64,11 +64,7 @@ def Load_Data(DataPath):
     return state1List, dispList, rateList, AllJumpRates, jumpSelects
 
 
-def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite, AllInteracts=False):
-    TScombShellRange = 1  # upto 1nn combined shell
-    TSnnRange = 4
-    TScutoff = np.sqrt(2)  # 4th nn cutoff - must be the same as TSnnRange
-
+def makeVClusExp(superCell, jList, clustCut, MaxOrder, NSpec, vacsite, AllInteracts=False):
 
     print("Creating cluster expansion.")
     crys = superCell.crys
@@ -76,10 +72,7 @@ def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite, All
 
     # We'll create a dummy KRA expander anyway since the MC_JIT module is designed to accept transition arrays
     # However, this dummy KEA expander will never get used
-    VclusExp = Cluster_Expansion.VectorClusterExpansion(superCell, clusexp, NSpec, vacsite, MaxOrder, TclusExp=True,
-                                                    TScutoff=TScutoff, TScombShellRange=TScombShellRange,
-                                                    TSnnRange=TSnnRange, jumpnetwork=jnet,
-                                                    OrigVac=False, zeroClusts=True)
+    VclusExp = Cluster_Expansion.VectorClusterExpansion(superCell, clusexp, NSpec, vacsite, MaxOrder)
 
     vacSiteInd, _ = superCell.index(vacsite.R, vacsite.ci)
     reqSites = [vacSiteInd] + list(jList) if not AllInteracts else None
@@ -344,9 +337,9 @@ def main(args):
     jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd = Load_crys_Data(CrysDatPath, typ=CrysType)
 
     if from_scratch:
+        # (superCell, jList, clustCut, MaxOrder, NSpec, vacsite, AllInteracts=False):
         print("Generating New cluster expansion with vacancy at {}, {}".format(vacsite.ci, vacsite.R))
-        VclusExp = makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite,
-                                AllInteracts=args.AllInteracts)
+        VclusExp = makeVClusExp(superCell, jList, clustCut, MaxOrder, NSpec, vacsite, AllInteracts=args.AllInteracts)
         if saveClusExp:
             with open(RunPath+"VclusExp.pkl", "wb") as fl:
                 pickle.dump(VclusExp, fl)
