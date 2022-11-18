@@ -272,6 +272,7 @@ def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
         numVecsInteracts, VecGroupInteracts, VecsInteracts):
 
     L = 0.
+    Lsamp = np.zeros(end - start)
     for samp in tqdm(range(start, end), position=0, leave=True):
         state = state1List[samp]
     
@@ -293,12 +294,13 @@ def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
     
         # Modify the total displacement
         disp_sp_mod = disp_sp + del_y
-    
-        L += rateList[samp] * np.linalg.norm(disp_sp_mod)**2 /6.0
+        ls = rateList[samp] * np.linalg.norm(disp_sp_mod)**2 /6.0
+        L += ls
+        Lsamp[samp] = ls
 
     L /= (end-start)
 
-    return L
+    return L, Lsamp
 
 def getNewSpecs(state1List, dispList, SpecExpand):
     AllSpecs = np.unique(state1List[0])
@@ -377,19 +379,21 @@ def main(args):
 
     # Calculate transport coefficients
     print("Computing Transport coefficients")
-    L_train = Calculate_L(state1List, SpecExpand, rateList, 
+    L_train, L_train_samples = Calculate_L(state1List, SpecExpand, rateList,
             dispList, jumpSelects, jList, dxList*a0,
             vacsiteInd, NVclus, MCJit, 
             etaBar, 0, N_train,
             numVecsInteracts, VecGroupInteracts, VecsInteracts)
 
-    L_val = Calculate_L(state1List, SpecExpand, rateList, 
+    L_val, L_val_samples = Calculate_L(state1List, SpecExpand, rateList,
             dispList, jumpSelects, jList, dxList*a0,
             vacsiteInd, NVclus, MCJit, 
             etaBar, N_train, state1List.shape[0],
             numVecsInteracts, VecGroupInteracts, VecsInteracts)
 
     np.save("L{0}{0}_{1}.npy".format(specExpOriginal, T), np.array([L_train, L_val]))
+    np.save("L_trSamps_{0}{0}_{1}.npy".format(specExpOriginal, T), np.array([L_train, L_val]))
+    np.save("L_valSamps_{0}{0}_{1}.npy".format(specExpOriginal, T), np.array([L_train, L_val]))
 
     print("All Done \n\n")
 
