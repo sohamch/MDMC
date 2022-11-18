@@ -248,9 +248,6 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
     totalW /= Nsamples
     totalB /= Nsamples
 
-    np.save(RunPath + "Wbar_{}.npy".format(T), totalW)
-    np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
-
     try:
         Gbar = spla.pinvh(totalW, rtol=1e-8)
     except:
