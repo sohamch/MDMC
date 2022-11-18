@@ -882,7 +882,7 @@ def main(args):
             State2_occs, _, _ = \
                 makeStateTensors(state2List[args.RepStart: args.RepStart + args.N_train],
                                  specsToTrain, args.VacSpec, JumpNewSites, AllJumps=False)
-            stReps_st2 = GetRep(dirPath, State1_occs, args.Start_epoch, gNet, args.RepLayer,
+            stReps_st2 = GetRep(dirPath, State2_occs, args.Start_epoch, gNet, args.RepLayer,
                                 batch_size=args.Batch_size)
 
             np.save("Rep_L_{0}_st2_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
