@@ -238,11 +238,11 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
         totalW += WBar
         totalB += bBar
 
-    print("Off site counting time per sample: {}".format(offscTime / Nsamples))
-    print("Expansion time per sample: {}".format(expandTime / Nsamples))
-
     totalW /= Nsamples
     totalB /= Nsamples
+
+    print("Off site counting time per sample: {}".format(offscTime / Nsamples))
+    print("Expansion time per sample: {}".format(expandTime / Nsamples))
 
     np.save(RunPath + "Wbar_{}.npy".format(T), totalW)
     np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
