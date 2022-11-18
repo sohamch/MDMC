@@ -241,9 +241,6 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
     totalW /= Nsamples
     totalB /= Nsamples
 
-    print("Off site counting time per sample: {}".format(offscTime / Nsamples))
-    print("Expansion time per sample: {}".format(expandTime / Nsamples))
-
     np.save(RunPath + "Wbar_{}.npy".format(T), totalW)
     np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
 
@@ -262,7 +259,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
     np.save(RunPath + "Gbar_{}.npy".format(T), Gbar)
     np.save(RunPath + "etabar_{}.npy".format(T), etaBar)
 
-    return totalW, totalB, Gbar, etaBar
+    return totalW, totalB, Gbar, etaBar, offscTime / Nsamples, expandTime / Nsamples
 
 
 # Get the Transport coefficients
@@ -359,9 +356,12 @@ def main(args):
     a0 = np.linalg.norm(dispList[0, NSpec -1, :])/np.linalg.norm(dxList[0])
 
     print("Expanding.")
-    Wbar, Bbar, Gbar, etaBar = Expand(T, state1List, vacsiteInd, N_train, jList, dxList*a0,
+    Wbar, Bbar, Gbar, etaBar, offscTime, expandTime = Expand(T, state1List, vacsiteInd, N_train, jList, dxList*a0,
                                       AllJumpRates, jumpSelects, dispList, rateList,SpecExpand, MCJit, NVclus,
                                       numVecsInteracts, VecsInteracts, VecGroupInteracts, aj=args.AllJumps)
+
+    print("Off site counting time per sample: {}".format(offscTime))
+    print("Expansion time per sample: {}".format(expandTime))
 
 
     # Calculate transport coefficients
