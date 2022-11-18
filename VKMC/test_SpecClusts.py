@@ -349,12 +349,14 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
 
         allSpCl = [SpCl for SpClList in self.VclusExp.SpecClusters for SpCl in SpClList]
 
-        allCount = len(self.VclusExp.sup.mobilepos) * len(allSpCl)
-        self.assertEqual(len(self.VclusExp.Id2InteractionDict), allCount,
-                         msg="\n{}\n{}".format(len(self.VclusExp.Id2InteractionDict), allCount))
+        if len(self.reqSites) == 0:
+            allCount = len(self.VclusExp.sup.mobilepos) * len(allSpCl)
+            self.assertEqual(len(self.VclusExp.Id2InteractionDict), allCount,
+                             msg="\n{}\n{}".format(len(self.VclusExp.Id2InteractionDict), allCount))
+            self.assertEqual(allCount, len(numSitesInteracts))
+
         allSpClset = set(allSpCl)
         self.assertEqual(len(allSpCl), len(allSpClset))
-        self.assertEqual(allCount, len(numSitesInteracts))
         self.assertEqual(len(SupSitesInteracts), len(numSitesInteracts))
         self.assertEqual(len(SpecOnInteractSites), len(numSitesInteracts))
 
@@ -404,11 +406,12 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
             SpClset.add(SpCl)
 
             repclustCount[SpCl] += 1
-    #
-        # Check that all translations of repclusts were considered
+
+        # Check that all repclusts were considered
         self.assertEqual(SpClset, allSpClset)
         for key, item in repclustCount.items():
-            self.assertEqual(item, len(self.VclusExp.sup.mobilepos))
+            if len(self.reqSites) == 0:
+                self.assertEqual(item, len(self.VclusExp.sup.mobilepos))
 
         print("checked interactions")
 
@@ -442,7 +445,17 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
                 numInteractStored = numInteractsSiteSpec[siteInd, spec]
                 # get the actual count
                 # ci, R = self.VclusExp.sup.ciR(siteInd)
-                self.assertEqual(len(self.VclusExp.SiteSpecInteractIds[(siteInd, spec)]), numInteractStored)
+                #if len(self.reqSites) == 0:
+                if (siteInd, spec) in self.VclusExp.SiteSpecInteractIds.keys():
+                    self.assertEqual(len(self.VclusExp.SiteSpecInteractIds[(siteInd, spec)]), numInteractStored,
+                                     msg="key: {}, len: {}, stored_array: {}".format((siteInd, spec),
+                                                                                     len(self.VclusExp.SiteSpecInteractIds[(siteInd, spec)]),
+                                                                                     numInteractStored))
+
+                else:
+                    self.assertEqual(0, numInteractStored, msg="key: {}, stored_array: {}".format((siteInd, spec),
+                                                                                     numInteractStored))
+
                 for IdxOfInteract in range(numInteractStored):
                     interactMainIndex = SiteSpecInterArray[siteInd, spec, IdxOfInteract]
                     self.assertEqual(interactMainIndex, self.VclusExp.SiteSpecInteractIds[(siteInd, spec)][IdxOfInteract])
