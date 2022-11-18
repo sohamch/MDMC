@@ -308,17 +308,13 @@ def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
 def getNewSpecs(state1List, dispList, SpecExpand):
     AllSpecs = np.unique(state1List[0])
     NSpec = AllSpecs.shape[0]
-    state1List = NSpec - 1 - state1List
+    state1ListNew = NSpec - 1 - state1List
     dispListNew = np.zeros_like(dispList)
     for spec in range(NSpec):
         dispListNew[:, NSpec - 1 - spec, :] = dispList[:, spec, :]
-    del (dispList)
-    gc.collect()
+    SpecExpandNew = NSpec - 1 - SpecExpand
 
-    dispList = dispListNew
-    SpecExpand = NSpec - 1 - SpecExpand
-
-    return state1List, dispList, SpecExpand
+    return state1ListNew, dispListNew, SpecExpandNew
 
 def main(args):
 
