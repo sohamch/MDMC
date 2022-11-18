@@ -299,7 +299,7 @@ def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
         disp_sp_mod = disp_sp + del_y
         ls = rateList[samp] * np.linalg.norm(disp_sp_mod)**2 /6.0
         L += ls
-        Lsamp[samp] = ls
+        Lsamp[samp - start] = ls
 
     L /= (end-start)
 
