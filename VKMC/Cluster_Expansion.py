@@ -306,10 +306,11 @@ class VectorClusterExpansion(object):
                 # Increment the index
                 count += 1
 
+        SiteSpecInteractIds = dict(SiteSpecInteractIds)
+        clust2InteractId = dict(clust2InteractId)
+
         maxinteractions = max([len(lst) for key, lst in SiteSpecInteractIds.items()])
 
-        SiteSpecInteractIds.default_factory = None
-        clust2InteractId.default_factory = None
 
         self.SiteSpecInteractIds, self.Id2InteractionDict, self.Interaction2IdDict, \
         self.clust2InteractId, self.InteractionId2ClusId, self.maxinteractions = \
