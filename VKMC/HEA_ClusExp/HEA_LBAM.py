@@ -303,6 +303,21 @@ def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
 
     return L
 
+def getNewSpecs(state1List, dispList, SpecExpand):
+    AllSpecs = np.unique(state1List[0])
+    NSpec = AllSpecs.shape[0]
+    state1List = NSpec - 1 - state1List
+    dispListNew = np.zeros_like(dispList)
+    for spec in range(NSpec):
+        dispListNew[:, NSpec - 1 - spec, :] = dispList[:, spec, :]
+    del (dispList)
+    gc.collect()
+
+    dispList = dispListNew
+    SpecExpand = NSpec - 1 - SpecExpand
+
+    return state1List, dispList, SpecExpand
+
 def main(args):
 
     T = args.Temp
@@ -327,15 +342,7 @@ def main(args):
     if VacSpec == 0:
         # Convert data so that vacancy is highest
         # This is the convenience chosen in the MC_JIT code
-        state1List = NSpec - 1 - state1List
-        dispListNew = np.zeros_like(dispList)
-        for spec in range(NSpec):
-            dispListNew[:, NSpec - 1 - spec, :] = dispList[:, spec, :]
-        del(dispList)
-        gc.collect()
-
-        dispList = dispListNew
-        SpecExpand = NSpec - 1 - SpecExpand
+        state1List, dispList, SpecExpand = getNewSpecs(state1List, dispList, SpecExpand)
 
     # Load Crystal Data
     jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd = Load_crys_Data(CrysDatPath, typ=CrysType)
