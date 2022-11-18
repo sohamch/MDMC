@@ -336,6 +336,7 @@ def main(args):
     jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd = Load_crys_Data(args.CrysDatPath,
                                                                                          typ=args.CrysType)
 
+    saveJit = args.SaveJitArrays
     if args.Scratch:
         # (superCell, jList, clustCut, MaxOrder, NSpec, vacsite, AllInteracts=False):
         print("Generating New cluster expansion with vacancy at {}, {}".format(vacsite.ci, vacsite.R))
@@ -353,8 +354,8 @@ def main(args):
     MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus = CreateJitCalculator(VclusExp, NSpec,
                                                                                             args.Temp,
                                                                                             scratch=args.Scratch,
-                                                                                            save=args.SaveJitArrays)
-    if args.Scratch and args.SaveJitArrays and args.ArrayOnly:
+                                                                                            save=saveJit)
+    if args.Scratch and saveJit and args.ArrayOnly:
         # If we only want to save the Jit arrays (so that later jobs can be run in parallel)
         print("Created arrays. Terminating.")
         return
