@@ -84,6 +84,7 @@ class KRA3bodyInteractions():
 
         # First we generate a jumpnetwork containing nn translation vectors upto nn range
         nnJnet = self.crys.jumpnetwork(self.chem, cutoff)
+        nnJnet = sorted(nnJnet, key=lambda x : np.linalg.norm(x[0][1])) # sort by dx
         nnVecs = [[np.dot(np.linalg.inv(self.crys.lattice), dx).astype(int) for (i, j), dx in jList]
                               for jList in nnJnet]
 
