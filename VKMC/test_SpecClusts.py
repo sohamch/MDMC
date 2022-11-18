@@ -37,7 +37,9 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
                                                                  TScombShellRange=None, TSnnRange=None,
                                                                  jumpnetwork=None)
 
-        self.VclusExp.generateSiteSpecInteracts()
+        self.reqSites = [i for i in range(10)]  # All interactions must have at least one of these sites
+        self.VclusExp.generateSiteSpecInteracts(reqSites=self.reqSites)
+
         self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
         self.VclusExp.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
         self.VclusExp.indexClustertoVecClus()
@@ -231,12 +233,24 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         # test that every interaction is valid
         # The key site should be present only once in every interaction stored for it
         interactCounter = collections.defaultdict(int)
-        self.assertEqual(len(self.VclusExp.SiteSpecInteractIds), self.NSpec*len(self.superBCC.mobilepos))
+        if len(self.reqSites) ==  0:
+            self.assertEqual(len(self.VclusExp.SiteSpecInteractIds), self.NSpec*len(self.superBCC.mobilepos))
+        else:
+            print("checking required site presence.")
+
         for (key, interactIdList) in self.VclusExp.SiteSpecInteractIds.items():
             siteInd = key[0]
             sp = key[1]
             for Id in interactIdList:
                 interaction = self.VclusExp.Id2InteractionDict[Id]
+                if len(self.reqSites) > 0:
+                    req_count = 0
+                    for (site, spec) in interaction:
+                        if site in self.reqSites:
+                            req_count += 1
+
+                    self.assertTrue(req_count >= 1)
+
                 interactCounter[interaction] += 1
                 count = 0
                 for (site, spec) in interaction:
@@ -275,16 +289,41 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         allSpCl = [SpCl for SpClList in self.VclusExp.SpecClusters for SpCl in SpClList]
         for (key, interactIdList) in self.VclusExp.SiteSpecInteractIds.items():
             siteInd = key[0]
-            ci = self.VclusExp.sup.ciR(siteInd)[0]
+            ci, Rsite = self.VclusExp.sup.ciR(siteInd)
             sp = key[1]
-            count = 0
-            # For each species at a site, check that all translations of a cluster are considered.
-            for SpecClus in allSpCl:
-                for (site, spec) in SpecClus.SiteSpecs:
-                    if spec == sp and site.ci == ci:
-                        count += 1  # a translation of this cluster should exist
+            if len(self.reqSites) == 0:
+                count = 0
+                # For each species at a site, check that all translations of a cluster are considered.
+                for SpecClus in allSpCl:
+                    for (site, spec) in SpecClus.SiteSpecs:
+                        if spec == sp and site.ci == ci:
+                            count += 1  # a translation of this cluster should exist
 
-            self.assertEqual(count, len(interactIdList), msg="\ncount {}, stored {}\n{}".format(count, len(interactIdList), key))
+                self.assertEqual(count, len(interactIdList), msg="\ncount {}, stored {}\n{}".format(count, len(interactIdList), key))
+
+            else:
+                count = 0
+                # For each species at a site, check that all translations of a cluster are considered.
+                for SpecClus in allSpCl:
+                    for (site, spec) in SpecClus.SiteSpecs:
+                        if spec == sp and site.ci == ci:
+                            # get the translation
+                            Rshift = Rsite - site.R
+                            # translate all the sites by this translation
+                            reqSitesFound = 0
+                            for (clSite, clSpec) in SpecClus.SiteSpecs:
+                                RClSiteNew = clSite.R + Rshift
+                                clSiteIndNew, _ = self.superBCC.index(RClSiteNew, clSite.ci)
+                                if clSiteIndNew in self.reqSites:
+                                    reqSitesFound += 1
+
+                            # the translated cluster must have a required site to be counted
+                            if reqSitesFound > 0:
+                                count += 1
+
+                self.assertEqual(count, len(interactIdList),
+                                 msg="\ncount {}, stored {}\n{}".format(count, len(interactIdList), key))
+
 
     def testcluster2SpecClus(self):
 
@@ -407,49 +446,3 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
                 for IdxOfInteract in range(numInteractStored):
                     interactMainIndex = SiteSpecInterArray[siteInd, spec, IdxOfInteract]
                     self.assertEqual(interactMainIndex, self.VclusExp.SiteSpecInteractIds[(siteInd, spec)][IdxOfInteract])
-
-class test_Vector_Cluster_Expansion_re_sites(unittest.TestCase):
-
-    def setUp(self):
-        self.NSpec = 3
-        self.Nvac = 1
-        self.MaxOrder = 3
-        self.MaxOrderTrans = 3
-        a0 = 1
-        self.a0 = a0
-        self.crys = crystal.Crystal.BCC(a0, chemistry="A")
-        jumpCutoff = 1.01*np.sqrt(3./4.)*a0
-        self.jnetBCC = self.crys.jumpnetwork(0, jumpCutoff)
-        self.N_units = 8
-        self.superlatt = self.N_units * np.eye(3, dtype=int)
-        self.superBCC = supercell.ClusterSupercell(self.crys, self.superlatt)
-        # get the number of sites in the supercell - should be 8x8x8
-        numSites = len(self.superBCC.mobilepos)
-        self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
-        self.vacsiteInd = self.superBCC.index(np.zeros(3, dtype=int), (0, 0))[0]
-        self.clusexp = cluster.makeclusters(self.crys, 1.01*a0, self.MaxOrder)
-
-        # TScombShellRange = 1  # upto 1nn combined shell
-        # TSnnRange = 4
-        # TScutoff = np.sqrt(3) * a0  # 5th nn cutoff
-
-        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.NSpec,
-                                                                 self.vacsite, self.MaxOrder, TScutoff=None,
-                                                                 TScombShellRange=None, TSnnRange=None,
-                                                                 jumpnetwork=None)
-
-        self.VclusExp.generateSiteSpecInteracts()
-        self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
-        self.VclusExp.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
-        self.VclusExp.indexClustertoVecClus()
-
-        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
-
-        self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
-        for site in range(1, numSites):
-            spec = np.random.randint(0, self.NSpec - 1)
-            self.mobOccs[spec][site] = 1
-        self.mobOccs[-1, self.vacsiteInd] = 1
-        self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
-        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
-        print("Done setting up cluster expansion tests.")
