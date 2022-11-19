@@ -67,7 +67,7 @@ def Load_Data(DataPath):
     return state1List, dispList, rateList, AllJumpRates, jumpSelects
 
 
-def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite, AllInteracts=False):
+def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite, vacSpec, AllInteracts=False):
     TScombShellRange = 1  # upto 1nn combined shell
     TSnnRange = 4
     TScutoff = np.sqrt(2)  # 4th nn cutoff - must be the same as TSnnRange
@@ -79,7 +79,7 @@ def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite, All
 
     # We'll create a dummy KRA expander anyway since the MC_JIT module is designed to accept transition arrays
     # However, this dummy KEA expander will never get used
-    VclusExp = Cluster_Expansion.VectorClusterExpansion(superCell, clusexp, NSpec, vacsite, MaxOrder, TclusExp=True,
+    VclusExp = Cluster_Expansion.VectorClusterExpansion(superCell, clusexp, NSpec, vacsite, vacSpec, MaxOrder, TclusExp=True,
                                                     TScutoff=TScutoff, TScombShellRange=TScombShellRange,
                                                     TSnnRange=TSnnRange, jumpnetwork=jnet,
                                                     OrigVac=False, zeroClusts=True)
@@ -109,7 +109,7 @@ def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
         KRAEnergies = [np.zeros(len(KRAClusterDict)) for (key, KRAClusterDict) in 
                 VclusExp.KRAexpander.clusterSpeciesJumps.items()]
 
-        KRASpecConstants = np.zeros(NSpec-1)
+        KRASpecConstants = np.zeros(NSpec)
 
         # First, the chemical data
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,\
@@ -119,7 +119,7 @@ def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
         numVecsInteracts, VecsInteracts, VecGroupInteracts = VclusExp.makeJitVectorBasisData()
         
         NVclus = len(VclusExp.vecClus)
-
+        vacSpec = VclusExp.vacSpec
         # Note : The KRA expansion works only for binary alloys
         # Right now we don't need them, since we already know the rates
         # However, we create a dummy one since the JIT MC calculator requires the arrays
@@ -152,6 +152,7 @@ def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
                 fl.create_dataset("Jump2KRAEng", data=Jump2KRAEng)
                 fl.create_dataset("KRASpecConstants", data=KRASpecConstants)
                 fl.create_dataset("NVclus", data=np.array([NVclus], dtype=int))
+                fl.create_dataset("vacSpec", data=np.array([vacSpec], dtype=int))
 
     else:
         print("Attempting to load arrays")
@@ -177,11 +178,13 @@ def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
             Jump2KRAEng = np.array(fl["Jump2KRAEng"])
             KRASpecConstants = np.array(fl["KRASpecConstants"])
             NVclus = np.array(fl["NVclus"])[0]
+            vacSpec = np.array(fl["vacSpec"])[0]
     
     # Make the MC class
+    print("vacancy species: {}".format(vacSpec))
     Interaction2En = np.zeros_like(numSitesInteracts, dtype=float)
     MCJit = MC_JIT.MCSamplerClass(
-        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,
+        vacSpec, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,
         numInteractsSiteSpec, SiteSpecInterArray,
         numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
         FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups,
@@ -308,17 +311,6 @@ def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
 
     return L, Lsamp
 
-def getNewSpecs(state1List, dispList, SpecExpand):
-    AllSpecs = np.unique(state1List[0])
-    NSpec = AllSpecs.shape[0]
-    state1ListNew = NSpec - 1 - state1List
-    dispListNew = np.zeros_like(dispList)
-    for spec in range(NSpec):
-        dispListNew[:, NSpec - 1 - spec, :] = dispList[:, spec, :]
-    SpecExpandNew = NSpec - 1 - SpecExpand
-
-    return state1ListNew, dispListNew, SpecExpandNew
-
 def main(args):
 
     # Load Data
@@ -329,10 +321,6 @@ def main(args):
     NSpec = AllSpecs.shape[0]
 
     SpecExpand = args.SpecExpand
-    if args.VacSpec == 0:
-        # Convert data so that vacancy is highest
-        # This is the convenience chosen in the MC_JIT code
-        state1List, dispList, SpecExpand = getNewSpecs(state1List, dispList, args.SpecExpand)
 
     # Load Crystal Data
     jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd = Load_crys_Data(args.CrysDatPath,
@@ -343,7 +331,7 @@ def main(args):
         # (superCell, jList, clustCut, MaxOrder, NSpec, vacsite, AllInteracts=False):
         print("Generating New cluster expansion with vacancy at {}, {}".format(vacsite.ci, vacsite.R))
         VclusExp = makeVClusExp(superCell, jnet, jList, args.ClustCut, args.MaxOrder, NSpec, vacsite,
-                                AllInteracts=args.AllInteracts)
+                                args.VacSpec, AllInteracts=args.AllInteracts)
         if args.SaveCE:
             with open(RunPath+"VclusExp.pkl", "wb") as fl:
                 pickle.dump(VclusExp, fl)
