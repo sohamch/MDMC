@@ -84,6 +84,7 @@ MonteCarloSamplerSpec = [
     ("OffSiteCount", int64[:]),
     ("delEArray", float64[:]),
     ("delETotal", float64),
+    ("vacSpec", int64),
     ("FinSiteFinSpecJumpInd", int64[:, :])
 ]
 
@@ -91,7 +92,7 @@ MonteCarloSamplerSpec = [
 @jitclass(MonteCarloSamplerSpec)
 class MCSamplerClass(object):
 
-    def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numInteractsSiteSpec, SiteSpecInterArray,
+    def __init__(self, vacSpec, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numInteractsSiteSpec, SiteSpecInterArray,
                  numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
                  FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, KRASpecConstants):
 
@@ -113,6 +114,7 @@ class MCSamplerClass(object):
 
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
+        self.vacSpec = vacSpec
 
     def DoSwapUpdate(self, state, siteA, siteB, lenVecClus, OffSiteCount,
                      numVecsInteracts, VecGroupInteracts, VecsInteracts):
@@ -178,12 +180,12 @@ class MCSamplerClass(object):
         for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
             offsc[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
 
-    def makeMCsweep(self, state, N_nonVacSpecs, OffSiteCount, TransOffSiteCount,
+    def makeMCsweep(self, state, N_Specs, OffSiteCount, TransOffSiteCount,
                     beta, randLogarr, Nswaptrials, vacSiteInd):
         """
 
         :param state: the starting state
-        :param N_nonVacSpecs: how many of non-vacancy species are there in the state
+        :param N_Specs: how many of each species are there in the state
         Example input array[10, 501]- 10 species 0 atoms and 501 specis 1 atoms.
         :param OffSiteCount: interaction off site counts for the current state
         :param TransOffSiteCount: transition state interaction off site counts
@@ -197,17 +199,17 @@ class MCSamplerClass(object):
         self.delEArray = np.zeros(Nswaptrials)
 
         Nsites = state.shape[0]
-        MaxCount = np.max(N_nonVacSpecs)
-        # print(N_nonVacSpecs)
+        MaxCount = np.max(N_Specs)
+        # print(N_Specs)
         # Next, fill up where the atoms are located
-        specMemberCounts = np.zeros_like(N_nonVacSpecs, dtype=int64)
-        SpecLocations = np.full((N_nonVacSpecs.shape[0], MaxCount), -1, dtype=int64)
+        specMemberCounts = np.zeros_like(N_Specs, dtype=int64)
+        SpecLocations = np.full((N_Specs.shape[0], MaxCount), -1, dtype=int64)
         for siteInd in range(Nsites):
             if siteInd == vacSiteInd:  # If vacancy, do nothing
-                assert state[vacSiteInd] == N_nonVacSpecs.shape[0]
+                assert state[vacSiteInd] == self.vacSpec
                 continue
             spec = state[siteInd]
-            assert spec < N_nonVacSpecs.shape[0]
+            assert spec != self.vacSpec
             specMemIdx = specMemberCounts[spec]
             SpecLocations[spec, specMemIdx] = siteInd
             specMemIdx += 1
@@ -215,7 +217,16 @@ class MCSamplerClass(object):
 
         count = 0  # to keep a steady count of accepted moves
 
-        NonVacLabels = np.arange(N_nonVacSpecs.shape[0])
+
+        NonVacLabels = np.zeros(N_Specs.shape[0] - 1, dtype=int64)
+        for spInd in range(N_Specs.shape[0]):
+            if spInd == self.vacSpec:
+                continue
+            elif spInd < self.vacSpec:
+                NonVacLabels[spInd] = spInd
+            else:
+                NonVacLabels[spInd-1] = spInd
+
         for swapcount in range(Nswaptrials):
 
             # first select two random species to swap
@@ -224,8 +235,8 @@ class MCSamplerClass(object):
             spBSelect = NonVacLabels[1]
 
             # randomly select two different locations to swap
-            siteALocIdx = np.random.randint(0, N_nonVacSpecs[spASelect])
-            siteBLocIdx = np.random.randint(0, N_nonVacSpecs[spBSelect])
+            siteALocIdx = np.random.randint(0, N_Specs[spASelect])
+            siteBLocIdx = np.random.randint(0, N_Specs[spBSelect])
 
             siteA = SpecLocations[spASelect, siteALocIdx]
             siteB = SpecLocations[spBSelect, siteBLocIdx]
@@ -284,10 +295,8 @@ class MCSamplerClass(object):
     def getDelLamb(self, state, offsc, vacSiteInd, jSite, lenVecClus,
                    numVecsInteracts, VecGroupInteracts, VecsInteracts):
         
-        siteA, specA = vacSiteInd, self.Nspecs - 1
+        siteA, specA = vacSiteInd, state[vacSiteInd]
         siteB = jSite
-
-        assert state[siteA] == specA
 
         _, del_lamb = self.DoSwapUpdate(state, siteA, siteB, lenVecClus, offsc,
                                         numVecsInteracts, VecGroupInteracts, VecsInteracts)
@@ -311,7 +320,7 @@ class MCSamplerClass(object):
         else:
             ratelist = RateList.copy()
 
-        siteA, specA = vacSiteInd, self.Nspecs - 1
+        siteA, specA = vacSiteInd, state[vacSiteInd]
         # go through all the transition
 
         for jumpInd in range(ijList.shape[0]):
