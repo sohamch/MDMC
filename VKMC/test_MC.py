@@ -62,7 +62,8 @@ class Test_Make_Arrays(unittest.TestCase):
         self.KRAEnergies = [np.random.rand(len(TSptGroups))
                             for (key, TSptGroups) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
 
-        self.KRASpecConstants = np.random.rand(self.NSpec - 1)
+        self.KRASpecConstants = np.random.rand(self.NSpec)
+        self.KRASpecConstants[self.vacSpec] = 0.
 
         self.MakeJITs()
         print("Done setting up BCC data")
@@ -109,11 +110,12 @@ class Test_Make_Arrays(unittest.TestCase):
 
         initState = np.zeros(len(self.VclusExp.sup.mobilepos), dtype=int)
         # Now assign random species (excluding the vacancy)
+        speclabels = np.array([i for i in range(self.NSpec) if i != self.vacSpec])
         for i in range(len(self.VclusExp.sup.mobilepos)):
-            initState[i] = np.random.randint(0, self.NSpec - 1)
+            initState[i] = speclabels[np.random.randint(0, speclabels.shape[0])]
 
         # Now put in the vacancy at the vacancy site
-        initState[self.vacsiteInd] = self.NSpec - 1
+        initState[self.vacsiteInd] = self.vacSpec
 
         self.initState = initState
 
@@ -123,24 +125,9 @@ class Test_Make_Arrays(unittest.TestCase):
             FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, self.KRASpecConstants
         )
 
-    def make3bodyKRAEnergies(self):
-        KRASpecConstants = np.random.rand(self.NSpec-1)
-        En0Jumps = np.random.rand(self.TSnnRange)
-        En1Jumps = np.random.rand(self.TSnnRange)
-        Energies = []
-        for jumpInd in range(len(self.VclusExp.KRAexpander.jump2Index)):
-            jumpkey = self.VclusExp.KRAexpander.Index2Jump[jumpInd]
-            jumpSpec = jumpkey[2]
-            if jumpSpec == 0:
-                Energies.append(En0Jumps.copy())
-            else:
-                Energies.append(En1Jumps.copy())
-        return KRASpecConstants, Energies
-
 class Test_Make_Arrays_FCC(Test_Make_Arrays):
 
     def setUp(self):
-        self.NSpec = 3
         self.KRACounterSpec = 1
         self.Nvac = 1
         self.MaxOrder = 3
@@ -161,6 +148,7 @@ class Test_Make_Arrays_FCC(Test_Make_Arrays):
         TScombShellRange = 1  # upto 1nn combined shell
         TSnnRange = 4
         TScutoff = np.sqrt(2) * a0  # 4th nn cutoff
+        self.NSpec = 3
         self.vacSpec = 0
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superFCC, self.clusexp, self.NSpec, self.vacsite,
                                                                  self.vacSpec, self.MaxOrder,
@@ -181,7 +169,11 @@ class Test_Make_Arrays_FCC(Test_Make_Arrays):
 
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
 
-        self.KRASpecConstants, self.KRAEnergies = self.make3bodyKRAEnergies()
+        self.KRAEnergies = [np.random.rand(len(TSptGroups))
+                            for (key, TSptGroups) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
+
+        self.KRASpecConstants = np.random.rand(self.NSpec)
+        self.KRASpecConstants[self.vacSpec] = 0.
 
         self.MakeJITs()
         print("Done setting up FCC data.")
@@ -240,34 +232,33 @@ class Test_MC(DataClass):
         # randLogarr = np.log(np.random.rand(Nswaptrials))
 
         # If we want to ensure acceptance, we keep it really small
-        randLogarr = np.ones(Nswaptrials)*-1000.0
+        # randLogarr = np.ones(Nswaptrials)*-1000.0
 
         # If we want to ensure rejection, we keep it really big
-        # randLogarr = np.ones(Nswaptrials) * 1000.0
+        randLogarr = np.ones(Nswaptrials) * 1000.0
 
         # Put in tests for Jit calculations
         # make the offsite counts
         initJit = initCopy.copy()
 
         # get the Number of species of each type
-        N_nonvacSpec = np.zeros(self.NSpec-1, dtype=int)
+        N_Spec = np.zeros(self.NSpec, dtype=int)
         Nsites = len(self.VclusExp.sup.mobilepos)
         assert Nsites == initJit.shape[0]
         for siteInd in range(Nsites):
             if siteInd == self.vacsiteInd:
-                assert initJit[siteInd] == self.NSpec-1
-                continue
+                assert initJit[siteInd] == self.vacSpec
             spec = initJit[siteInd]
-            N_nonvacSpec[spec] += 1
-        # print("In test:{}".format(N_nonvacSpec))
-        specLocations = np.full((N_nonvacSpec.shape[0], np.max(N_nonvacSpec)), -1, dtype=int)
-        spec_counter = np.zeros_like(N_nonvacSpec, dtype=int)
+            N_Spec[spec] += 1
+        self.assertEqual(N_Spec[self.vacSpec], 1)
+
+        specLocations = np.full((N_Spec.shape[0], np.max(N_Spec)), -1, dtype=int)
+        spec_counter = np.zeros_like(N_Spec, dtype=int)
         for siteInd in range(Nsites):
-            if siteInd == self.vacsiteInd:
-                continue
             spec = initJit[siteInd]
             specLocations[spec, spec_counter[spec]] = siteInd
             spec_counter[spec] += 1
+        self.assertEqual(spec_counter[self.vacSpec], 1)
 
         # build the offsite count and get initial energy
         En1 = 0.
@@ -296,7 +287,7 @@ class Test_MC(DataClass):
         print("Starting sweep")
         start = time.time()
         SpecsOnSites, acceptCount =\
-            MCSampler_Jit.makeMCsweep(initJit, N_nonvacSpec, offscjit, TSOffSiteCount,
+            MCSampler_Jit.makeMCsweep(initJit, N_Spec, offscjit, TSOffSiteCount,
                                       beta, randLogarr, Nswaptrials, self.vacsiteInd)
 
         print("Sweep completed in :{} seconds".format(time.time() - start))
@@ -338,23 +329,22 @@ class Test_MC(DataClass):
 
             # Check the update to the new site locations
             spLPrev = specLocations.copy()
-            specLocations = np.full((N_nonvacSpec.shape[0], np.max(N_nonvacSpec)), -1, dtype=int)
-            spec_counter = np.zeros_like(N_nonvacSpec, dtype=int)
+            specLocations = np.full((N_Spec.shape[0], np.max(N_Spec)), -1, dtype=int)
+            spec_counter = np.zeros_like(N_Spec, dtype=int)
             self.assertEqual(Nsites, initJit.shape[0])
             for siteInd in range(Nsites):
                 if siteInd == self.vacsiteInd:
-                    self.assertEqual(initJit[siteInd], self.NSpec-1)
-                    continue
+                    self.assertEqual(initJit[siteInd], self.vacSpec)
                 spec = initJit[siteInd]
                 specLocations[spec, spec_counter[spec]] = siteInd
                 spec_counter[spec] += 1
 
-            self.assertTrue(np.array_equal(spec_counter, N_nonvacSpec))
+            self.assertTrue(np.array_equal(spec_counter, N_Spec))
             # check that for same species, we have the same site locations in the explcit update
             # and also by just exchanging locations as in the code.
-            for NVspec in range(N_nonvacSpec.shape[0]):
-                specSitesExchange = np.sort(specLocations[NVspec, :N_nonvacSpec[NVspec]])
-                specSitesUpdated = np.sort(SpecsOnSites[NVspec, :N_nonvacSpec[NVspec]])
+            for NVspec in range(N_Spec.shape[0]):
+                specSitesExchange = np.sort(specLocations[NVspec, :N_Spec[NVspec]])
+                specSitesUpdated = np.sort(SpecsOnSites[NVspec, :N_Spec[NVspec]])
                 self.assertTrue(np.array_equal(specSitesUpdated, specSitesExchange))
             self.assertEqual(specLocations.shape, SpecsOnSites.shape)
 
@@ -458,21 +448,18 @@ class Test_MC(DataClass):
         initJit = initCopy.copy()
 
         # get the Number of species of each type
-        N_nonvacSpec = np.zeros(self.NSpec - 1, dtype=int)
+        N_Specs = np.zeros(self.NSpec, dtype=int)
         Nsites = len(self.VclusExp.sup.mobilepos)
         assert Nsites == initJit.shape[0]
         for siteInd in range(Nsites):
             if siteInd == self.vacsiteInd:
-                assert initJit[siteInd] == self.NSpec - 1
-                continue
+                assert initJit[siteInd] == self.vacSpec
             spec = initJit[siteInd]
-            N_nonvacSpec[spec] += 1
-        # print("In test:{}".format(N_nonvacSpec))
-        specLocations = np.full((N_nonvacSpec.shape[0], np.max(N_nonvacSpec)), -1, dtype=int)
-        spec_counter = np.zeros_like(N_nonvacSpec, dtype=int)
+            N_Specs[spec] += 1
+        # print("In test:{}".format(N_Specs))
+        specLocations = np.full((N_Specs.shape[0], np.max(N_Specs)), -1, dtype=int)
+        spec_counter = np.zeros_like(N_Specs, dtype=int)
         for siteInd in range(Nsites):
-            if siteInd == self.vacsiteInd:
-                continue
             spec = initJit[siteInd]
             specLocations[spec, spec_counter[spec]] = siteInd
             spec_counter[spec] += 1
@@ -504,7 +491,7 @@ class Test_MC(DataClass):
         print("Starting sweep")
         start = time.time()
         SpecsOnSites, acceptCount = \
-            MCSampler_Jit.makeMCsweep(initJit, N_nonvacSpec, offscjit, TSOffSiteCount,
+            MCSampler_Jit.makeMCsweep(initJit, N_Specs, offscjit, TSOffSiteCount,
                                       beta, randLogarr, Nswaptrials, self.vacsiteInd)
 
         print("Sweep completed in :{} seconds".format(time.time() - start))
@@ -533,25 +520,27 @@ class Test_MC(DataClass):
         self.assertAlmostEqual(EnSwap - En1, MCSampler_Jit.delETotal)
 
         # Next, check the updated species locations
-        specLocations = np.full((N_nonvacSpec.shape[0], np.max(N_nonvacSpec)), -1, dtype=int)
-        spec_counter = np.zeros_like(N_nonvacSpec, dtype=int)
+        specLocations = np.full((N_Specs.shape[0], np.max(N_Specs)), -1, dtype=int)
+        spec_counter = np.zeros_like(N_Specs, dtype=int)
         self.assertEqual(Nsites, initJit.shape[0])
         for siteInd in range(Nsites):
             if siteInd == self.vacsiteInd:
-                self.assertEqual(initJit[siteInd], self.NSpec - 1)
-                continue
+                self.assertEqual(initJit[siteInd], self.vacSpec) # check that vacancy hasn't moved.
             spec = initJit[siteInd]
             specLocations[spec, spec_counter[spec]] = siteInd
             spec_counter[spec] += 1
 
-        self.assertTrue(np.array_equal(spec_counter, N_nonvacSpec))
+        self.assertTrue(np.array_equal(spec_counter, N_Specs))
         # check that for same species, we have the same site locations in the explicit update
         # and also by just exchanging locations as in the code.
-        for NVspec in range(N_nonvacSpec.shape[0]):
-            specSitesExchange = np.sort(specLocations[NVspec, :N_nonvacSpec[NVspec]])
-            specSitesUpdated = np.sort(SpecsOnSites[NVspec, :N_nonvacSpec[NVspec]])
+        for spec in range(N_Specs.shape[0]):
+            specSitesExchange = np.sort(specLocations[spec, :N_Specs[spec]])
+            specSitesUpdated = np.sort(SpecsOnSites[spec, :N_Specs[spec]])
             self.assertTrue(np.array_equal(specSitesUpdated, specSitesExchange))
         self.assertEqual(specLocations.shape, SpecsOnSites.shape)
+        print("species Locations : \n")
+        for spec in range(N_Specs.shape[0]):
+            print(np.sort(specLocations[spec, :N_Specs[spec]]))
 
         # check energies by explicit cluster translation
         allSpCl = [SpCl for SpClList in self.VclusExp.SpecClusters for SpCl in SpClList]
@@ -670,7 +659,7 @@ class Test_MC(DataClass):
                     siteA = self.vacsiteInd
                     # Check that the initial site is always the vacancy
                     specA = state[siteA]  # the vacancy
-                    self.assertEqual(specA, self.NSpec - 1)
+                    self.assertEqual(specA, self.vacSpec)
                     specB = state[siteB]
                     delEKRA = self.KRASpecConstants[specB]
                     # get the index of this transition
@@ -918,7 +907,7 @@ class Test_KMC(DataClass):
         # Now go through each of the transitions and evaluate the energy changes explicitly
         for jumpInd, siteInd in enumerate(jmpFinSiteList):
             stateNew = state.copy()
-            stateNew[siteInd] = self.NSpec - 1  # this site will contain the vacancy in the new site
+            stateNew[siteInd] = self.vacSpec  # this site will contain the vacancy in the new site
             stateNew[self.vacsiteInd] = state[siteInd]
 
             OffScTrans = MC_JIT.GetOffSite(stateNew, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
@@ -977,7 +966,7 @@ class Test_KMC(DataClass):
         # Now go through each of the transitions and evaluate the energy changes explicitly
         for jumpInd, siteInd in enumerate(jmpFinSiteListTrans):
             stateNew = state.copy()
-            stateNew[siteInd] = self.NSpec - 1  # this site will contain the vacancy in the new site
+            stateNew[siteInd] = self.vacSpec  # this site will contain the vacancy in the new site
             stateNew[siteSwap] = state[siteInd]  # this site will contain the vacancy in the new site
 
             OffScTrans = MC_JIT.GetOffSite(stateNew, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
