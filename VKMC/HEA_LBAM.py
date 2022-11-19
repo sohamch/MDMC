@@ -279,9 +279,10 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
 # Get the Transport coefficients
 def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
         jList, dxList, vacsiteInd, NVclus, MCJit, etaBar, start, end,
-        numVecsInteracts, VecGroupInteracts, VecsInteracts):
+        numVecsInteracts, VecGroupInteracts, VecsInteracts, vacSpec):
 
     L = 0.
+    assert vacsiteInd == 0
     Lsamp = np.zeros(end - start)
     for samp in tqdm(range(start, end), position=0, leave=True):
         state = state1List[samp]
@@ -289,7 +290,9 @@ def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
         offsc = MC_JIT.GetOffSite(state, MCJit.numSitesInteracts, MCJit.SupSitesInteracts, MCJit.SpecOnInteractSites)
         jSelect = jumpSelects[samp]
         jSite = jList[jSelect]
-    
+
+        assert state[vacsiteInd] == vacSpec
+
         del_lamb = MCJit.getDelLamb(state, offsc, vacsiteInd, jSite, NVclus,
                                     numVecsInteracts, VecGroupInteracts, VecsInteracts)
     
@@ -369,13 +372,13 @@ def main(args):
             dispList, jumpSelects, jList, dxList*a0,
             vacsiteInd, NVclus, MCJit, 
             etaBar, 0, args.NTrain,
-            numVecsInteracts, VecGroupInteracts, VecsInteracts)
+            numVecsInteracts, VecGroupInteracts, VecsInteracts, args.VacSpec)
 
     L_val, L_val_samples = Calculate_L(state1List, SpecExpand, rateList,
             dispList, jumpSelects, jList, dxList*a0,
             vacsiteInd, NVclus, MCJit, 
             etaBar, args.NTrain, state1List.shape[0],
-            numVecsInteracts, VecGroupInteracts, VecsInteracts)
+            numVecsInteracts, VecGroupInteracts, VecsInteracts, args.VacSpec)
 
     np.save("L{0}{0}_{1}.npy".format(specExpOriginal, args.Temp), np.array([L_train, L_val]))
     np.save("L_trSamps_{0}{0}_{1}.npy".format(specExpOriginal, args.Temp), L_train_samples)
