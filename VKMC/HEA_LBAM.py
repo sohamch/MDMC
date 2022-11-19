@@ -378,8 +378,8 @@ def main(args):
             numVecsInteracts, VecGroupInteracts, VecsInteracts)
 
     np.save("L{0}{0}_{1}.npy".format(specExpOriginal, args.Temp), np.array([L_train, L_val]))
-    np.save("L_trSamps_{0}{0}_{1}.npy".format(specExpOriginal, args.Temp), np.array([L_train, L_val]))
-    np.save("L_valSamps_{0}{0}_{1}.npy".format(specExpOriginal, args.Temp), np.array([L_train, L_val]))
+    np.save("L_trSamps_{0}{0}_{1}.npy".format(specExpOriginal, args.Temp), L_train_samples)
+    np.save("L_valSamps_{0}{0}_{1}.npy".format(specExpOriginal, args.Temp), L_val_samples)
 
     print("All Done \n\n")
 
