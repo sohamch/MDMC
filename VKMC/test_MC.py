@@ -62,8 +62,7 @@ class Test_Make_Arrays(unittest.TestCase):
         self.KRAEnergies = [np.random.rand(len(TSptGroups))
                             for (key, TSptGroups) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
 
-        self.KRASpecConstants = np.random.rand(self.NSpec)
-        self.KRASpecConstants[self.vacSpec] = 0.
+        self.KRASpecConstants, self.KRAEnergies = self.make3bodyKRAEnergies()
 
         self.MakeJITs()
         print("Done setting up BCC data")
@@ -125,6 +124,24 @@ class Test_Make_Arrays(unittest.TestCase):
             FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, self.KRASpecConstants
         )
 
+    def make3bodyKRAEnergies(self):
+        KRASpecConstants = np.random.rand(self.NSpec)
+        KRASpecConstants[self.vacSpec] = 0.
+        EnSpJumps = {}
+        for spec in range(self.NSpec):
+            if spec == self.vacSpec:
+                continue
+            else:
+                EnSpJumps[spec] = np.random.rand(self.TSnnRange)
+        # En0Jumps = np.random.rand(self.TSnnRange)
+        # En1Jumps = np.random.rand(self.TSnnRange)
+        Energies = []
+        for jumpInd in range(len(self.VclusExp.KRAexpander.jump2Index)):
+            jumpkey = self.VclusExp.KRAexpander.Index2Jump[jumpInd]
+            jumpSpec = jumpkey[2]
+            Energies.append(EnSpJumps[jumpSpec].copy())
+        return KRASpecConstants, Energies
+
 class Test_Make_Arrays_FCC(Test_Make_Arrays):
 
     def setUp(self):
@@ -171,8 +188,7 @@ class Test_Make_Arrays_FCC(Test_Make_Arrays):
         self.KRAEnergies = [np.random.rand(len(TSptGroups))
                             for (key, TSptGroups) in self.VclusExp.KRAexpander.clusterSpeciesJumps.items()]
 
-        self.KRASpecConstants = np.random.rand(self.NSpec)
-        self.KRASpecConstants[self.vacSpec] = 0.
+        self.KRASpecConstants, self.KRAEnergies = self.make3bodyKRAEnergies()
 
         self.MakeJITs()
         print("Done setting up FCC data.")
@@ -822,7 +838,6 @@ class Test_KMC(DataClass):
         RtoSiteInd = self.RtoSiteInd
 
         KMC_Jit = self.KMC_Jit
-
         # Now produce a translated state
         # take two random site Indices
         siteA = np.random.randint(0, Nsites)
@@ -1014,7 +1029,7 @@ class Test_KMC(DataClass):
         # Let's get the KRA energies of a state from the code
         jmpFinSiteList = np.array(self.VclusExp.KRAexpander.jList)
         state = self.initState.copy()
-        self.assertEqual(state[self.vacsiteInd], self.NSpec-1)
+        self.assertEqual(state[self.vacsiteInd], self.vacSpec)
         initTSoffsc = MC_JIT.GetTSOffSite(state, self.numSitesTSInteracts,
                                           self.TSInteractSites, self.TSInteractSpecs)
 
@@ -1066,7 +1081,7 @@ class Test_KMC(DataClass):
         self.assertTrue(np.array_equal(vacSiteR, np.zeros(3, dtype=int)))
 
         # Convert all the jump vectors to lattice vectors
-        dxR = [np.dot(np.linalg.inv(self.VclusExp.crys.lattice), dx)
+        dxR = [np.dot(np.linalg.inv(self.VclusExp.crys.lattice), dx).round(decimals=4).astype(int)
         for jList in self.jnetFCC for (i, j), dx in jList]
 
         sitesJump = []
@@ -1082,6 +1097,7 @@ class Test_KMC(DataClass):
             forwardSiteInd = jmpFinSiteList[forwardJumpInd]
 
             # Swap to make the jump
+            assert state[self.vacsiteInd] == self.vacSpec
             stateNew = state.copy()
             stateNew[forwardSiteInd] = state[self.vacsiteInd]
             stateNew[self.vacsiteInd] = state[forwardSiteInd]
