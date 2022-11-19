@@ -13,7 +13,7 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, NSpec, vacSite, maxorder, TScutoff=None, TScombShellRange=None,
+    def __init__(self, sup, clusexp, NSpec, vacSite, vacSpec, maxorder, Nvac=1, TScutoff=None, TScombShellRange=None,
                  TSnnRange=None, jumpnetwork=None, MadeSpecClusts=None, TclusExp=False,
                  zeroClusts=True, OrigVac=False):
         """
@@ -38,8 +38,8 @@ class VectorClusterExpansion(object):
         # vacInd will always be the initial state in the transitions that we consider.
         self.clusexp = clusexp
         self.maxOrder = maxorder
-        self.vacSpec = NSpec - 1
-        self.Nvac = 1
+        self.vacSpec = vacSpec
+        self.Nvac = Nvac
         self.NSpec = NSpec
         self.mobList = list(range(NSpec))
         self.vacSite = vacSite  # This stays fixed throughout the simulation, so makes sense to store it.

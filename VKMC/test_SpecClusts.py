@@ -12,6 +12,7 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
     def setUp(self):
         self.NSpec = 3
         self.Nvac = 1
+        self.vacSpec = 2
         self.MaxOrder = 3
         self.MaxOrderTrans = 3
         a0 = 1
@@ -33,7 +34,7 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         # TScutoff = np.sqrt(3) * a0  # 5th nn cutoff
 
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superBCC, self.clusexp, self.NSpec,
-                                                                 self.vacsite, self.MaxOrder, TScutoff=None,
+                                                                 self.vacsite, self.vacSpec, self.MaxOrder, TScutoff=None,
                                                                  TScombShellRange=None, TSnnRange=None,
                                                                  jumpnetwork=None)
 
