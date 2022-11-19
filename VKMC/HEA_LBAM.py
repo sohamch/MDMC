@@ -207,7 +207,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
     totalW = np.zeros((NVclus, NVclus))
     totalB = np.zeros(NVclus)
     
-    assert np.all(state1List[:, vacsiteInd] == MCJit.Nspecs - 1)
+    assert np.all(state1List[:, vacsiteInd] == MCJit.vacSpec)
 
     state1ListCpy = state1List.copy()
 
@@ -237,7 +237,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
 
         else:
             jList = np.array([jSiteList[jSelectList[samp]]], dtype=int)
-            dxList = np.array([dispSelects[samp, -1, :]], dtype=float) # The last one is the vacancy jump
+            dxList = np.array([dispSelects[samp, MCJit.vacSpec, :]], dtype=float) # The last one is the vacancy jump
             Rate = np.array([ratesSelect[samp]], dtype=float)
             WBar, bBar, rates_used, _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
                                                         TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,

@@ -22,18 +22,16 @@ class Test_HEA_LBAM(unittest.TestCase):
         self.AllSpecs = np.unique(self.state1List[0])
         self.NSpec = self.AllSpecs.shape[0]
         self.vacSpec = self.state1List[0, 0]
+        print(self.vacSpec)
         self.SpecExpand = 5
         print("All Species: {}".format(self.AllSpecs))
         print("Vacancy Species: {}".format(self.vacSpec))
         print("Expanding Species: {}".format(self.SpecExpand))
 
-        self.state1ListNew, self.dispListNew, self.SpecExpandNew = getNewSpecs(self.state1List, self.dispList, self.SpecExpand)
-        print("Generating New cluster expansion with vacancy at {}, {}".format(self.vacsite.ci, self.vacsite.R))
-
         self.ClustCut = 1.01
         self.MaxOrder = 2
 
-        self.VclusExp = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite,
+        self.VclusExp = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=False)
 
         self.MCJit, self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.NVclus = CreateJitCalculator(self.VclusExp, self.NSpec,
@@ -41,24 +39,11 @@ class Test_HEA_LBAM(unittest.TestCase):
                                                                                                 scratch=True,
                                                                                                 save=True)
 
-        self.VclusExp_all = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite,
+        self.VclusExp_all = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=True)
 
         self.MCJit_all, self.numVecsInteracts_all, self.VecsInteracts_all, self.VecGroupInteracts_all,\
         self.NVclus_all = CreateJitCalculator(self.VclusExp_all, self.NSpec, 1073, scratch=True, save=False)
-
-    def test_getNewSpecs(self):
-        if self.vacSpec == 0:
-            self.assertEqual(self.SpecExpandNew, self.NSpec - 1 - self.SpecExpand)
-            for stateInd in tqdm(range(self.state1ListNew.shape[0]), position=0, leave=True, ncols=65):
-                for site in range(self.state1ListNew.shape[1]):
-                    self.assertEqual(self.state1ListNew[stateInd, site], self.NSpec - self.state1List[stateInd, site] - 1)
-
-                for spec in range(self.NSpec):
-                    self.assertTrue(np.array_equal(self.dispListNew[stateInd, spec, :], self.dispList[stateInd, self.NSpec - 1 - spec, :]))
-
-                self.assertTrue(np.array_equal(self.dispListNew[stateInd, self.NSpec - 1, :],
-                                               self.dispList[stateInd, self.vacSpec, :]))
 
     def test_CreateJitCalculator(self):
         # This is to check whether the Jit arrays have been properly stored
@@ -123,16 +108,19 @@ class Test_HEA_LBAM(unittest.TestCase):
             NVclus = np.array(fl["NVclus"])[0]
             self.assertTrue(len(self.VclusExp.vecClus), NVclus)
 
+            vacSpec = np.array(fl["vacSpec"])[0]
+            self.assertEqual(self.vacSpec, vacSpec)
+
             self.assertEqual(np.max(VecGroupInteracts), NVclus - 1)
 
     def test_Expand(self):
         sampInd = 3
-        stateList = self.state1ListNew[sampInd:sampInd + 1]
+        stateList = self.state1List[sampInd:sampInd + 1]
         AllJumpRates = self.AllJumpRates[sampInd:sampInd + 1]
         jumpSelects = self.jumpSelects[sampInd:sampInd + 1]
-        dispList = self.dispListNew[sampInd:sampInd + 1]
+        dispList = self.dispList[sampInd:sampInd + 1]
         rateList = self.rateList[sampInd:sampInd + 1]
-        SpecExpand = self.SpecExpandNew
+        SpecExpand = self.SpecExpand
         NVclus = len(self.VclusExp.vecClus)
         assert NVclus == self.NVclus
 
@@ -299,7 +287,7 @@ class Test_HEA_LBAM(unittest.TestCase):
                 Wbar_comp[l1, l2] = rateList[0] * np.dot(del_lamb[l1], del_lamb[l2])
 
         self.assertTrue(np.allclose(Wbar, Wbar_comp))
-        self.assertTrue(np.allclose(Bbar, Bbar_comp))
+        self.assertTrue(np.allclose(Bbar, Bbar_comp), msg="{} \n {} \n {}".format(SpecExpand, Bbar_comp[:10], Bbar[:10]))
 
         Gbar_comp = spla.pinvh(Wbar_comp, rtol=1e-8)
         eta_bar_comp = Gbar_comp @ Bbar_comp
@@ -322,7 +310,7 @@ class Test_HEA_LBAM(unittest.TestCase):
         self.assertTrue(np.array_equal(off_sc, MC_JIT.GetOffSite(state, self.MCJit.numSitesInteracts, self.MCJit.SupSitesInteracts,
                                    self.MCJit.SpecOnInteractSites)))
 
-        if SpecExpand == self.NSpec-1:
+        if SpecExpand == self.vacSpec:
             print("Testing vacancy")
 
         for jmp in range(self.dxList.shape[0]):
@@ -330,8 +318,8 @@ class Test_HEA_LBAM(unittest.TestCase):
                                                     self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts)
 
             for l1 in range(NVclus):
-                if SpecExpand != self.NSpec-1:
-                    dx = -self.dxList[jmp] if state[self.jList[jmp]] == self.SpecExpandNew else np.zeros(3)
+                if SpecExpand != self.vacSpec:
+                    dx = -self.dxList[jmp] if state[self.jList[jmp]] == self.SpecExpand else np.zeros(3)
                 else:
                     dx = self.dxList[jmp]
                 Bbar_comp[l1] += AllJumpRates[0, jmp] * np.dot(dx * a0, del_lamb[l1])
@@ -351,7 +339,7 @@ class Test_HEA_LBAM(unittest.TestCase):
         test the symmetry of the basis vectors when only interactions that cantain
         the sites whose occupancies change during vacancy jumps are considered.
         """
-        initState = self.state1ListNew[0]
+        initState = self.state1List[0]
 
         for g in tqdm(self.VclusExp.sup.crys.G, ncols=65, position=0, leave=True):
             stateG = np.zeros_like(initState)
@@ -399,7 +387,7 @@ class Test_HEA_LBAM_vac(Test_HEA_LBAM):
         print("Vacancy Species: {}".format(self.vacSpec))
         print("Expanding Species: {}".format(self.SpecExpand))
 
-        self.state1ListNew, self.dispListNew, self.SpecExpandNew = getNewSpecs(self.state1List, self.dispList, self.SpecExpand)
+        
         print("Generating New cluster expansion with vacancy at {}, {}".format(self.vacsite.ci, self.vacsite.R))
 
         self.ClustCut = 1.01
