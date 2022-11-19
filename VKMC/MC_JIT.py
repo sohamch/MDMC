@@ -108,13 +108,14 @@ class MCSamplerClass(object):
             jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, \
             JumpInteracts, Jump2KRAEng
 
+        self.vacSpec = vacSpec
         self.KRASpecConstants = KRASpecConstants  # a constant to be added to KRA energies depending on which species jumps
         # This can be kept to just zero if not required
-        assert KRASpecConstants.shape[0] == numInteractsSiteSpec.shape[1] - 1
+        assert KRASpecConstants.shape[0] == numInteractsSiteSpec.shape[1]
+        assert KRASpecConstants[self.vacSpec] == 0.
 
         # check if proper sites and species data are entered
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
-        self.vacSpec = vacSpec
 
     def DoSwapUpdate(self, state, siteA, siteB, lenVecClus, OffSiteCount,
                      numVecsInteracts, VecGroupInteracts, VecsInteracts):
@@ -385,7 +386,7 @@ KMC_additional_spec = [
 class KMC_JIT(object):
     # TODO: Implement periodic boundary conditions for non-diag primitive supercells
 
-    def __init__(self, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,numInteractsSiteSpec, SiteSpecInterArray,
+    def __init__(self, vacSpec, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,numInteractsSiteSpec, SiteSpecInterArray,
                  numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
                  FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, KRASpecConstants,
                  siteIndtoR, RtoSiteInd, N_unit):
@@ -408,8 +409,10 @@ class KMC_JIT(object):
         self.siteIndtoR = siteIndtoR
 
         self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
+        self.vacSpec = vacSpec
 
-        assert KRASpecConstants.shape[0] == numInteractsSiteSpec.shape[1] - 1
+        assert KRASpecConstants.shape[0] == numInteractsSiteSpec.shape[1]
+        assert KRASpecConstants[vacSpec] == 0.
 
         self.N_unit = N_unit
 
@@ -595,7 +598,7 @@ class KMC_JIT(object):
             jmpSelectArray[step] = jmpSelect
             vacIndNext = jumpFinSiteListTrans[jmpSelect]
 
-            X[NSpec - 1, :] += dxList[jmpSelect]
+            X[self.vacSpec, :] += dxList[jmpSelect]
             specB = state[vacIndNext]
             X[specB, :] -= dxList[jmpSelect]
 

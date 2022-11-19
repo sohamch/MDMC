@@ -102,7 +102,7 @@ class Test_Make_Arrays(unittest.TestCase):
         self.Nsites = Nsites
         self.N_units = N_units
 
-        self.KMC_Jit = MC_JIT.KMC_JIT(numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,
+        self.KMC_Jit = MC_JIT.KMC_JIT(self.vacSpec, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,
                                       numInteractsSiteSpec, SiteSpecInterArray, numSitesTSInteracts, TSInteractSites,
                                       TSInteractSpecs, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd,
                                       numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, self.KRASpecConstants,
