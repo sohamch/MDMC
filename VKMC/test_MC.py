@@ -42,9 +42,9 @@ class Test_Make_Arrays(unittest.TestCase):
         TScombShellRange = 1  # upto 1nn combined shell
         TSnnRange = 4
         TScutoff = np.sqrt(3) * a0  # 5th nn cutoff
-
+        self.vacSpec = 0
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(
-            self.superBCC, self.clusexp, self.NSpec, self.vacsite, self.MaxOrder,
+            self.superBCC, self.clusexp, self.NSpec, self.vacsite, self.vacSpec, self.MaxOrder,
                 TScutoff=TScutoff, TScombShellRange=TScombShellRange,
                 TSnnRange=TSnnRange, jumpnetwork=self.jnetBCC, TclusExp=True
         )
@@ -118,7 +118,7 @@ class Test_Make_Arrays(unittest.TestCase):
         self.initState = initState
 
         self.MCSampler_Jit = MC_JIT.MCSamplerClass(
-            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numInteractsSiteSpec, SiteSpecInterArray,
+            self.vacSpec, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numInteractsSiteSpec, SiteSpecInterArray,
             numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
             FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng, self.KRASpecConstants
         )
@@ -161,10 +161,13 @@ class Test_Make_Arrays_FCC(Test_Make_Arrays):
         TScombShellRange = 1  # upto 1nn combined shell
         TSnnRange = 4
         TScutoff = np.sqrt(2) * a0  # 4th nn cutoff
-
+        self.vacSpec = 0
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superFCC, self.clusexp, self.NSpec, self.vacsite,
-                                                                 self.MaxOrder, TScutoff, TScombShellRange, TSnnRange,
-                                                                 self.jnetFCC, TclusExp=True)
+                                                                 self.vacSpec, self.MaxOrder,
+                                                                 TScutoff=TScutoff, TScombShellRange=TScombShellRange,
+                                                                 TSnnRange=TSnnRange, jumpnetwork=self.jnetFCC,
+                                                                 TclusExp=True,
+                                                                 )
 
         self.TScombShellRange = TScombShellRange
         self.TSnnRange = TSnnRange
