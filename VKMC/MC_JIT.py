@@ -206,17 +206,16 @@ class MCSamplerClass(object):
         SpecLocations = np.full((N_Specs.shape[0], MaxCount), -1, dtype=int64)
         for siteInd in range(Nsites):
             if siteInd == vacSiteInd:  # If vacancy, do nothing
-                assert state[vacSiteInd] == self.vacSpec
-                continue
+                assert state[siteInd] == self.vacSpec
+            else:
+                assert state[siteInd] != self.vacSpec
             spec = state[siteInd]
-            assert spec != self.vacSpec
             specMemIdx = specMemberCounts[spec]
             SpecLocations[spec, specMemIdx] = siteInd
             specMemIdx += 1
             specMemberCounts[spec] = specMemIdx
 
-        count = 0  # to keep a steady count of accepted moves
-
+        count = 0  # to keep a count of accepted moves
 
         NonVacLabels = np.zeros(N_Specs.shape[0] - 1, dtype=int64)
         for spInd in range(N_Specs.shape[0]):
@@ -244,8 +243,8 @@ class MCSamplerClass(object):
             specA = state[siteA]
             specB = state[siteB]
 
-            assert -1 < siteA < Nsites
-            assert -1 < siteB < Nsites
+            assert -1 < siteA < Nsites and siteA != vacSiteInd
+            assert -1 < siteB < Nsites and siteB != vacSiteInd
             assert specA == spASelect
             assert specB == spBSelect
             assert specA != specB
