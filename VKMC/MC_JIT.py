@@ -456,7 +456,7 @@ class KMC_JIT(object):
     def getEnergyChangeJumps(self, state, OffSiteCount, siteA, jmpFinSiteListTrans):
 
         delEArray = np.zeros(jmpFinSiteListTrans.shape[0], dtype=float64)
-
+        assert state[siteA] == self.vacSpec
         for jmpInd in range(jmpFinSiteListTrans.shape[0]):
             siteB = jmpFinSiteListTrans[jmpInd]
             delE = 0.0
@@ -542,6 +542,7 @@ class KMC_JIT(object):
 
         jumpFinSiteListTrans = np.zeros_like(jumpFinSiteList, dtype=int64)
         vacIndNow = vacSiteFix
+        assert state[vacIndNow] == self.vacSpec
 
         # track displacements of individual atoms
         Nsites = state.shape[0]
