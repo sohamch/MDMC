@@ -428,6 +428,7 @@ class KMC_JIT(object):
 
     def getJumpVibfreq(self, state, SpecVibFreq, jmpFinSiteListTrans):
         freqs = np.zeros(jmpFinSiteListTrans.shape)
+        assert SpecVibFreq[self.vacSpec] == 0.
         for jmpInd in range(jmpFinSiteListTrans.shape[0]):
             siteB = jmpFinSiteListTrans[jmpInd]
             specB = state[siteB]
@@ -440,6 +441,7 @@ class KMC_JIT(object):
         for jumpInd in range(ijList.shape[0]):
             # Get the transition index
             siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
+            assert specB != self.vacSpec
             delE = self.KRASpecConstants[specB]
             transInd = self.FinSiteFinSpecJumpInd[siteB, specB]
             # We need to go through every point group for this jump
