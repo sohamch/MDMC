@@ -268,7 +268,8 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
 
     np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
     np.save(RunPath + "etabar_{}.npy".format(T), etaBar)
-
+    
+    # save eigvals
     vals, _ = np.linalg.eigh(totalW)
     np.save("W_eigs_{}.npy".format(T), vals)
 
