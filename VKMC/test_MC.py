@@ -16,15 +16,15 @@ warnings.filterwarnings('error', category=RuntimeWarning)
 np.seterr(all='raise')
 
 __FCC__ = True
-
+mo=2
+vsp = 0
 class Test_Make_Arrays(unittest.TestCase):
 
     def setUp(self):
         self.NSpec = 3
         self.KRACounterSpec = 1
         self.Nvac = 1
-        self.MaxOrder = 3
-        self.MaxOrderTrans = 3
+        self.MaxOrder = mo
         a0 = 1
         self.a0 = a0
         self.crys = crystal.Crystal.BCC(a0, chemistry="A")
@@ -42,7 +42,7 @@ class Test_Make_Arrays(unittest.TestCase):
         TScombShellRange = 1  # upto 1nn combined shell
         TSnnRange = 4
         TScutoff = np.sqrt(3) * a0  # 5th nn cutoff
-        self.vacSpec = 0
+        self.vacSpec = vsp
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(
             self.superBCC, self.clusexp, self.NSpec, self.vacsite, self.vacSpec, self.MaxOrder,
                 TScutoff=TScutoff, TScombShellRange=TScombShellRange,
@@ -130,8 +130,7 @@ class Test_Make_Arrays_FCC(Test_Make_Arrays):
     def setUp(self):
         self.KRACounterSpec = 1
         self.Nvac = 1
-        self.MaxOrder = 3
-        self.MaxOrderTrans = 3
+        self.MaxOrder = mo
         a0 = 1.0
         self.a0 = a0
         self.crys = crystal.Crystal.FCC(a0, chemistry="A")
@@ -149,7 +148,7 @@ class Test_Make_Arrays_FCC(Test_Make_Arrays):
         TSnnRange = 4
         TScutoff = np.sqrt(2) * a0  # 4th nn cutoff
         self.NSpec = 3
-        self.vacSpec = 0
+        self.vacSpec = vsp
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superFCC, self.clusexp, self.NSpec, self.vacsite,
                                                                  self.vacSpec, self.MaxOrder,
                                                                  TScutoff=TScutoff, TScombShellRange=TScombShellRange,
@@ -619,7 +618,7 @@ class Test_MC(DataClass):
         # Now, do the expansion
         offscjit = MC_JIT.GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
         state = initState.copy()
-        spec = 1 # 2
+        spec = 1
         beta = 1.0
         Wbar, Bbar, rates_used, delEJumps, delEKRAJumps =\
             MCSampler_Jit.Expand(state, ijList, dxList, spec, offscjit, TransOffSiteCount,
@@ -807,7 +806,8 @@ class Test_MC(DataClass):
                                        msg="\n{} {}".format(Wbar[vs1, vs2], Wbar_test[vs1, vs2]))
 
         self.assertTrue(np.allclose(Bbar, Bbar_test))
-
+        print("Bbar max, min: {:.4f} {:.4f}".format(np.max(Bbar), np.min(Bbar)))
+        print("Wbar max, min: {:.4f} {:.4f}".format(np.max(Wbar), np.min(Wbar)))
 
 class Test_KMC(DataClass):
 
@@ -931,7 +931,7 @@ class Test_KMC(DataClass):
         temp = state[siteSwap]
         state[siteSwap] = state[self.vacsiteInd]
         state[self.vacsiteInd] = temp
-        self.assertEqual(state[siteSwap], self.NSpec-1)
+        self.assertEqual(state[siteSwap], self.vacSpec)
         statecpy = state.copy()
 
         OffSiteCount = MC_JIT.GetOffSite(state, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
