@@ -41,6 +41,9 @@ class VectorClusterExpansion(object):
         self.vacSpec = vacSpec
         self.Nvac = Nvac
         self.NSpec = NSpec
+        if self.vacSpec >= self.NSpec:
+            raise ValueError("Vacancy label must be less than the number of species.")
+
         self.mobList = list(range(NSpec))
         self.vacSite = vacSite  # This stays fixed throughout the simulation, so makes sense to store it.
         self.zeroClusts = zeroClusts
