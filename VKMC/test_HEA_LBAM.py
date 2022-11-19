@@ -380,6 +380,7 @@ class Test_HEA_LBAM(unittest.TestCase):
             lamb1G = np.dot(g.cartrot, lamb1.T).T
             self.assertTrue(np.allclose(lamb1G, lamb2))
 
+
 class Test_HEA_LBAM_vac(Test_HEA_LBAM):
 
     def setUp(self):
