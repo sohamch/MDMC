@@ -194,7 +194,7 @@ def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
 
 def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
            jSelectList, dispSelects, ratesSelect, SpecExpand, MCJit, NVclus,
-           numVecsInteracts, VecsInteracts, VecGroupInteracts, aj=True):
+           numVecsInteracts, VecsInteracts, VecGroupInteracts, aj):
 
 
     # Get a dummy TS offsite counts
@@ -402,9 +402,9 @@ if __name__ == "__main__":
                         help="Path to crystal Data.")
     parser.add_argument("-ct", "--CrysType", metavar="FCC/BCC", default=None, type=str,
                         help="Type of crystal.")
-    parser.add_argument("-mo", "--MaxOrder", metavar="eg. 3", type=int, default=2,
+    parser.add_argument("-mo", "--MaxOrder", metavar="eg. 3", type=int, default=None,
                         help="Maximum sites to consider in a cluster.")
-    parser.add_argument("-cc", "--ClustCut", metavar="eg. 2.0", type=float, default=5.0,
+    parser.add_argument("-cc", "--ClustCut", metavar="eg. 2.0", type=float, default=None,
                         help="Maximum distance between sites to consider in a cluster.")
     parser.add_argument("-sp", "--SpecExpand", metavar="eg. 0", type=int, default=5,
                         help="Which species to expand.")
