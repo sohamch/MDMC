@@ -12,7 +12,7 @@ class KRA3bodyInteractions():
     to be taken from a jumpnetwork in mono-atomic lattices, according to the specification in
     'doi.org/10.1016/j.msea.2018.11.064'.
     """
-    def __init__(self, sup, jnet, chem, combinedShellRange, nnRange, cutoff, NSpec, Nvac, vacSite):
+    def __init__(self, sup, jnet, chem, combinedShellRange, nnRange, cutoff, NSpec, Nvac, vacSite, vacSpec):
         """
         :param sup: the supercell object based on which sites will be given indices
         :param jnet: the jumpnetwork from transition sites are taken
@@ -28,7 +28,7 @@ class KRA3bodyInteractions():
         self.cutoff = cutoff
         self.crys = sup.crys
         self.NSpec = NSpec
-        self.vacSpec = NSpec - 1
+        self.vacSpec = vacSpec
         self.Nvac = Nvac
         self.Nsites = len(self.sup.mobilepos)
         self.vacSite = vacSite
@@ -146,7 +146,9 @@ class KRA3bodyInteractions():
             indA = self.sup.index(siteA.R, siteA.ci)[0]
             indB = self.sup.index(siteB.R, siteB.ci)[0]
             assert indB in self.jList
-            for specJ in range(Nmobile - 1):
+            for specJ in range(self.NSpec):
+                if specJ == self.vacSpec:
+                    continue
                 ABspecJ = (indA, indB, specJ)
                 clusterJumpsSpecies[ABspecJ] = clusterSymLists
             # use itertools.product like in normal cluster expansion.

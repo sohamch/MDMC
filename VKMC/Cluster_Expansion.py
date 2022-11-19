@@ -67,7 +67,7 @@ class VectorClusterExpansion(object):
         start = time.time()
         if TclusExp:
             self.KRAexpander = KRA3bodyInteractions(sup, jumpnetwork, self.chem, TScombShellRange, TSnnRange, TScutoff,
-                                                    NSpec, self.Nvac, vacSite)
+                                                    NSpec, self.Nvac, vacSite, self.vacSpec)
         print("Built KRA expander : {:.4f}".format(time.time() - start))
 
         start = time.time()

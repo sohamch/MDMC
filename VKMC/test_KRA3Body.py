@@ -26,8 +26,9 @@ class testKRA3bodyFCC(unittest.TestCase):
         TScombShellRange = 1 # upto 1nn combined shell
         TSnnRange = 4
         TScutoff = np.sqrt(2)*a0 # 4th nn cutoff
+        self.vacSpec = 0
         self.KRAexpander = KRA3bodyInteractions(self.superFCC, self.jnetFCC, self.chem, TScombShellRange, TSnnRange, TScutoff,
-                                                self.NSpec, self.Nvac, self.vacsite)
+                                                self.NSpec, self.Nvac, self.vacsite, self.vacSpec)
 
         self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
         for site in range(1, numSites):
@@ -94,8 +95,9 @@ class testKRA3bodyFCC(unittest.TestCase):
 
         self.assertEqual(len(specs), 12)
         specs.default_factory = None
+        spList = [i for i in range(self.NSpec) if i != self.vacSpec]
         for key, item in specs.items():
-            self.assertEqual(sorted(item), [0, 1], msg="{}".format(item))
+            self.assertEqual(sorted(item), spList, msg="{}".format(item))
 
     def test_Jit_data(self):
         for Ind, jump in self.KRAexpander.Index2Jump.items():
@@ -166,7 +168,7 @@ class testKRA3bodyFCC(unittest.TestCase):
                     self.assertEqual(TSInteractSites[interMainInd][1], FinSite)
                     self.assertEqual(TSInteractSites[interMainInd][2], site3Ind)
 
-                    self.assertEqual(TSInteractSpecs[interMainInd][0], self.NSpec - 1)
+                    self.assertEqual(TSInteractSpecs[interMainInd][0], self.vacSpec)
                     self.assertEqual(TSInteractSpecs[interMainInd][1], jumpkey[2])
                     self.assertEqual(TSInteractSpecs[interMainInd][2], CounterSpec)
 
