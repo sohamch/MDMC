@@ -53,12 +53,7 @@ def Load_Data(DataPath):
         state2List = np.array(fl["FinStates"])[perm]
         dispList = np.array(fl["SpecDisps"])[perm]
         rateList = np.array(fl["rates"])[perm]
-        
-        try:
-            AllJumpRates_st1 = np.array(fl["AllJumpRates_Init"])[perm]
-        except:
-            AllJumpRates_st1 = np.array(fl["AllJumpRates"])[perm]
-        
+        AllJumpRates_st1 = np.array(fl["AllJumpRates_Init"])[perm]
         try: 
             AllJumpRates_st2 = np.array(fl["AllJumpRates_Fin"])[perm]
         except:
