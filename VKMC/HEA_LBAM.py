@@ -50,19 +50,8 @@ def Load_Data(DataPath):
         state1List = np.array(fl["InitStates"])[perm]
         dispList = np.array(fl["SpecDisps"])[perm]
         rateList = np.array(fl["rates"])[perm]
-
-        try:
-            AllJumpRates = np.array(fl["AllJumpRates_Init"])[perm]
-        except:
-            raise ValueError("All Jump Rates not provided in data set.")
-
-        try:
-            jumpSelects = np.array(fl["JumpSelects"])[perm].astype(np.int8)
-        except:
-            jumpSelects = np.array(fl["JumpSelection"])[perm].astype(np.int8)
-
-        if len(jumpSelects.shape) == 2:
-            jumpSelects = jumpSelects[:, 0]
+        AllJumpRates = np.array(fl["AllJumpRates_Init"])[perm]
+        jumpSelects = np.array(fl["JumpSelects"])[perm].astype(np.int8)
 
     return state1List, dispList, rateList, AllJumpRates, jumpSelects
 
