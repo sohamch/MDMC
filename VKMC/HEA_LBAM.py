@@ -200,7 +200,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
 
     state1ListCpy = state1List.copy()
 
-    print("Calculating rate and velocity expansions")
+    print("Calculating rate and velocity (species {0}) expansions with first {1} samples".format(SpecExpand, Nsamples))
     offscTime = 0.
     expandTime = 0.
     for samp in tqdm(range(Nsamples), position=0, leave=True):
@@ -273,6 +273,7 @@ def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
     L = 0.
     assert vacsiteInd == 0
     Lsamp = np.zeros(end - start)
+    print("Computing Species {0} transport coefficients for samples {1} to {2}".format(SpecExpand, start, end))
     for samp in tqdm(range(start, end), position=0, leave=True):
         state = state1List[samp]
     
