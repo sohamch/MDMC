@@ -89,7 +89,7 @@ def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite, vac
 
     return VclusExp
 
-def CreateJitCalculator(VclusExp, NSpec, T, scratch=True, save=True):
+def CreateJitCalculator(VclusExp, NSpec, scratch=True, save=True):
     if scratch:
         # First, we have to generate all the arrays
         # Lattice gas Like -  set all energies to zero
@@ -335,7 +335,6 @@ def main(args):
 
     # Make MCJIT
     MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus = CreateJitCalculator(VclusExp, NSpec,
-                                                                                            args.Temp,
                                                                                             scratch=args.Scratch,
                                                                                             save=saveJit)
     if args.Scratch and saveJit and args.ArrayOnly:
