@@ -306,7 +306,7 @@ def sort_jp(jProbs_st1, jProbs_st2, jumpSort):
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps,
           jProbs_st1, jProbs_st2, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
           gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False, jumpSort=True,
-          AddOnSites=False, scaleL0=False, chkpt=True):
+          AddOnSites=False, scaleL0=False, chkpt=True, decay=0.0005):
     
     print("Training conditions:")
     print("scratch: {}, DPr: {}, Boundary_train: {}, jumpSort: {}, AddOnSites: {}, scaleL0: {}".format(scratch_if_no_init, DPr, Boundary_train, jumpSort, AddOnSites, scaleL0))
@@ -355,7 +355,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     print("Batch size : {}".format(N_batch))
 
     gNet.to(device)
-    opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=0.0005)
+    opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=decay)
     print("Starting Training loop")
 
     y1BatchTest = np.zeros((N_batch, 3))
@@ -743,7 +743,7 @@ def main(args):
               args.Start_epoch, args.End_epoch, args.Interval, N_train_jumps, gNet,
               lRate=args.Learning_rate, scratch_if_no_init=args.Scratch, batch_size=args.Batch_size,
               DPr=args.DatPar, Boundary_train=args.BoundTrain, jumpSort=args.JumpSort, AddOnSites=args.AddOnSitesJPINN,
-              scaleL0=args.ScaleL0)
+              scaleL0=args.ScaleL0, decay=args.Decay)
 
     elif args.Mode == "eval":
         State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = \
@@ -927,6 +927,7 @@ if __name__ == "__main__":
     parser.add_argument("-nt", "--N_train", type=int, default=10000, help="No. of training samples.")
     parser.add_argument("-i", "--Interval", type=int, default=1, help="Epoch intervals in which to save or load networks.")
     parser.add_argument("-lr", "--Learning_rate", type=float, default=0.001, help="Learning rate for Adam algorithm.")
+    parser.add_argument("-dcy", "--Decay", type=float, default=0.0005, help="Weight decay (L2 penalty for the weights).")
     parser.add_argument("-bs", "--Batch_size", type=int, default=128, help="size of a single batch of samples.")
     parser.add_argument("-wm", "--Mean_wt", type=float, default=0.02, help="Initialization mean value of weights.")
     parser.add_argument("-ws", "--Std_wt", type=float, default=0.2, help="Initialization standard dev of weights.")
