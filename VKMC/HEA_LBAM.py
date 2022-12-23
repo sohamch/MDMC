@@ -322,11 +322,13 @@ def main(args):
     # Let's find which jump was selected
     a0 = np.linalg.norm(dispList[0, args.VacSpec]) / np.linalg.norm(dxList[0])
     jumpSelects = np.zeros(state1List.shape[0], dtype=np.int8)
-    for stateInd in range(state1List.shape[0]):
+    print("Indexing jumps.", flush=True)
+    print("Computed lattice parameter: {}.".format(a0), flush=True)
+    for stateInd in tqdm(range(state1List.shape[0]), position=0, leave=True):
         dxVac = dispList[stateInd, args.VacSpec, :]
         count = 0
         jmpInd = None
-        for jInd in dxList.shape[0]:
+        for jInd in range(dxList.shape[0]):
             if np.allclose(dxList[jInd] * a0, dxVac):
                 count += 1
                 jmpInd = jInd
