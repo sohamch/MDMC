@@ -115,7 +115,7 @@ class TestGConv(unittest.TestCase):
     def test_Symmetry(self):
         # here, we'll check the full symmetry of the network with the batch of symmetry-related states
         gNet = GCNet(self.GnnPerms.long(), self.NNsites, self.JumpVecs, N_ngb=self.N_ngb, NSpec=self.NspCh,
-                     mean=0.02, std=0.2, nl=2, nch=8, nchLast=5).double()
+                     mean=0, std=0.1, nl=2, nch=8, nchLast=5).double()
         out = pt.clone(self.StateTensors)
         with pt.no_grad():
             for l in range(0, len(gNet.net), 3):
