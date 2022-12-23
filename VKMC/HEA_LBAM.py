@@ -265,7 +265,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
 
 
 # Get the Transport coefficients
-def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
+def Calculate_L(state1List, SpecExpand, VacSpec, rateList, dispList, jumpSelects,
         jList, dxList, vacsiteInd, NVclus, MCJit, etaBar, start, end,
         numVecsInteracts, VecGroupInteracts, VecsInteracts):
 
@@ -286,10 +286,17 @@ def Calculate_L(state1List, SpecExpand, rateList, dispList, jumpSelects,
                                     numVecsInteracts, VecGroupInteracts, VecsInteracts)
     
         disp_sp = dispList[samp, SpecExpand, :]
-        if state[jSite] == SpecExpand:
-            assert np.allclose(disp_sp, -dxList[jSelect]), "{}\n {}\n {}\n".format(dxList, jSelect, disp_sp)
+
+        # Check displacements
+        if SpecExpand != VacSpec:
+            if state[jSite] == SpecExpand:
+                assert np.allclose(disp_sp, -dxList[jSelect]), "{}\n {}\n {}\n".format(dxList, jSelect, disp_sp)
+            else:
+                assert np.allclose(disp_sp, 0.)
+
         else:
-            assert np.allclose(disp_sp, 0.)
+            assert np.allclose(disp_sp, dxList[jSelect])
+
     
         # Get the change in y
         del_y = del_lamb.T @ etaBar
@@ -373,13 +380,13 @@ def main(args):
 
     # Calculate transport coefficients
     print("Computing Transport coefficients")
-    L_train, L_train_samples = Calculate_L(state1List, SpecExpand, rateList,
+    L_train, L_train_samples = Calculate_L(state1List, SpecExpand, args.VacSpec, rateList,
             dispList, jumpSelects, jList, dxList*a0,
             vacsiteInd, NVclus, MCJit, 
             etaBar, 0, args.NTrain,
             numVecsInteracts, VecGroupInteracts, VecsInteracts)
 
-    L_val, L_val_samples = Calculate_L(state1List, SpecExpand, rateList,
+    L_val, L_val_samples = Calculate_L(state1List, SpecExpand, args.VacSpec, rateList,
             dispList, jumpSelects, jList, dxList*a0,
             vacsiteInd, NVclus, MCJit, 
             etaBar, args.NTrain, state1List.shape[0],
