@@ -194,3 +194,58 @@ class Test_latGasKMC(unittest.TestCase):
         self.assertEqual(state[RtoSiteInd[dxRunR[0], dxRunR[1], dxRunR[2]]], self.NSpec-1)
 
         print("finished testing steps")
+
+    def test_Traj_Av(self):
+
+        state1 = self.initState.copy()
+        state2 = self.initState.copy()
+        state2[1:] = np.random.permutation(state2[1:])
+
+        RtoSiteInd, siteIndtoR = self.RtoSiteInd.copy(), self.siteIndtoR.copy()
+
+        N_unit = self.N_units
+
+        SpecRates = np.array(range(1, self.NSpec))
+
+        ijList, dxList = self.ijList.copy(), self.dxList.copy()
+
+        vacSiteInit = self.vacsiteInd
+        self.assertEqual(vacSiteInit, 0)
+
+        Nsteps = 50
+
+        X_steps_1 = np.zeros((Nsteps, self.NSpec, 3))
+        t_steps_1 = np.zeros(Nsteps)
+        X_steps_2 = np.zeros((Nsteps, self.NSpec, 3))
+        t_steps_2 = np.zeros(Nsteps)
+        diff = np.zeros((self.NSpec, Nsteps))
+
+        X_steps, t_steps, jmpSelectSteps, randSteps, jmpFinSiteList = \
+            LatGas.LatGasKMCTraj(state1, SpecRates, Nsteps, ijList, dxList,
+                                 vacSiteInit, N_unit, siteIndtoR, RtoSiteInd)
+
+        X_steps_1[:] = X_steps[:]
+        t_steps_1[:] = t_steps[:]
+        LatGas.TrajAv(X_steps, t_steps, diff)
+
+        X_steps, t_steps, jmpSelectSteps, randSteps, jmpFinSiteList = \
+            LatGas.LatGasKMCTraj(state2, SpecRates, Nsteps, ijList, dxList,
+                                 vacSiteInit, N_unit, siteIndtoR, RtoSiteInd)
+
+        X_steps_2[:] = X_steps[:]
+        t_steps_2[:] = t_steps[:]
+        LatGas.TrajAv(X_steps, t_steps, diff)
+
+        for spec in range(self.NSpec):
+            for step in range(Nsteps):
+                Traj1R = X_steps_1[step, spec]
+                Traj1T = t_steps_1[step]
+
+                Traj1R2by6t = np.dot(Traj1R, Traj1R) / (6*Traj1T)
+
+                Traj2R = X_steps_2[step, spec]
+                Traj2T = t_steps_2[step]
+
+                Traj2R2by6t = np.dot(Traj2R, Traj2R) / (6 * Traj2T)
+
+                self.assertAlmostEqual(diff[spec, step], Traj2R2by6t + Traj1R2by6t, msg="{} {} {}".format(diff[spec, step], Traj2R2by6t, Traj1R2by6t))
