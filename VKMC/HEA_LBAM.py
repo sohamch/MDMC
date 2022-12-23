@@ -51,9 +51,8 @@ def Load_Data(DataPath):
         dispList = np.array(fl["SpecDisps"])[perm]
         rateList = np.array(fl["rates"])[perm]
         AllJumpRates = np.array(fl["AllJumpRates_Init"])[perm]
-        jumpSelects = np.array(fl["JumpSelects"])[perm].astype(np.int8)
 
-    return state1List, dispList, rateList, AllJumpRates, jumpSelects
+    return state1List, dispList, rateList, AllJumpRates
 
 
 def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite, vacSpec, AllInteracts=False):
@@ -309,7 +308,7 @@ def main(args):
 
     # Load Data
     specExpOriginal = args.SpecExpand
-    state1List, dispList, rateList, AllJumpRates, jumpSelects = Load_Data(args.DataPath)
+    state1List, dispList, rateList, AllJumpRates = Load_Data(args.DataPath)
 
     AllSpecs = np.unique(state1List[0])
     NSpec = AllSpecs.shape[0]
@@ -319,6 +318,21 @@ def main(args):
     # Load Crystal Data
     jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd = Load_crys_Data(args.CrysDatPath,
                                                                                          typ=args.CrysType)
+    
+    # Let's find which jump was selected
+    a0 = np.linalg.norm(dispList[0, args.VacSpec]) / np.linalg.norm(dxList[0])
+    jumpSelects = np.zeros(state1List.shape[0], dtype=np.int8)
+    for stateInd in range(state1List.shape[0]):
+        dxVac = dispList[stateInd, args.VacSpec, :]
+        count = 0
+        jmpInd = None
+        for jInd in dxList.shape[0]:
+            if np.allclose(dxList[jInd] * a0, dxVac):
+                count += 1
+                jmpInd = jInd
+        assert count == 1
+        assert np.allclose(dxList[jmpInd] * a0, dxVac)
+        jumpSelects[stateInd] = jmpInd
 
     saveJit = args.SaveJitArrays
     if args.Scratch:
