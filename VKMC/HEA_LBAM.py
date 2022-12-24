@@ -37,7 +37,7 @@ def Load_crys_Data(CrysDatPath):
     crys = crystal.Crystal(lattice=lattice, basis=[[np.array([0., 0., 0.])]], chemistry=["A"])
     superCell = supercell.ClusterSupercell(crys, superlatt)
 
-    jnet = [[((0, 0), dx) for dx in dxList.shape[0]]]
+    jnet = [[((0, 0), dxList[jInd]) for jInd in range(dxList.shape[0])]]
 
     vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
     vacsiteInd = superCell.index(np.zeros(3, dtype=int), (0, 0))[0]
