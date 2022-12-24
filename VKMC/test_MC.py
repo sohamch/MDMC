@@ -199,11 +199,19 @@ if __FCC__:
 
 class Test_MC(DataClass):
 
-    def test_symm(self):
+    def test_getLambda_symmetry(self):
         """
         test the symmetry of the basis vectors
         """
         initState = self.initState
+        NVclus = len(self.VclusExp.vecClus)
+        print(NVclus)
+
+        offsc1 = MC_JIT.GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
+        lamb1 = self.MCSampler_Jit.getLambda(offsc1, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
+                                             self.VecsInteracts)
+
+         # check lamda_1 by computing explicitly
 
         for g in tqdm(self.VclusExp.sup.crys.G, ncols=65, position=0, leave=True):
             stateG = np.zeros_like(initState)
@@ -217,14 +225,8 @@ class Test_MC(DataClass):
                 stateG[siteIndNew] = initState[site]
 
             # Now get their off site counts and basis vectors
-            offsc1 = MC_JIT.GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
             offsc2 = MC_JIT.GetOffSite(stateG, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
 
-            # Now get their basis vectors
-            NVclus = len(self.VclusExp.vecClus)
-            print(NVclus)
-            lamb1 = self.MCSampler_Jit.getLambda(offsc1, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
-                                                 self.VecsInteracts)
             lamb2 = self.MCSampler_Jit.getLambda(offsc2, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
                                                  self.VecsInteracts)
 
