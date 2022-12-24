@@ -22,10 +22,10 @@ import gc
 import time
 
 # Load all the crystal data
-def Load_crys_Data(CrysDatPath, typ="FCC"):
-    print("Loading {} Crystal data".format(typ))
+def Load_crys_Data(CrysDatPath):
+    print("Loading Crystal data at {}".format(CrysDatPath))
 
-    with h5py.File("CrysDat_{}/CrystData.h5".format(typ), "r") as fl:
+    with h5py.File(CrysDatPath + "CrystData.h5", "r") as fl:
         lattice = np.array(fl["Lattice_basis_vectors"])
         superlatt = np.array(fl["SuperLatt"])
         dxList = np.array(fl["dxList_1nn"])
@@ -328,8 +328,7 @@ def main(args):
     SpecExpand = args.SpecExpand
 
     # Load Crystal Data
-    jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd = Load_crys_Data(args.CrysDatPath,
-                                                                                         typ=args.CrysType)
+    jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd = Load_crys_Data(args.CrysDatPath)
     
     # Let's find which jump was selected
     a0 = np.linalg.norm(dispList[0, args.VacSpec]) / np.linalg.norm(dxList[0])
