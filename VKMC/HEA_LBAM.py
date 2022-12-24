@@ -34,7 +34,7 @@ def Load_crys_Data(CrysDatPath):
 
     jList = NNList[1:, 0]
 
-    crys = crystal.Crystal(lattice=lattice, basis=[[np.array([0., 0., 0.])]], chemistry="A")
+    crys = crystal.Crystal(lattice=lattice, basis=[[np.array([0., 0., 0.])]], chemistry=["A"])
     superCell = supercell.ClusterSupercell(crys, superlatt)
 
     jnet = [[((0, 0), dx) for dx in dxList.shape[0]]]
