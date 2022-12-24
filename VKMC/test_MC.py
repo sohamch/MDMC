@@ -211,6 +211,7 @@ class Test_MC(DataClass):
         lamb1 = self.MCSampler_Jit.getLambda(offsc1, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
                                              self.VecsInteracts)
 
+        print("max, min: ", np.max(lamb1), np.min(lamb1))
          # check lamda_1 by computing explicitly
 
         for g in tqdm(self.VclusExp.sup.crys.G, ncols=65, position=0, leave=True):
@@ -233,6 +234,38 @@ class Test_MC(DataClass):
             # Rotate lamb1 by the group operation
             lamb1G = np.dot(g.cartrot, lamb1.T).T
             self.assertTrue(np.allclose(lamb1G, lamb2))
+
+    def test_getDelLamb(self):
+        initState = self.initState
+        NVclus = len(self.VclusExp.vecClus)
+        print(NVclus)
+
+        offsc1 = MC_JIT.GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
+        lamb1 = self.MCSampler_Jit.getLambda(offsc1, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
+                                             self.VecsInteracts)
+
+        siteA = np.random.randint(0, initState.shape[0])
+        siteB = np.random.randint(0, initState.shape[0])
+        while initState[siteA] == initState[siteB]:
+            siteB = np.random.randint(0, initState.shape[0])
+
+        # swap and update
+        state2 = initState.copy()
+        temp = state2[siteA]
+        state2[siteB] = state2[siteA]
+        state2[siteB] = temp
+
+        offsc2 = MC_JIT.GetOffSite(state2, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
+        lamb2 = self.MCSampler_Jit.getLambda(offsc2, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
+                                             self.VecsInteracts)
+
+        del_lamb = lamb2 - lamb1
+
+        del_lamb_calc = self.MCSampler_Jit.getDelLamb(initState, offsc1, siteA, siteB, NVclus,
+                                                      self.numVecsInteracts, self.VecGroupInteracts,
+                                                      self.VecsInteracts)
+
+        assert np.allclose(del_lamb, del_lamb_calc)
 
 
     def test_MC_step(self):

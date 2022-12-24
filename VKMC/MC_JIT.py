@@ -292,11 +292,9 @@ class MCSamplerClass(object):
                     lamb[vGroup, :] += vec
         return lamb
 
-    def getDelLamb(self, state, offsc, vacSiteInd, jSite, lenVecClus,
+    def getDelLamb(self, state, offsc, siteA, siteB, lenVecClus,
                    numVecsInteracts, VecGroupInteracts, VecsInteracts):
-        
-        siteA, specA = vacSiteInd, state[vacSiteInd]
-        siteB = jSite
+
 
         _, del_lamb = self.DoSwapUpdate(state, siteA, siteB, lenVecClus, offsc,
                                         numVecsInteracts, VecGroupInteracts, VecsInteracts)
