@@ -24,20 +24,25 @@ import time
 # Load all the crystal data
 def Load_crys_Data(CrysDatPath, typ="FCC"):
     print("Loading {} Crystal data".format(typ))
-    jList = np.load(CrysDatPath+"CrysDat_{}/jList.npy".format(typ))
-    dxList = np.load(CrysDatPath+"CrysDat_{}/dxList.npy".format(typ))
-    jumpNewIndices = np.load(CrysDatPath+"CrysDat_{}/JumpNewSiteIndices.npy".format(typ))
 
-    with open(CrysDatPath+"CrysDat_{0}/supercell{0}.pkl".format(typ), "rb") as fl:
-        superFCC = pickle.load(fl)
+    with h5py.File("CrysDat_{}/CrystData.h5".format(typ), "r") as fl:
+        lattice = np.array(fl["Lattice_basis_vectors"])
+        superlatt = np.array(fl["SuperLatt"])
+        dxList = np.array(fl["dxList_1nn"])
+        NNList = np.array(fl["NNsiteList_sitewise"])
+        jumpNewIndices = np.array(fl["JumpSiteIndexPermutation"])
 
-    with open(CrysDatPath+"CrysDat_{0}/jnet{0}.pkl".format(typ), "rb") as fl:
-        jnetFCC = pickle.load(fl)
+    jList = NNList[1:, 0]
+
+    crys = crystal.Crystal(lattice=lattice, basis=[[np.array([0., 0., 0.])]], chemistry="A")
+    superCell = supercell.ClusterSupercell(crys, superlatt)
+
+    jnet = [[((0, 0), dx) for dx in dxList.shape[0]]]
 
     vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
-    vacsiteInd = superFCC.index(np.zeros(3, dtype=int), (0, 0))[0]
+    vacsiteInd = superCell.index(np.zeros(3, dtype=int), (0, 0))[0]
     assert vacsiteInd == 0
-    return jList, dxList, jumpNewIndices, superFCC, jnetFCC, vacsite, vacsiteInd
+    return jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd
 
 def Load_Data(DataPath):
     with h5py.File(DataPath, "r") as fl:
