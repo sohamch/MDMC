@@ -13,11 +13,11 @@ class Test_HEA_LBAM(unittest.TestCase):
 
     def setUp(self):
         self.DataPath = ("../MD_KMC_single/Run_2/singleStep_Run2_1073_AllRates.h5")
-        self.CrysDatPath = ("../")
+        self.CrysDatPath = ("../CrysDat_FCC")
 
         self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
         self.jList, self.dxList, self.jumpNewIndices, self.superCell, self.jnet, self.vacsite, self.vacsiteInd =\
-            Load_crys_Data(self.CrysDatPath, typ="FCC")
+            Load_crys_Data(self.CrysDatPath)
 
         self.AllSpecs = np.unique(self.state1List[0])
         self.NSpec = self.AllSpecs.shape[0]
