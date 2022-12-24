@@ -27,18 +27,20 @@ else:
 
 def Load_crysDats(nn, CrysDatPath):
     ## load the crystal data files
-    if nn == 1:
-        GpermNNIdx = np.load(CrysDatPath + "GroupNNpermutations.npy")
-        NNsiteList = np.load(CrysDatPath + "NNsites_sitewise.npy")
-    elif nn == 2:
-        GpermNNIdx = np.load(CrysDatPath + "GroupNNpermutations_2nn.npy")
-        NNsiteList = np.load(CrysDatPath + "NNsites_sitewise_2nn.npy")
-    
-    else:
-        raise ValueError("Filter range should be 1 or 2 nn. Entered: {}".format(nn))
+    with h5py.File(CrysDatPath + "CrystData.h5", "r") as fl:
+        dxJumps = np.array(fl["dxList_1nn"])
+        JumpNewSites = np.array(fl["JumpSiteIndexPermutation"])
 
-    JumpNewSites = np.load(CrysDatPath + "JumpNewSiteIndices.npy")
-    dxJumps = np.load(CrysDatPath + "dxList.npy")
+        if nn == 1:
+            GpermNNIdx = np.array(fl["GroupNNPermutation"])
+            NNsiteList = np.array(fl["NNsiteList_sitewise"])
+        elif nn == 2:
+            GpermNNIdx = np.array(fl["GroupNNPermutation_2nn"])
+            NNsiteList = np.array(fl["NNsiteList_sitewise_2nn"])
+    
+        else:
+            raise ValueError("Filter range should be 1 or 2 nn. Entered: {}".format(nn))
+
     return GpermNNIdx, NNsiteList, JumpNewSites, dxJumps
 
 def Load_Data(DataPath):
