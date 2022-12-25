@@ -27,7 +27,7 @@ else:
 
 def Load_crysDats(CrysDatPath):
     ## load the crystal data files
-    with h5py.File(CrysDatPath + "CrystData.h5", "r") as fl:
+    with h5py.File(CrysDatPath, "r") as fl:
         dxJumps = np.array(fl["dxList_1nn"])
         JumpNewSites = np.array(fl["JumpSiteIndexPermutation"])
         GpermNNIdx = np.array(fl["GroupNNPermutation"])
