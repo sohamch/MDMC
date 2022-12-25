@@ -25,21 +25,13 @@ else:
     device = pt.device("cpu")
 
 
-def Load_crysDats(nn, CrysDatPath):
+def Load_crysDats(CrysDatPath):
     ## load the crystal data files
     with h5py.File(CrysDatPath + "CrystData.h5", "r") as fl:
         dxJumps = np.array(fl["dxList_1nn"])
         JumpNewSites = np.array(fl["JumpSiteIndexPermutation"])
-
-        if nn == 1:
-            GpermNNIdx = np.array(fl["GroupNNPermutation"])
-            NNsiteList = np.array(fl["NNsiteList_sitewise"])
-        elif nn == 2:
-            GpermNNIdx = np.array(fl["GroupNNPermutation_2nn"])
-            NNsiteList = np.array(fl["NNsiteList_sitewise_2nn"])
-    
-        else:
-            raise ValueError("Filter range should be 1 or 2 nn. Entered: {}".format(nn))
+        GpermNNIdx = np.array(fl["GroupNNPermutation"])
+        NNsiteList = np.array(fl["NNsiteList_sitewise"])
 
     return GpermNNIdx, NNsiteList, JumpNewSites, dxJumps
 
@@ -658,7 +650,7 @@ def main(args):
         raise NotImplementedError("Cannot do all-jump training with boundary states.")
     
     # 1. Load crystal parameters
-    GpermNNIdx, NNsiteList, JumpNewSites, dxJumps = Load_crysDats(args.ConvNgbRange, args.CrysDatPath)
+    GpermNNIdx, NNsiteList, JumpNewSites, dxJumps = Load_crysDats(args.CrysDatPath)
     N_ngb = NNsiteList.shape[0]
     z = N_ngb - 1
     print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(args.ConvNgbRange, z))
@@ -910,7 +902,6 @@ if __name__ == "__main__":
     parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, default=1, help="No. of intermediate layers of the neural network.")
     parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, default=4, help="No. of representation channels in non-input layers.")
     parser.add_argument("-ncL", "--NchLast", metavar="1", type=int, default=1, help="No. channels of the last layers - how many vectors to produce per site.")
-    parser.add_argument("-cngb", "--ConvNgbRange", type=int, default=1, metavar="NN", help="Nearest neighbor range of convolutional filters.")
 
     parser.add_argument("-scr", "--Scratch", action="store_true", help="Whether to create new network and start from scratch")
     parser.add_argument("-DPr", "--DatPar", action="store_true", help="Whether to use data parallelism. Note - does not work for residual or subnet models. Used only in Train and eval modes.")
