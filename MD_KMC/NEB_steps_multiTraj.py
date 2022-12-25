@@ -26,11 +26,12 @@ batchSize = int(args[5]) # Total samples in this batch of calculations.
 chunkSize = int(args[6]) # How many samples to do NEB on at a time.
 permuteStates = bool(int(args[7])) # permute the states (applicable if startStep is 0)? 0 if False.
 MainPath = args[8] # The path where the potential file is found
+CrysDatPath = args[9] # The path where the potential file is found
 #MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
-WriteAllJumps = bool(int(args[9]))
+WriteAllJumps = bool(int(args[10]))
 
 if startStep == 0:
-    InitStateFile = args[10]
+    InitStateFile = args[11]
 
 SourcePath = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
 SourcePath += "/"
@@ -45,28 +46,15 @@ if not os.path.isdir(RunPath + "step_finals_chunk_0"):
 
 # Load the lammps cartesian positions and neighborhoods - pre-prepared
 SiteIndToPos = np.load(SourcePath + "SiteIndToLmpCartPos.npy")  # lammps pos of sites
-SiteIndToNgb = np.load(MainPath + "CrysDat_FCC/NNsites_sitewise.npy")[1:, :].T  # Nsites x z array of site neighbors
 
-dxList = np.load(MainPath + "CrysDat_FCC/dxList.npy")
+with h5py.File(CrysDatPath + "CrystData.h5", "r") as fl:
+    dxList = np.array(fl["dxList_1nn"])
+    SiteIndToNgb = np.array(fl["NNsiteList_sitewise"])
 
 assert SiteIndToNgb.shape[0] == SiteIndToPos.shape[0]
 assert SiteIndToNgb.shape[1] == dxList.shape[0]
 
-
-# Do a small check of the displacements and vacancy neighbors
-with open(MainPath + "CrysDat_FCC/supercellFCC.pkl", "rb") as fl:
-    supFCC = pickle.load(fl)
-
-for siteInd in range(SiteIndToNgb.shape[0]):
-    ciSite, Rsite = supFCC.ciR(siteInd)
-    assert ciSite == (0,0)
-    for jmp in range(dxList.shape[0]):
-        dxR, ci = supFCC.crys.cart2pos(dxList[jmp])
-        assert ci == (0,0)
-        ngb, _ = supFCC.index(dxR + Rsite, ci)
-        assert ngb == SiteIndToNgb[siteInd, jmp]
-
-dxList *=  3.59
+dxList *= 3.59
 
 # load the data
 if startStep > 0:
