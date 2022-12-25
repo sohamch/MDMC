@@ -11,7 +11,7 @@ import h5py
 import torch as pt
 from tqdm import tqdm
 import pickle
-from onsager import  crystal, supercell
+from onsager import crystal, supercell
 from GCNetRun import Load_Data, makeComputeData, makeDataTensors, Load_crysDats
 from GCNetRun import Train
 from SymmLayers import GCNet
