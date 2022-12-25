@@ -11,6 +11,7 @@ import h5py
 import torch as pt
 from tqdm import tqdm
 import pickle
+from onsager import  crystal, supercell
 from GCNetRun import Load_Data, makeComputeData, makeDataTensors, Load_crysDats
 from GCNetRun import Train
 from SymmLayers import GCNet
@@ -25,6 +26,20 @@ class TestGCNetRun(unittest.TestCase):
 
         self.GpermNNIdx, self.NNsiteList, self.JumpNewSites, self.dxJumps = Load_crysDats(1, CrysDatPath)
 
+        with h5py.File(CrysDatPath + "CrystData.h5", "r") as fl:
+            lattice = np.array(fl["Lattice_basis_vectors"])
+            superlatt = np.array(fl["SuperLatt"])
+            dxList = np.array(fl["dxList_1nn"])
+            NNList = np.array(fl["NNsiteList_sitewise"])
+            jumpNewIndices = np.array(fl["JumpSiteIndexPermutation"])
+
+        jList = NNList[1:, 0]
+
+        crys = crystal.Crystal(lattice=lattice, basis=[[np.array([0., 0., 0.])]], chemistry=["A"])
+        self.superCell = supercell.ClusterSupercell(crys, superlatt)
+
+        self.N_units = self.superCell.superlatt[0, 0]
+        
         self.z = self.dxJumps.shape[0]
         self.N_ngb = self.NNsiteList.shape[0]
 
@@ -40,11 +55,7 @@ class TestGCNetRun(unittest.TestCase):
         self.NNsites = pt.tensor(self.NNsiteList).long()
         self.JumpVecs = pt.tensor(self.dxJumps.T * self.a0, dtype=pt.double)
         print("Jump Vectors: \n", self.JumpVecs.T, "\n")
-        self.Ndim = self.dxJumps.shape[1]
-
-        with open(CrysDatPath + "supercellFCC.pkl", "rb") as fl:
-            self.superFCC = pickle.load(fl)
-        self.N_units = self.superFCC.superlatt[0, 0]
+        self.Ndim = self.dxJumps.shape[1]        
 
         self.specCheck = 5
         self.VacSpec = 0
@@ -106,14 +117,14 @@ class TestGCNetRun(unittest.TestCase):
                 state1 = self.state1List[samp]
                 state2 = state1.copy()
                 NNsiteVac = self.NNsiteList[jSelect + 1, 0]
-                _, RsiteVac = self.superFCC.ciR(NNsiteVac)
+                _, RsiteVac = self.superCell.ciR(NNsiteVac)
                 state2[0] = state2[NNsiteVac]
                 state2[NNsiteVac] = 0
 
                 for site in range(self.state1List.shape[1]):
-                    _, Rsite = self.superFCC.ciR(site)
+                    _, Rsite = self.superCell.ciR(site)
                     RsiteNew = (Rsite + RsiteVac)
-                    siteNew, _ = self.superFCC.index(RsiteNew, (0, 0))
+                    siteNew, _ = self.superCell.index(RsiteNew, (0, 0))
                     spec1 = state1[site]
                     spec2 = state2[siteNew]
 
@@ -130,10 +141,10 @@ class TestGCNetRun(unittest.TestCase):
                         assert State2_occs[samp, self.sp_ch[spec2], site] == 1
                         assert np.sum(State2_occs[samp, :, site]) == 1
 
-                NNR = np.dot(np.linalg.inv(self.superFCC.crys.lattice), self.dxJumps[jSelect]).astype(int)
+                NNR = np.dot(np.linalg.inv(self.superCell.crys.lattice), self.dxJumps[jSelect]).astype(int)
                 # Check that the displacements for each jump are okay
-                self.assertTrue(np.allclose(np.dot(self.superFCC.crys.lattice, NNR), self.dxJumps[jSelect]))
-                NNRSite = self.superFCC.index(NNR, (0, 0))[0]
+                self.assertTrue(np.allclose(np.dot(self.superCell.crys.lattice, NNR), self.dxJumps[jSelect]))
+                NNRSite = self.superCell.index(NNR, (0, 0))[0]
 
                 NNsiteVac = self.NNsiteList[jSelect + 1, 0]
                 # check that NN sequence matches
@@ -358,14 +369,14 @@ class TestGCNetRun(unittest.TestCase):
                 for jInd in range(self.z):
                     state2 = state1.copy()
                     NNsiteVac = self.NNsiteList[jInd + 1, 0]
-                    _, RsiteVacNN = self.superFCC.ciR(NNsiteVac)
+                    _, RsiteVacNN = self.superCell.ciR(NNsiteVac)
                     state2[0] = state2[NNsiteVac]
                     state2[NNsiteVac] = 0
 
                     for site in range(self.state1List.shape[1]):
-                        _, Rsite = self.superFCC.ciR(site)
+                        _, Rsite = self.superCell.ciR(site)
                         RsiteNew = (Rsite + RsiteVacNN) % self.N_units
-                        siteNew, _ = self.superFCC.index(RsiteNew, (0,0))
+                        siteNew, _ = self.superCell.index(RsiteNew, (0,0))
                         spec1 = state1[site]
                         spec2 = state2[siteNew]
 
@@ -383,7 +394,7 @@ class TestGCNetRun(unittest.TestCase):
                             self.assertEqual(np.sum(State2_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site]), 1)
 
                     # check the displacements
-                    NNR = np.dot(np.linalg.inv(self.superFCC.crys.lattice), self.dxJumps[jInd]).astype(int) % self.N_units
+                    NNR = np.dot(np.linalg.inv(self.superCell.crys.lattice), self.dxJumps[jInd]).astype(int) % self.N_units
                     NNsiteVac = self.NNsiteList[jInd + 1, 0]
                     self.assertTrue(np.all(NNR == RsiteVacNN))
                     spec = state1[NNsiteVac]
@@ -606,12 +617,12 @@ class TestGCNetRun(unittest.TestCase):
         with pt.no_grad():
             y1SampAllSites = gNet2(state1Input).detach().numpy()
 
-        for g in tqdm(self.superFCC.crys.G, position=0, leave=True, ncols=65):
+        for g in tqdm(self.superCell.crys.G, position=0, leave=True, ncols=65):
             state2Input = pt.zeros_like(state1Input)
             for site in range(1, self.Nsites):
-                ci, R = self.superFCC.ciR(site)
-                Rnew, ciNew = self.superFCC.crys.g_pos(g, R, ci)
-                siteNew, _ = self.superFCC.index(Rnew, ciNew)
+                ci, R = self.superCell.ciR(site)
+                Rnew, ciNew = self.superCell.crys.g_pos(g, R, ci)
+                siteNew, _ = self.superCell.index(Rnew, ciNew)
                 state2Input[:, :, siteNew] = state1Input[:, :, site]
 
             if np.allclose(g.cartrot, np.eye(3)):
@@ -620,9 +631,9 @@ class TestGCNetRun(unittest.TestCase):
             with pt.no_grad():
                 y2SampAllSites = gNet2(state2Input).detach().numpy()
             for site in range(self.Nsites):
-                ci, R = self.superFCC.ciR(site)
-                Rnew, ciNew = self.superFCC.crys.g_pos(g, R, ci)
-                siteNew, _ = self.superFCC.index(Rnew, ciNew)
+                ci, R = self.superCell.ciR(site)
+                Rnew, ciNew = self.superCell.crys.g_pos(g, R, ci)
+                siteNew, _ = self.superCell.index(Rnew, ciNew)
                 for jmp in range(self.z):
                     self.assertTrue(np.allclose(
                         y2SampAllSites[0, jmp, :, siteNew], np.dot(g.cartrot, y1SampAllSites[0, jmp, :, site])
@@ -728,12 +739,12 @@ class TestGCNetRun(unittest.TestCase):
         with pt.no_grad():
             y1SampAllSites = gNet2(state1Input).detach().numpy()
 
-        for g in tqdm(self.superFCC.crys.G, position=0, leave=True, ncols=65):
+        for g in tqdm(self.superCell.crys.G, position=0, leave=True, ncols=65):
             state2Input = pt.zeros_like(state1Input)
             for site in range(1, self.Nsites):
-                ci, R = self.superFCC.ciR(site)
-                Rnew, ciNew = self.superFCC.crys.g_pos(g, R, ci)
-                siteNew, _ = self.superFCC.index(Rnew, ciNew)
+                ci, R = self.superCell.ciR(site)
+                Rnew, ciNew = self.superCell.crys.g_pos(g, R, ci)
+                siteNew, _ = self.superCell.index(Rnew, ciNew)
                 state2Input[:, :, siteNew] = state1Input[:, :, site]
 
             if np.allclose(g.cartrot, np.eye(3)):
@@ -742,9 +753,9 @@ class TestGCNetRun(unittest.TestCase):
             with pt.no_grad():
                 y2SampAllSites = gNet2(state2Input).detach().numpy()
             for site in range(self.Nsites):
-                ci, R = self.superFCC.ciR(site)
-                Rnew, ciNew = self.superFCC.crys.g_pos(g, R, ci)
-                siteNew, _ = self.superFCC.index(Rnew, ciNew)
+                ci, R = self.superCell.ciR(site)
+                Rnew, ciNew = self.superCell.crys.g_pos(g, R, ci)
+                siteNew, _ = self.superCell.index(Rnew, ciNew)
                 for jmp in range(self.z):
                     self.assertTrue(np.allclose(
                         y2SampAllSites[0, jmp, :, siteNew], np.dot(g.cartrot, y1SampAllSites[0, jmp, :, site])
