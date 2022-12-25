@@ -16,6 +16,7 @@ from GCNetRun import Load_Data, makeComputeData, makeDataTensors, Load_crysDats
 from GCNetRun import Train
 from SymmLayers import GCNet
 
+
 class TestGCNetRun(unittest.TestCase):
     def setUp(self):
         self.T = 1073
@@ -204,7 +205,6 @@ class TestGCNetRun(unittest.TestCase):
 
         self.assertTrue(pt.allclose(dispData, pt.tensor(disps[:, 0, :])))
 
-
     def test_Train_Batch_SpNN_1Jump(self):
         specCheck = self.specCheck
         specsToTrain = [specCheck]
@@ -272,7 +272,6 @@ class TestGCNetRun(unittest.TestCase):
             self.assertTrue(np.allclose(y1[samp], y1_samp.detach().numpy()),
                             msg="{} \n {}".format(y1[samp], y1_samp.detach().numpy()))
             self.assertTrue(np.allclose(y2[samp], y2_samp.detach().numpy()))
-
 
     def test_Train_Vac_Batch_SpNN_1Jump(self):
         VacSpec = self.VacSpec
