@@ -25,7 +25,7 @@ import time
 def Load_crys_Data(CrysDatPath):
     print("Loading Crystal data at {}".format(CrysDatPath))
 
-    with h5py.File(CrysDatPath + "CrystData.h5", "r") as fl:
+    with h5py.File(CrysDatPath, "r") as fl:
         lattice = np.array(fl["Lattice_basis_vectors"])
         superlatt = np.array(fl["SuperLatt"])
         dxList = np.array(fl["dxList_1nn"])
