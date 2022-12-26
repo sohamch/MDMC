@@ -653,7 +653,6 @@ def main(args):
     GpermNNIdx, NNsiteList, JumpNewSites, dxJumps = Load_crysDats(args.CrysDatPath)
     N_ngb = NNsiteList.shape[0]
     z = N_ngb - 1
-    print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(args.ConvNgbRange, z))
 
     if args.NoSymmetry:
         print("Switching off convolution symmetries (considering only identity operator).")
