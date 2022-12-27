@@ -338,13 +338,20 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
         # strict=False to ignore the renamed buffer "JumpVecs" (renamed from JumpUnitVecs)
         # As long as the same crysdats are used, this will not change
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"), strict=False)
+
+        if scratch_if_no_init and start_ep == 0:
+            print("Training from scratch indicated (check option --Scratch), but saved initial network for epoch 0 found at", flush=True)
+            print("save/load directory : {}".format(dirPath), flush=True)
+            print("Terminating so as not to replace existing this pre-existing initial network.".format(dirPath), flush=True)
+            raise RuntimeError("Terminating out of caution to not replace existing epoch 0 network. Please check printed message for more details.")
+
         print("Starting from epoch {}".format(start_ep), flush=True)
 
     except:
         if scratch_if_no_init:
             print("No Network found. Starting from scratch", flush=True)
         else:
-            raise ValueError("Required saved networks not found in {} at epoch {}".format(dirPath, start_ep))
+            raise FileNotFoundError("Required saved networks not found in {} at epoch {}".format(dirPath, start_ep))
 
     print("Batch size : {}".format(N_batch))
 
