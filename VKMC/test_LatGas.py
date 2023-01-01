@@ -266,7 +266,7 @@ class Test_latGasKMC(unittest.TestCase):
         # Let's make up some mu and std
         muArray = np.random.rand(self.NSpec - 1)
         stdArray = np.random.rand(self.NSpec - 1)
-        # Then let's consider the sites that will be considered
+        # Then let's consider the sites that will be used to "hash" the state
         stringSites = np.random.randint(0, Nsites, size=100)
 
         state[1:] = np.random.permutation(state[1:])
@@ -303,6 +303,120 @@ class Test_latGasKMC(unittest.TestCase):
             rate1 = LatGas.getJumpRate(state, state2, siteGPerms, stringSites, muArray[spec], stdArray[spec])
             rate2 = LatGas.getJumpRate(state2, state, siteGPerms, stringSites, muArray[spec], stdArray[spec])
             self.assertTrue(np.math.isclose(rate1, rate2))
+
+
+    def test_LatGasKMCTrajRandomRate(self):
+        state0 = self.initState.copy()
+        Nsites = self.initState.shape[0]
+        muArray = np.random.rand(self.NSpec - 1)
+        stdArray = np.random.rand(self.NSpec - 1)
+        stringSites = np.random.randint(0, Nsites, size=100)
+        jList, dxList = self.ijList.copy(), self.dxList.copy()
+
+        # get the group operation permutation of the sites
+        siteGPerms = np.zeros((len(self.crys.G), self.initState.shape[0]), dtype=int)
+        GList = list(self.crys.G)
+        for gInd, g in enumerate(GList):
+            for site in range(Nsites):
+                ci, Rsite = self.superCell.ciR(site)
+                Rnew, ciNew = self.superCell.crys.g_pos(g, Rsite, ci)
+                siteNew = self.superCell.index(Rnew, ciNew)[0]
+                siteGPerms[gInd, siteNew] = site  # where does the current site go after group op
+
+        # get the jump permutation of the sites
+        jumpNewSites = np.zeros((dxList.shape[0], Nsites), dtype=int)
+        for jmp in range(dxList.shape[0]):
+            dxR, ciSite = self.superCell.crys.cart2pos(self.dxList[jmp])
+            assert ciSite == (0, 0)
+            self.assertEqual(self.superCell.index(dxR, ciSite)[0], self.ijList[jmp])
+            jumpNewSites[jmp, self.vacsiteInd] = self.vacsiteInd
+            siteExchange, _ = self.superCell.index(-dxR, ciSite)
+            jumpNewSites[jmp, siteExchange] = self.ijList[jmp]
+
+            for siteInd in range(Nsites):
+                if siteInd == self.vacsiteInd or siteInd == self.ijList[jmp]:
+                    continue
+                ciSite, Rsite = self.superCell.ciR(siteInd)
+                assert ciSite == (0, 0)
+                RsiteNew = Rsite - dxR
+                siteIndNew, _ = self.superCell.index(RsiteNew, ciSite)
+                jumpNewSites[jmp, siteIndNew] = siteInd
+
+        vacSiteInit = self.vacsiteInd
+        self.assertEqual(vacSiteInit, 0)
+        self.assertEqual(state0[self.vacsiteInd], self.NSpec - 1)
+        Nsteps = 50
+        state0cpy = state0.copy()
+        X_steps, t_steps, JumpSelects, rates_steps, rn_steps = \
+            LatGas.LatGasKMCTrajRandomRate(state0cpy, Nsteps, self.NSpec, jList, jumpNewSites,
+                       siteGPerms, stringSites, dxList, muArray, stdArray)
+
+        for step in range(Nsteps):
+            # get the jump selected
+            jmpStep = JumpSelects[step]
+            dxRSelect, ciSite = self.superCell.crys.cart2pos(self.dxList[jmpStep])
+            dxRun = dxList[jmpStep]
+
+            # Check the vacancy displacements
+            self.assertTrue(np.allclose(X_steps[step, self.NSpec-1], dxRun))
+
+            # Next, we need to check if the correct species has been exchanged.
+
+            # # First, get where the vacancy is in the current state
+            vacNow = np.where(state0 == self.NSpec-1)[0][0]
+            self.assertTrue(vacNow == self.vacsiteInd == 0)
+            # Get the vacancy position
+            Rvac = self.siteIndtoR[vacNow]
+            # add the displacement
+            RExchange = (Rvac + dxRSelect)
+            # Get the exchange site
+            vacNext, _ = self.superCell.index(RExchange, (0, 0))
+            self.assertEqual(vacNext, self.ijList[jmpStep])
+            # Check that the correct displacement has been recorded for the species that is jumping
+            specB = state0[vacNext]
+            self.assertTrue(np.allclose(X_steps[step, specB], -dxList[jmpStep]))
+
+            # Check that the correct residence time is calculated
+            rateTot = 0.
+            rates = np.zeros(self.ijList.shape[0])
+            for jmp in range(self.ijList.shape[0]):
+                state2 = state0[jumpNewSites[jmp]]
+                dxR, ciSite = self.superCell.crys.cart2pos(self.dxList[jmp])
+                # get the exchange site
+                REx = (Rvac + dxR)
+                siteEx, _ = self.superCell.index(REx, (0, 0)) #RtoSiteInd[REx[0], REx[1], REx[2]]
+                specEx = state0[siteEx]
+                rt = LatGas.getJumpRate(state0, state2, siteGPerms, stringSites, muArray[specEx], stdArray[specEx])
+                self.assertAlmostEqual(rt, rates_steps[step, jmp])
+                rates[jmp] = rt
+                rateTot += rt
+
+            tRun = 1/rateTot
+            self.assertAlmostEqual(tRun, t_steps[step])
+
+            rateProbs = rates / rateTot
+            rateSum = np.cumsum(rateProbs)
+            rn = rn_steps[step]
+            self.assertEqual(np.searchsorted(rateSum, rn), jmpStep)
+
+            # update the state - manually - don't use jump indexing
+            # state0 = state0[jumpNewSites[jmpStep]]
+
+            state2 = state0.copy()
+            jSite = self.ijList[jmpStep]
+            spec = state2[jSite]
+            state2[self.vacsiteInd] = spec
+            state2[jSite] = self.NSpec - 1
+            # Now translate sites back
+            state2Trans = np.zeros_like(state2, dtype=int)
+            for siteInd in range(Nsites):
+                ciSite, Rsite = self.superCell.ciR(siteInd)
+                assert ciSite == (0, 0)
+                RsiteNew = Rsite - dxRSelect
+                siteIndNew, _ = self.superCell.index(RsiteNew, ciSite)
+                state2Trans[siteIndNew] = state2[siteInd]
+
+            state0 = state2Trans.copy()
 
 
 

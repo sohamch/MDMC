@@ -249,9 +249,10 @@ def getJumpRate(st1, st2, GSites, stringSites, mu, std):
     return np.exp(-un)
 
 @jit(nopython=True)
-def LatGastKMCTrajRandomRate(stateInit, Nsteps, NSpec, jList, jumpSitePerms,
+def LatGasKMCTrajRandomRate(stateInit, Nsteps, NSpec, jList, jumpSitePerms,
                GSitePerms, stringSites, dxList, muArray, stdArray):
     X_steps = np.zeros((Nsteps, NSpec, 3))
+    rates_steps = np.zeros((Nsteps, jList.shape[0]))
     t_steps = np.zeros(Nsteps)
     rn_steps = np.zeros(Nsteps)
     JumpSelects = np.zeros(Nsteps, dtype=np.int8)
@@ -268,6 +269,7 @@ def LatGastKMCTrajRandomRate(stateInit, Nsteps, NSpec, jList, jumpSitePerms,
             std = stdArray[sp]
             # print(mu, std)
             jumpRates[jmp] = getJumpRate(st1, st2, GSitePerms, stringSites, mu, std)
+            rates_steps[step, jmp] = jumpRates[jmp]
 
         # Then select jump
         rateSum = np.sum(jumpRates)
@@ -292,4 +294,4 @@ def LatGastKMCTrajRandomRate(stateInit, Nsteps, NSpec, jList, jumpSitePerms,
         # Then make the initial state the new state
         st1 = st1[jumpSitePerms[jSelect]]
 
-    return X_steps, t_steps, JumpSelects, rn_steps
+    return X_steps, t_steps, JumpSelects, rates_steps, rn_steps
