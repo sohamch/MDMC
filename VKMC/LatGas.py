@@ -237,7 +237,7 @@ def getStateSum(st, GSites, stringSites):
     sm2 = 0
     mult = np.arange(1, stringSites.shape[0] + 1) * 10000
     for gInd in range(GSites.shape[0]):
-        stateNew = st[GSites[gInd]] + 5
+        stateNew = st[GSites[gInd]]
         sm += np.sum(2**stateNew[stringSites] * mult)
         sm2 += np.sum(2 ** stateNew[stringSites] * mult[::-1])
     return (sm * sm2) // (sm + sm2)
