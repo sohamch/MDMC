@@ -300,9 +300,62 @@ class Test_latGasKMC(unittest.TestCase):
             assert state2Trans[self.vacsiteInd] == self.NSpec - 1
 
             # Test the rates for detailed balance (since all states have same energy)
-            rate1 = LatGas.getJumpRate(state, state2, siteGPerms, stringSites, muArray[spec], stdArray[spec])
-            rate2 = LatGas.getJumpRate(state2, state, siteGPerms, stringSites, muArray[spec], stdArray[spec])
+            rate1 = LatGas.getJumpRate(state, state2Trans, siteGPerms, stringSites, muArray[spec], stdArray[spec])
+            rate2 = LatGas.getJumpRate(state2Trans, state, siteGPerms, stringSites, muArray[spec], stdArray[spec])
             self.assertTrue(np.math.isclose(rate1, rate2))
+
+            # test symmetry
+            for gInd in range(len(GList)):
+                gInd = np.random.randint(0, len(GList))
+                g = GList[gInd]
+
+                stateG = np.zeros_like(state)
+                for siteInd in range(Nsites):
+                    ciSite, Rsite = self.superCell.ciR(siteInd)
+                    RsiteG, ciG = self.crys.g_pos(g, Rsite, ciSite)
+                    self.assertTrue(ciSite == ciG == (0, 0))
+                    siteNew, _ = self.superCell.index(RsiteG, ciG)
+                    stateG[siteNew] = state[siteInd]
+
+                assert stateG[0] == self.NSpec - 1
+                self.assertTrue(np.array_equal(stateG, state[siteGPerms[gInd]]))
+
+                dxG = np.dot(g.cartrot, self.dxList[jmp])
+                jIndG = None
+                count = 0
+                for dxInd, dx in enumerate(self.dxList):
+                    if np.allclose(dx, dxG):
+                        count += 1
+                        jIndG = dxInd
+
+                self.assertTrue(count == 1)
+                self.assertTrue(jIndG is not None)
+                dxRG, _ = self.superCell.crys.cart2pos(self.dxList[jIndG])
+
+                state2G = stateG.copy()
+                jSiteG = self.ijList[jIndG]
+                specG = state2G[jSiteG]
+                self.assertEqual(spec, specG)
+                state2G[self.vacsiteInd] = specG
+                state2G[jSiteG] = self.NSpec - 1
+
+                state2TransG = np.zeros_like(state, dtype=int)
+                for siteInd in range(Nsites):
+                    ciSite, Rsite = self.superCell.ciR(siteInd)
+                    assert ciSite == (0, 0)
+                    RsiteNew = Rsite - dxRG
+                    siteIndNew, _ = self.superCell.index(RsiteNew, ciSite)
+                    state2TransG[siteIndNew] = state2G[siteInd]
+
+                self.assertTrue(np.array_equal(state2TransG, state2Trans[siteGPerms[gInd]]))
+
+                rate1G = LatGas.getJumpRate(stateG, state2TransG, siteGPerms, stringSites, muArray[spec], stdArray[spec])
+                rate2G = LatGas.getJumpRate(state2TransG, stateG, siteGPerms, stringSites, muArray[spec], stdArray[spec])
+
+                self.assertAlmostEqual(rate1G, rate2G)
+                self.assertAlmostEqual(rate1G, rate1)
+                self.assertAlmostEqual(rate2G, rate2)
+
 
 
     def test_LatGasKMCTrajRandomRate(self):
