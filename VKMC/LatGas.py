@@ -4,6 +4,7 @@ Functions to perform KMC simulations on mono-atomic lattice gases.
 import numpy as np
 from onsager import cluster
 from numba import jit, int64, float64
+import random
 
 
 def makeSiteIndtoR(supercell):
@@ -228,3 +229,67 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
         t_steps[step] = t
 
     return X_steps, t_steps, jmpSelectSteps, randSteps, jmpFinSiteList
+
+
+@jit(nopython=True)
+def getStateSum(st, GSites, stringSites):
+    sm = 0
+    for gInd in range(GSites.shape[0]):
+        stateNew = st[GSites[gInd][stringSites]]
+        sm += np.sum(2**stateNew * stringSites)
+    return sm
+
+@jit(nopython=True)
+def getJumpRate(st1, st2, GSites, stringSites, mu, std):
+    s1 = getStateSum(st1, GSites, stringSites)
+    s2 = getStateSum(st2, GSites, stringSites)
+    sm = s1 * s2 // (s1 + s2)
+    random.seed(sm)
+    un = random.gauss(mu, std) # un denotes a dimensionless energy barrier
+    return np.exp(-un)
+
+@jit(nopython=True)
+def LatGastKMCTrajRandomRate(stateInit, Nsteps, NSpec, jList, jumpSitePerms,
+               GSitePerms, stringSites, dxList, muArray, stdArray):
+    X_steps = np.zeros((Nsteps, NSpec, 3))
+    t_steps = np.zeros(Nsteps)
+    rn_steps = np.zeros(Nsteps)
+    JumpSelects = np.zeros(Nsteps, dtype=np.int8)
+
+    st1 = stateInit
+    jumpRates = np.zeros(jList.shape[0])
+    for step in range(Nsteps):
+
+        # First calculate the Jump Rates
+        for jmp in range(jList.shape[0]):
+            st2 = st1[jumpSitePerms[jmp]]
+            sp = st1[jList[jmp]]
+            mu = muArray[sp]
+            std = stdArray[sp]
+            # print(mu, std)
+            jumpRates[jmp] = getJumpRate(st1, st2, GSitePerms, stringSites, mu, std)
+
+        # Then select jump
+        rateSum = np.sum(jumpRates)
+        rateProbs = jumpRates / rateSum
+
+        rateCumul = np.cumsum(rateProbs)
+
+        rn = np.random.rand()
+        rn_steps[step] = rn
+        jSelect = np.searchsorted(rateCumul, rn)
+
+        # Then store data for testing later on
+        JumpSelects[step] = jSelect
+
+        t_steps[step] = 1.0 / rateSum
+
+        specJump = st1[jList[jSelect]]
+
+        X_steps[step, specJump, :] = -dxList[jSelect, :]
+        X_steps[step, NSpec - 1, :] = dxList[jSelect, :]
+
+        # Then make the initial state the new state
+        st1 = st1[jumpSitePerms[jSelect]]
+
+    return X_steps, t_steps, JumpSelects, rn_steps
