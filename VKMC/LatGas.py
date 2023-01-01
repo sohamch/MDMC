@@ -235,8 +235,8 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
 def getStateSum(st, GSites, stringSites):
     sm = 0
     for gInd in range(GSites.shape[0]):
-        stateNew = st[GSites[gInd][stringSites]]
-        sm += np.sum(2**stateNew * stringSites)
+        stateNew = st[GSites[gInd]]
+        sm += np.sum(2**stateNew[stringSites] * stringSites)
     return sm
 
 @jit(nopython=True)
