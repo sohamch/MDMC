@@ -12,20 +12,20 @@ class Test_latGasKMC(unittest.TestCase):
         self.jnetBCC = self.crys.jumpnetwork(0, 0.26)
         self.N_units = 8
         self.superlatt = self.N_units * np.eye(3, dtype=int)
-        self.superBCC = supercell.ClusterSupercell(self.crys, self.superlatt)
+        self.superCell = supercell.ClusterSupercell(self.crys, self.superlatt)
 
         # The initial vacancy needs to be at [0, 0, 0].
         self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
-        self.vacsiteInd = self.superBCC.index(np.zeros(3, dtype=int), (0, 0))[0]
+        self.vacsiteInd = self.superCell.index(np.zeros(3, dtype=int), (0, 0))[0]
 
-        self.RtoSiteInd, self.siteIndtoR = LatGas.makeSiteIndtoR(self.superBCC)
+        self.RtoSiteInd, self.siteIndtoR = LatGas.makeSiteIndtoR(self.superCell)
 
         # make the ijList and dxList from the jump network
-        self.ijList, self.dxList, self.dxtoR = LatGas.makeSupJumps(self.superBCC, self.jnetBCC, self.chem)
+        self.ijList, self.dxList, self.dxtoR = LatGas.makeSupJumps(self.superCell, self.jnetBCC, self.chem)
 
-        initState = np.zeros(len(self.superBCC.mobilepos), dtype=int)
+        initState = np.zeros(len(self.superCell.mobilepos), dtype=int)
         # Now assign random species (excluding the vacancy)
-        for i in range(len(self.superBCC.mobilepos)):
+        for i in range(len(self.superCell.mobilepos)):
             initState[i] = np.random.randint(0, self.NSpec - 1)
 
         # Now put in the vacancy at the vacancy site
@@ -37,13 +37,13 @@ class Test_latGasKMC(unittest.TestCase):
         for siteInd in range(self.siteIndtoR.shape[0]):
             Rsite = self.siteIndtoR[siteInd]
             self.assertEqual(self.RtoSiteInd[Rsite[0], Rsite[1], Rsite[2]], siteInd)
-            ci, R = self.superBCC.ciR(siteInd)
+            ci, R = self.superCell.ciR(siteInd)
             np.array_equal(Rsite, R)
 
     def test_makeSupJumps(self):
 
-        superBCC = self.superBCC
-        N_units = np.array([superBCC.superlatt[0, 0], superBCC.superlatt[1, 1], superBCC.superlatt[2, 2]])
+        superCell = self.superCell
+        N_units = np.array([superCell.superlatt[0, 0], superCell.superlatt[1, 1], superCell.superlatt[2, 2]])
 
         for jmp in range(self.ijList.shape[0]):
             dx = self.dxList[jmp]
@@ -54,15 +54,15 @@ class Test_latGasKMC(unittest.TestCase):
             dxRInCell = dxR % N_units
 
             # Then see the location of the site in ijList
-            siteR = superBCC.ciR(self.ijList[jmp])[1]
+            siteR = superCell.ciR(self.ijList[jmp])[1]
 
             self.assertTrue(np.array_equal(dxRInCell, siteR))
 
     def test_gridState(self):
-        superBCC = self.superBCC
+        superCell = self.superCell
         state = self.initState.copy()
 
-        N_units = np.array([superBCC.superlatt[0, 0], superBCC.superlatt[1, 1], superBCC.superlatt[2, 2]])
+        N_units = np.array([superCell.superlatt[0, 0], superCell.superlatt[1, 1], superCell.superlatt[2, 2]])
         stateGrid = LatGas.gridState(state, self.siteIndtoR, N_units)
 
         for siteInd in range(self.siteIndtoR.shape[0]):
@@ -72,8 +72,8 @@ class Test_latGasKMC(unittest.TestCase):
 
     def test_Translate(self):
 
-        superBCC = self.superBCC
-        N_units = np.array([superBCC.superlatt[0, 0], superBCC.superlatt[1, 1], superBCC.superlatt[2, 2]])
+        superCell = self.superCell
+        N_units = np.array([superCell.superlatt[0, 0], superCell.superlatt[1, 1], superCell.superlatt[2, 2]])
 
         state = self.initState.copy()
         state = np.random.permutation(state)
@@ -96,7 +96,7 @@ class Test_latGasKMC(unittest.TestCase):
                     R2T = (R2 + dR[2]) % N_units[2]
                     assert stateGrid[R0T, R1T, R2T] == stateTransGrid[R0, R1, R2]
 
-    def testStep(self):
+    def test_LatGasKMCTraj(self):
 
         state = self.initState.copy()
 
@@ -249,3 +249,61 @@ class Test_latGasKMC(unittest.TestCase):
                 Traj2R2by6t = np.dot(Traj2R, Traj2R) / (6 * Traj2T)
 
                 self.assertAlmostEqual(diff[spec, step], Traj2R2by6t + Traj1R2by6t, msg="{} {} {}".format(diff[spec, step], Traj2R2by6t, Traj1R2by6t))
+
+    def test_getJumpRates(self):
+        state = self.initState
+        Nsites = state.shape[0]
+        siteGPerms = np.zeros((len(self.crys.G), self.initState.shape[0]), dtype=int)
+        GList = list(self.crys.G)
+        for gInd, g in enumerate(GList):
+            for site in range(Nsites):
+                ci, Rsite = self.superCell.ciR(site)
+                Rnew, ciNew = self.superCell.crys.g_pos(g, Rsite, ci)
+                siteNew = self.superCell.index(Rnew, ciNew)[0]
+                siteGPerms[gInd, siteNew] = site  # where does the current site go after group op
+
+        # First, we'll check for detailed balance
+        # Let's make up some mu and std
+        muArray = np.random.rand(self.NSpec - 1)
+        stdArray = np.random.rand(self.NSpec - 1)
+        # Then let's consider the sites that will be considered
+        stringSites = np.random.randint(0, Nsites, size=100)
+
+        state[1:] = np.random.permutation(state[1:])
+        assert state[0] == self.NSpec - 1
+        assert self.vacsiteInd == 0
+
+        for jmp in range(self.dxList.shape[0]):
+            print(jmp)
+            jSite = self.ijList[jmp]
+
+            # Check the jump site
+            dxR, _ = self.superCell.crys.cart2pos(self.dxList[jmp])
+            siteIndSup = self.superCell.index(dxR, (0, 0))[0]
+            self.assertEqual(siteIndSup, jSite)
+
+            # do the exchange
+            state2 = state.copy()
+            spec = state2[jSite]
+            state2[self.vacsiteInd] = spec
+            state2[jSite] = self.NSpec - 1
+
+            # Now translate sites back
+            state2Trans  = np.zeros_like(state2, dtype=int)
+            for siteInd in range(Nsites):
+                ciSite, Rsite = self.superCell.ciR(siteInd)
+                assert ciSite == (0, 0)
+                RsiteNew = Rsite - dxR
+                siteIndNew, _ = self.superCell.index(RsiteNew, ciSite)
+                state2Trans[siteIndNew] = state2[siteInd]
+
+            assert state2Trans[self.vacsiteInd] == self.NSpec - 1
+
+            # Test the rates for detailed balance (since all states have same energy)
+            rate1 = LatGas.getJumpRate(state, state2, siteGPerms, stringSites, muArray[spec], stdArray[spec])
+            rate2 = LatGas.getJumpRate(state2, state, siteGPerms, stringSites, muArray[spec], stdArray[spec])
+            self.assertTrue(np.math.isclose(rate1, rate2))
+
+
+
+
