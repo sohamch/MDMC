@@ -234,13 +234,11 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
 @jit(nopython=True)
 def getStateSum(st, GSites, stringSites):
     sm = 0
-    sm2 = 0
     mult = np.arange(1, stringSites.shape[0] + 1) * 10000
     for gInd in range(GSites.shape[0]):
         stateNew = st[GSites[gInd]]
         sm += np.sum(2**stateNew[stringSites] * mult)
-        sm2 += np.sum(2 ** stateNew[stringSites] * mult[::-1])
-    return (sm * sm2) // (sm + sm2)
+    return sm
 
 @jit(nopython=True)
 def getJumpRate(st1, st2, GSites, stringSites, mu, std):
@@ -248,7 +246,7 @@ def getJumpRate(st1, st2, GSites, stringSites, mu, std):
     s2 = getStateSum(st2, GSites, stringSites)
     sm = s1 * s2 // (s1 + s2)
     random.seed(sm)
-    for i in range(100):
+    for i in range(500):
         un = random.gauss(mu, std)
     un = random.gauss(mu, std) # un denotes a dimensionless energy barrier
     return np.exp(-un)
