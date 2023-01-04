@@ -25,14 +25,12 @@ class TestGCNetRun(unittest.TestCase):
         self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2 =\
             Load_Data(DataPath + "singleStep_Run2_{}_AllRates.h5".format(self.T))
 
-        self.GpermNNIdx, self.NNsiteList, self.JumpNewSites, self.dxJumps = Load_crysDats(1, CrysDatPath)
+        self.GpermNNIdx, self.NNsiteList, self.JumpNewSites, self.dxJumps = Load_crysDats(CrysDatPath)
 
         with h5py.File(CrysDatPath + "CrystData.h5", "r") as fl:
             lattice = np.array(fl["Lattice_basis_vectors"])
             superlatt = np.array(fl["SuperLatt"])
-            dxList = np.array(fl["dxList_1nn"])
             NNList = np.array(fl["NNsiteList_sitewise"])
-            jumpNewIndices = np.array(fl["JumpSiteIndexPermutation"])
 
         jList = NNList[1:, 0]
 
