@@ -2,7 +2,7 @@ import unittest
 import os
 import sys
 RunPath = os.getcwd() + "/"
-CrysDatPath = "../CrysDat_FCC/"
+CrysDatPath = "../CrysDat_FCC/CrystData.h5"
 DataPath = "../MD_KMC_single/Run_2/"
 ModulePath = "../Symm_Network/"
 
@@ -27,7 +27,7 @@ class TestGCNetRun(unittest.TestCase):
 
         self.GpermNNIdx, self.NNsiteList, self.JumpNewSites, self.dxJumps = Load_crysDats(CrysDatPath)
 
-        with h5py.File(CrysDatPath + "CrystData.h5", "r") as fl:
+        with h5py.File(CrysDatPath, "r") as fl:
             lattice = np.array(fl["Lattice_basis_vectors"])
             superlatt = np.array(fl["SuperLatt"])
             NNList = np.array(fl["NNsiteList_sitewise"])
