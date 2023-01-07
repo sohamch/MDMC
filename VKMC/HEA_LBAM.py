@@ -332,6 +332,7 @@ def main(args):
     
     # Let's find which jump was selected
     a0 = np.linalg.norm(dispList[0, args.VacSpec]) / np.linalg.norm(dxList[0])
+    
     jumpSelects = np.zeros(state1List.shape[0], dtype=np.int8)
     print("Indexing jumps.", flush=True)
     print("Computed lattice parameter: {}.".format(a0), flush=True)
@@ -369,10 +370,7 @@ def main(args):
         # If we only want to save the Jit arrays (so that later jobs can be run in parallel)
         print("Created arrays. Terminating.")
         return
-    # Expand W and B
-    # We need to scale displacements properly first
-    a0 = np.linalg.norm(dispList[0, NSpec -1, :])/np.linalg.norm(dxList[0])
-
+    
     if not args.NoExpand:
         print("Expanding.")
         Wbar, Bbar, Gbar, etaBar, offscTime, expandTime = Expand(args.Temp, state1List, vacsiteInd, args.NTrain, jList, dxList*a0,
