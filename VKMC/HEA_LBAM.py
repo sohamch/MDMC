@@ -189,7 +189,7 @@ def CreateJitCalculator(VclusExp, NSpec, scratch=True, save=True):
 
 
 def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
-           jSelectList, dispSelects, ratesSelect, SpecExpand, MCJit, NVclus,
+           jSelectList, dispSelects, ratesEscape, SpecExpand, MCJit, NVclus,
            numVecsInteracts, VecsInteracts, VecGroupInteracts, aj):
 
 
@@ -231,7 +231,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
         else:
             jList = np.array([jSiteList[jSelectList[samp]]], dtype=int)
             dxList = np.array([dispSelects[samp, MCJit.vacSpec, :]], dtype=float) # The last one is the vacancy jump
-            Rate = np.array([ratesSelect[samp]], dtype=float)
+            Rate = np.array([ratesEscape[samp]], dtype=float)
             WBar, bBar, rates_used, _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
                                                         TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
                                                         NVclus, 0, vacsiteInd, Rate)
@@ -373,17 +373,24 @@ def main(args):
     # We need to scale displacements properly first
     a0 = np.linalg.norm(dispList[0, NSpec -1, :])/np.linalg.norm(dxList[0])
 
-    print("Expanding.")
-    Wbar, Bbar, Gbar, etaBar, offscTime, expandTime = Expand(args.Temp, state1List, vacsiteInd, args.NTrain, jList, dxList*a0,
-                                      AllJumpRates, jumpSelects, dispList, rateList, SpecExpand, MCJit, NVclus,
-                                      numVecsInteracts, VecsInteracts, VecGroupInteracts, aj=args.AllJumps)
+    if not args.NoExpand:
+        print("Expanding.")
+        Wbar, Bbar, Gbar, etaBar, offscTime, expandTime = Expand(args.Temp, state1List, vacsiteInd, args.NTrain, jList, dxList*a0,
+                                          AllJumpRates, jumpSelects, dispList, rateList, SpecExpand, MCJit, NVclus,
+                                          numVecsInteracts, VecsInteracts, VecGroupInteracts, aj=args.AllJumps)
 
-    print("Off site counting time per sample: {}".format(offscTime))
-    print("Expansion time per sample: {}".format(expandTime))
+        print("Off site counting time per sample: {}".format(offscTime))
+        print("Expansion time per sample: {}".format(expandTime))
 
+
+        if args.ExpandOnly:
+            # If we only want to save the Jit arrays (so that later jobs can be run in parallel)
+            print("Expansion complete. Terminating.")
+            return
 
     # Calculate transport coefficients
     print("Computing Transport coefficients")
+    etaBar = np.load(RunPath + "etabar_{}.npy".format(args.Temp))
     L_train, L_train_samples = Calculate_L(state1List, SpecExpand, args.VacSpec, rateList,
             dispList, jumpSelects, jList, dxList*a0,
             vacsiteInd, NVclus, MCJit, 
@@ -405,36 +412,58 @@ def main(args):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    
     parser.add_argument("-T", "--Temp", metavar="eg. 1073/50", type=int,
                         help="Temperature of data set (or composition for the binary alloys.")
+    
     parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str,
                         help="Path to Data file.")
+    
     parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str,
                         help="Path to crystal Data.")
+    
     parser.add_argument("-ct", "--CrysType", metavar="FCC/BCC", default=None, type=str,
                         help="Type of crystal.")
+    
     parser.add_argument("-mo", "--MaxOrder", metavar="eg. 3", type=int, default=None,
                         help="Maximum sites to consider in a cluster.")
+    
     parser.add_argument("-cc", "--ClustCut", metavar="eg. 2.0", type=float, default=None,
                         help="Maximum distance between sites to consider in a cluster.")
+    
     parser.add_argument("-sp", "--SpecExpand", metavar="eg. 0", type=int, default=5,
                         help="Which species to expand.")
+    
     parser.add_argument("-vsp", "--VacSpec", metavar="eg. 0", type=int, default=0,
                         help="Index of vacancy species.")
+    
     parser.add_argument("-nt", "--NTrain", metavar="eg. 10000", type=int, default=10000,
                         help="No. of training samples.")
+    
     parser.add_argument("-aj", "--AllJumps", action="store_true",
                         help="Whether to train on all jumps or train KMC-style.")
+    
     parser.add_argument("-scr", "--Scratch", action="store_true",
                         help="Whether to create new network and start from scratch")
+    
     parser.add_argument("-ait", "--AllInteracts", action="store_true",
                         help="Whether to consider all interactions, or just the ones that contain the jump sites.")
+    
     parser.add_argument("-svc", "--SaveCE", action="store_true",
                         help="Whether to save the cluster expansion.")
+    
     parser.add_argument("-svj", "--SaveJitArrays", action="store_true",
                         help="Whether to store arrays for JIT calculations.")
+    
     parser.add_argument("-ao", "--ArrayOnly", action="store_true",
                         help="Use the run to only generate the Jit arrays - no transport calculation.")
+    
+    parser.add_argument("-eo", "--ExpandOnly", action="store_true",
+                        help="Use the run to only generate the Jit arrays - no transport calculation.")
+    
+    parser.add_argument("-nex", "--NoExpand", action="store_true",
+                        help="Use the run to only generate the Jit arrays - no transport calculation.")
+
     parser.add_argument("-d", "--DumpArgs", action="store_true",
                         help="Whether to dump arguments in a file")
     parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str,
