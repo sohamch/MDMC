@@ -334,7 +334,7 @@ def main(args):
     a0 = np.linalg.norm(dispList[0, args.VacSpec]) / np.linalg.norm(dxList[0])
     
     jumpSelects = np.zeros(state1List.shape[0], dtype=np.int8)
-    print("Indexing jumps.", flush=True)
+    print("Indexing jumps and checking displacements.", flush=True)
     print("Computed lattice parameter: {}.".format(a0), flush=True)
     for stateInd in tqdm(range(state1List.shape[0]), position=0, leave=True):
         dxVac = dispList[stateInd, args.VacSpec, :]
@@ -345,7 +345,12 @@ def main(args):
                 count += 1
                 jmpInd = jInd
         assert count == 1
+        
         assert np.allclose(dxList[jmpInd] * a0, dxVac)
+        
+        sp = state1List[stateInd, jList[jmpInd]]
+        assert np.allclose(-dxVac, dispList[stateInd, sp, :])
+        
         jumpSelects[stateInd] = jmpInd
 
     saveJit = args.SaveJitArrays
