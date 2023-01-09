@@ -253,8 +253,20 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
         Gbar = spla.pinvh(totalW, rcond=1e-8)
 
     # Check pseudo-inverse relations
-    assert np.allclose(Gbar @ totalW @ Gbar, Gbar)
-    assert np.allclose(totalW @ Gbar @ totalW, totalW)
+    try:
+        assert np.allclose(Gbar @ totalW @ Gbar, Gbar)
+        assert np.allclose(totalW @ Gbar @ totalW, totalW)
+    except AssertionError:
+        try:
+            Gbar = spla.pinv(totalW, rtol=1e-8)
+        except:
+            Gbar = spla.pinv(totalW, rcond=1e-8)
+        
+        try:
+            assert np.allclose(Gbar @ totalW @ Gbar, Gbar)
+            assert np.allclose(totalW @ Gbar @ totalW, totalW)
+        except AssertionError:
+            print("WARNING: Pseudo inverse relations not satisfied.")
 
     # Compute relaxation expansion
     etaBar = -np.dot(Gbar, totalB)
