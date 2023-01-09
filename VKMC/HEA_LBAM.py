@@ -247,29 +247,31 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
     totalW /= Nsamples
     totalB /= Nsamples
 
-    try:
-        Gbar = spla.pinvh(totalW, rtol=1e-8)
-    except:
-        Gbar = spla.pinvh(totalW, rcond=1e-8)
+   # try:
+   #     Gbar = spla.pinvh(totalW, rtol=1e-8)
+   # except:
+   #     Gbar = spla.pinvh(totalW, rcond=1e-8)
 
-    # Check pseudo-inverse relations
-    try:
-        assert np.allclose(Gbar @ totalW @ Gbar, Gbar)
-        assert np.allclose(totalW @ Gbar @ totalW, totalW)
-    except AssertionError:
-        try:
-            Gbar = spla.pinv(totalW, rtol=1e-8)
-        except:
-            Gbar = spla.pinv(totalW, rcond=1e-8)
-        
-        try:
-            assert np.allclose(Gbar @ totalW @ Gbar, Gbar)
-            assert np.allclose(totalW @ Gbar @ totalW, totalW)
-        except AssertionError:
-            print("WARNING: Pseudo inverse relations not satisfied.")
+   # # Check pseudo-inverse relations
+   # try:
+   #     assert np.allclose(Gbar @ totalW @ Gbar, Gbar)
+   #     assert np.allclose(totalW @ Gbar @ totalW, totalW)
+   # except AssertionError:
+   #     try:
+   #         Gbar = spla.pinv(totalW, rtol=1e-8)
+   #     except:
+   #         Gbar = spla.pinv(totalW, rcond=1e-8)
+   #     
+   #     try:
+   #         assert np.allclose(Gbar @ totalW @ Gbar, Gbar)
+   #         assert np.allclose(totalW @ Gbar @ totalW, totalW)
+   #     except AssertionError:
+   #         print("WARNING: Pseudo inverse relations not satisfied.")
 
+    np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
+    np.save(RunPath + "Wbar_{}.npy".format(T), totalW)
     # Compute relaxation expansion
-    etaBar = -np.dot(Gbar, totalB)
+    etaBar, residues, rank, singVals  = spla.lstsq(totalW, -totalB, cond=1e-8)
 
     np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
     np.save(RunPath + "etabar_{}.npy".format(T), etaBar)
@@ -277,8 +279,9 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
     # save eigvals
     vals, _ = np.linalg.eigh(totalW)
     np.save("W_eigs_{}.npy".format(T), vals)
+    np.save("W_singvals_{}.npy".format(T), singVals)
 
-    return totalW, totalB, Gbar, etaBar, offscTime / Nsamples, expandTime / Nsamples
+    return etaBar, offscTime / Nsamples, expandTime / Nsamples
 
 
 # Get the Transport coefficients
@@ -390,7 +393,7 @@ def main(args):
     
     if not args.NoExpand:
         print("Expanding.")
-        Wbar, Bbar, Gbar, etaBar, offscTime, expandTime = Expand(args.Temp, state1List, vacsiteInd, args.NTrain, jList, dxList*a0,
+        etaBar, offscTime, expandTime = Expand(args.Temp, state1List, vacsiteInd, args.NTrain, jList, dxList*a0,
                                           AllJumpRates, jumpSelects, dispList, rateList, SpecExpand, MCJit, NVclus,
                                           numVecsInteracts, VecsInteracts, VecGroupInteracts, aj=args.AllJumps)
 
