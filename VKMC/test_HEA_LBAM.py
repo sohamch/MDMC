@@ -372,11 +372,11 @@ class Test_HEA_LBAM_vac(Test_HEA_LBAM):
 
     def setUp(self):
         self.DataPath = ("../MD_KMC_single/Run_2/singleStep_Run2_1073_AllRates.h5")
-        self.CrysDatPath = ("../")
+        self.CrysDatPath = ("../CrysDat_FCC/CrystData.h5")
 
         self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
         self.jList, self.dxList, self.jumpNewIndices, self.superCell, self.jnet, self.vacsite, self.vacsiteInd =\
-            Load_crys_Data(self.CrysDatPath, typ="FCC")
+            Load_crys_Data(self.CrysDatPath)
 
         self.AllSpecs = np.unique(self.state1List[0])
         self.NSpec = self.AllSpecs.shape[0]
@@ -392,17 +392,16 @@ class Test_HEA_LBAM_vac(Test_HEA_LBAM):
         self.ClustCut = 1.01
         self.MaxOrder = 2
 
-        self.VclusExp = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite,
+        self.VclusExp = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=False)
 
         self.MCJit, self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.NVclus = CreateJitCalculator(self.VclusExp, self.NSpec,
-                                                                                                1073,
                                                                                                 scratch=True,
                                                                                                 save=True)
 
-        self.VclusExp_all = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite,
+        self.VclusExp_all = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=True)
 
         self.MCJit_all, self.numVecsInteracts_all, self.VecsInteracts_all, self.VecGroupInteracts_all,\
-        self.NVclus_all = CreateJitCalculator(self.VclusExp_all, self.NSpec, 1073, scratch=True, save=False)
+        self.NVclus_all = CreateJitCalculator(self.VclusExp_all, self.NSpec, save=False)
 

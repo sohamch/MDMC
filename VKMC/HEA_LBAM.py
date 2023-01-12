@@ -56,8 +56,9 @@ def Load_Data(DataPath):
         dispList = np.array(fl["SpecDisps"])[perm]
         rateList = np.array(fl["rates"])[perm]
         AllJumpRates = np.array(fl["AllJumpRates_Init"])[perm]
+        jmpSelects = np.array(fl["JumpSelects"])[perm]
 
-    return state1List, dispList, rateList, AllJumpRates
+    return state1List, dispList, rateList, AllJumpRates, jmpSelects
 
 
 def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite, vacSpec, AllInteracts=False):
@@ -260,7 +261,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
     np.save("W_eigs_{}.npy".format(T), vals)
     np.save("W_singvals_{}.npy".format(T), singVals)
 
-    return etaBar, offscTime / Nsamples, expandTime / Nsamples
+    return totalW, totalB, etaBar, offscTime / Nsamples, expandTime / Nsamples
 
 
 # Get the Transport coefficients
@@ -314,7 +315,7 @@ def main(args):
 
     # Load Data
     specExpOriginal = args.SpecExpand
-    state1List, dispList, rateList, AllJumpRates = Load_Data(args.DataPath)
+    state1List, dispList, rateList, AllJumpRates, jumpSelects = Load_Data(args.DataPath)
 
     AllSpecs = np.unique(state1List[0])
     NSpec = AllSpecs.shape[0]
@@ -328,7 +329,7 @@ def main(args):
     a0 = np.linalg.norm(dispList[0, args.VacSpec]) / np.linalg.norm(dxList[0])
     
     jumpSelects = np.zeros(state1List.shape[0], dtype=np.int8)
-    print("Indexing jumps and checking displacements.", flush=True)
+    print("Checking displacements and jump indexing.", flush=True)
     print("Computed lattice parameter: {}.".format(a0), flush=True)
     for stateInd in tqdm(range(state1List.shape[0]), position=0, leave=True):
         dxVac = dispList[stateInd, args.VacSpec, :]
@@ -345,7 +346,7 @@ def main(args):
         sp = state1List[stateInd, jList[jmpInd]]
         assert np.allclose(-dxVac, dispList[stateInd, sp, :])
         
-        jumpSelects[stateInd] = jmpInd
+        assert jumpSelects[stateInd] == jmpInd
 
     saveJit = args.SaveJitArrays
     if args.Scratch:
@@ -372,7 +373,7 @@ def main(args):
     
     if not args.NoExpand:
         print("Expanding.")
-        etaBar, offscTime, expandTime = Expand(args.Temp, state1List, vacsiteInd, args.NTrain, jList, dxList*a0,
+        Wbar, Bbar, etaBar, offscTime, expandTime = Expand(args.Temp, state1List, vacsiteInd, args.NTrain, jList, dxList*a0,
                                           AllJumpRates, jumpSelects, dispList, rateList, SpecExpand, MCJit, NVclus,
                                           numVecsInteracts, VecsInteracts, VecGroupInteracts, args.AllJumps, args.rcond)
 
