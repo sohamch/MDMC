@@ -1,4 +1,7 @@
 import sys
+
+import scipy.linalg
+
 sys.path.append("../")
 
 from onsager import crystal, supercell, cluster
@@ -15,8 +18,8 @@ from HEA_LBAM import *
 class Test_HEA_LBAM(unittest.TestCase):
 
     def setUp(self):
-        self.DataPath = ("../MD_KMC_single/Run_2/singleStep_Run2_1073_AllRates.h5")
-        self.CrysDatPath = ("../CrysDat_FCC/CrystData.h5")
+        self.DataPath = ("../../MD_KMC_single/Run_2/singleStep_Run2_1073_AllRates.h5")
+        self.CrysDatPath = ("../../CrysDat_FCC/CrystData.h5")
 
         self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
         self.jList, self.dxList, self.jumpNewIndices, self.superCell, self.jnet, self.vacsite, self.vacsiteInd =\
@@ -273,7 +276,7 @@ class Test_HEA_LBAM(unittest.TestCase):
         self.assertTrue(np.allclose(del_lamb_comp_2, del_lamb), msg="\n{} \n {}".format(del_lamb_comp[:5], del_lamb[:5]))
 
         # Try with single jump dataset first
-        Wbar, Bbar, Gbar, etaBar, offscTime, expandTime = Expand(1073, stateList, 0, 1, self.jList,
+        Wbar, Bbar, etaBar, offscTime, expandTime = Expand(1073, stateList, 0, 100, self.jList,
                                                                  self.dxList, AllJumpRates, jumpSelects, dispList, rateList,
                                                                  SpecExpand, self.MCJit, NVclus,
                                                                  self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts,
@@ -294,7 +297,7 @@ class Test_HEA_LBAM(unittest.TestCase):
         # Then try with all jumps
         a0 = np.linalg.norm(dispList[0, self.NSpec - 1, :]) / np.linalg.norm(self.dxList[0])
         print(a0)
-        Wbar, Bbar, Gbar, etaBar, offscTime, expandTime = Expand(1073, stateList, self.vacsiteInd, 1, self.jList,
+        Wbar, Bbar, etaBar, offscTime, expandTime = Expand(1073, stateList, self.vacsiteInd, 1, self.jList,
                                                                  self.dxList * a0, AllJumpRates, jumpSelects, dispList, rateList,
                                                                  SpecExpand, self.MCJit, NVclus,
                                                                  self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts,
@@ -365,8 +368,8 @@ class Test_HEA_LBAM(unittest.TestCase):
 class Test_HEA_LBAM_vac(Test_HEA_LBAM):
 
     def setUp(self):
-        self.DataPath = ("../MD_KMC_single/Run_2/singleStep_Run2_1073_AllRates.h5")
-        self.CrysDatPath = ("../CrysDat_FCC/CrystData.h5")
+        self.DataPath = ("../../MD_KMC_single/Run_2/singleStep_Run2_1073_AllRates.h5")
+        self.CrysDatPath = ("../../CrysDat_FCC/CrystData.h5")
 
         self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
         self.jList, self.dxList, self.jumpNewIndices, self.superCell, self.jnet, self.vacsite, self.vacsiteInd =\
