@@ -249,16 +249,15 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
     totalB /= Nsamples
 
     np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
-    np.save(RunPath + "Wbar_{}.npy".format(T), totalW)
-    # Compute relaxation expansion
-    etaBar, residues, rank, singVals  = spla.lstsq(totalW, -totalB, cond=rcond)
 
-    np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
-    np.save(RunPath + "etabar_{}.npy".format(T), etaBar)
-    
+    np.save(RunPath + "Wbar_{}.npy".format(T), totalW)
     # save eigvals
     vals, _ = np.linalg.eigh(totalW)
     np.save("W_eigs_{}.npy".format(T), vals)
+
+    # Compute relaxation expansion
+    etaBar, residues, rank, singVals = spla.lstsq(totalW, -totalB, cond=rcond)
+    np.save(RunPath + "etabar_{}.npy".format(T), etaBar)
     np.save("W_singvals_{}.npy".format(T), singVals)
 
     return totalW, totalB, etaBar, offscTime / Nsamples, expandTime / Nsamples
