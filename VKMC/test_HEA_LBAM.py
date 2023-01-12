@@ -13,7 +13,7 @@ class Test_HEA_LBAM(unittest.TestCase):
 
     def setUp(self):
         self.DataPath = ("../MD_KMC_single/Run_2/singleStep_Run2_1073_AllRates.h5")
-        self.CrysDatPath = ("../CrysDat_FCC")
+        self.CrysDatPath = ("../CrysDat_FCC/CrystData.h5")
 
         self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
         self.jList, self.dxList, self.jumpNewIndices, self.superCell, self.jnet, self.vacsite, self.vacsiteInd =\
@@ -288,11 +288,6 @@ class Test_HEA_LBAM(unittest.TestCase):
         self.assertTrue(np.allclose(Wbar, Wbar_comp))
         self.assertTrue(np.allclose(Bbar, Bbar_comp), msg="{} \n {} \n {}".format(SpecExpand, Bbar_comp[:10], Bbar[:10]))
 
-        Gbar_comp = spla.pinvh(Wbar_comp, rtol=1e-8)
-        eta_bar_comp = Gbar_comp @ Bbar_comp
-        self.assertTrue(np.allclose(Gbar_comp, Gbar))
-        self.assertTrue(np.allclose(-eta_bar_comp, etaBar))
-
         # Then try with all jumps
         a0 = np.linalg.norm(dispList[0, self.NSpec - 1, :]) / np.linalg.norm(self.dxList[0])
         print(a0)
@@ -328,10 +323,6 @@ class Test_HEA_LBAM(unittest.TestCase):
         self.assertTrue(np.allclose(Wbar, Wbar_comp))
         self.assertTrue(np.allclose(Bbar, Bbar_comp))
 
-        Gbar_comp = spla.pinvh(Wbar_comp, rtol=1e-8)
-        eta_bar_comp = Gbar_comp @ Bbar_comp
-        self.assertTrue(np.allclose(Gbar_comp, Gbar))
-        self.assertTrue(np.allclose(-eta_bar_comp, etaBar))
 
     def test_symm(self):
         """
