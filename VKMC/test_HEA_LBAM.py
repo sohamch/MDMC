@@ -35,7 +35,6 @@ class Test_HEA_LBAM(unittest.TestCase):
                                 AllInteracts=False)
 
         self.MCJit, self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.NVclus = CreateJitCalculator(self.VclusExp, self.NSpec,
-                                                                                                1073,
                                                                                                 scratch=True,
                                                                                                 save=True)
 
@@ -43,7 +42,7 @@ class Test_HEA_LBAM(unittest.TestCase):
                                 AllInteracts=True)
 
         self.MCJit_all, self.numVecsInteracts_all, self.VecsInteracts_all, self.VecGroupInteracts_all,\
-        self.NVclus_all = CreateJitCalculator(self.VclusExp_all, self.NSpec, 1073, scratch=True, save=False)
+        self.NVclus_all = CreateJitCalculator(self.VclusExp_all, self.NSpec, scratch=True, save=False)
 
     def test_CreateJitCalculator(self):
         # This is to check whether the Jit arrays have been properly stored
