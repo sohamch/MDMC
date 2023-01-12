@@ -3,7 +3,7 @@
 
 # import sys
 # This is the path to the cluster expansion modules
-# sys.path.append("/mnt/WorkPartition/Work/Research/UIUC/MDMC/VKMC")
+# sys.path.append("/mnt/WorkPartition/Work/Research/UIUC/MDMC/VCE")
 # Commenting out - add this path to $PYTHONPATH instead.
 
 import os
