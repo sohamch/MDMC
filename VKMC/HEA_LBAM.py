@@ -190,7 +190,7 @@ def CreateJitCalculator(VclusExp, NSpec, scratch=True, save=True):
 
 def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
            jSelectList, dispSelects, ratesEscape, SpecExpand, MCJit, NVclus,
-           numVecsInteracts, VecsInteracts, VecGroupInteracts, aj):
+           numVecsInteracts, VecsInteracts, VecGroupInteracts, aj, rcond=1e-8):
 
 
     # Get a dummy TS offsite counts
@@ -250,7 +250,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
     np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
     np.save(RunPath + "Wbar_{}.npy".format(T), totalW)
     # Compute relaxation expansion
-    etaBar, residues, rank, singVals  = spla.lstsq(totalW, -totalB, cond=1e-8)
+    etaBar, residues, rank, singVals  = spla.lstsq(totalW, -totalB, cond=rcond)
 
     np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
     np.save(RunPath + "etabar_{}.npy".format(T), etaBar)
@@ -374,7 +374,7 @@ def main(args):
         print("Expanding.")
         etaBar, offscTime, expandTime = Expand(args.Temp, state1List, vacsiteInd, args.NTrain, jList, dxList*a0,
                                           AllJumpRates, jumpSelects, dispList, rateList, SpecExpand, MCJit, NVclus,
-                                          numVecsInteracts, VecsInteracts, VecGroupInteracts, aj=args.AllJumps)
+                                          numVecsInteracts, VecsInteracts, VecGroupInteracts, args.AllJumps, args.rcond)
 
         print("Off site counting time per sample: {}".format(offscTime))
         print("Expansion time per sample: {}".format(expandTime))
@@ -458,11 +458,15 @@ if __name__ == "__main__":
     parser.add_argument("-eo", "--ExpandOnly", action="store_true",
                         help="Use the run to only generate the Jit arrays - no transport calculation.")
     
+    parser.add_argument("-rc", "--rcond", type=float, default=1e-8,
+                        help="Threshold for zero singular values.")
+    
     parser.add_argument("-nex", "--NoExpand", action="store_true",
                         help="Use the run to only generate the Jit arrays - no transport calculation.")
 
     parser.add_argument("-d", "--DumpArgs", action="store_true",
                         help="Whether to dump arguments in a file")
+    
     parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str,
                         help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
 
