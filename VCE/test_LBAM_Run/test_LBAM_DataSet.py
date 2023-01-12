@@ -13,7 +13,7 @@ import pickle
 import h5py
 import unittest
 
-from HEA_LBAM import *
+from LBAM_DataSet import *
 
 class Test_HEA_LBAM(unittest.TestCase):
 
