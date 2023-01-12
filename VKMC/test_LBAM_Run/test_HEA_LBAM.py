@@ -1,3 +1,6 @@
+import sys
+sys.path.append("../")
+
 from onsager import crystal, supercell, cluster
 import numpy as np
 import scipy.linalg as spla
