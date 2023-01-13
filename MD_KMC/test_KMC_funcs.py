@@ -6,10 +6,11 @@ from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 from tqdm import tqdm
 from KMC_funcs import write_init_states, write_final_states, updateStates, getJumpSelects
 import os
+import subprocess
+import h5py
+
 if not os.path.isdir(os.getcwd() + "/test_KMC_funcs_files"):
     os.mkdir(os.getcwd() + "/test_KMC_funcs_files")
-
-import subprocess
 
 class test_KMC_funcs(unittest.TestCase):
     def setUp(self):
@@ -39,14 +40,17 @@ class test_KMC_funcs(unittest.TestCase):
         self.NtrajTest = 5
         self.SiteIndToSpec = np.random.randint(1, 6, (self.NtrajTest, self.SiteIndToCartPos.shape[0]))
         self.vacSiteInd = np.random.randint(0, Nsites, self.NtrajTest)
+        # self.vacSiteInd = np.zeros(self.NtrajTest, dtype=int)
 
         for traj in range(self.NtrajTest):
             self.SiteIndToSpec[traj, self.vacSiteInd[traj]] = 0
 
-        self.NNsites = np.load("../CrysDat_FCC/NNsites_sitewise.npy")[1:, :].T
-        self.dxList = np.load("../CrysDat_FCC/dxList.npy")
-
         np.save("TestOccs.npy", self.SiteIndToSpec)
+
+        with h5py.File("../CrysDat_FCC/CrystData.h5", "r") as fl:
+            self.dxList = np.array(fl["dxList_1nn"])
+            self.NNsites = np.array(fl["NNsiteList_sitewise"])
+
 
     def test_write_init_states(self):
 
@@ -86,7 +90,7 @@ class test_KMC_funcs(unittest.TestCase):
             self.assertEqual(fileLines[:12], Initlines[:12])
             atomLines = fileLines[12:]
             self.assertEqual(len(atomLines), self.Nsites - 1)
-            # except the vacancy site, things should have been skipped
+            # except the vacancy site, sites should not have been skipped
             for lineInd, writtenSite in enumerate(tqdm(atomLines, position=0, leave=True, ncols=65)):
                 splitInfo = writtenSite.split()
                 lammpsSiteInd = int(splitInfo[0])
