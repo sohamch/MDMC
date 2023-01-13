@@ -49,7 +49,7 @@ class test_KMC_funcs(unittest.TestCase):
 
         with h5py.File("../CrysDat_FCC/CrystData.h5", "r") as fl:
             self.dxList = np.array(fl["dxList_1nn"])
-            self.NNsites = np.array(fl["NNsiteList_sitewise"])
+            self.NNsites = np.array(fl["NNsiteList_sitewise"])[1:, :].T
 
 
     def test_write_init_states(self):
