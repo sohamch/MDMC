@@ -101,7 +101,7 @@ try:
     with open(SourcePath + "lammpsBox.txt", "r") as fl:
         Initlines = fl.readlines()
 except:
-    raise FileNotFoundError("Template lammps data file not found.")
+    raise FileNotFoundError("Template lammps data file not found. Run the \"Setup_Lammps_coords.py\" file.")
 
 assert SiteIndToSpecAll.shape[1] == len(Initlines[12:])
 
