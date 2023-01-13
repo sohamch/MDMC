@@ -30,9 +30,6 @@ CrysDatPath = args[9] # The path where the potential file is found
 #MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
 WriteAllJumps = bool(int(args[10]))
 
-if startStep == 0:
-    InitStateFile = args[11]
-
 SourcePath = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
 SourcePath += "/"
 
@@ -81,9 +78,10 @@ if startStep > 0:
 
 else:
     assert startStep == 0
-    print("Starting from step zero.")
+    InitStateFile = args[11]
     try:
         allStates = np.load(SourcePath + InitStateFile)
+        print("Starting from step zero.")
     except:
         raise FileNotFoundError("Initial states not found.")
     if permuteStates:
