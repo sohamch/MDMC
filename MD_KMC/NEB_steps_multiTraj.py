@@ -147,14 +147,6 @@ for step in range(Nsteps):
             # Write the final states in NEB format for lammps
             write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd, writeAll=WriteAllJumps)
             
-            # store the final lammps files for the first batch of states at each step
-            if chunk == 0:
-                # Store the final data for each traj, at each step and for each jump
-                for traj in range(sampleStart, sampleEnd):
-                    cmd = subprocess.Popen("cp final_{0}.data step_finals_chunk_0/final_startSamp_{0}_stp_{1}_jInd_{2}.data".format(traj, step+1, jumpInd), shell=True)
-                    rt = cmd.wait()
-                    assert rt == 0
-
             # Then run lammps
             commands = [
                 "mpirun -np {0} $LMPPATH/lmp -p {0}x1 -in in.neb_{1} > out_{1}.txt".format(NImage, traj)
