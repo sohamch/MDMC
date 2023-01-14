@@ -25,7 +25,7 @@ StateStart = int(args[4])
 batchSize = int(args[5]) # Total samples in this batch of calculations.
 chunkSize = int(args[6]) # How many samples to do NEB on at a time.
 MainPath = args[7] # The path where the potential file is found
-CrysDatPath = args[8] # The path where the potential file is found
+CrysDatPath = args[8] # The path where the Crystal data is found
 WriteAllJumps = bool(int(args[9]))
 
 SourcePath = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
