@@ -142,8 +142,6 @@ class VectorClusterExpansion(object):
             clus2LenVecClus[clListInd] = len(vlist)
 
             if clus2LenVecClus[clListInd] == 0:  # If the vector basis is empty, don't consider the cluster
-                # vecClustList.append(clList)
-                # vecVecList.append([np.zeros(3) for i in range(len(clList))])
                 continue
 
             for v in vlist:
