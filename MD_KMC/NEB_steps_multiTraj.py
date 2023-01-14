@@ -46,7 +46,7 @@ SiteIndToPos = np.load(SourcePath + "SiteIndToLmpCartPos.npy")  # lammps pos of 
 
 with h5py.File(CrysDatPath + "CrystData.h5", "r") as fl:
     dxList = np.array(fl["dxList_1nn"])
-    SiteIndToNgb = np.array(fl["NNsiteList_sitewise"])
+    SiteIndToNgb = np.array(fl["NNsiteList_sitewise"])[1:, :].T
 
 assert SiteIndToNgb.shape[0] == SiteIndToPos.shape[0]
 assert SiteIndToNgb.shape[1] == dxList.shape[0]
