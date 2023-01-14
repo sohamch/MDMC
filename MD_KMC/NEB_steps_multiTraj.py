@@ -274,9 +274,6 @@ if __name__ == "__main__":
     parser.add_argument("-u", "--Nunits", metavar="0", type=int, default=8,
                         help="Number of unit cells in the supercell.")
 
-    parser.add_argument("-u", "--Nunits", metavar="0", type=int, default=8,
-                        help="Number of unit cells in the supercell.")
-
     parser.add_argument("-idx", "--StateStart", metavar="0", type=int, default=0,
                         help="The starting index of the state for this run from the whole data set of starting states. "
                              "The whole data set is loaded, and then samples starting from this index to the next "
@@ -290,4 +287,21 @@ if __name__ == "__main__":
 
     parser.add_argument("-wa", "--WriteAllJumps", action="store_true",
                         help="Whether to store final style NEB files for all jumps separately.")
+
+    parser.add_argument("-dmp", "--DumpArguments", action="store_true",
+                        help="Whether to dump all the parsed arguments into a text file.")
+
+    parser.add_argument("-dpf", "--DumpFile", action="store_true",
+                        help="The file in the run directory where all the args will be dumped.")
+
+    args = parser.parse_args()
+
+    if args.DumpArguments:
+        print("Dumping arguments to: {}".format(args.DumpFile))
+        opts = vars(args)
+        with open(RunPath + args.DumpFile, "w") as fl:
+            for key, val in opts.items():
+                fl.write("{}:\t{}\n".format(key, val))
+
+    main(args)
 
