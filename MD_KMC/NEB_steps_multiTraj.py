@@ -217,8 +217,14 @@ def main(args):
     # SourcePath = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
     # SourcePath += "/"
 
-    # Create the Lammps cartesian positions
-    SiteIndToPos = CreateLammpsData(args.Nunits, args.LatPar)
+    # Create the Lammps cartesian positions - first check if they have already been made.
+    try:
+        SiteIndToPos = np.load("SiteIndToLmpCartPos.npy")
+        with open("lammpsBox.txt", "r") as fl:
+            l = fl.readlines()
+
+    except FileNotFoundError:
+        SiteIndToPos = CreateLammpsData(args.Nunits, args.LatPar)
 
     # Load the crystal data
     dxList, SiteIndToNgb = Load_crysDat(args.CrysDatPath, args.LatPar)
