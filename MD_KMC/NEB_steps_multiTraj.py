@@ -80,7 +80,7 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
         try:
             allStates = np.load(InitStateFile)
             print("Starting from step zero.")
-        except:
+        except FileNotFoundError:
             raise FileNotFoundError("Initial states not found.")
 
         SiteIndToSpecAll = allStates[StateStart: StateStart + batchSize]
@@ -237,7 +237,7 @@ def main(args):
     try:
         assert args.batchSize == SiteIndToSpecAll.shape[0]
     except AssertionError:
-        print("Different batch size entered as argument than loaded data.")
+        raise TypeError("Different batch size (entered as argument) than loaded data detected.")
 
     for traj in range(SiteIndToSpecAll.shape[0]):
         state = SiteIndToSpecAll[traj]
