@@ -42,7 +42,7 @@ if not os.path.isdir(RunPath + "step_finals_chunk_0"):
 # Load the lammps cartesian positions and neighborhoods - pre-prepared
 SiteIndToPos = np.load(SourcePath + "SiteIndToLmpCartPos.npy")  # lammps pos of sites
 
-with h5py.File(CrysDatPath + "CrystData.h5", "r") as fl:
+with h5py.File(CrysDatPath, "r") as fl:
     dxList = np.array(fl["dxList_1nn"])
     SiteIndToNgb = np.array(fl["NNsiteList_sitewise"])[1:, :].T
 
