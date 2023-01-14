@@ -117,6 +117,31 @@ class test_KMC_funcs(unittest.TestCase):
 
     def test_write_final_states(self):
 
+        # write the initial lines to compare later
+        with open("lammpsBox.txt", "r") as fl:
+            Initlines = fl.readlines()
+
+        siteCount = int(Initlines[2].split()[0])
+        InitialSpecCount = int(Initlines[3].split()[0])
+
+        self.assertEqual(siteCount, self.Nsites)
+        self.assertEqual(InitialSpecCount, 1)  # should have only the Nickel case
+
+        specs = np.unique(self.SiteIndToSpec[0])
+        Nspecs = len(specs) - 1
+
+        Initlines[2] = "{} \t atoms\n".format(self.Nsites - 1)
+        Initlines[3] = "{} atom types\n".format(Nspecs - 1)
+
+        # Write out the initial state
+        write_init_states(self.SiteIndToSpec, self.SiteIndToCartPos, self.vacSiteInd, Initlines)
+
+        # Move the files to the test folder (to prevent cluttering of source directory)
+        cmd = "mv initial_* test_KMC_funcs_files"
+        c = subprocess.Popen(cmd, shell=True)
+        rt_code = c.wait()
+        assert rt_code == 0
+
         with open("test_KMC_funcs_files/vacneighbors.txt", "w") as fl:
             for traj in range(self.NtrajTest):
                 vacSite = self.vacSiteInd[traj]
@@ -141,6 +166,7 @@ class test_KMC_funcs(unittest.TestCase):
             self.assertEqual(rt_code, 0)
 
             for traj in tqdm(range(self.NtrajTest)):
+
                 vacSite = self.vacSiteInd[traj]
                 vacCoords = self.SiteIndToCartPos[vacSite]
 
@@ -168,6 +194,7 @@ class test_KMC_funcs(unittest.TestCase):
                 else:
                     self.assertEqual(lammpsSiteInd, vacNgb)
 
+
                 # Now check that the correct positions are recorded
                 x = float(splitInfo[1])
                 y = float(splitInfo[2])
@@ -176,6 +203,21 @@ class test_KMC_funcs(unittest.TestCase):
                 self.assertEqual(x, pos[0])
                 self.assertEqual(y, pos[1])
                 self.assertEqual(z, pos[2])
+
+
+                # Check that initially, this atom was indeed the vacancy neighbor
+
+                # Read in the initial coordinates
+                with open("test_KMC_funcs_files/initial_{}.data".format(traj), "r") as fl:
+                    AllLines = fl.readlines()
+
+                InitCoords = AllLines[12:]
+                initCoord = self.SiteIndToCartPos[vacNgb]
+
+                spliInitCoords = InitCoords[lammpsSiteInd - 1].split() # the sites start from 1
+                self.assertEqual(initCoord[0], float(spliInitCoords[2]), msg="{} {} {}".format(vacSite, vacNgb, lammpsSiteInd))
+                self.assertEqual(initCoord[1], float(spliInitCoords[3]), msg="{} {} {}".format(vacSite, vacNgb, lammpsSiteInd))
+                self.assertEqual(initCoord[2], float(spliInitCoords[4]), msg="{} {} {}".format(vacSite, vacNgb, lammpsSiteInd))
 
     def test_JumpUpdates(self):
 
