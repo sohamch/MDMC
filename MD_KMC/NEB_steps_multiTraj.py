@@ -3,12 +3,10 @@
 
 # In[5]:
 import numpy as np
-import pickle
 import subprocess
 import sys
 import time
 import pickle
-import collections
 import h5py
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 from KMC_funcs import *
@@ -35,9 +33,6 @@ SourcePath += "/"
 NImage = 3
 RunPath = os.getcwd()+'/'
 print("Running from : " + RunPath)
-
-if not os.path.isdir(RunPath + "step_finals_chunk_0"):
-    os.makedirs(RunPath + "step_finals_chunk_0")
 
 # Load the lammps cartesian positions and neighborhoods - pre-prepared
 SiteIndToPos = np.load(SourcePath + "SiteIndToLmpCartPos.npy")  # lammps pos of sites
