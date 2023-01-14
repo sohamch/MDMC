@@ -6,25 +6,28 @@ import numpy as np
 import subprocess
 import sys
 import time
-import pickle
 import h5py
+
+from ase.spacegroup import crystal
+from ase.build import make_supercell
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
+
 from KMC_funcs import *
 import os
 from scipy.constants import physical_constants
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 
-
 args = list(sys.argv)
 T = int(args[1])
 startStep = int(args[2])
 Nsteps = int(args[3])
-StateStart = int(args[4])
-batchSize = int(args[5]) # Total samples in this batch of calculations.
-chunkSize = int(args[6]) # How many samples to do NEB on at a time.
-MainPath = args[7] # The path where the potential file is found
-CrysDatPath = args[8] # The path where the Crystal data is found
-WriteAllJumps = bool(int(args[9]))
+Nunits = int(args[4])
+StateStart = int(args[5])
+batchSize = int(args[6]) # Total samples in this batch of calculations.
+chunkSize = int(args[7]) # How many samples to do NEB on at a time.
+MainPath = args[8] # The path where the potential file is found
+CrysDatPath = args[9] # The path where the Crystal data is found
+WriteAllJumps = bool(int(args[10]))
 
 SourcePath = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
 SourcePath += "/"
@@ -34,8 +37,28 @@ NImage = 3
 RunPath = os.getcwd()+'/'
 print("Running from : " + RunPath)
 
-# Load the lammps cartesian positions and neighborhoods - pre-prepared
-SiteIndToPos = np.load(SourcePath + "SiteIndToLmpCartPos.npy")  # lammps pos of sites
+def CreateLammpsData(N_units):
+    # Create an FCC primitive unit cell
+    a = 3.59
+    fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=True)
+
+    # Form a supercell
+    superlatt = np.identity(3) * N_units
+    superFCC = make_supercell(fcc, superlatt)
+    Nsites = len(superFCC.get_positions())
+
+    write_lammps_data("lammpsBox.txt", superFCC)
+    Sup_lammps_unrelax_coords = read_lammps_data("lammpsBox.txt", style="atomic")
+
+    # Save the lammps-basis coordinate of each site
+    SiteIndToCartPos = np.zeros((Nsites, 3))
+    for i in range(Nsites):
+        SiteIndToCartPos[i, :] = Sup_lammps_unrelax_coords[i].position[:]
+    np.save("SiteIndToLmpCartPos.npy", SiteIndToCartPos)
+    return SiteIndToCartPos
+
+# Load the lammps cartesian positions and neighborhoods
+SiteIndToPos = CreateLammpsData(Nunits) # np.load(SourcePath + "SiteIndToLmpCartPos.npy")  # lammps pos of sites
 
 with h5py.File(CrysDatPath, "r") as fl:
     dxList = np.array(fl["dxList_1nn"])
@@ -71,7 +94,7 @@ if startStep > 0:
 
 else:
     assert startStep == 0
-    InitStateFile = args[10]
+    InitStateFile = args[11]
     try:
         allStates = np.load(InitStateFile)
         print("Starting from step zero.")
@@ -86,7 +109,7 @@ else:
 
 
 try:
-    with open(SourcePath + "lammpsBox.txt", "r") as fl:
+    with open("lammpsBox.txt", "r") as fl:
         Initlines = fl.readlines()
 except:
     raise FileNotFoundError("Template lammps data file not found. Run the \"Setup_Lammps_coords.py\" file.")
