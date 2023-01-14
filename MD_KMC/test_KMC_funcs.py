@@ -109,6 +109,10 @@ class test_KMC_funcs(unittest.TestCase):
                 self.assertEqual(x, self.SiteIndToCartPos[mainSiteInd, 0])
                 self.assertEqual(y, self.SiteIndToCartPos[mainSiteInd, 1])
                 self.assertEqual(z, self.SiteIndToCartPos[mainSiteInd, 2])
+
+            with open("test_KMC_funcs_files/initial_{}.data".format(traj), "a") as fl:
+                fl.write("{}".format(vacInd))
+
         print("Initial state writing passed.", flush=True)
 
     def test_write_final_states(self):
