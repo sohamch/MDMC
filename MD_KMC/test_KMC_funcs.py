@@ -122,6 +122,7 @@ class test_KMC_funcs(unittest.TestCase):
                 fl.write(st)
 
         for jInd in range(self.NNsites.shape[1]):
+            print(jInd, flush=True)
             write_final_states(self.SiteIndToCartPos, self.vacSiteInd, self.NNsites, jInd)
             # Now go through each trajectory and check that the proper site has been translated
             for traj in range(self.NtrajTest):
@@ -135,8 +136,7 @@ class test_KMC_funcs(unittest.TestCase):
             rt_code = c.wait()
             self.assertEqual(rt_code, 0)
 
-            for traj in range(self.NtrajTest):
-                print(jInd, traj, flush=True)
+            for traj in tqdm(range(self.NtrajTest)):
                 vacSite = self.vacSiteInd[traj]
                 vacCoords = self.SiteIndToCartPos[vacSite]
 
