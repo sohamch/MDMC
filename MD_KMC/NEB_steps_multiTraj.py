@@ -257,7 +257,7 @@ if __name__ == "__main__":
 
     parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
     parser.add_argument("-pp", "--PotPath", metavar="/path/to/potential/file", type=str, help="Path to the LAMMPS MEAM potential.")
-    parser.add_argument("-if", "--InitStateFile", metavar="/path/to/initial/file.npy", type=str,
+    parser.add_argument("-if", "--InitStateFile", metavar="/path/to/initial/file.npy", type=str, default=None,
                         help="Path to the .npy file storing the 0-step states from Metropolis Monte Carlo.")
 
     parser.add_argument("-a0", "--LatPar", metavar="1.0", type=float, help="Lattice parameter - multiplied to displacements and used"
