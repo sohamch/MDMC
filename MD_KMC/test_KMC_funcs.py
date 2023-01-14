@@ -219,7 +219,7 @@ class test_KMC_funcs(unittest.TestCase):
                 self.assertEqual(initCoord[1], float(spliInitCoords[3]), msg="{} {} {}".format(vacSite, vacNgb, lammpsSiteInd))
                 self.assertEqual(initCoord[2], float(spliInitCoords[4]), msg="{} {} {}".format(vacSite, vacNgb, lammpsSiteInd))
 
-    def test_JumpUpdates(self):
+    def test_getJumpSelects_updateStates(self):
 
         # For each trajectory, we'll give some random rates
         rates = np.random.rand(self.NtrajTest, self.NNsites.shape[1])
