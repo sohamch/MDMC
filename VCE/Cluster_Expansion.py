@@ -103,10 +103,10 @@ class VectorClusterExpansion(object):
                         continue
                     # Otherwise, find all symmetry-grouped counterparts
                     if self.OrigVac:
-                        newSymSet = set([ClusterSpecies.inSuperCell(ClustSpec.g(self.crys, g, zero=self.zeroClusts), self.N_units)
+                        newSymSet = set([ClusterSpecies.inSuperCell(ClustSpec.g(self.crys, g), self.N_units)
                                          for g in self.crys.G])
                     else:
-                        newSymSet = set([ClustSpec.g(self.crys, g, zero=self.zeroClusts) for g in self.crys.G])
+                        newSymSet = set([ClustSpec.g(self.crys, g) for g in self.crys.G])
 
                     allClusts.update(newSymSet)
                     newList = list(newSymSet)
@@ -125,11 +125,11 @@ class VectorClusterExpansion(object):
             glist0 = []
             if not self.OrigVac:
                 for g in self.crys.G:
-                    if cl0.g(self.crys, g, zero=self.zeroClusts) == cl0:
+                    if cl0.g(self.crys, g) == cl0:
                         glist0.append(g)
             else:
                 for g in self.crys.G:
-                    if ClusterSpecies.inSuperCell(cl0.g(self.crys, g, zero=self.zeroClusts), self.N_units) == cl0:
+                    if ClusterSpecies.inSuperCell(cl0.g(self.crys, g), self.N_units) == cl0:
                         glist0.append(g)
 
             G0 = sum([g.cartrot for g in glist0])/len(glist0)
@@ -148,9 +148,9 @@ class VectorClusterExpansion(object):
                 newVecList = [v]
                 for g in self.crys.G:
                     if not self.OrigVac:
-                        cl1 = cl0.g(self.crys, g, zero=self.zeroClusts)
+                        cl1 = cl0.g(self.crys, g)
                     else:
-                        cl1 = ClusterSpecies.inSuperCell(cl0.g(self.crys, g, zero=self.zeroClusts), self.N_units)
+                        cl1 = ClusterSpecies.inSuperCell(cl0.g(self.crys, g), self.N_units)
                     if cl1 in newClustList:
                         continue
                     newClustList.append(cl1)
@@ -225,7 +225,7 @@ class VectorClusterExpansion(object):
                 if SpCl in allClusts:
                     continue
                 # Apply group operations
-                newsymset = set([ClusterSpecies.inSuperCell(SpCl.g(self.crys, g, zero=self.zeroClusts), self.N_units)
+                newsymset = set([ClusterSpecies.inSuperCell(SpCl.g(self.crys, g), self.N_units)
                              for g in self.crys.G])
                 allClusts.update(newsymset)
                 symClusterList.append(list(newsymset))

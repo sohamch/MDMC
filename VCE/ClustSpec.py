@@ -3,7 +3,7 @@ from onsager import cluster
 
 class ClusterSpecies(object):
 
-    def __init__(self, specList, siteList, zero=True, transition=False):
+    def __init__(self, specList, siteList, zero=True):
         """
         Creation to represent clusters from site Lists and species lists
         :param specList: Species lists
@@ -14,19 +14,17 @@ class ClusterSpecies(object):
             raise ValueError("Species and site lists must have same length")
         if not all(isinstance(site, cluster.ClusterSite) for site in siteList):
             raise TypeError("The sites must be entered as clusterSite object instances")
-        # Form (site, species) set
-        # Calculate the translation to bring center of the sites to the origin unit cell
+        if len(set(siteList)) != len(siteList):
+            raise TypeError("Non-unique sites detected in sitelist: {}".format(siteList))
+
+        # Calculate the translation to bring center of the sites to the origin unit cell if zero cluster indicated
         self.zero = zero
         if zero:
-            if not transition:
-                Rtrans = sum([site.R for site in siteList])//len(siteList)
-                self.transPairs = [(site-Rtrans, spec) for site, spec in zip(siteList, specList)]
-            else:
-                Rtrans = siteList[0].R  # the init site should be at the origin unit cell if trans cluster
-                self.transPairs = [(site - Rtrans, spec) for site, spec in zip(siteList, specList)]
+            Rtrans = sum([site.R for site in siteList])//len(siteList)
+            self.transPairs = [(site-Rtrans, spec) for site, spec in zip(siteList, specList)]
         else:
             self.transPairs = [(site, spec) for site, spec in zip(siteList, specList)]
-        # self.transPairs = sorted(self.transPairs, key=lambda x: x[1])
+        # self.transPairs = sorted(self.transPairs, key=lambda x: x[1] + x[0].R[0] + x[0].R[1] + x[0].R[2])
         self.SiteSpecs = self.transPairs #sorted(self.transPairs, key=lambda s: np.linalg.norm(s[0].R))
         self.siteList = [site for site, spec in self.SiteSpecs]
         self.specList = [spec for site, spec in self.SiteSpecs]
@@ -44,10 +42,10 @@ class ClusterSpecies(object):
     def __hash__(self):
         return self.__hashcache__
 
-    def g(self, crys, gop, zero=True):
+    def g(self, crys, gop):
         specList = [spec for site, spec in self.SiteSpecs]
         siteList = [site.g(crys, gop) for site, spec in self.SiteSpecs]
-        return self.__class__(specList, siteList, zero=zero)
+        return self.__class__(specList, siteList, zero=self.zero)
 
     @staticmethod
     def inSuperCell(SpCl, N_units):
