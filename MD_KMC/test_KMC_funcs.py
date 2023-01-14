@@ -145,13 +145,25 @@ class test_KMC_funcs(unittest.TestCase):
                     finalLines = fl.readlines()
                 line0 = finalLines[0].split()
                 self.assertEqual(len(line0), 1)
-                self.assertEqual(int(line0[0]), self.Nsites - 1)
+                self.assertEqual(int(line0[0]), 1)
 
+                # check that only the jumping atom was considered
                 atomLines = finalLines[1:]
+                self.assertEqual(len(atomLines), 1)
+
+                # check that the correct lammps site index was recorded for it
+                coords = atomLines[0]
+                splitInfo = coords.split()
+                lammpsSiteInd = int(splitInfo[0])
+                self.assertEqual(lammpsSiteInd, lineInd + 1)
+                x = float(splitInfo[1])
+                y = float(splitInfo[2])
+                z = float(splitInfo[3])
+
 
                 # Get the vacancy neighbor at this site
                 vacNgb = self.NNsites[vacSite, jInd]
-
+                pos = self.SiteIndToCartPos[vacSite]
                 # Now check that the correct positions are recorded
                 for lineInd, coords in enumerate(tqdm(atomLines)):
                     splitInfo = coords.split()
