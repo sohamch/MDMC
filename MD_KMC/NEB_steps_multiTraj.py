@@ -194,7 +194,9 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             tarr[sampleStart:sampleEnd] = time_step[:]
             with open("ChunkTiming.txt", "a") as fl:
                 fl.write(
-                    "Chunk {0} of {1} in step {3} completed in : {2} seconds\n".format(chunk//chunkSize + 1, int(np.ceil(Ntraj/chunkSize)), time.time() - start, step + 1))
+                    "Chunk {0} of {1} in step {3} completed in : {2} seconds\n".format(chunk//chunkSize + 1,
+                                                                                       int(np.ceil(Ntraj/chunkSize)),
+                                                                                       time.time() - start, step + 1))
 
         with open("StepTiming.txt", "a") as fl:
             fl.write("Time per step up to {0} of {1} steps : {2} seconds\n".format(step + 1, Nsteps, (time.time() - start)/(step + 1)))
