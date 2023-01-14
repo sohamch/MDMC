@@ -4,7 +4,6 @@
 # In[5]:
 import numpy as np
 import subprocess
-import sys
 import time
 import h5py
 
@@ -17,29 +16,15 @@ import os
 from scipy.constants import physical_constants
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 
-args = list(sys.argv)
-T = int(args[1])
-startStep = int(args[2])
-Nsteps = int(args[3])
-Nunits = int(args[4])
-StateStart = int(args[5])
-batchSize = int(args[6]) # Total samples in this batch of calculations.
-chunkSize = int(args[7]) # How many samples to do NEB on at a time.
-MainPath = args[8] # The path where the potential file is found
-CrysDatPath = args[9] # The path where the Crystal data is found
-WriteAllJumps = bool(int(args[10]))
-
-# SourcePath = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
-# SourcePath += "/"
+import argparse
 
 # Need to get rid of these argument
 NImage = 3
 RunPath = os.getcwd()+'/'
 print("Running from : " + RunPath)
 
-def CreateLammpsData(N_units):
+def CreateLammpsData(N_units, a):
     # Create an FCC primitive unit cell
-    a = 3.59
     fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=True)
 
     # Form a supercell
@@ -67,7 +52,7 @@ def Load_crysDat(CrysDatPath, a0):
     return dxList, SiteIndToNgb
 
 # load the data
-def load_Data():
+def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
     if startStep > 0:
 
         with h5py.File(RunPath + "data_{0}_{1}_{2}.h5".format(T, startStep, StateStart), "r") as fl:
@@ -92,7 +77,6 @@ def load_Data():
 
     else:
         assert startStep == 0
-        InitStateFile = args[11]
         try:
             allStates = np.load(InitStateFile)
             print("Starting from step zero.")
@@ -107,7 +91,9 @@ def load_Data():
 
     return SiteIndToSpecAll, vacSiteIndAll
 
-def DoKMC(SiteIndToSpecAll, vacSiteIndAll):
+def DoKMC(T, startStep, Nsteps, StateStart, dxList,
+          SiteIndToSpecAll, vacSiteIndAll, batchSize, SiteIndToNgb, chunkSize, PotPath,
+          SiteIndToPos, WriteAllJumps=False):
     try:
         with open("lammpsBox.txt", "r") as fl:
             Initlines = fl.readlines()
@@ -137,7 +123,7 @@ def DoKMC(SiteIndToSpecAll, vacSiteIndAll):
     TestRandomNums = np.zeros(Ntraj) # store the random numbers at all steps
 
     # Before starting, write the lammps input files
-    write_input_files(chunkSize, potPath=MainPath)
+    write_input_files(chunkSize, potPath=PotPath)
 
     start = time.time()
 
@@ -225,4 +211,75 @@ def DoKMC(SiteIndToSpecAll, vacSiteIndAll):
             fl.create_dataset("TestRandNums", data=TestRandomNums)
 
 def main(args):
-    SiteIndToPos = CreateLammpsData(args.Nunits)
+
+    # SourcePath = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
+    # SourcePath += "/"
+
+    # Create the Lammps cartesian positions
+    SiteIndToPos = CreateLammpsData(args.Nunits, args.LatPar)
+
+    # Load the crystal data
+    dxList, SiteIndToNgb = Load_crysDat(args.CrysDatPath, args.LatPar)
+
+    # Load the initial states
+    SiteIndToSpecAll, vacSiteIndAll = load_Data(args.Temp, args.startStep, args.StateStart,
+                                                args.batchSize, args.InitStateFile)
+
+    # Run a check on the vacancy positions
+    try:
+        assert args.batchSize == SiteIndToSpecAll.shape[0]
+    except AssertionError:
+        print("Different batch size entered as argument than loaded data.")
+
+    for traj in range(SiteIndToSpecAll.shape[0]):
+        state = SiteIndToSpecAll[traj]
+        vacInd = np.where(state == 0)[0][0]
+        assert vacInd == vacSiteIndAll[traj]
+
+    # Then do the KMC steps
+    DoKMC(args.Temp, args.startStep, args.Nsteps, args.StateStart, dxList,
+          SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
+          SiteIndToPos, WriteAllJumps=args.WriteAllJumps)
+
+if __name__ == "__main__":
+
+    # Add argument parser
+    parser = argparse.ArgumentParser(description="Input parameters for using GCnets",
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
+    parser.add_argument("-pp", "--PotPath", metavar="/path/to/potential/file", type=str, help="Path to the LAMMPS MEAM potential.")
+    parser.add_argument("-if", "--InitStateFile", metavar="/path/to/initial/file.npy", type=str,
+                        help="Path to the .npy file storing the 0-step states from Metropolis Monte Carlo.")
+
+    parser.add_argument("-a0", "--LatPar", metavar="1.0", type=float, help="Lattice parameter - multiplied to displacements and used"
+                                                                           "to construct LAMMPS coordinates.")
+
+    parser.add_argument("-T", "--Temp", metavar="1073", type=int, help="Temperature to read data from")
+
+    parser.add_argument("-st", "--startStep", metavar="0", type=int, default=0,
+                        help="From which step to start the simulation. Note - checkpointed data file must be present in running directory if value > 0.")
+
+    parser.add_argument("-ns", "--Nsteps", metavar="0", type=int, default=100,
+                        help="How many steps to continue AFTER \"starStep\" argument.")
+
+    parser.add_argument("-u", "--Nunits", metavar="0", type=int, default=8,
+                        help="Number of unit cells in the supercell.")
+
+    parser.add_argument("-u", "--Nunits", metavar="0", type=int, default=8,
+                        help="Number of unit cells in the supercell.")
+
+    parser.add_argument("-idx", "--StateStart", metavar="0", type=int, default=0,
+                        help="The starting index of the state for this run from the whole data set of starting states. "
+                             "The whole data set is loaded, and then samples starting from this index to the next "
+                             "\"batchSize\" number of states are loaded.")
+
+    parser.add_argument("-bs", "--batchSize", metavar="0", type=int, default=200,
+                        help="How many initial states starting from StateStart should initially be loaded.")
+
+    parser.add_argument("-cs", "--chunkSize", metavar="0", type=int, default=20,
+                        help="How many samples to do NEB calculations for at a time.")
+
+    parser.add_argument("-wa", "--WriteAllJumps", action="store_true",
+                        help="Whether to store final style NEB files for all jumps separately.")
+
