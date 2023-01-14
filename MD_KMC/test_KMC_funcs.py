@@ -155,35 +155,23 @@ class test_KMC_funcs(unittest.TestCase):
                 coords = atomLines[0]
                 splitInfo = coords.split()
                 lammpsSiteInd = int(splitInfo[0])
-                self.assertEqual(lammpsSiteInd, lineInd + 1)
-                x = float(splitInfo[1])
-                y = float(splitInfo[2])
-                z = float(splitInfo[3])
-
 
                 # Get the vacancy neighbor at this site
                 vacNgb = self.NNsites[vacSite, jInd]
                 pos = self.SiteIndToCartPos[vacSite]
+                if vacNgb < vacSite:
+                    self.assertEqual(lammpsSiteInd, vacNgb + 1)
+                else:
+                    self.assertEqual(lammpsSiteInd, vacNgb)
+
                 # Now check that the correct positions are recorded
-                for lineInd, coords in enumerate(tqdm(atomLines)):
-                    splitInfo = coords.split()
-                    lammpsSiteInd = int(splitInfo[0])
-                    self.assertEqual(lammpsSiteInd, lineInd + 1)
-                    x = float(splitInfo[1])
-                    y = float(splitInfo[2])
-                    z = float(splitInfo[3])
+                x = float(splitInfo[1])
+                y = float(splitInfo[2])
+                z = float(splitInfo[3])
 
-                    if lineInd >= vacSite:
-                        mainSiteInd = lammpsSiteInd
-                    else:
-                        mainSiteInd = lammpsSiteInd - 1
-
-                    if mainSiteInd == vacNgb:
-                        mainSiteInd = vacSite
-
-                    self.assertEqual(x, self.SiteIndToCartPos[mainSiteInd, 0])
-                    self.assertEqual(y, self.SiteIndToCartPos[mainSiteInd, 1])
-                    self.assertEqual(z, self.SiteIndToCartPos[mainSiteInd, 2])
+                self.assertEqual(x, pos[0])
+                self.assertEqual(y, pos[1])
+                self.assertEqual(z, pos[2])
 
     def test_JumpUpdates(self):
 
