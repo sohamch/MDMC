@@ -24,11 +24,9 @@ Nsteps = int(args[3])
 StateStart = int(args[4])
 batchSize = int(args[5]) # Total samples in this batch of calculations.
 chunkSize = int(args[6]) # How many samples to do NEB on at a time.
-permuteStates = bool(int(args[7])) # permute the states (applicable if startStep is 0)? 0 if False.
-MainPath = args[8] # The path where the potential file is found
-CrysDatPath = args[9] # The path where the potential file is found
-#MainPath = "/home/sohamc2/HEA_FCC/MDMC/"
-WriteAllJumps = bool(int(args[10]))
+MainPath = args[7] # The path where the potential file is found
+CrysDatPath = args[8] # The path where the potential file is found
+WriteAllJumps = bool(int(args[9]))
 
 SourcePath = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
 SourcePath += "/"
@@ -78,19 +76,14 @@ if startStep > 0:
 
 else:
     assert startStep == 0
-    InitStateFile = args[11]
+    InitStateFile = args[10]
     try:
-        allStates = np.load(SourcePath + InitStateFile)
+        allStates = np.load(InitStateFile)
         print("Starting from step zero.")
     except:
         raise FileNotFoundError("Initial states not found.")
-    if permuteStates:
-        perm = np.load(SourcePath + "perm_{}.npy".format(T))
-        SiteIndToSpecAll = allStates[perm][StateStart: StateStart + batchSize]
-        print("Permuting states with given indices.")
-    else:
-        print("Not permuting states.")
-        SiteIndToSpecAll = allStates[StateStart: StateStart + batchSize]
+
+    SiteIndToSpecAll = allStates[StateStart: StateStart + batchSize]
 
     assert np.all(SiteIndToSpecAll[:, 0] == 0), "All vacancies must be at the 0th site initially."
     vacSiteIndAll = np.zeros(SiteIndToSpecAll.shape[0], dtype = int)
