@@ -134,6 +134,8 @@ class VectorClusterExpansion(object):
 
             G0 = sum([g.cartrot for g in glist0])/len(glist0)
             vals, vecs = np.linalg.eig(G0)
+            # In order to span R3, the vectors must be real, so we need to consider those
+            # only whose real parts still have an eigenvalue of 1.0
             vecs = np.real(vecs)
             vlist = [vecs[:, i]/np.linalg.norm(vecs[:, i]) for i in range(3) if np.isclose(vals[i], 1.0)
                      and np.allclose(vecs[:, i], np.dot(G0, vecs[:, i]))]
