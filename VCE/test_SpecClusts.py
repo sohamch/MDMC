@@ -8,7 +8,7 @@ from ClustSpec import ClusterSpecies
 import Cluster_Expansion
 import unittest
 
-__FCC__ = True
+__FCC__ = False
 
 class test_BCC(unittest.TestCase):
 
@@ -255,20 +255,72 @@ class test_FCC(unittest.TestCase):
             print(self.VclusExp.vecVec[vectorGroup][position])
 
 Test_type = test_BCC
+crtype = "BCC"
 if __FCC__:
     Test_type = test_FCC
+    crtype = "FCC"
 
 class test_Vector_Cluster_Expansion(Test_type):
 
-    def test_spec_assign_symmetry(self):
+    def test_recalcClusters(self):
 
         # check that every cluster appears just once in just one symmetry list
         clList = [cl for clList in self.VclusExp.SpecClusters for cl in clList]
         self.assertEqual(len(clList), len(set(clList)))
+        TwoBodyCount = 0
+        ThreeBodyCount = 0
+        OneBodyCount = 0
+        for cl in clList:
+            if len(cl.SiteSpecs) == 1:
+                OneBodyCount += 1
+
+            if len(cl.SiteSpecs) == 2:
+                TwoBodyCount += 1
+
+            if len(cl.SiteSpecs) == 3:
+                ThreeBodyCount += 1
+
+        if crtype == "FCC":
+            print("Checking FCC")
+            self.assertTrue(OneBodyCount, self.NSpec - 1)
+            two = (6 + 3) * (2 * (self.NSpec - 1) + (self.NSpec - 1) ** 2)
+            # 6 translationally unique 1nn pairs, 3 for 2nn pairs,
+            # then first term for vacancy-spec clusters, and second term for spec-spec clusters
+            self.assertEqual(two, TwoBodyCount)
+
+            three = (12 + 8) * (3 * (self.NSpec - 1) ** 2 + (self.NSpec - 1) ** 3)
+            # 12 translationally unique triplets on the cube faces, with max allowed separation of a0 between any two,
+            # and 8 on the octahedral cage faces.
+            self.assertEqual(three, ThreeBodyCount)
+
+        if crtype == "BCC":
+            print("Checking BCC")
+            self.assertTrue(OneBodyCount, self.NSpec - 1)
+            two = (4 + 3) * (2 * (self.NSpec - 1) + (self.NSpec - 1) ** 2)
+            self.assertEqual(two, TwoBodyCount)
+
+            three = 12 * (3 * (self.NSpec - 1) ** 2 + (self.NSpec - 1) ** 3)  # 12 pyramidal triplets in BCC
+            self.assertEqual(three, ThreeBodyCount)
+
+        print(OneBodyCount, TwoBodyCount, ThreeBodyCount)
 
         # let's test if the number of symmetric site clusters generated is the same
-        sitetuples = set([])
+        siteSets = []
         for clusterList in self.VclusExp.SpecClusters:
+            # First check symmetry grouping
+            for cl0 in clusterList:
+                for g in self.VclusExp.crys.G:
+                    clNew = cl0.g(self.crys, g)
+                    self.assertTrue(clNew in clusterList)
+                    # check that symmetrically rotated clusters have the same species
+                    site0List = cl0.siteList
+                    sitesRot = [site.g(self.VclusExp.crys, g) for site in site0List]
+                    Rtrans = sum(site.R for site in sitesRot) // len(sitesRot)
+                    if self.VclusExp.zeroClusts:
+                        sitesRot = [site - Rtrans for site in sitesRot]
+                    self.assertEqual(sitesRot, clNew.siteList)
+                    self.assertEqual(cl0.specList, clNew.specList)
+
             for clust in clusterList:
                 Rtrans = sum([site.R for site in clust.siteList]) // len(clust.siteList)
                 sites_shift = tuple([site-Rtrans for site in clust.siteList])
@@ -276,38 +328,52 @@ class test_Vector_Cluster_Expansion(Test_type):
                 sitesBuilt = tuple([site for site, spec in clust.transPairs])
                 if self.VclusExp.zeroClusts:
                     self.assertEqual(sites_shift, sitesBuilt)
-                sitetuples.add(sites_shift)
+                st = set(sites_shift)
+                if st not in siteSets:
+                    siteSets.append(st)
 
-        sitesFromClusexp = set([])
-        for clSet in self.clusexp:
+        sitesFromClusexp = []
+        for clSet in self.VclusExp.clusexp:
             for cl in list(clSet):
-                for g in self.VclusExp.crys.G:
-                    newsitelist = tuple([site.g(self.VclusExp.crys, g) for site in cl.sites])
-                    Rtrans = sum([site.R for site in newsitelist])//len(newsitelist)
-                    sitesFromClusexp.add(tuple([site - Rtrans for site in newsitelist]))
+                Rtrans = sum([site.R for site in cl.sites]) // len(cl.sites)
+                sitesFromClusexp.append(set(tuple([site - Rtrans for site in cl.sites])))
 
         total_reps = len(sitesFromClusexp)
+        self.assertEqual(len(sitesFromClusexp), len(siteSets), msg="{}, {}".format(total_reps, len(siteSets)))
 
-        self.assertEqual(total_reps, len(sitetuples), msg="{}, {}".format(total_reps, len(sitetuples)))
+        for ClSiteSet in siteSets:
+            self.assertTrue(ClSiteSet in sitesFromClusexp)
 
         # Go through all the site clusters:
         total_spec_clusts = 0
+        tot_1 = 0
+        tot_2 = 0
+        tot_3 = 0
+
         for clSites in sitesFromClusexp:
             ordr = len(clSites)
             # for singletons, any species assignment is acceptable
             if ordr == 1:
                 total_spec_clusts += self.NSpec
+                tot_1 += self.NSpec
                 continue
+
             # Now, for two and three body clusters:
             # we can have max one vacancy at a site, and any other site can have any other occupancy.
             # or we can have no vacancy at all in which case it's just (Nspec - 1)**ordr
-            # Also, we can symmetrically permute two sites in every two or three body cluster
-            total_spec_clusts += (ordr * (self.NSpec - 1)**(ordr - 1) + (self.NSpec-1)**ordr)//2
-        #
+            total_spec_clusts += (ordr * (self.NSpec - 1) ** (ordr - 1) + (self.NSpec - 1) ** ordr)
+            if ordr == 2:
+                tot_2 += (ordr * (self.NSpec - 1) ** (ordr - 1) + (self.NSpec - 1) ** ordr)
+
+            if ordr == 3:
+                tot_3 += (ordr * (self.NSpec - 1) ** (ordr - 1) + (self.NSpec - 1) ** ordr)
+
+        self.assertEqual(tot_1, OneBodyCount)
+        self.assertEqual(tot_2, TwoBodyCount)
+        self.assertEqual(tot_3, ThreeBodyCount)
         total_code = sum([len(lst) for lst in self.VclusExp.SpecClusters])
-        #
         self.assertEqual(total_code, total_spec_clusts, msg="{}, {}".format(total_code, total_spec_clusts))
-        print("Done assignment tests")
+        print("Done species assignment tests")
 
     def test_genvecs(self):
         """
