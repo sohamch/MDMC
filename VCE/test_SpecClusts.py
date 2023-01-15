@@ -41,7 +41,7 @@ class test_BCC(unittest.TestCase):
                                                                  TScombShellRange=None, TSnnRange=None,
                                                                  jumpnetwork=None)
 
-        self.reqSites = [i for i in range(10)]  # All interactions must have at least one of these sites
+        self.reqSites = None  #[i for i in range(10)]  # All interactions must have at least one of these sites
         self.VclusExp.generateSiteSpecInteracts(reqSites=self.reqSites)
 
         self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
@@ -165,7 +165,7 @@ class test_FCC(unittest.TestCase):
                                                                  TScombShellRange=None, TSnnRange=None,
                                                                  jumpnetwork=None)
 
-        self.reqSites = [i for i in range(10)]  # All interactions must have at least one of these sites
+        self.reqSites = None  #[i for i in range(10)]  # All interactions must have at least one of these sites
         self.VclusExp.generateSiteSpecInteracts(reqSites=self.reqSites)
 
         self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
@@ -423,11 +423,11 @@ class test_Vector_Cluster_Expansion(Test_type):
             cl0 = self.VclusExp.vecClus[vclusListInd][0]
             self.assertEqual(cl0, self.VclusExp.SpecClusters[clListInd][0])
 
-    def test_site_interactions(self):
+    def test_generateSiteSpecInteracts(self):
         # test that every interaction is valid
         # The key site should be present only once in every interaction stored for it
         interactCounter = collections.defaultdict(int)
-        if len(self.reqSites) ==  0:
+        if self.reqSites is None:
             self.assertEqual(len(self.VclusExp.SiteSpecInteractIds), self.NSpec*len(self.superCell.mobilepos))
         else:
             print("checking required site presence.")
@@ -437,7 +437,7 @@ class test_Vector_Cluster_Expansion(Test_type):
             sp = key[1]
             for Id in interactIdList:
                 interaction = self.VclusExp.Id2InteractionDict[Id]
-                if len(self.reqSites) > 0:
+                if self.reqSites is not None:
                     req_count = 0
                     for (site, spec) in interaction:
                         if site in self.reqSites:
@@ -478,14 +478,13 @@ class test_Vector_Cluster_Expansion(Test_type):
         for key, item in InteractIdtoRepClust.items():
             self.assertEqual(len(item), 1)
 
-    def test_trans_count(self):
         # test that all translations of all representative clusters are considered
         allSpCl = [SpCl for SpClList in self.VclusExp.SpecClusters for SpCl in SpClList]
         for (key, interactIdList) in self.VclusExp.SiteSpecInteractIds.items():
             siteInd = key[0]
             ci, Rsite = self.VclusExp.sup.ciR(siteInd)
             sp = key[1]
-            if len(self.reqSites) == 0:
+            if self.reqSites is None:
                 count = 0
                 # For each species at a site, check that all translations of a cluster are considered.
                 for SpecClus in allSpCl:
