@@ -17,6 +17,7 @@ class VectorClusterExpansion(object):
                  TSnnRange=None, jumpnetwork=None, MadeSpecClusts=None, TclusExp=False,
                  zeroClusts=True, OrigVac=False):
         """
+        Cluster expansion for mono-atomic lattices
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
         :param Tclusexp: Transition state cluster expansion - will be added in later
@@ -28,7 +29,6 @@ class VectorClusterExpansion(object):
         :param MadeSpecClusts: an optional pre-made species cluster group list.
         :param zeroClusts: Same as parameter "zero" of ClusterSpecies class - whether to bring a cluster's centroid to zero or not.
         :param OrigVac: only vacancy-atom pairs with the vacancy at the centre will be considered. This will not use clusexp.
-        In this type of simulations, we consider a solid with a single wyckoff set on which atoms are arranged.
         """
         self.chem = 0  # we'll work with a monoatomic basis
         self.sup = sup
@@ -112,6 +112,9 @@ class VectorClusterExpansion(object):
                     newList = list(newSymSet)
                     # self.SpecClust2Clus[len(symClusterList)] = clSetInd
                     symClusterList.append(newList)
+
+        AllAfterSym = [cl for clList in symClusterList for cl in clList]
+        assert set(AllAfterSym) == allClusts
 
         return symClusterList
 
