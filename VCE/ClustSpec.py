@@ -47,17 +47,6 @@ class ClusterSpecies(object):
         siteList = [site.g(crys, gop) for site, spec in self.SiteSpecs]
         return self.__class__(specList, siteList, zero=self.zero)
 
-    @staticmethod
-    def inSuperCell(SpCl, N_units):
-        siteList = []
-        specList = []
-        for site, spec in SpCl.SiteSpecs:
-            Rnew = site.R % N_units
-            siteNew = cluster.ClusterSite(ci=site.ci, R=Rnew)
-            siteList.append(siteNew)
-            specList.append(spec)
-        return SpCl.__class__(specList, siteList, zero=SpCl.zero)
-
 
     def strRep(self):
         str= ""

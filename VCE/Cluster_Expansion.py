@@ -15,12 +15,11 @@ class VectorClusterExpansion(object):
     """
     def __init__(self, sup, clusexp, NSpec, vacSite, vacSpec, maxorder, Nvac=1, TScutoff=None, TScombShellRange=None,
                  TSnnRange=None, jumpnetwork=None, MadeSpecClusts=None, TclusExp=False,
-                 zeroClusts=True, OrigVac=False):
+                 zeroClusts=True):
         """
         Cluster expansion for mono-atomic lattices
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
-        :param Tclusexp: Transition state cluster expansion - will be added in later
         :param jumpnetwork: the single vacancy jump network in the lattice used to construct sup
         :param NSpec: no. of species to consider (including vacancies)
         :param vacSite: Index of the vacancy site (used in MC sampling and JIT construction)
@@ -28,7 +27,6 @@ class VectorClusterExpansion(object):
         :param maxorder: the maximum order of a cluster in clusexp.
         :param MadeSpecClusts: an optional pre-made species cluster group list.
         :param zeroClusts: Same as parameter "zero" of ClusterSpecies class - whether to bring a cluster's centroid to zero or not.
-        :param OrigVac: only vacancy-atom pairs with the vacancy at the centre will be considered. This will not use clusexp.
         """
         self.chem = 0  # we'll work with a monoatomic basis
         self.sup = sup
@@ -48,20 +46,15 @@ class VectorClusterExpansion(object):
         self.mobList = list(range(NSpec))
         self.vacSite = vacSite  # This stays fixed throughout the simulation, so makes sense to store it.
         self.zeroClusts = zeroClusts
-        self.OrigVac = OrigVac
 
         start = time.time()
-        if OrigVac:
-            self.SpecClusters, self.SiteSpecInteractIds, self.Id2InteractionDict,\
-            self.clust2InteractId, self.maxinteractions = self.InteractsOrigVac()
+        if MadeSpecClusts is not None:
+            self.SpecClusters = MadeSpecClusts
         else:
-            if MadeSpecClusts is not None:
-                self.SpecClusters = MadeSpecClusts
-            else:
-                self.SpecClusters = self.recalcClusters()
+            self.SpecClusters = self.recalcClusters()
         end1 = time.time()
         print("Built {} clusters:{:.4f} seconds".format(len([cl for clist in self.SpecClusters for cl in clist])
-                                                               , end1 - start), flush=True)
+                                                               ,end1 - start), flush=True)
 
 
         start = time.time()
@@ -71,9 +64,8 @@ class VectorClusterExpansion(object):
         print("Built KRA expander : {:.4f}".format(time.time() - start))
 
         start = time.time()
-        if not OrigVac:
-            self.IndexClusters(self.SpecClusters)  # assign integer integer IDs to each cluster
-            self.indexClustertoSpecClus(self.SpecClusters)  # Index clusters to symmetry groups
+        self.IndexClusters(self.SpecClusters)  # assign integer integer IDs to each cluster
+        self.indexClustertoSpecClus(self.SpecClusters)  # Index clusters to symmetry groups
         print("Built Indexing : {:.4f}".format(time.time() - start))
 
     def recalcClusters(self):
@@ -89,9 +81,6 @@ class VectorClusterExpansion(object):
                 occupancies = list(itertools.product(self.mobList, repeat=Nsites))
                 for siteOcc in occupancies:
                     # Make the cluster site object
-                    if self.OrigVac:
-                        if siteOcc[0] != self.vacSpec:
-                            continue
                     ClustSpec = ClusterSpecies(siteOcc, clust.sites, zero=self.zeroClusts)
                     # check if this has already been considered
                     if ClustSpec in allClusts:
@@ -102,11 +91,7 @@ class VectorClusterExpansion(object):
                     if mobcount[self.vacSpec] > self.Nvac:
                         continue
                     # Otherwise, find all symmetry-grouped counterparts
-                    if self.OrigVac:
-                        newSymSet = set([ClusterSpecies.inSuperCell(ClustSpec.g(self.crys, g), self.N_units)
-                                         for g in self.crys.G])
-                    else:
-                        newSymSet = set([ClustSpec.g(self.crys, g) for g in self.crys.G])
+                    newSymSet = set([ClustSpec.g(self.crys, g) for g in self.crys.G])
 
                     allClusts.update(newSymSet)
                     newList = list(newSymSet)
@@ -126,14 +111,9 @@ class VectorClusterExpansion(object):
         for clListInd, clList in enumerate(specClusters):
             cl0 = clList[0]
             glist0 = []
-            if not self.OrigVac:
-                for g in self.crys.G:
-                    if cl0.g(self.crys, g) == cl0:
-                        glist0.append(g)
-            else:
-                for g in self.crys.G:
-                    if ClusterSpecies.inSuperCell(cl0.g(self.crys, g), self.N_units) == cl0:
-                        glist0.append(g)
+            for g in self.crys.G:
+                if cl0.g(self.crys, g) == cl0:
+                    glist0.append(g)
 
             G0 = sum([g.cartrot for g in glist0])/len(glist0)
             vals, vecs = np.linalg.eig(G0)
@@ -150,10 +130,7 @@ class VectorClusterExpansion(object):
                 # The first cluster being the same helps in indexing
                 newVecList = [v]
                 for g in self.crys.G:
-                    if not self.OrigVac:
-                        cl1 = cl0.g(self.crys, g)
-                    else:
-                        cl1 = ClusterSpecies.inSuperCell(cl0.g(self.crys, g), self.N_units)
+                    cl1 = cl0.g(self.crys, g)
                     if cl1 in newClustList:
                         continue
                     newClustList.append(cl1)
@@ -206,62 +183,6 @@ class VectorClusterExpansion(object):
         for clListInd, clList in enumerate(SpecClusters):
             for clustInd, clust in enumerate(clList):
                 self.clust2SpecClus[clust] = (clListInd, clustInd)
-
-    def InteractsOrigVac(self):
-        """
-        NOTE : only works for monoatomic lattices for now
-        """
-        allClusts = set()
-        symClusterList = []
-        siteA = cluster.ClusterSite(ci=(0, 0), R=np.zeros(self.crys.dim, dtype=int))
-        assert siteA == self.vacSite
-
-        for siteInd in range(self.Nsites):
-            ciSite, RSite = self.sup.ciR(siteInd)
-            clSite = cluster.ClusterSite(ci=ciSite, R=RSite)
-            if clSite == siteA:
-                continue
-            for spec in range(self.NSpec-1):
-                siteList = [siteA, clSite]
-                specList = [self.NSpec - 1, spec]
-                SpCl = ClusterSpecies(specList, siteList, zero=self.zeroClusts)
-                if SpCl in allClusts:
-                    continue
-                # Apply group operations
-                newsymset = set([ClusterSpecies.inSuperCell(SpCl.g(self.crys, g), self.N_units)
-                             for g in self.crys.G])
-                allClusts.update(newsymset)
-                symClusterList.append(list(newsymset))
-	
-        self.indexClustertoSpecClus(symClusterList)  # Index clusters to symmetry groups
-        allSpCl = [cl for clSet in symClusterList for cl in clSet]
-
-        # index the clusters
-        self.Clus2Num = {}
-        self.Num2Clus = {}
-        clust2InteractId = collections.defaultdict(list)
-        InteractionIdDict = {}
-        for i, SpCl in enumerate(allSpCl):
-            self.Clus2Num[SpCl] = i
-            clust2InteractId[i].append(i)
-            self.Num2Clus[i] = SpCl
-            InteractionIdDict[i] = tuple(sorted([(self.sup.index(st.R, st.ci)[0], spec)
-                                                 for st, spec in SpCl.SiteSpecs],
-                                                key=lambda x: x[0]))
-        
-        SiteSpecinteractIds = collections.defaultdict(list)
-        for clSet in symClusterList:
-            for cl in clSet:
-                Id = self.Clus2Num[cl]
-                site = cl.siteList[1]
-                siteInd = self.sup.index(ci=site.ci, R=site.R)
-                spec = cl.specList[1]
-                SiteSpecinteractIds[(siteInd, spec)].append(Id)
-
-        SiteSpecinteractIds.default_factory = None
-        maxinteractions = max([len(lst) for key, lst in SiteSpecinteractIds.items()])
-
-        return symClusterList, SiteSpecinteractIds, InteractionIdDict, clust2InteractId, maxinteractions
 
     def generateSiteSpecInteracts(self, reqSites=None):
         """
