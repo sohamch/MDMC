@@ -39,7 +39,7 @@ def Load_crys_Data(CrysDatPath):
 
     jnet = [[((0, 0), dxList[jInd]) for jInd in range(dxList.shape[0])]]
 
-    vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
+    vacsite = cluster.ClusterSite(ci=(0, 0), R=np.zeros(3, dtype=int))
     vacsiteInd = superCell.index(np.zeros(3, dtype=int), (0, 0))[0]
     assert vacsiteInd == 0
     return jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd
@@ -62,10 +62,6 @@ def Load_Data(DataPath):
 
 
 def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite, vacSpec, AllInteracts=False):
-    TScombShellRange = 1  # upto 1nn combined shell
-    TSnnRange = 4
-    TScutoff = np.sqrt(2)  # 4th nn cutoff - must be the same as TSnnRange
-
 
     print("Creating cluster expansion.")
     crys = superCell.crys
@@ -73,7 +69,11 @@ def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite, vac
 
     # We'll create a dummy KRA expander anyway since the MC_JIT module is designed to accept transition arrays
     # However, this dummy KEA expander will never get used
-    # TODO: Remove KRA Expander or at least make it optional.K
+    # TODO: Remove KRA Expander or make it optional from JIT code for problems where it's not needed.
+    
+    TScombShellRange = 1  # upto 1nn combined shell
+    TSnnRange = 4
+    TScutoff = np.sqrt(2)  # 4th nn cutoff - must be the same as TSnnRange
     VclusExp = Cluster_Expansion.VectorClusterExpansion(superCell, clusexp, NSpec, vacsite, vacSpec, MaxOrder, TclusExp=True,
                                                     TScutoff=TScutoff, TScombShellRange=TScombShellRange,
                                                     TSnnRange=TSnnRange, jumpnetwork=jnet)
