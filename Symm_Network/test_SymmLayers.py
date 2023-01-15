@@ -43,7 +43,7 @@ class TestGConv(unittest.TestCase):
 
         # Now make a symmetry-related batch of states
         self.NspCh = 2
-        self.TestStates = np.random.randint(0, 2, (len(self.GpermNNIdx), self.NspCh, self.Nsites))
+        self.TestStates = np.random.randint(0, 5, (len(self.GpermNNIdx), self.NspCh, self.Nsites))
         self.state0 = self.TestStates[0, :, :].copy()
         self.GIndToGDict = {}
         self.IdentityIndex = None
