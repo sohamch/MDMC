@@ -2,13 +2,11 @@ from onsager import crystal, supercell, cluster
 import numpy as np
 import collections
 import itertools
-
+from tqdm import tqdm
 import ClustSpec
 from ClustSpec import ClusterSpecies
 import Cluster_Expansion
 import unittest
-
-__FCC__ = False
 
 class test_BCC(unittest.TestCase):
 
@@ -254,16 +252,18 @@ class test_FCC(unittest.TestCase):
             self.assertEqual(len(self.VclusExp.vecVec[vectorGroup]), 24)
             print(self.VclusExp.vecVec[vectorGroup][position])
 
-Test_type = test_BCC
-crtype = "BCC"
+__FCC__ = True
+
 if __FCC__:
     Test_type = test_FCC
     crtype = "FCC"
+else:
+    Test_type = test_BCC
+    crtype = "BCC"
 
 class test_Vector_Cluster_Expansion(Test_type):
 
     def test_recalcClusters(self):
-
         # check that every cluster appears just once in just one symmetry list
         clList = [cl for clList in self.VclusExp.SpecClusters for cl in clList]
         self.assertEqual(len(clList), len(set(clList)))
@@ -375,7 +375,7 @@ class test_Vector_Cluster_Expansion(Test_type):
         self.assertEqual(total_code, total_spec_clusts, msg="{}, {}".format(total_code, total_spec_clusts))
         print("Done species assignment tests")
 
-    def test_genvecs(self):
+    def test_genVecClustBasis(self):
         """
         Here, we test if we have generated the vector cluster basis (site-based only) properly
         """
@@ -385,15 +385,28 @@ class test_Vector_Cluster_Expansion(Test_type):
             cl0, vec0 = clList[0], vecList[0]
             for clust, vec in zip(clList, vecList):
                 # Check that symmetry operations are consistent
+                self.assertFalse(np.iscomplexobj(vec)) # check that all vectors are real.
                 count = 0
                 for g in self.crys.G:
                     if cl0.g(self.crys, g) == clust:
                         count += 1
-                        self.assertTrue(np.allclose(np.dot(g.cartrot, vec0), vec) or
-                                        np.allclose(np.dot(g.cartrot, vec0) + vec, np.zeros(3)),
+                        self.assertTrue(np.allclose(np.dot(g.cartrot, vec0), vec),
                                         msg="\n{}, {} \n{}, {}\n{}\n{}".format(vec0, vec, cl0, clust,
                                                                                self.crys.lattice, g.cartrot))
                 self.assertGreater(count, 0)
+
+                # Now check invariance of basis vectors
+                count += 1
+                for g in self.crys.G:
+                    if cl0.g(self.crys, g) == cl0:
+                        count += 1
+                        self.assertTrue(np.allclose(np.dot(g.cartrot, vec0), vec0),
+                                        msg="\n{}, {} \n{}\n{}".format(vec0, cl0, self.crys.lattice, g.cartrot))
+
+                # There must be at least one group op that keeps the cluster invariant to be considered in vector
+                # groups
+                self.assertGreater(count, 0)
+
 
     def testcluster2vecClus(self):
 
@@ -417,8 +430,18 @@ class test_Vector_Cluster_Expansion(Test_type):
                     self.assertTrue(self.VclusExp.clus2LenVecClus[clListInd] == len(vecList))
                     for tup in vecList:
                         self.assertEqual(clust, self.VclusExp.vecClus[tup[0]][tup[1]])
+                        vec0 = self.VclusExp.vecVec[tup[0]][tup[1]]
+                        # check that that vector is invariant under group operations that leave the cluster unchanges
+                        count = 0
+                        for g in self.crys.G:
+                            if clust.g(self.crys, g) == clust:
+                                count += 1
+                                self.assertTrue(np.allclose(np.dot(g.cartrot, vec0), vec0),
+                                                msg="\n{}, {} \n{}\n{}".format(vec0, clust, self.crys.lattice, g.cartrot))
+                        # check that at least one group op was found that satisfied the test
+                        self.assertGreater(count, 0)
 
-    def test_indexing(self):
+    def test_indexClusterGroupToVectorGroup(self):
         for vclusListInd, clListInd in enumerate(self.VclusExp.Vclus2Clus):
             cl0 = self.VclusExp.vecClus[vclusListInd][0]
             self.assertEqual(cl0, self.VclusExp.SpecClusters[clListInd][0])
@@ -518,7 +541,7 @@ class test_Vector_Cluster_Expansion(Test_type):
                                  msg="\ncount {}, stored {}\n{}".format(count, len(interactIdList), key))
 
 
-    def testcluster2SpecClus(self):
+    def testcluster2SpecClusGroup(self):
 
         for clListInd, clList in enumerate(self.VclusExp.SpecClusters):
             for clustInd, clust in enumerate(clList):
@@ -542,7 +565,7 @@ class test_Vector_Cluster_Expansion(Test_type):
 
         allSpCl = [SpCl for SpClList in self.VclusExp.SpecClusters for SpCl in SpClList]
 
-        if len(self.reqSites) == 0:
+        if self.reqSites is None:
             allCount = len(self.VclusExp.sup.mobilepos) * len(allSpCl)
             self.assertEqual(len(self.VclusExp.Id2InteractionDict), allCount,
                              msg="\n{}\n{}".format(len(self.VclusExp.Id2InteractionDict), allCount))
@@ -557,7 +580,8 @@ class test_Vector_Cluster_Expansion(Test_type):
 
         SpClset = set([])
 
-        for i in range(len(numSitesInteracts)):
+        print("checking interactions", flush=True)
+        for i in tqdm(range(len(numSitesInteracts)), position=0, leave=True):
             siteSpecSet = set([(SupSitesInteracts[i, j], SpecOnInteractSites[i, j])
                                for j in range(numSitesInteracts[i])])
             interaction = self.VclusExp.Id2InteractionDict[i]
@@ -603,13 +627,13 @@ class test_Vector_Cluster_Expansion(Test_type):
         # Check that all repclusts were considered
         self.assertEqual(SpClset, allSpClset)
         for key, item in repclustCount.items():
-            if len(self.reqSites) == 0:
+            if self.reqSites is None:
                 self.assertEqual(item, len(self.VclusExp.sup.mobilepos))
 
-        print("checked interactions")
+        print("checked interactions \n checking vectors", flush=True)
 
         # Now, test the vector basis and energy information for the clusters
-        for i in range(len(numSitesInteracts)):
+        for i in tqdm(range(len(numSitesInteracts)), position=0, leave=True):
             # get the representative cluster
             repClus = self.VclusExp.Num2Clus[self.VclusExp.InteractionId2ClusId[i]]
 
@@ -629,6 +653,16 @@ class test_Vector_Cluster_Expansion(Test_type):
             for vecind in range(len(vecList)):
                 vec = self.VclusExp.vecVec[vecList[vecind][0]][vecList[vecind][1]]
                 self.assertTrue(np.allclose(vec, VecsInteracts[i, vecind, :]))
+                count = 0
+                for g in self.crys.G:
+                    if repClus.g(self.crys, g) == repClus:
+                        count += 1
+                        self.assertTrue(np.allclose(np.dot(g.cartrot, vec), vec),
+                                        msg="\n{}, {} \n{}\n{}".format(vec, repClus, self.crys.lattice, g.cartrot))
+                # check that at least one group op was found that satisfied the test
+                self.assertGreater(count, 0)
+
+        print("checked vectors.", flush=True)
 
         # Next, test the interactions each (site, spec) is a part of
         self.assertEqual(numInteractsSiteSpec.shape[0], len(self.VclusExp.sup.mobilepos))
