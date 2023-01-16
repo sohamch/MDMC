@@ -8,6 +8,33 @@ from ClustSpec import ClusterSpecies
 import Cluster_Expansion
 import unittest
 
+class test_ClusterSpecies(unittest.TestCase):
+    def test_equality(self):
+        spec1 = 0
+        spec2 = 1
+        site1 = cluster.ClusterSite(ci=(0, 0), R=np.zeros(3, dtype=int))
+        site2 = cluster.ClusterSite(ci=(0, 0), R=np.ones(3, dtype=int))
+        siteList1 = [site1, site2]
+        siteList2 = [site2, site1]
+        specListDiff = [spec1, spec2]
+        specListSame1 = [spec1, spec1]
+        specListSame2 = [spec2, spec2]
+
+        cl1 = ClusterSpecies(specListDiff, siteList1)
+        cl2 = ClusterSpecies(specListDiff, siteList2)
+        self.assertNotEqual(cl1, cl2)
+
+        # same species but swapped sites should give the same cluster
+        cl1 = ClusterSpecies(specListSame1, siteList1)
+        cl2 = ClusterSpecies(specListSame1, siteList2)
+        self.assertEqual(cl1, cl2)
+
+        cl1 = ClusterSpecies(specListSame2, siteList1)
+        cl2 = ClusterSpecies(specListSame2, siteList2)
+        self.assertEqual(cl1, cl2)
+        print("Equality checks okay")
+
+
 class test_BCC(unittest.TestCase):
 
     def setUp(self):
@@ -181,7 +208,7 @@ class test_FCC(unittest.TestCase):
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
         print("Done setting up FCC cluster expansion tests.")
 
-    def test_vector_symmetry(self):
+    def test_FCC_BasisVectors(self):
         dx = np.array([0.5, 0., 0.5]) * self.a0
         dxUnit = dx / np.linalg.norm(dx)
         R, _ = self.crys.cart2pos(dx)
