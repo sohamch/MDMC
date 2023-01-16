@@ -892,6 +892,7 @@ if __name__ == "__main__":
     # Add argument parser
     parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str, help="Path to Data file.")
+    parser.add_argument("-np", "--NoPerm", action=store_false, help="Whether to permute the data if an option is detected.")
     parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
     parser.add_argument("-a0", "--LatParam", type=float, default=1.0, metavar="3.59", help="Lattice parameter.")
 
