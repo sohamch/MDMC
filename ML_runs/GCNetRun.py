@@ -35,13 +35,19 @@ def Load_crysDats(CrysDatPath):
 
     return GpermNNIdx, NNsiteList, JumpNewSites, dxJumps
 
-def Load_Data(DataPath):
+def Load_Data(DataPath, NoPerm):
     with h5py.File(DataPath, "r") as fl:
-        try:
-            perm = np.array(fl["Permutation"])
-            print("found permuation")
-        except:        
-            perm = np.arange(len(fl["InitStates"]))
+        if not NoPerm:
+            try:
+                perm = np.array(fl["Permutation"])
+                print("found permuation to mix data set.")
+            except:        
+                print("No permuation array found in data set to mix data set.")
+                perm = np.arange(len(fl["InitStates"]))
+
+        else:
+                print("Permutation not enabled.")
+                perm = np.arange(len(fl["InitStates"]))
 
         state1List = np.array(fl["InitStates"])[perm]
         state2List = np.array(fl["FinStates"])[perm]
@@ -689,7 +695,7 @@ def main(args):
     Ndim = dxJumps.shape[1]
 
     # 2. Load data
-    state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2 = Load_Data(args.DataPath)
+    state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2 = Load_Data(args.DataPath, args.NoPerm)
     
     if args.BoundTrain and (AllJumpRates_st2 is None or avgDisps_st1 is None or avgDisps_st2 is None):
         raise ValueError("Insufficient data to do boundary training. Need jump rates and average displacements from both initial and final states.")
@@ -892,6 +898,7 @@ if __name__ == "__main__":
     # Add argument parser
     parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str, help="Path to Data file.")
+    parser.add_argument("-np", "--NoPerm", metavar="/path/to/data", type=str, help="Path to Data file.")
     parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
     parser.add_argument("-a0", "--LatParam", type=float, default=1.0, metavar="3.59", help="Lattice parameter.")
 
