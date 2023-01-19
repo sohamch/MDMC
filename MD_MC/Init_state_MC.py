@@ -4,45 +4,42 @@ import numpy as np
 import subprocess
 import pickle
 import time
+
 from ase.spacegroup import crystal
 from ase.build import make_supercell
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
-import sys
+
 from scipy.constants import physical_constants
 kB = physical_constants["Boltzmann constant in eV/K"][0]
+
 import os
 import glob
+import argparse
 
 # First, we write a lammps input script for this run
-def write_lammps_input(jobID):
+def write_lammps_input(jobID, potPath):
 
-    seed = np.random.randint(0, 10000)
-    st = "units \t metal\n"
-    st += "atom_style \t atomic\n"
-    st += "atom_modify \t map array\n"
-    st += "boundary \t p p p\n"
-    st += "atom_modify \t sort 0 0.0\n"
-    st += "read_data \t inp_MC_{0}.data\n".format(jobID)
-    st += "pair_style \t meam\n"
-    st += "pair_coeff \t * * ../../../pot/library.meam Co Ni Cr Fe Mn ../../../pot/params.meam Co Ni Cr Fe Mn\n"
-    st += "neighbor \t 0.3 bin\n"
-    st += "neigh_modify \t delay 0 every 1 check yes\n"
-    st += "variable x equal pe\n"
-    st += "displace_atoms all random 0.1 0.1 0.1 {0}\n".format(seed)
-    st += "minimize	\t 1e-5 0.0 1000 10000\n"
-    st += "run 0\n"
-    st += "print \"$x\" file Eng_{0}.txt".format(jobID)
+    lines = ["units \t metal\n",
+             "atom_style \t atomic\n",
+             "atom_modify \t map array\n",
+             "boundary \t p p p\n",
+             "atom_modify \t sort 0 0.0\n",
+             "read_data \t inp_MC_{0}.data\n".format(jobID),
+             "pair_style \t meam\n",
+             "pair_coeff \t * * {0}/pot/library.meam Co Ni Cr Fe Mn {0}/pot/params.meam Co Ni Cr Fe Mn\n".format(potPath),
+             "minimize	\t 1e-5 0.0 1000 10000\n",
+             "variable x equal pe\n",
+             "print \"$x\" file Eng_{0}.txt".format(jobID)]
+
     with open("in_{0}.minim".format(jobID), "w") as fl:
-        fl.write(st)
+        fl.writelines(lines)
 
 
 # Next, we write the MC loop
-def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
+def MC_Run(T, SwapRun, ASE_Super, jobID, elems,
            N_therm=2000, N_save=200, serial=True, lastChkPt=0):
-    if serial:
-        cmdString = "$LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
-    else:
-        cmdString = "mpirun -np {0} $LMPPATH/lmp -in in_{1}.minim > out_{1}.txt".format(Nprocs, jobID)
+
+    cmdString = "$LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
 
     Natoms = len(ASE_Super)
     N_accept = 0
@@ -79,9 +76,8 @@ def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
         e1 = float(e1)
     
     beta = 1.0/(kB * T)
-
+    Eng_steps_all.append(e1)
     while N_total + lastChkPt < SwapRun:
-        Eng_steps_all.append(e1)
         
         # Now randomize the atomic occupancies
         site1 = np.random.randint(0, Natoms)
@@ -128,6 +124,7 @@ def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
         swap_steps.append([site1, site2])
         
         # save the history at all steps
+        Eng_steps_all.append(e1)
         np.save("Eng_all_steps.npy", np.array(Eng_steps_all))
         np.save("accepts_all_steps.npy", np.array(accepts))
         np.save("rands_all_steps.npy", np.array(rand_steps))
@@ -147,9 +144,8 @@ def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
                 with open("chkpt/counter.txt", "w") as fl_counter:
                     fl_counter.write("last step saved\n{}".format(N_total))
 
-        # For the first 20 steps, store all the supercells as well to a test directory
+        # For the first 20 steps, store all the supercells as well to a test directory if we want to check later
         if N_total <= 20 and lastChkPt == 0:
-            
             np.save("test/Eng_steps_test.npy", np.array(Eng_steps_all))
             np.save("test/rand_steps_test.npy", np.array(rand_steps))
             np.save("test/swap_atoms_test.npy", np.array(swap_steps))
@@ -162,18 +158,7 @@ def MC_Run(T, SwapRun, ASE_Super, Nprocs, jobID, elems,
     return N_total, N_accept
 
 
-if __name__ == "__main__":
-    args = list(sys.argv)
-    T = float(args[1])
-    N_swap = int(args[2])
-    N_units = int(args[3])  # dimensions of unit cell
-    N_proc = int(args[4])  # No. of procs to parallelize over
-    jobID = int(args[5])
-    N_save = int(args[6])
-    N_eqb = int(args[7])
-    MakeVac = bool(int(args[8]))
-    UseLastChkPt = bool(int(args[9])) if len(args)==10 else False
-
+def main(args):
     print("Using CheckPoint : {}".format(UseLastChkPt))
 
     elems = ["Co", "Ni", "Cr", "Fe", "Mn"]
@@ -182,9 +167,9 @@ if __name__ == "__main__":
     for elemInd, el in enumerate(elems):
         elemsToNum[el] = elemInd + 1
 
-    if UseLastChkPt: 
-        ChkPtFiles=os.getcwd() + "/chkpt/*.pkl"
-        files=glob.glob(ChkPtFiles)
+    if args.UseLastChkPt:
+        ChkPtFiles = os.getcwd() + "/chkpt/*.pkl"
+        files = glob.glob(ChkPtFiles)
         
         if len(files) == 0:
             raise FileNotFoundError("No checkpoint found.")
@@ -197,8 +182,7 @@ if __name__ == "__main__":
         
             lastFlName=max_file.split("/")[-1]
             lastSave=int(lastFlName[10:-4])
-            print("Loading checkpointed step : {} for run : {}".format(lastSave, jobID))
-        
+            print("Loading checkpointed step : {} for run : {}".format(lastSave, args.jobID))
 
     else:
         lastSave=0
@@ -233,7 +217,7 @@ if __name__ == "__main__":
                 permInd = Indices[at_Ind]
                 superFCC[permInd].symbol = elems[i]
  
-        if MakeVac:
+        if not NoVac:
             print("Putting vacancy at site 0")
             assert np.allclose(superFCC[0].position, 0)
             del (superFCC[0])
@@ -244,15 +228,15 @@ if __name__ == "__main__":
         with open("superInitial_{}.pkl".format(jobID), "wb") as fl:
             pickle.dump(superFCC, fl)
         
-        
-    
+
     # Run MC
     if not UseLastChkPt:
-        # A new random seed should not be generated if continuing.
-        write_lammps_input(jobID)
+        # Lammps input script need be written only once. We're also starting from on-lattice positions for
+        # reproducibility.
+        write_lammps_input(jobID, args.potPath)
 
     start = time.time()
-    N_total, N_accept = MC_Run(T, N_swap, superFCC, N_proc, jobID, elems, N_therm=N_eqb, N_save=N_save, lastChkPt=lastSave)
+    N_total, N_accept = MC_Run(T, N_swap, superFCC, jobID, elems, N_therm=N_eqb, N_save=N_save, lastChkPt=lastSave)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
@@ -260,4 +244,62 @@ if __name__ == "__main__":
     print("Thermalization Time Per iteration : {}".format((end-start)/N_total))
     with open("superFCC_therm.pkl", "wb") as fl:
         pickle.dump(superFCC, fl)
+
+if __name__ == "__main__":
+    # N_units, NoVac, jobID, T, N_swap, N_eqb, N_save
+
+    parser = argparse.ArgumentParser(description="Input parameters for using GCnets",
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument("-pp", "--potPath", metavar="/path/to/potential/file", type=str,
+                        help="Path to the LAMMPS MEAM potential.")
+
+    parser.add_argument("-wa", "--UseLastChkPt", action="store_true",
+                        help="Whether to store final style NEB files for all jumps separately.")
+
+    parser.add_argument("-if", "--InitStateFile", metavar="/path/to/initial/file.npy", type=str, default=None,
+                        help="Path to the .npy file storing the 0-step states from Metropolis Monte Carlo.")
+
+    parser.add_argument("-a0", "--LatPar", metavar="1.0", type=float,
+                        help="Lattice parameter - multiplied to displacements and used"
+                             "to construct LAMMPS coordinates.")
+
+    parser.add_argument("-T", "--Temp", metavar="1073", type=int, help="Temperature to read data from")
+
+    parser.add_argument("-st", "--startStep", metavar="0", type=int, default=0,
+                        help="From which step to start the simulation. Note - checkpointed data file must be present in running directory if value > 0.")
+
+    parser.add_argument("-ns", "--Nsteps", metavar="0", type=int, default=100,
+                        help="How many steps to continue AFTER \"starStep\" argument.")
+
+    parser.add_argument("-u", "--Nunits", metavar="0", type=int, default=8,
+                        help="Number of unit cells in the supercell.")
+
+    parser.add_argument("-idx", "--StateStart", metavar="0", type=int, default=0,
+                        help="The starting index of the state for this run from the whole data set of starting states. "
+                             "The whole data set is loaded, and then samples starting from this index to the next "
+                             "\"batchSize\" number of states are loaded.")
+
+    parser.add_argument("-bs", "--batchSize", metavar="0", type=int, default=200,
+                        help="How many initial states starting from StateStart should initially be loaded.")
+
+    parser.add_argument("-cs", "--chunkSize", metavar="0", type=int, default=20,
+                        help="How many samples to do NEB calculations for at a time.")
+
+    parser.add_argument("-dmp", "--DumpArguments", action="store_true",
+                        help="Whether to dump all the parsed arguments into a text file.")
+
+    parser.add_argument("-dpf", "--DumpFile", type=str, default="ArgFiles",
+                        help="The file in the run directory where all the args will be dumped.")
+
+    args = parser.parse_args()
+
+    if args.DumpArguments:
+        print("Dumping arguments to: {}".format(args.DumpFile))
+        opts = vars(args)
+        with open(RunPath + args.DumpFile, "w") as fl:
+            for key, val in opts.items():
+                fl.write("{}:\t{}\n".format(key, val))
+
+    main(args)
 
