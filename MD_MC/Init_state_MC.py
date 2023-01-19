@@ -204,18 +204,23 @@ def main(args):
         
         
         # randomize occupancies of the sites
-        Nperm = 10
-        Indices = np.arange(Nsites)
-        for i in range(Nperm):
-            Indices = np.random.permutation(Indices)
+        Indices = np.random.permutation(Nsites)
         
         NSpec = len(elems)
         partition = Nsites // NSpec
 
+        Ns_visisted = 0
         for i in range(NSpec):
             for at_Ind in range(i * partition, (i + 1) * partition):
                 permInd = Indices[at_Ind]
                 superFCC[permInd].symbol = elems[i]
+                Ns_visisted += 1
+
+        # put randomly chosen atoms at the last remaining sites
+        for at_Ind in range(Ns_visisted, Nsites):
+            permInd = Indices[at_Ind]
+            sp = np.random.randint(0, NSpec)
+            superFCC[permInd].symbol = elems[sp]
  
         if not args.NoVac:
             print("Putting vacancy at site 0")
