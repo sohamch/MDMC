@@ -159,7 +159,7 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
 
 
 def main(args):
-    print("Using CheckPoint : {}".format(UseLastChkPt))
+    print("Using CheckPoint : {}".format(args.UseLastChkPt))
 
     elems = ["Co", "Ni", "Cr", "Fe", "Mn"]
 
@@ -194,11 +194,11 @@ def main(args):
             os.mkdir(RunPath + "test")
 
         # Create an FCC primitive unit cell
-        a = LatPar
+        a = args.LatPar
         fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=True)
 
         # Form a supercell with a vacancy at the centre
-        superlatt = np.identity(3) * N_units
+        superlatt = np.identity(3) * args.Nunits
         superFCC = make_supercell(fcc, superlatt)
         Nsites = len(superFCC.get_positions())
         
@@ -217,12 +217,10 @@ def main(args):
                 permInd = Indices[at_Ind]
                 superFCC[permInd].symbol = elems[i]
  
-        if not NoVac:
+        if not args.NoVac:
             print("Putting vacancy at site 0")
             assert np.allclose(superFCC[0].position, 0)
-            del (superFCC[0])
-        
-        Natoms = len(superFCC)
+            del(superFCC[0])
 
         # save the initial supercell
         with open("superInitial.pkl", "wb") as fl:
@@ -230,13 +228,13 @@ def main(args):
         
 
     # Run MC
-    if not UseLastChkPt:
+    if not args.UseLastChkPt:
         # Lammps input script need be written only once. We're also starting from on-lattice positions for
         # reproducibility.
         write_lammps_input(args.potPath)
 
     start = time.time()
-    N_total, N_accept = MC_Run(T, N_swap, superFCC, elems, N_therm=N_therm, N_save=N_save, lastChkPt=lastSave)
+    N_total, N_accept = MC_Run(args.Temp, args.Nsteps, superFCC, elems, N_therm=args.NEqb, N_save=args.Nsave, lastChkPt=lastSave)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
@@ -254,6 +252,7 @@ if __name__ == "__main__":
     parser.add_argument("-pp", "--potPath", metavar="/path/to/potential/file", type=str,
                         help="Path to the LAMMPS MEAM potential.")
 
+
     parser.add_argument("-wa", "--UseLastChkPt", action="store_true",
                         help="Whether to store final style NEB files for all jumps separately.")
 
@@ -267,35 +266,18 @@ if __name__ == "__main__":
     parser.add_argument("-nv", "--NoVac", action="store_true",
                         help="Whether to disable vacancy creation.")
 
-    parser.add_argument("-ji", "--JobID", metavar="0", type=int, default=8,
-                        help="Number of unit cells in the supercell.")
+    parser.add_argument("-T", "--Temp", metavar="1073", type=float, default=1073.0,
+                        help="Temperature in Kelvin.")
 
+    parser.add_argument("-nt", "--Nsteps", metavar="60000", type=int, default=60000,
+                        help="Total number of Metropolis trials to run. A Metropolis trial consists of swapping two "
+                             "sites and accepting with a probability.")
 
+    parser.add_argument("-ne", "--NEqb", metavar="2000", type=int, default=2000,
+                        help="Number of equilibrating/thermalizing steps.")
 
-
-    parser.add_argument("-if", "--InitStateFile", metavar="/path/to/initial/file.npy", type=str, default=None,
-                        help="Path to the .npy file storing the 0-step states from Metropolis Monte Carlo.")
-
-
-
-    parser.add_argument("-T", "--Temp", metavar="1073", type=int, help="Temperature to read data from")
-
-    parser.add_argument("-st", "--startStep", metavar="0", type=int, default=0,
-                        help="From which step to start the simulation. Note - checkpointed data file must be present in running directory if value > 0.")
-
-    parser.add_argument("-ns", "--Nsteps", metavar="0", type=int, default=100,
-                        help="How many steps to continue AFTER \"starStep\" argument.")
-
-    parser.add_argument("-idx", "--StateStart", metavar="0", type=int, default=0,
-                        help="The starting index of the state for this run from the whole data set of starting states. "
-                             "The whole data set is loaded, and then samples starting from this index to the next "
-                             "\"batchSize\" number of states are loaded.")
-
-    parser.add_argument("-bs", "--batchSize", metavar="0", type=int, default=200,
-                        help="How many initial states starting from StateStart should initially be loaded.")
-
-    parser.add_argument("-cs", "--chunkSize", metavar="0", type=int, default=20,
-                        help="How many samples to do NEB calculations for at a time.")
+    parser.add_argument("-ns", "--Nsave", metavar="200", type=int, default=200,
+                        help="Interval of steps after equilibration after which to collect a state as a sample.")
 
     parser.add_argument("-dmp", "--DumpArguments", action="store_true",
                         help="Whether to dump all the parsed arguments into a text file.")
@@ -303,12 +285,13 @@ if __name__ == "__main__":
     parser.add_argument("-dpf", "--DumpFile", type=str, default="ArgFiles",
                         help="The file in the run directory where all the args will be dumped.")
 
+
     args = parser.parse_args()
 
     if args.DumpArguments:
         print("Dumping arguments to: {}".format(args.DumpFile))
         opts = vars(args)
-        with open(RunPath + args.DumpFile, "w") as fl:
+        with open(os.getcwd()+ '/' + args.DumpFile, "w") as fl:
             for key, val in opts.items():
                 fl.write("{}:\t{}\n".format(key, val))
 
