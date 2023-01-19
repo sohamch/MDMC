@@ -17,29 +17,29 @@ import glob
 import argparse
 
 # First, we write a lammps input script for this run
-def write_lammps_input(jobID, potPath):
+def write_lammps_input(potPath):
 
     lines = ["units \t metal\n",
              "atom_style \t atomic\n",
              "atom_modify \t map array\n",
              "boundary \t p p p\n",
              "atom_modify \t sort 0 0.0\n",
-             "read_data \t inp_MC_{0}.data\n".format(jobID),
+             "read_data \t inp_MC.data\n",
              "pair_style \t meam\n",
              "pair_coeff \t * * {0}/pot/library.meam Co Ni Cr Fe Mn {0}/pot/params.meam Co Ni Cr Fe Mn\n".format(potPath),
              "minimize	\t 1e-5 0.0 1000 10000\n",
              "variable x equal pe\n",
-             "print \"$x\" file Eng_{0}.txt".format(jobID)]
+             "print \"$x\" file Eng.txt"]
 
-    with open("in_{0}.minim".format(jobID), "w") as fl:
+    with open("in.minim", "w") as fl:
         fl.writelines(lines)
 
 
 # Next, we write the MC loop
-def MC_Run(T, SwapRun, ASE_Super, jobID, elems,
-           N_therm=2000, N_save=200, serial=True, lastChkPt=0):
+def MC_Run(T, SwapRun, ASE_Super, elems,
+           N_therm=2000, N_save=200, lastChkPt=0):
 
-    cmdString = "$LMPPATH/lmp -in in_{0}.minim > out_{0}.txt".format(jobID)
+    cmdString = "$LMPPATH/lmp -in in.minim > out.txt"
 
     Natoms = len(ASE_Super)
     N_accept = 0
@@ -51,7 +51,7 @@ def MC_Run(T, SwapRun, ASE_Super, jobID, elems,
     
     # Store the starting supercell in the test directory if doing from scratch
     if lastChkPt == 0:
-        write_lammps_data("test/inp_MC_test_job_{0}_step_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
+        write_lammps_data("test/inp_MC_test_step_{0}.data".format(N_total), ASE_Super, specorder=elems)
         with open("test/supercell_{}_test.pkl".format(N_total), "wb") as fl_sup:
             pickle.dump(ASE_Super, fl_sup)
 
@@ -63,21 +63,21 @@ def MC_Run(T, SwapRun, ASE_Super, jobID, elems,
 
 
     # write the supercell as a lammps file
-    write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
+    write_lammps_data("inp_MC.data", ASE_Super, specorder=elems)
 
     # evaluate the energy
     cmd = subprocess.Popen(cmdString, shell=True)
     rt = cmd.wait()
-    assert rt == 0, "job ID : {}".format(jobID)
+    assert rt == 0
     start_time = time.time()
     # read the energy
-    with open("Eng_{0}.txt".format(jobID), "r") as fl_en:
+    with open("Eng.txt", "r") as fl_en:
         e1 = fl_en.readline().split()[0]
         e1 = float(e1)
     
     beta = 1.0/(kB * T)
     Eng_steps_all.append(e1)
-    while N_total + lastChkPt < SwapRun:
+    while N_total < SwapRun - lastChkPt: # run the remaining steps only
         
         # Now randomize the atomic occupancies
         site1 = np.random.randint(0, Natoms)
@@ -92,14 +92,14 @@ def MC_Run(T, SwapRun, ASE_Super, jobID, elems,
         ASE_Super[site2].symbol = tmp
 
         # write the supercell again as a lammps file
-        write_lammps_data("inp_MC_{0}.data".format(jobID), ASE_Super, specorder=elems)
+        write_lammps_data("inp_MC.data", ASE_Super, specorder=elems)
 
         # evaluate the energy
         cmd = subprocess.Popen(cmdString, shell=True)
         rt = cmd.wait()
         assert rt == 0
         # read the energy
-        with open("Eng_{0}.txt".format(jobID), "r") as fl_en:
+        with open("Eng.txt", "r") as fl_en:
             e2 = fl_en.readline().split()[0]
             e2 = float(e2)
 
@@ -151,7 +151,7 @@ def MC_Run(T, SwapRun, ASE_Super, jobID, elems,
             np.save("test/swap_atoms_test.npy", np.array(swap_steps))
             np.save("test/acceptances_test.npy", np.array(accepts))
             # store the supercells and lammps files too
-            write_lammps_data("test/inp_MC_test_job_{0}_step_{1}.data".format(jobID, N_total), ASE_Super, specorder=elems)
+            write_lammps_data("test/inp_MC_test_step_{0}.data".format(N_total), ASE_Super, specorder=elems)
             with open("test/supercell_{}_test.pkl".format(N_total), "wb") as fl_sup:
                 pickle.dump(ASE_Super, fl_sup)
 
@@ -182,7 +182,7 @@ def main(args):
         
             lastFlName=max_file.split("/")[-1]
             lastSave=int(lastFlName[10:-4])
-            print("Loading checkpointed step : {} for run : {}".format(lastSave, args.jobID))
+            print("Loading checkpointed step : {} from : {}".format(lastSave, os.getcwd() + "/chkpt/"))
 
     else:
         lastSave=0
@@ -194,7 +194,7 @@ def main(args):
             os.mkdir(RunPath + "test")
 
         # Create an FCC primitive unit cell
-        a = 3.59
+        a = LatPar
         fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=True)
 
         # Form a supercell with a vacancy at the centre
@@ -225,7 +225,7 @@ def main(args):
         Natoms = len(superFCC)
 
         # save the initial supercell
-        with open("superInitial_{}.pkl".format(jobID), "wb") as fl:
+        with open("superInitial.pkl", "wb") as fl:
             pickle.dump(superFCC, fl)
         
 
@@ -233,10 +233,10 @@ def main(args):
     if not UseLastChkPt:
         # Lammps input script need be written only once. We're also starting from on-lattice positions for
         # reproducibility.
-        write_lammps_input(jobID, args.potPath)
+        write_lammps_input(args.potPath)
 
     start = time.time()
-    N_total, N_accept = MC_Run(T, N_swap, superFCC, jobID, elems, N_therm=N_eqb, N_save=N_save, lastChkPt=lastSave)
+    N_total, N_accept = MC_Run(T, N_swap, superFCC, elems, N_therm=N_therm, N_save=N_save, lastChkPt=lastSave)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
@@ -246,7 +246,7 @@ def main(args):
         pickle.dump(superFCC, fl)
 
 if __name__ == "__main__":
-    # N_units, NoVac, jobID, T, N_swap, N_eqb, N_save
+    # N_units, a0, NoVac, T, N_swap, N_eqb, N_save
 
     parser = argparse.ArgumentParser(description="Input parameters for using GCnets",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -257,12 +257,26 @@ if __name__ == "__main__":
     parser.add_argument("-wa", "--UseLastChkPt", action="store_true",
                         help="Whether to store final style NEB files for all jumps separately.")
 
+    parser.add_argument("-u", "--Nunits", metavar="0", type=int, default=8,
+                        help="Number of unit cells in the supercell.")
+
+    parser.add_argument("-a0", "--LatPar", metavar="1.0", type=float, default=3.59,
+                        help="Lattice parameter - multiplied to displacements and used"
+                             "to construct LAMMPS coordinates.")
+
+    parser.add_argument("-nv", "--NoVac", action="store_true",
+                        help="Whether to disable vacancy creation.")
+
+    parser.add_argument("-ji", "--JobID", metavar="0", type=int, default=8,
+                        help="Number of unit cells in the supercell.")
+
+
+
+
     parser.add_argument("-if", "--InitStateFile", metavar="/path/to/initial/file.npy", type=str, default=None,
                         help="Path to the .npy file storing the 0-step states from Metropolis Monte Carlo.")
 
-    parser.add_argument("-a0", "--LatPar", metavar="1.0", type=float,
-                        help="Lattice parameter - multiplied to displacements and used"
-                             "to construct LAMMPS coordinates.")
+
 
     parser.add_argument("-T", "--Temp", metavar="1073", type=int, help="Temperature to read data from")
 
@@ -271,9 +285,6 @@ if __name__ == "__main__":
 
     parser.add_argument("-ns", "--Nsteps", metavar="0", type=int, default=100,
                         help="How many steps to continue AFTER \"starStep\" argument.")
-
-    parser.add_argument("-u", "--Nunits", metavar="0", type=int, default=8,
-                        help="Number of unit cells in the supercell.")
 
     parser.add_argument("-idx", "--StateStart", metavar="0", type=int, default=0,
                         help="The starting index of the state for this run from the whole data set of starting states. "
