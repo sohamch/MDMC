@@ -260,7 +260,7 @@ if __name__ == "__main__":
                         help="Number of atoms of each kind of Co, Ni, Cr, Fe, Mn in that order.")
 
 
-    parser.add_argument("-wa", "--UseLastChkPt", action="store_true",
+    parser.add_argument("-ckp", "--UseLastChkPt", action="store_true",
                         help="Whether to store final style NEB files for all jumps separately.")
 
     parser.add_argument("-u", "--Nunits", metavar="0", type=int, default=8,
