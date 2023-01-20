@@ -13,8 +13,8 @@ def write_input_files(Ntr, potPath=None):
             if potPath is None:
                 fl.write("pair_coeff \t * * pot/library.meam Co Ni Cr Fe Mn pot/params.meam Co Ni Cr Fe Mn\n")
             else:
-                fl.write("pair_coeff \t * * "+ potPath + "library.meam Co Ni Cr Fe Mn " +
-                         potPath + "params.meam Co Ni Cr Fe Mn\n")
+                fl.write("pair_coeff \t * * "+ potPath + "/library.meam Co Ni Cr Fe Mn " +
+                         potPath + "/params.meam Co Ni Cr Fe Mn\n")
             fl.write("fix \t 1 all neb 1.0\n")
             fl.write("timestep \t 0.01\n")
             fl.write("min_style \t quickmin\n")
