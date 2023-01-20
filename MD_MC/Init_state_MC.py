@@ -13,6 +13,9 @@ from scipy.constants import physical_constants
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 
 import os
+RunPath = os.getcwd() + "/"
+
+import shutil
 import glob
 import argparse
 
@@ -144,6 +147,13 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
                 with open("chkpt/counter.txt", "w") as fl_counter:
                     fl_counter.write("last step saved\n{}".format(N_total))
 
+            # Back up the trajectory history
+            shutil.copy("Eng_all_steps.npy", "History_backup/")
+            shutil.copy("accepts_all_steps.npy", "History_backup/")
+            shutil.copy("rands_all_steps.npy", "History_backup/")
+            shutil.copy("swap_atoms_all_steps.npy", "History_backup/")
+
+
         # For the first 20 steps, store all the supercells as well to a test directory if we want to check later
         if N_total <= 20 and lastChkPt == 0:
             np.save("test/Eng_steps_test.npy", np.array(Eng_steps_all))
@@ -186,12 +196,13 @@ def main(args):
 
     else:
         lastSave=0
-        
-        RunPath = os.getcwd() + "/"
+
         if not os.path.isdir(RunPath + "chkpt"):
             os.mkdir(RunPath + "chkpt")
         if not os.path.isdir(RunPath + "test"):
             os.mkdir(RunPath + "test")
+        if not os.path.isdir(RunPath + "History_backup"):
+            os.mkdir(RunPath + "History_backup")
 
         # Create an FCC primitive unit cell
         a = args.LatPar
