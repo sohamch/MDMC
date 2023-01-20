@@ -26,7 +26,7 @@ def write_lammps_input(potPath):
              "atom_modify \t sort 0 0.0\n",
              "read_data \t inp_MC.data\n",
              "pair_style \t meam\n",
-             "pair_coeff \t * * {0}/pot/library.meam Co Ni Cr Fe Mn {0}/pot/params.meam Co Ni Cr Fe Mn\n".format(potPath),
+             "pair_coeff \t * * {0}/library.meam Co Ni Cr Fe Mn {0}/params.meam Co Ni Cr Fe Mn\n".format(potPath),
              "minimize	\t 1e-5 0.0 1000 10000\n",
              "variable x equal pe\n",
              "print \"$x\" file Eng.txt"]
