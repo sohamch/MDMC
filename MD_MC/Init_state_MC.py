@@ -214,14 +214,11 @@ def main(args):
         NSpec = len(elems)
 
         for i in range(NSpec):
-            if i == 0:
-                lower = 0
-                upper = args.Natoms[i]
-            else:
-                lower = args.Natoms[i - 1]
-                upper = args.Natoms[i - 1] + args.Natoms[i]
 
+            lower = sum(args.Natoms[j] for j in range(i))
+            upper = lower + args.Natoms[i]
             print(lower, upper, elems[i])
+
             for at_Ind in range(lower, upper):
                 permInd = Indices[at_Ind]
                 superFCC[permInd].symbol = elems[i]
