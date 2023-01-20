@@ -219,8 +219,9 @@ def main(args):
                 upper = args.Natoms[i]
             else:
                 lower = args.Natoms[i - 1]
-                upper = args.Natoms[i]
+                upper = args.Natoms[i - 1] + args.Natoms[i]
 
+            print(lower, upper, elems[i])
             for at_Ind in range(lower, upper):
                 permInd = Indices[at_Ind]
                 superFCC[permInd].symbol = elems[i]
