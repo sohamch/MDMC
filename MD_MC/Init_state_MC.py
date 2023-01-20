@@ -107,7 +107,7 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
         de = e2 - e1
         rn = np.random.rand()
 
-        if rn < np.exp(-beta * de):
+        if rn <= np.exp(-beta * de):
             # Then accept the move
             N_accept += 1
             e1 = e2  # set the next initial state energy to the current final energy
