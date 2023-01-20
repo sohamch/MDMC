@@ -200,33 +200,32 @@ def main(args):
         # Form a supercell with a vacancy at the centre
         superlatt = np.identity(3) * args.Nunits
         superFCC = make_supercell(fcc, superlatt)
-        Nsites = len(superFCC.get_positions())
-        
-        
-        # randomize occupancies of the sites
-        Indices = np.random.permutation(Nsites)
-        
-        NSpec = len(elems)
-        partition = Nsites // NSpec
 
-        Ns_visisted = 0
-        for i in range(NSpec):
-            for at_Ind in range(i * partition, (i + 1) * partition):
-                permInd = Indices[at_Ind]
-                superFCC[permInd].symbol = elems[i]
-                Ns_visisted += 1
-
-        # put randomly chosen atoms at the last remaining sites
-        for at_Ind in range(Ns_visisted, Nsites):
-            permInd = Indices[at_Ind]
-            sp = np.random.randint(0, NSpec)
-            superFCC[permInd].symbol = elems[sp]
- 
         if not args.NoVac:
             print("Putting vacancy at site 0")
             assert np.allclose(superFCC[0].position, 0)
             del(superFCC[0])
+        
+        # randomize occupancies of the sites
+        Nsites = len(superFCC.get_positions())
+        assert sum(args.Natoms, Nsites), "Total number of atoms does not match supercell size."
 
+        Indices = np.random.permutation(Nsites) # store the sites in random order to be occupied randomly.
+        NSpec = len(elems)
+
+        for i in range(NSpec):
+            if i == 0:
+                lower = 0
+                upper = args.Natoms[i]
+            else:
+                lower = args.Natoms[i - 1]
+                upper = args.Natoms[i]
+
+            for at_Ind in range(lower, upper):
+                permInd = Indices[at_Ind]
+                superFCC[permInd].symbol = elems[i]
+
+        print("Supercell formula: {}". format(superFCC.get_chemical_formula()))
         # save the initial supercell
         with open("superInitial.pkl", "wb") as fl:
             pickle.dump(superFCC, fl)
@@ -256,6 +255,9 @@ if __name__ == "__main__":
 
     parser.add_argument("-pp", "--potPath", metavar="/path/to/potential/file", type=str,
                         help="Path to the LAMMPS MEAM potential.")
+
+    parser.add_argument("-na", "--Natoms", metavar="102 104...", nargs="+", type=int, default=[102, 103, 102, 102, 102],
+                        help="Number of atoms of each kind of Co, Ni, Cr, Fe, Mn in that order.")
 
 
     parser.add_argument("-wa", "--UseLastChkPt", action="store_true",
