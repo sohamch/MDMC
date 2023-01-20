@@ -224,6 +224,7 @@ def main(args):
 
         print("Supercell formula: {}". format(superFCC.get_chemical_formula()))
         # save the initial supercell
+        print("Occupied Sites: \n{}".format(Indices))
         with open("superInitial.pkl", "wb") as fl:
             pickle.dump(superFCC, fl)
         
