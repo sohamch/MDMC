@@ -217,7 +217,6 @@ def main(args):
 
             lower = sum(args.Natoms[j] for j in range(i))
             upper = lower + args.Natoms[i]
-            print(lower, upper, elems[i])
 
             for at_Ind in range(lower, upper):
                 permInd = Indices[at_Ind]
