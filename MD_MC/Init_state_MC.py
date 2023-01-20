@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 import numpy as np
-import subprocess
 import pickle
 import time
 
@@ -13,11 +12,12 @@ from scipy.constants import physical_constants
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 
 import os
-RunPath = os.getcwd() + "/"
-
+import subprocess
 import shutil
 import glob
 import argparse
+
+RunPath = os.getcwd() + "/"
 
 # First, we write a lammps input script for this run
 def write_lammps_input(potPath):
