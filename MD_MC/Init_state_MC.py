@@ -42,6 +42,15 @@ def write_lammps_input(potPath):
 def MC_Run(T, SwapRun, ASE_Super, elems,
            N_therm=2000, N_save=200, lastChkPt=0):
 
+    if not os.path.isdir(RunPath + "chkpt"):
+        os.mkdir(RunPath + "chkpt")
+
+    if not os.path.isdir(RunPath + "test"):
+        os.mkdir(RunPath + "test")
+
+    if not os.path.isdir(RunPath + "History_backup"):
+        os.mkdir(RunPath + "History_backup")
+
     cmdString = "$LMPPATH/lmp -in in.minim > out.txt"
 
     Natoms = len(ASE_Super)
@@ -196,13 +205,6 @@ def main(args):
 
     else:
         lastSave=0
-
-        if not os.path.isdir(RunPath + "chkpt"):
-            os.mkdir(RunPath + "chkpt")
-        if not os.path.isdir(RunPath + "test"):
-            os.mkdir(RunPath + "test")
-        if not os.path.isdir(RunPath + "History_backup"):
-            os.mkdir(RunPath + "History_backup")
 
         # Create an FCC primitive unit cell
         a = args.LatPar
