@@ -5,8 +5,10 @@ import itertools
 # import Transitions - needs fixing
 from KRA3Body import KRA3bodyInteractions
 from ClustSpec import ClusterSpecies
+from onsager import crystal
 import time
 from tqdm import tqdm
+from functools import reduce
 
 
 class VectorClusterExpansion(object):
@@ -115,11 +117,10 @@ class VectorClusterExpansion(object):
                 if cl0.g(self.crys, g) == cl0:
                     glist0.append(g)
 
-            G0 = sum([g.cartrot for g in glist0])/len(glist0)
-            vals, vecs = np.linalg.eig(G0)
-            # Recall that all g.cartrot are orthonormal matrices, so if G0 has an eigenvector with
-            # eigval 1.0, then it must be also the eigenvector of eigenvalue 1.0 of all g.cartrot in glist.
-            vlist = [vecs[:, i]/np.linalg.norm(vecs[:, i]) for i in range(3) if np.isclose(vals[i], 1.0)]
+            vb = reduce(crystal.CombineVectorBasis, [crystal.VectorBasis(*g.eigen()) for g in glist0])
+            # Get orthonormal vectors
+            vlist = self.crys.vectlist(vb)
+            vlist = [vec/np.linalg.norm(vec) for vec in vlist]
             clus2LenVecClus[clListInd] = len(vlist)
 
             if clus2LenVecClus[clListInd] == 0:  # If the vector basis is empty, don't consider the cluster
