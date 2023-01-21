@@ -117,8 +117,7 @@ class VectorClusterExpansion(object):
 
             G0 = sum([g.cartrot for g in glist0])/len(glist0)
             vals, vecs = np.linalg.eig(G0)
-            vecs = np.real(vecs) # Since G0 is real (cartrot matrices cannot be complex), the
-                                # real part of the eigenvectors with eigval 1.0 will be the invariants.
+            # Since G0 is real and symmetric, just finding its eigenvectors for 1.0 should be enough.
             vlist = [vecs[:, i]/np.linalg.norm(vecs[:, i]) for i in range(3) if np.isclose(vals[i], 1.0)]
             clus2LenVecClus[clListInd] = len(vlist)
 
