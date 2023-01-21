@@ -118,7 +118,7 @@ class VectorClusterExpansion(object):
             G0 = sum([g.cartrot for g in glist0])/len(glist0)
             vals, vecs = np.linalg.eig(G0)
             # Since G0 is real and symmetric, just finding its eigenvectors for 1.0 should be enough.
-            # Recall that all g.cartrot are orthogonal matrices, so if G0 has an eigenvector with
+            # Recall that all g.cartrot are symmetric orthonormal matrices, so if G0 has an eigenvector with
             # eigval 1.0, then it must be also the eigenvector of eigenvalue 1.0 of all g.cartrot in glist.
             vlist = [vecs[:, i]/np.linalg.norm(vecs[:, i]) for i in range(3) if np.isclose(vals[i], 1.0)]
             clus2LenVecClus[clListInd] = len(vlist)
