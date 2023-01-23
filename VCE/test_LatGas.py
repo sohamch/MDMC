@@ -117,7 +117,7 @@ class Test_latGasKMC(unittest.TestCase):
             LatGas.LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
                                  vacSiteInit, N_unit, siteIndtoR, RtoSiteInd)
 
-        dxtoR = [np.around(np.dot(np.linalg.inv(self.crys.lattice), dx), decimals=4).astype(int) for dx in dxList]
+        dxtoR = [self.crys.cart2pos(dx)[0] for dx in dxList]
 
         state0 = self.initState.copy()
 
