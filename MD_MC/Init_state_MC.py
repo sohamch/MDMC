@@ -19,10 +19,6 @@ import argparse
 
 RunPath = os.getcwd() + "/"
 
-cmd = subprocess.Popen("mpirun --version > mpi_version.txt", shell=True)
-rt = cmd.wait()
-assert rt == 0
-
 # First, we write a lammps input script for this run
 def write_lammps_input(potPath):
 
