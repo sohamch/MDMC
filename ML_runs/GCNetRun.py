@@ -35,7 +35,7 @@ def Load_crysDats(CrysDatPath):
 
     return GpermNNIdx, NNsiteList, JumpNewSites, dxJumps
 
-def Load_Data(DataPath, NoPerm):
+def Load_Data(DataPath, NoPerm=False):
     with h5py.File(DataPath, "r") as fl:
         if not NoPerm:
             try:
