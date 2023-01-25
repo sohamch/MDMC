@@ -16,7 +16,7 @@ warnings.filterwarnings('error', category=RuntimeWarning)
 np.seterr(all='raise')
 
 __FCC__ = True
-mo=2
+mo=3
 vsp = 0
 class Test_Make_Arrays(unittest.TestCase):
 
@@ -695,7 +695,7 @@ class Test_MC(DataClass):
         Bbar_test = np.zeros_like(Bbar, dtype=float)
 
         # Now test the rate expansion by explicitly constructing it
-        for vs1 in range(len(self.VclusExp.vecVec)):
+        for vs1 in tqdm(range(len(self.VclusExp.vecVec)), position=0, leave=True):
             for vs2 in range(len(self.VclusExp.vecVec)):
                 # Go through all the jumps
                 for TInd in range(len(ijList)):
