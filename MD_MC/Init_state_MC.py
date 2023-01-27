@@ -230,7 +230,7 @@ def main(args):
 
             lower = sum(args.Natoms[j] for j in range(i))
             upper = lower + args.Natoms[i]
-
+            print("{} : {} atoms".format(elems[i], upper - lower))
             for at_Ind in range(lower, upper):
                 permInd = Indices[at_Ind]
                 superFCC[permInd].symbol = elems[i]
