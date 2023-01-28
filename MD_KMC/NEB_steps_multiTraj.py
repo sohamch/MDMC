@@ -116,11 +116,15 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     FinalStates = SiteIndToSpecAll
     FinalVacSites = vacSiteIndAll
     SpecDisps = np.zeros((Ntraj, Nspec, 3))
+    tarr = np.zeros(Ntraj)
+    JumpSelects = np.zeros(Ntraj, dtype=np.int8)  # which jump is chosen for each trajectory
+    TestRandomNums = np.zeros(Ntraj)  # store the random numbers at all steps
+
     AllJumpRates = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
     AllJumpBarriers = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
-    tarr = np.zeros(Ntraj)
-    JumpSelects = np.zeros(Ntraj, dtype=np.int8) # which jump is chosen for each trajectory
-    TestRandomNums = np.zeros(Ntraj) # store the random numbers at all steps
+    AllJumpISE = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
+    AllJumpTSE = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
+    AllJumpFSE = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
 
     # Before starting, write the lammps input files
     write_input_files(chunkSize, potPath=PotPath)
@@ -140,6 +144,9 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
             rates = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
             barriers = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
+            ISE = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
+            TSE = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
+            FSE = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
             for jumpInd in range(SiteIndToNgb.shape[1]):
                 # Write the final states in NEB format for lammps
                 write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd, writeAll=WriteAllJumps)
@@ -163,8 +170,15 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                             continue
                     ebfLine = line.split()
                     ebf = float(ebfLine[6])
+                    Is = float(ebfLine[10])
+                    Ts = float(ebfLine[12])
+                    Fs = float(ebfLine[14])
+
                     rates[traj, jumpInd] = np.exp(-ebf / (kB * T))
                     barriers[traj, jumpInd] = ebf
+                    ISE[traj, jumpInd] = Is
+                    TSE[traj, jumpInd] = Ts
+                    FSE[traj, jumpInd] = Fs
 
                     # get the jumping species and store the barrier for later use
                     vInd = vacSiteInd[traj]
@@ -174,6 +188,9 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             # store all the rates
             AllJumpRates[sampleStart:sampleEnd] = rates[:, :]
             AllJumpBarriers[sampleStart:sampleEnd] = barriers[:, :]
+            AllJumpISE[sampleStart:sampleEnd] = ISE[:, :]
+            AllJumpTSE[sampleStart:sampleEnd] = TSE[:, :]
+            AllJumpFSE[sampleStart:sampleEnd] = FSE[:, :]
 
             # Then do selection
             jumpID, rateProbs, ratesCsum, rndNums, time_step = getJumpSelects(rates)
@@ -209,6 +226,9 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             fl.create_dataset("times", data=tarr)
             fl.create_dataset("AllJumpRates", data=AllJumpRates)
             fl.create_dataset("AllJumpBarriers", data=AllJumpBarriers)
+            fl.create_dataset("AllJumpISEnergy", data=AllJumpISE)
+            fl.create_dataset("AllJumpTSEnergy", data=AllJumpTSE)
+            fl.create_dataset("AllJumpFSEnergy", data=AllJumpFSE)
             fl.create_dataset("JumpSelects", data=JumpSelects)
             fl.create_dataset("TestRandNums", data=TestRandomNums)
 
