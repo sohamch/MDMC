@@ -153,7 +153,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
                 # Then run lammps
                 commands = [
-                    "mpirun -np {0} $LMPPATH/lmp -p {0}x1 -in in.neb_{1} > out_{1}.txt".format(NImage, traj)
+                    "mpirun -np {0} --oversubscribe $LMPPATH/lmp -p {0}x1 -in in.neb_{1} > out_{1}.txt".format(NImage, traj)
                     for traj in range(SiteIndToSpec.shape[0])
                 ]
                 cmdList = [subprocess.Popen(cmd, shell=True) for cmd in commands]
