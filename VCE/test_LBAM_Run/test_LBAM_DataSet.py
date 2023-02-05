@@ -46,6 +46,10 @@ class Test_HEA_LBAM(unittest.TestCase):
                                                                                                 scratch=True,
                                                                                                 save=True)
 
+        # Now re-make the same calculator by loading from saved h5 file
+        self.MCJit_load, self.numVecsInteracts_load, self.VecsInteracts_load, self.VecGroupInteracts_load,\
+        self.NVclus_load = CreateJitCalculator(self.VclusExp, self.NSpec, scratch=False)
+
         self.VclusExp_all = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=True)
 
@@ -57,63 +61,84 @@ class Test_HEA_LBAM(unittest.TestCase):
         with h5py.File("JitArrays.h5", "r") as fl:
             numSitesInteracts = np.array(fl["numSitesInteracts"])
             self.assertTrue(np.array_equal(self.MCJit.numSitesInteracts, numSitesInteracts))
+            self.assertTrue(np.array_equal(self.MCJit_load.numSitesInteracts, numSitesInteracts))
 
             SupSitesInteracts = np.array(fl["SupSitesInteracts"])
             self.assertTrue(np.array_equal(self.MCJit.SupSitesInteracts, SupSitesInteracts))
+            self.assertTrue(np.array_equal(self.MCJit_load.SupSitesInteracts, SupSitesInteracts))
 
             SpecOnInteractSites = np.array(fl["SpecOnInteractSites"])
             self.assertTrue(np.array_equal(self.MCJit.SpecOnInteractSites, SpecOnInteractSites))
+            self.assertTrue(np.array_equal(self.MCJit_load.SpecOnInteractSites, SpecOnInteractSites))
 
             numInteractsSiteSpec = np.array(fl["numInteractsSiteSpec"])
             self.assertTrue(np.array_equal(self.MCJit.numInteractsSiteSpec, numInteractsSiteSpec))
+            self.assertTrue(np.array_equal(self.MCJit_load.numInteractsSiteSpec, numInteractsSiteSpec))
 
             SiteSpecInterArray = np.array(fl["SiteSpecInterArray"])
             self.assertTrue(np.array_equal(self.MCJit.SiteSpecInterArray, SiteSpecInterArray))
+            self.assertTrue(np.array_equal(self.MCJit_load.SiteSpecInterArray, SiteSpecInterArray))
 
             numVecsInteracts = np.array(fl["numVecsInteracts"])
             self.assertTrue(np.array_equal(self.numVecsInteracts, numVecsInteracts))
+            self.assertTrue(np.array_equal(self.numVecsInteracts_load, numVecsInteracts))
 
             VecsInteracts = np.array(fl["VecsInteracts"])
             self.assertTrue(np.array_equal(self.VecsInteracts, VecsInteracts))
+            self.assertTrue(np.array_equal(self.VecsInteracts_load, VecsInteracts))
 
             VecGroupInteracts = np.array(fl["VecGroupInteracts"])
             self.assertTrue(np.array_equal(self.VecGroupInteracts, VecGroupInteracts))
+            self.assertTrue(np.array_equal(self.VecGroupInteracts_load, VecGroupInteracts))
 
             numSitesTSInteracts = np.array(fl["numSitesTSInteracts"])
             self.assertTrue(np.array_equal(self.MCJit.numSitesTSInteracts, numSitesTSInteracts))
+            self.assertTrue(np.array_equal(self.MCJit_load.numSitesTSInteracts, numSitesTSInteracts))
 
             TSInteractSites = np.array(fl["TSInteractSites"])
             self.assertTrue(np.array_equal(self.MCJit.TSInteractSites, TSInteractSites))
+            self.assertTrue(np.array_equal(self.MCJit_load.TSInteractSites, TSInteractSites))
 
             TSInteractSpecs = np.array(fl["TSInteractSpecs"])
             self.assertTrue(np.array_equal(self.MCJit.TSInteractSpecs, TSInteractSpecs))
+            self.assertTrue(np.array_equal(self.MCJit_load.TSInteractSpecs, TSInteractSpecs))
 
             jumpFinSites = np.array(fl["jumpFinSites"])
             self.assertTrue(np.array_equal(self.MCJit.jumpFinSites, jumpFinSites))
+            self.assertTrue(np.array_equal(self.MCJit_load.jumpFinSites, jumpFinSites))
 
             jumpFinSpec = np.array(fl["jumpFinSpec"])
             self.assertTrue(np.array_equal(self.MCJit.jumpFinSpec, jumpFinSpec))
+            self.assertTrue(np.array_equal(self.MCJit_load.jumpFinSpec, jumpFinSpec))
 
             FinSiteFinSpecJumpInd = np.array(fl["FinSiteFinSpecJumpInd"])
             self.assertTrue(np.array_equal(self.MCJit.FinSiteFinSpecJumpInd, FinSiteFinSpecJumpInd))
+            self.assertTrue(np.array_equal(self.MCJit_load.FinSiteFinSpecJumpInd, FinSiteFinSpecJumpInd))
 
             numJumpPointGroups = np.array(fl["numJumpPointGroups"])
             self.assertTrue(np.array_equal(self.MCJit.numJumpPointGroups, numJumpPointGroups))
+            self.assertTrue(np.array_equal(self.MCJit_load.numJumpPointGroups, numJumpPointGroups))
 
             numTSInteractsInPtGroups = np.array(fl["numTSInteractsInPtGroups"])
             self.assertTrue(np.array_equal(self.MCJit.numTSInteractsInPtGroups, numTSInteractsInPtGroups))
+            self.assertTrue(np.array_equal(self.MCJit_load.numTSInteractsInPtGroups, numTSInteractsInPtGroups))
 
             JumpInteracts = np.array(fl["JumpInteracts"])
             self.assertTrue(np.array_equal(self.MCJit.JumpInteracts, JumpInteracts))
+            self.assertTrue(np.array_equal(self.MCJit_load.JumpInteracts, JumpInteracts))
 
             Jump2KRAEng = np.array(fl["Jump2KRAEng"])
             self.assertTrue(np.array_equal(self.MCJit.Jump2KRAEng, Jump2KRAEng))
+            self.assertTrue(np.array_equal(self.MCJit_load.Jump2KRAEng, Jump2KRAEng))
 
             KRASpecConstants = np.array(fl["KRASpecConstants"])
             self.assertTrue(np.array_equal(self.MCJit.KRASpecConstants, KRASpecConstants))
+            self.assertTrue(np.array_equal(self.MCJit_load.KRASpecConstants, KRASpecConstants))
 
             NVclus = np.array(fl["NVclus"])[0]
             self.assertTrue(len(self.VclusExp.vecClus), NVclus)
+            self.assertTrue(len(self.VclusExp.vecClus), self.NVclus)
+            self.assertTrue(len(self.VclusExp.vecClus), self.NVclus_load)
 
             vacSpec = np.array(fl["vacSpec"])[0]
             self.assertEqual(self.vacSpec, vacSpec)
