@@ -44,13 +44,19 @@ def Load_crys_Data(CrysDatPath):
     assert vacsiteInd == 0
     return jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd
 
-def Load_Data(DataPath):
+def Load_Data(DataPath, noPerm=True):
     with h5py.File(DataPath, "r") as fl:
-        try:
-            perm = np.array(fl["Permutation"])
-            print("found permuation")
-        except:
+        if noPerm:
             perm = np.arange(len(fl["InitStates"]))
+            print("Permutation disabled (-np flag set). Not mixing data.")
+        
+        else:
+            try:
+                perm = np.array(fl["Permutation"])
+                print("found permuation. mixing data before splitting.")
+            except:
+                perm = np.arange(len(fl["InitStates"]))
+                print("No Permutation array found. Not mixing data.")
 
         state1List = np.array(fl["InitStates"])[perm]
         dispList = np.array(fl["SpecDisps"])[perm]
@@ -314,7 +320,7 @@ def main(args):
 
     # Load Data
     specExpOriginal = args.SpecExpand
-    state1List, dispList, rateList, AllJumpRates, jumpSelects = Load_Data(args.DataPath)
+    state1List, dispList, rateList, AllJumpRates, jumpSelects = Load_Data(args.DataPath, noPerm=args.noPerm)
 
     AllSpecs = np.unique(state1List[0])
     NSpec = AllSpecs.shape[0]
@@ -414,6 +420,9 @@ if __name__ == "__main__":
     
     parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str,
                         help="Path to Data file.")
+    
+    parser.add_argument("-np", "--noPerm", action="store_true",
+                        help="Whether to mix all the data before splitting into training and testing. A mixing array is required to be present in the h5 data set.")
     
     parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str,
                         help="Path to crystal Data.")
