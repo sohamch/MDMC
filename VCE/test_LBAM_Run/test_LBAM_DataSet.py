@@ -22,7 +22,7 @@ class Test_HEA_LBAM(unittest.TestCase):
     def setUp(self):
         self.DataPath = (fp + "singleStep_Run3_1073_AllRates.h5")
         self.CrysDatPath = (cp + "CrystData.h5")
-
+        self.a0 = 3.59
         self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
         self.jList, self.dxList, self.jumpNewIndices, self.superCell, self.jnet, self.vacsite, self.vacsiteInd =\
             Load_crys_Data(self.CrysDatPath)
@@ -37,7 +37,7 @@ class Test_HEA_LBAM(unittest.TestCase):
         print("Expanding Species: {}".format(self.SpecExpand))
 
         self.ClustCut = 1.01
-        self.MaxOrder = 3
+        self.MaxOrder = 2
 
         self.VclusExp = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=False)
@@ -144,6 +144,105 @@ class Test_HEA_LBAM(unittest.TestCase):
             self.assertEqual(self.vacSpec, vacSpec)
 
             self.assertEqual(np.max(VecGroupInteracts), NVclus - 1)
+
+    def test_Calculate_L(self):
+        sampInd = np.random.randint(0, self.state1List.shape[0])
+        print("Testing sample: {}".format(sampInd))
+        stateList = self.state1List[sampInd: sampInd + 10]
+        jumpSelects = self.jumpSelects[sampInd: sampInd + 10]
+        dispList = self.dispList[sampInd: sampInd + 10]
+        rateList = self.rateList[sampInd: sampInd + 10]
+        etaBar = np.random.rand(self.NVclus)
+
+        L, Lsamps = Calculate_L(stateList, self.SpecExpand, self.vacSpec, rateList, dispList, jumpSelects,
+                    self.jList, self.dxList * self.a0, self.vacsiteInd, self.NVclus, self.MCJit, etaBar, 0, 10,
+                    self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts)
+
+        self.assertAlmostEqual(np.sum(Lsamps) / 10, L, places=8)
+
+        # Now go through each of the samples and verify
+        for samp in range(10):
+            state = stateList[samp]
+            jmp = jumpSelects[samp]
+            # small check for jump indexing
+            state2_explict = state.copy()
+            jSite = self.jList[jmp]
+            state2_explict[jSite] = state[0]
+            state2_explict[0] = state[jSite]
+
+            disp = dispList[samp, self.SpecExpand, :]
+            if self.SpecExpand == self.vacSpec:
+                self.assertAlmostEqual(disp, self.dxList[jmp]*self.a0, places=10)
+
+            # get the lambda of the two states by going through the vector stars explictly
+            lamb1_all = np.zeros((len(self.VclusExp.vecVec), 3))
+            lamb2_all = np.zeros((len(self.VclusExp.vecVec), 3))
+
+            lamb1_req = np.zeros((len(self.VclusExp.vecVec), 3))
+            lamb2_req = np.zeros((len(self.VclusExp.vecVec), 3))
+            on1 = 0
+            on2 = 0
+            for vcInd in range(lamb1_all.shape[0]):
+                clustList = self.VclusExp.vecClus[vcInd]
+                vecList = self.VclusExp.vecVec[vcInd]
+
+                for clust, vec in zip(clustList, vecList):
+                    clSites = clust.siteList
+                    clSpecs = clust.specList
+                    # print(clSpecs)
+                    self.assertEqual(len(clSpecs), len(clSites))
+                    for siteInd in range(self.VclusExp.Nsites):
+                        ci, R = self.VclusExp.sup.ciR(siteInd)
+                        siteListNew = []  # to store translated sites
+                        for cSite in clSites:
+                            ciSite, Rsite = cSite.ci, cSite.R
+                            RsiteNew = Rsite + R
+                            siteIndNew, _ = self.VclusExp.sup.index(RsiteNew, (0, 0))  # mono-atomic anyway
+                            siteListNew.append(siteIndNew)
+
+                        # check if the translated cluster is on
+                        # print(siteListNew, clSpecs)
+                        off1 = 0
+                        off2 = 0
+                        for st, sp in zip(siteListNew, clSpecs):
+                            if state[st] != sp:
+                                off1 += 1
+                            if state2_explict[st] != sp:
+                                off2 += 1
+
+                        if off1 == 0:
+                            on1 += 1
+                            lamb1_all[vcInd] += vec
+                        if off2 == 0:
+                            on2 += 1
+                            lamb2_all[vcInd] += vec
+
+                        if any([st in [self.vacsiteInd] + list(self.jList) for st in siteListNew]):
+                            off1 = 0
+                            off2 = 0
+                            for st, sp in zip(siteListNew, clSpecs):
+                                if state[st] != sp:
+                                    off1 += 1
+                                if state2_explict[st] != sp:
+                                    off2 += 1
+
+                            if off1 == 0:
+                                lamb1_req[vcInd] += vec
+                            if off2 == 0:
+                                lamb2_req[vcInd] += vec
+
+            del_lamb_all = lamb2_all - lamb1_all
+            del_lamb_req = lamb2_req - lamb1_req
+            self.assertFalse(np.allclose(del_lamb_req, 0.))
+            self.assertTrue(np.allclose(del_lamb_req, del_lamb_all, rtol=1e-8))
+            dy = np.dot(del_lamb_req.T, etaBar)
+            dispMod = disp + dy
+
+            Ls = rateList[samp] * np.linalg.norm(dispMod) ** 2 / 6.
+            self.assertAlmostEqual(Ls, Lsamps[samp], places=8)
+            print("checked Lsamp : {}".format(Ls))
+
+
 
     def test_Expand(self):
         stateList = self.state1List[:1]
@@ -526,7 +625,7 @@ class Test_HEA_LBAM_vac(Test_HEA_LBAM):
     def setUp(self):
         self.DataPath = ("../../MD_KMC_single/Run_2/singleStep_Run2_1073_AllRates.h5")
         self.CrysDatPath = ("../../CrysDat_FCC/CrystData.h5")
-
+        self.a0 = 3.59
         self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
         self.jList, self.dxList, self.jumpNewIndices, self.superCell, self.jnet, self.vacsite, self.vacsiteInd =\
             Load_crys_Data(self.CrysDatPath)
