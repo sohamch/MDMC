@@ -53,9 +53,9 @@ def Load_Data(DataPath, noPerm=True):
         else:
             try:
                 perm = np.array(fl["Permutation"])
-                print("found permuation")
+                print("found permuation. mixing data before splitting.")
             except:
-                perm = np.arange(len(fl["InitStates"]))i
+                perm = np.arange(len(fl["InitStates"]))
                 print("No Permutation array found. Not mixing data.")
 
         state1List = np.array(fl["InitStates"])[perm]
