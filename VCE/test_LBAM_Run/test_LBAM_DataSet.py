@@ -242,8 +242,6 @@ class Test_HEA_LBAM(unittest.TestCase):
             self.assertAlmostEqual(Ls, Lsamps[samp], places=8)
             print("checked Lsamp : {}".format(Ls))
 
-
-
     def test_Expand(self):
         stateList = self.state1List[:1]
         AllJumpRates = self.AllJumpRates[:1]
