@@ -80,6 +80,61 @@ def make_JumpGatherTensor(SitesJumpDests, BatchSize, z, Nsites, Ndim):
 
     return jumpGather
 
+def get_InputTensors(BatchSize, z, Ndim, Nsites, NNsiteList, dxList):
+    # Record the displacement of the atoms at different sites after each jump
+    # Only the neighboring sites of the vacancy move - the rest don't
+    dispSites = np.zeros((BatchSize * z, Ndim, Nsites))
+    for batch in range(args.BatchSize):
+        for jumpInd in range(z):
+            dispSites[batch * z + jumpInd, :, NNsiteList[1 + jumpInd, 0]] = -dxList[jumpInd]
+
+    dispTensor = pt.tensor(dispSites, dtype=pt.double).to(device)
+
+    # Build the host state with a single vacancy
+    # we'll make "z" copies of the host for convenience in batch processing
+    hostState = pt.ones(args.BatchSize * z, 1, Nsites, dtype=pt.double)
+    # set the vacancy site to unoccupied
+    hostState[:, :, 0] = 0.
+    hostState = hostState.to(device)
+
+    return dispTensor, hostState
+
+def Train(hostState, dispTensor, GatherTensor, dxList, gNet, Nsites, StartEpoch, EndEpoch, PassesPerEpoch):
+    if StartEpoch == 0:
+        tcf_epoch = []
+    else:
+        try:
+            tcf_epoch = list(np.load(RunPath + "tcf_epochs_{}_to_{}.npy".format(StartEpoch, EndEpoch)))    
+        except:
+            tcf_epoch = []
+
+    l0 = np.linalg.norm(dxList[0]) ** 2 / (Nsites)
+
+    opt = pt.optim.Adam(gNet.parameters(), lr=0.001)
+    for epoch in tqdm(range(EndEpoch + 1), ncols=65, position=0, leave=True):
+        pt.save(gNet.state_dict(),
+                RunPath + "epochs_tracer_16_Sup/ep_{0}.pt".format(StartEpoch + epoch))
+        for batch_pass in range(PassesPerEpoch):
+            opt.zero_grad()
+            y_jump_init = gNet(hostState)[:, 0, :, :]
+            y_jump_fin = pt.gather(y_jump_init, 2, GatherTensor)
+
+            dy = y_jump_fin[:, :, 1:] - y_jump_init[:, :, 1:]
+
+            dispMod = dispTensor[:, :, 1:] + dy
+
+            norm_sq_Sites = pt.norm(dispMod, dim=1) ** 2
+            norm_sq_SiteAv = pt.sum(norm_sq_Sites, dim=1) / (1.0 * Nsites)
+            norm_sq_batchAv = pt.sum(norm_sq_SiteAv) / (1.0 * z * args.BatchSize)
+
+            norm_sq_batchAv.backward()
+
+            opt.step()
+
+        tcf_epoch.append(norm_sq_batchAv.item() / l0)
+
+    return tcf_epoch
+
 def main(args):
     # Read crystal data
     GpermNNIdx, NNsiteList, dxList, superCell = Load_crysDats(args.CrysDatPath)
@@ -102,87 +157,42 @@ def main(args):
     jumpGather = make_JumpGatherTensor(SitesJumpDests, args.BatchSize, z, Nsites, Ndim)
     GatherTensor = pt.tensor(jumpGather, dtype=pt.long).to(device)
 
-    # Next, we'll record the displacement of the atoms at different sites after each jump
-    # Only the neighboring sites of the vacancy move - the rest don't
-    dispSites = np.zeros((args.BatchSize * z, Ndim, Nsites))
-    for batch in range(args.BatchSize):
-        for jumpInd in range(z):
-            dispSites[batch * z + jumpInd, :, NNsiteList[1+jumpInd, 0]] = -dxList[jumpInd]
+    dispTensor, hostState = get_InputTensors(args.BatchSize, z, Ndim, Nsites, NNsiteList, dxList)
 
-    dispTensor = pt.tensor(dispSites, dtype=pt.double).to(device)
+    gNet = GCNet(GnnPerms.long(), NNsites, JumpVecs, N_ngb=N_ngb, NSpec=1,
+                 mean=args.Mean_wt, std=args.Std_wt, nl=args.Nlayers, nch=args.Nchannels, nchLast=args.NchLast).double()
 
-    # Build the network and the host state with a single vacancy
-    # we'll make "z" copies of the host for convenience
-    hostState = pt.ones(args.BatchSize*z, 1, Nsites, dtype=pt.double)
-
-    # set the vacancy site to unoccupied
-    hostState[:, :, 0] = 0.
-
-    hostState = hostState.to(device)
-
-    gNet = GCNet(GnnPerms.long(), NNsites, JumpVecs, dim=3, N_ngb=N_ngb,
-                 NSpec=1, mean=0.0, std=0.05, nl=args.NLayers, nch=args.NChannels, nchLast=1).double()
-
+    # Load saved networks if starting from checkpoint
     if args.StartEpoch > 0:
-        gNet.load_state_dict(pt.load(RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, args.StartEpoch),map_location="cpu"))
+        gNet.load_state_dict(pt.load(RunPath + "epochs_tracer_16_Sup/ep_{0}.pt".format(args.StartEpoch),map_location="cpu"))
     
     else:
-        if not os.path.isdir(RunPath + "epochs_tracer_{0}_16_Sup".format(args.CrysType)):
-            os.mkdir(RunPath + "epochs_tracer_{0}_16_Sup".format(args.CrysType))
+        if not os.path.isdir(RunPath + "epochs_tracer_16_Sup"):
+            os.mkdir(RunPath + "epochs_tracer_16_Sup")
     
     gNet.to(device)
-
-    try:
-        l_epoch = np.load(RunPath + "tcf_epoch.npy")
-        l_epoch = list(l_epoch)
-
-    except:
-        l_epoch = []
-
-    if args.StartEpoch == 0:
-        l_epoch = []
     
-    l0 = np.linalg.norm(dxList[0])**2 / (Nsites)
-
-    opt = pt.optim.Adam(gNet.parameters(), lr=0.001)
-    for epoch in tqdm(range(args.EndEpoch + 1), ncols=65, position=0, leave=True):
-        pt.save(gNet.state_dict(), RunPath + "epochs_tracer_{0}_16_Sup/ep_{1}.pt".format(args.CrysType, args.StartEpoch + epoch))
-        for batch_pass in range(args.BatchesPerEpoch): 
-            opt.zero_grad()    
-            y_jump_init = gNet(hostState)[:, 0, :, :]
-            y_jump_fin = pt.gather(y_jump_init, 2, GatherTensor)
-            
-            dy = y_jump_fin[:, :, 1:] - y_jump_init[:, :, 1:]
-            
-            dispMod = dispTensor[:, :, 1:] + dy
-            
-            norm_sq_Sites = pt.norm(dispMod, dim=1)**2
-            norm_sq_SiteAv = pt.sum(norm_sq_Sites, dim=1) / (1.0 * Nsites)
-            norm_sq_batchAv = pt.sum(norm_sq_SiteAv) / (1.0 * z * args.BatchSize)
-            
-            norm_sq_batchAv.backward()
-        
-            opt.step()
-
-        l_epoch.append(norm_sq_batchAv.item()/l0)
-
-        np.save(RunPath + "tcf_epoch.npy", np.array(l_epoch))
+    tcf_epoch = Train(hostState, dispTensor, GatherTensor, dxList, gNet, Nsites, args.StartEpoch, args.EndEpoch, args.PassesPerEpoch)
+    np.save(RunPath + "tcf_epochs_{}_to_{}.npy".format(args.StartEpoch, args.EndEpoch), np.array(tcf_epoch))
 
 # Now set up the arg parser
-parser = argparse.ArgumentParser(description="Input parameters for tracer training", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("-CP", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
-parser.add_argument("-ct", "--CrysType", metavar="FCC/BCC", type=str, help="Crystal type.")
-parser.add_argument("-sep", "--StartEpoch", metavar="eg: 0", default=0, type=int, help="starting epoch")
-parser.add_argument("-eep", "--EndEpoch", metavar="eg: 0", default=250, type=int, help="Ending epoch")
-parser.add_argument("-nl", "--NLayers", metavar="eg: 6", default=6, type=int, help="number of intermediate layers")
-parser.add_argument("-nch", "--NChannels", metavar="eg: 8", default=8, type=int, help="number of channels in intermediate layers.")
-parser.add_argument("-bep", "--BatchesPerEpoch", metavar="eg: 500", default=500, type=int, help="No. of times to do batch GD in each epoch.")
-parser.add_argument("-bs", "--BatchSize", metavar="eg: 10", default=2, type=int, help="No. of times each of the z jumps are considered in a batch.")
-
-parser.add_argument("-d", "--DumpArgs", action="store_true", help="Whether to dump arguments in a file")
-parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str, help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
-
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Input parameters for tracer training", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("-CP", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
+    parser.add_argument("-sep", "--StartEpoch", metavar="eg: 0", default=0, type=int, help="starting epoch")
+    parser.add_argument("-eep", "--EndEpoch", metavar="eg: 0", default=250, type=int, help="Ending epoch")
+    parser.add_argument("-nl", "--NLayers", metavar="eg: 6", default=6, type=int, help="number of intermediate layers")
+    parser.add_argument("-nch", "--NChannels", metavar="eg: 8", default=8, type=int, help="number of channels in intermediate layers.")
+    parser.add_argument("-bs", "--BatchSize", metavar="eg: 10", default=2, type=int, help="No. of times each of the z jumps are considered in a batch.")
+    parser.add_argument("-pep", "--PassesPerEpoch", metavar="eg: 500", default=500, type=int,
+                        help="No. of times to do batch Gradient Descent in each epoch. In each pass, each jump is considered \"BatchSize\" number of times.")
+
+    parser.add_argument("-wm", "--Mean_wt", metavar="eg: 0.02", default=0.02, type=float, help="Mean to initialize weights")
+    parser.add_argument("-ws", "--Std_wt", metavar="eg: 0.02", default=0.02, type=float, help="Standard deviation to initialize weights")
+
+    parser.add_argument("-d", "--DumpArgs", action="store_true", help="Whether to dump arguments in a file")
+    parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str, help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
+
     args = parser.parse_args()
     
     if args.DumpArgs:
