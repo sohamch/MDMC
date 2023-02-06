@@ -10,11 +10,10 @@ import torch as pt
 import torch.nn as nn
 import torch.nn.functional as F
 import pickle
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-from onsager import crystal, cluster, supercell
 from SymmLayers import GCNet
+from GCNetRun import Load_crysDats
 
 
 device=None
