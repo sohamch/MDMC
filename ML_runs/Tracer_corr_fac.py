@@ -10,10 +10,10 @@ import torch as pt
 import torch.nn as nn
 import torch.nn.functional as F
 import pickle
+import h5py
 from tqdm import tqdm
-
+from onsager import crystal, supercell
 from SymmLayers import GCNet
-from GCNetRun import Load_crysDats
 
 
 device=None
@@ -25,30 +25,69 @@ else:
     device = pt.device("cpu")
 print(device, " - ", pt.cuda.get_device_name())
 
+def Load_crysDats(CrysDatPath):
+    print("Loading Crystal data at {}".format(CrysDatPath))
+
+    with h5py.File(CrysDatPath, "r") as fl:
+        lattice = np.array(fl["Lattice_basis_vectors"])
+        superlatt = np.array(fl["SuperLatt"])
+        dxList = np.array(fl["dxList_1nn"])
+        GpermNNIdx = np.array(fl["GroupNNPermutation"])
+        NNsiteList = np.array(fl["NNsiteList_sitewise"])
+
+    crys = crystal.Crystal(lattice=lattice, basis=[[np.array([0., 0., 0.])]], chemistry=["A"])
+    superCell = supercell.ClusterSupercell(crys, superlatt)
+
+    return GpermNNIdx, NNsiteList, dxList, superCell
+
+def Make_SiteJumpDests(dxList, superCell, NNsiteList):
+    # Build the indexing of the sites after the jumps
+    z = dxList.shape[0]
+    Nsites = NNsiteList.shape[1]
+    dxLatVec = np.zeros((z, 3), dtype=int)
+    for jInd in range(dxList.shape[0]):
+        dx = dxList[jInd]
+        dxR, _ = superCell.crys.cart2pos(dx)
+        dxLatVec[jInd, :] = dxR[:]
+
+    assert np.allclose(np.dot(superCell.crys.lattice, dxLatVec.T).T, dxList)
+
+    SitesJumpDests = np.zeros((z, Nsites), dtype=int)
+    for jumpInd in range(z):
+        Rjump = dxLatVec[jumpInd]
+        RjumpNeg = -dxLatVec[jumpInd]
+        siteExchange, _ = superCell.index(Rjump, (0, 0))
+        assert siteExchange == NNsiteList[1 + jumpInd, 0]
+        siteExchangeNew, _ = superCell.index(RjumpNeg, (0, 0))
+        SitesJumpDests[jumpInd, siteExchange] = siteExchangeNew
+        for siteInd in range(1, Nsites):  # vacancy site is always origin
+            if siteInd == siteExchange:  # exchange site has already been moved so skip that
+                continue
+            _, Rsite = superCell.ciR(siteInd)
+            RsiteNew = Rsite - dxLatVec[jumpInd]
+            siteIndNew, _ = superCell.index(RsiteNew, (0, 0))
+            SitesJumpDests[jumpInd, siteInd] = siteIndNew
+
+    return SitesJumpDests
+
+def make_JumpGatherTensor(SitesJumpDests, BatchSize, z, Nsites, Ndim):
+    jumpGather = np.zeros((args.BatchSize * z, Ndim, Nsites), dtype=int)
+    for batch in range(BatchSize):
+        for jumpInd in range(z):
+            for site in range(Nsites):
+                for dim in range(Ndim):
+                    jumpGather[batch * z + jumpInd, dim, site] = SitesJumpDests[jumpInd, site]
+
+    return jumpGather
+
 def main(args):
     # Read crystal data
-    CrysDatPath = args.CrysDatPath
-
-    # Load symmetry operations with which they were constructed
-    with open(CrysDatPath + "GroupOpsIndices.pkl", "rb") as fl:
-        GIndtoGDict = pickle.load(fl)
-
-    GpermNNIdx = np.load(CrysDatPath + "GroupNNpermutations.npy")
-
-    NNsiteList = np.load(CrysDatPath + "NNsites_sitewise.npy")
-
-    with open(CrysDatPath + "jnet"+args.CrysType+".pkl", "rb") as fl:
-        jnet = pickle.load(fl)
-
-    dxList = np.array([dx for (i,j), dx in jnet[0]])
+    GpermNNIdx, NNsiteList, dxList, superCell = Load_crysDats(args.CrysDatPath)
 
     N_ngb = NNsiteList.shape[0]
     z = N_ngb - 1
     assert z == dxList.shape[0]
     Nsites = NNsiteList.shape[1]
-
-    with open(CrysDatPath + "supercell"+args.CrysType+".pkl", "rb") as fl:
-        superCell = pickle.load(fl)
 
     # Convert to tensors
     GnnPerms = pt.tensor(GpermNNIdx).long()
@@ -57,34 +96,10 @@ def main(args):
     Ng = GnnPerms.shape[0]
     Ndim = dxList.shape[1]
 
-    # Build the indexing of the sites after the jumps
-    dxLatVec = np.dot(np.linalg.inv(superCell.crys.lattice), dxList.T).round(decimals=4).T.astype(int)
-    assert np.allclose(np.dot(superCell.crys.lattice, dxLatVec.T).T, dxList)
-
-    SitesJumpDests = np.zeros((z, Nsites), dtype=int)
-    for jumpInd in range(z):
-        Rjump = dxLatVec[jumpInd]
-        RjumpNeg = -dxLatVec[jumpInd]
-        siteExchange, _ = superCell.index(Rjump, (0,0))
-        assert siteExchange == NNsiteList[1 + jumpInd, 0]
-        siteExchangeNew, _ = superCell.index(RjumpNeg, (0,0))
-        SitesJumpDests[jumpInd, siteExchange] = siteExchangeNew
-        for siteInd in range(1, Nsites): # vacancy site is always origin
-            if siteInd == siteExchange: # exchange site has already been moved so skip that
-                continue
-            _, Rsite = superCell.ciR(siteInd)
-            RsiteNew = Rsite - dxLatVec[jumpInd]
-            siteIndNew, _ = superCell.index(RsiteNew, (0,0))
-            SitesJumpDests[jumpInd, siteInd] = siteIndNew
-
+    # Get the destination of each site after the jumps
+    SitesJumpDests = Make_SiteJumpDests(dxList, superCell, NNsiteList)
     # Now convert the jump indexing into a form suitable for gathering batches of vectors
-    jumpGather = np.zeros((args.BatchSize * z, Ndim, Nsites), dtype=int)
-    for batch in range(args.BatchSize):
-        for jumpInd in range(z):
-            for site in range(Nsites):
-                for dim in range(Ndim):
-                    jumpGather[batch * z + jumpInd, dim, site] = SitesJumpDests[jumpInd, site]
-
+    jumpGather = make_JumpGatherTensor(SitesJumpDests, args.BatchSize, z, Nsites, Ndim)
     GatherTensor = pt.tensor(jumpGather, dtype=pt.long).to(device)
 
     # Next, we'll record the displacement of the atoms at different sites after each jump
