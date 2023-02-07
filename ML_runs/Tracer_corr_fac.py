@@ -173,7 +173,7 @@ def main(args):
     
     gNet.to(device)
     
-    tcf_epoch = Train(hostState, dispTensor, GatherTensor, dxList, gNet, Nsites,
+    tcf_epoch, _, _ = Train(hostState, dispTensor, GatherTensor, dxList, gNet, Nsites,
                       args.StartEpoch, args.EndEpoch, args.BatchSize, args.PassesPerEpoch,
                       chkpt=True, saveInterval=args.saveInterval)
     np.save(RunPath + "tcf_epochs_{}_to_{}.npy".format(args.StartEpoch, args.EndEpoch), np.array(tcf_epoch))
