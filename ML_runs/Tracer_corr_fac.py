@@ -99,7 +99,7 @@ def get_InputTensors(BatchSize, z, Ndim, Nsites, NNsiteList, dxList):
 
     return dispTensor, hostState
 
-def Train(hostState, dispTensor, GatherTensor, dxList, gNet, Nsites, StartEpoch, EndEpoch, BatchSize, PassesPerEpoch, saveInterval=1):
+def Train(hostState, dispTensor, GatherTensor, dxList, gNet, Nsites, StartEpoch, EndEpoch, BatchSize, PassesPerEpoch, chkpt=True, saveInterval=1):
     if StartEpoch == 0:
         tcf_epoch = []
     else:
@@ -111,8 +111,8 @@ def Train(hostState, dispTensor, GatherTensor, dxList, gNet, Nsites, StartEpoch,
     l0 = np.linalg.norm(dxList[0]) ** 2 / (Nsites)
 
     opt = pt.optim.Adam(gNet.parameters(), lr=0.001)
-    for epoch in tqdm(range(EndEpoch + 1), ncols=65, position=0, leave=True):
-        if epoch % saveInterval == 0:
+    for epoch in tqdm(range(StartEpoch, EndEpoch + 1), ncols=65, position=0, leave=True):
+        if epoch % saveInterval == 0 and chkpt:
             pt.save(gNet.state_dict(),
                     RunPath + "epochs_tracer_16_Sup/ep_{0}.pt".format(StartEpoch + epoch))
         for batch_pass in range(PassesPerEpoch):
@@ -134,7 +134,7 @@ def Train(hostState, dispTensor, GatherTensor, dxList, gNet, Nsites, StartEpoch,
 
         tcf_epoch.append(norm_sq_batchAv.item() / l0)
 
-    return tcf_epoch
+    return tcf_epoch, y_jump_init, y_jump_fin
 
 def main(args):
     # Read crystal data
@@ -174,7 +174,8 @@ def main(args):
     gNet.to(device)
     
     tcf_epoch = Train(hostState, dispTensor, GatherTensor, dxList, gNet, Nsites,
-                      args.StartEpoch, args.EndEpoch, args.BatchSize, args.PassesPerEpoch, args.saveInterval)
+                      args.StartEpoch, args.EndEpoch, args.BatchSize, args.PassesPerEpoch,
+                      chkpt=True, saveInterval=args.saveInterval)
     np.save(RunPath + "tcf_epochs_{}_to_{}.npy".format(args.StartEpoch, args.EndEpoch), np.array(tcf_epoch))
 
 # Now set up the arg parser
