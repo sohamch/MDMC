@@ -40,7 +40,7 @@ def Load_crysDats(CrysDatPath):
 
     return GpermNNIdx, NNsiteList, dxList, superCell
 
-def Make_SiteJumpDests(dxList, superCell, NNsiteList):
+def make_SiteJumpDests(dxList, superCell, NNsiteList):
     # Build the indexing of the sites after the jumps
     z = dxList.shape[0]
     Nsites = NNsiteList.shape[1]
@@ -125,7 +125,7 @@ def Train(hostState, dispTensor, GatherTensor, dxList, gNet, Nsites, StartEpoch,
 
             norm_sq_Sites = pt.norm(dispMod, dim=1) ** 2
             norm_sq_SiteAv = pt.sum(norm_sq_Sites, dim=1) / (1.0 * Nsites)
-            norm_sq_batchAv = pt.sum(norm_sq_SiteAv) / (1.0 * z * args.BatchSize)
+            norm_sq_batchAv = pt.sum(norm_sq_SiteAv) / (1.0 * dxList.shape[0] * args.BatchSize)
 
             norm_sq_batchAv.backward()
 
@@ -152,7 +152,7 @@ def main(args):
     Ndim = dxList.shape[1]
 
     # Get the destination of each site after the jumps
-    SitesJumpDests = Make_SiteJumpDests(dxList, superCell, NNsiteList)
+    SitesJumpDests = make_SiteJumpDests(dxList, superCell, NNsiteList)
     # Now convert the jump indexing into a form suitable for gathering batches of vectors
     jumpGather = make_JumpGatherTensor(SitesJumpDests, args.BatchSize, z, Nsites, Ndim)
     GatherTensor = pt.tensor(jumpGather, dtype=pt.long).to(device)
