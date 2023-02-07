@@ -115,7 +115,7 @@ def Train(hostState, dispTensor, GatherTensor, dxList, gNet, Nsites, StartEpoch,
         if epoch % saveInterval == 0 and chkpt:
             pt.save(gNet.state_dict(),
                     RunPath + "epochs_tracer_16_Sup/ep_{0}.pt".format(StartEpoch + epoch))
-            np.save(RunPath + "tcf_check.npy".format(StartEpoch, EndEpoch), np.array(tcf_epoch))
+            np.save(RunPath + "tcf_check.npy", np.array(tcf_epoch))
         for batch_pass in range(PassesPerEpoch):
             opt.zero_grad()
             y_jump_init = gNet(hostState)[:, 0, :, :]
