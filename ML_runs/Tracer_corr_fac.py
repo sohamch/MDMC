@@ -161,7 +161,7 @@ def main(args):
     dispTensor, hostState = get_InputTensors(args.BatchSize, z, Ndim, Nsites, NNsiteList, dxList)
 
     gNet = GCNet(GnnPerms.long(), NNsites, JumpVecs, N_ngb=N_ngb, NSpec=1,
-                 mean=args.Mean_wt, std=args.Std_wt, nl=args.Nlayers, nch=args.Nchannels, nchLast=args.NchLast).double()
+                 mean=args.Mean_wt, std=args.Std_wt, nl=args.NLayers, nch=args.NChannels, nchLast=1).double()
 
     # Load saved networks if starting from checkpoint
     if args.StartEpoch > 0:
