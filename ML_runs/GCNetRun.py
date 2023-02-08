@@ -343,7 +343,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     try:
         # strict=False to ignore the renamed buffer "JumpVecs" (renamed from JumpUnitVecs)
         # As long as the same crysdats are used, this will not change
-        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"), strict=False)
+        gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"))
 
         if scratch_if_no_init and start_ep == 0:
             print("Training from scratch indicated (check option --Scratch), but saved initial network for epoch 0 found at", flush=True)
@@ -462,7 +462,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                 ## load checkpoint
                 # strict=False to ignore the renamed buffer "JumpVecs" (renamed from JumpUnitVecs)
                 # As long as the same crysdats are used, this will not change
-                gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device), strict=False)
+                gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
  
                 diff = 0 
                 for batch in range(startSample, endSample, N_batch):
@@ -549,7 +549,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
             print("Loading epoch: {}".format(epoch))
             # strict=False to ignore the renamed buffer "JumpVecs" (renamed from JumpUnitVecs)
             # As long as the same crysdats are used, this will not change
-            gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device), strict=False)
+            gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
              
         for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
             end = min(batch + N_batch, Nsamples)
@@ -604,7 +604,7 @@ def GetRep(dirPath, State_Occs, epoch, gNet, LayerInd, batch_size=1000):
         ## load checkpoint
         # strict=False to ignore the renamed buffer "JumpVecs" (renamed from JumpUnitVecs)
         # As long as the same crysdats are used, this will not change
-        gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device), strict=False)
+        gNet.load_state_dict(pt.load(dirPath + "/ep_{0}.pt".format(epoch), map_location=device))
         for batch in tqdm(range(0, Nsamples, N_batch), position=0, leave=True):
             end = min(batch + N_batch, Nsamples)
 
