@@ -707,13 +707,6 @@ def main(args):
         assert np.allclose(np.sum(jProbs_st1, axis=1), 1.0)
         assert np.allclose(np.sum(jProbs_st2, axis=1), 1.0)
     
-        # 2.2 shift displacements if indicated
-        if args.DispShift:
-            print("Shifting displacements by differences of initial and final state averages.")
-            dispList += avgDisps_st2 - avgDisps_st1
-        else:
-            print("Displacements not shifted.")
-
     else:
         jProbs_st1 = None
         jProbs_st2 = None
@@ -908,7 +901,6 @@ if __name__ == "__main__":
     parser.add_argument("-bt","--BoundTrain", action="store_true", help="Whether to train using boundary state averages.")
     parser.add_argument("-nojsr", "--JumpSort", action="store_false", help="Whether to switch on/off sort jumps by rates. Not doing it will cause symmetry to break.")
     parser.add_argument("-aos","--AddOnSitesJPINN", action="store_true", help="Whether to consider on sites along with vacancy sites in JPINN.")
-    parser.add_argument("-xsh", "--DispShift", action="store_true", help="Whether to shift displacements with state averages.")
     parser.add_argument("-nosym", "--NoSymmetry", action="store_true", help="Whether to switch off all symmetry operations except identity.")
     parser.add_argument("-l0", "--ScaleL0", action="store_true", help="Whether to scale transport coefficients during training with uncorrelated value.")
 
