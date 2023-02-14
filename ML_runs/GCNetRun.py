@@ -611,7 +611,8 @@ def makeDir(args, specsToTrain):
         prepo = "saved at"
         dirNameNets = "ep_T_{0}_{1}_n{2}c{4}_all_{3}".format(args.TNet, direcString, args.Nlayers, int(args.AllJumpsNetType), args.Nchannels)
     
-    elif args.Mode == "train":
+    else:
+        assert args.Mode == "train", "Modes can either be \"train\", \"eval\", \"getY\" or \"getRep\""
         prepo = "saving in"
 
     # 2 check if a run directory exists
@@ -626,6 +627,15 @@ def makeDir(args, specsToTrain):
     return dirPath, direcString
 
 def main(args):
+
+    # Dump args to file if necessary.
+    if args.DumpArgs:
+        print("Dumping arguments to: {}".format(args.DumpFile))
+        opts = vars(args)
+        with open(RunPath + args.DumpFile, "w") as fl:
+            for key, val in opts.items():
+                fl.write("{}: {}\n".format(key, val))
+
     print("Running at : "+ RunPath)
     if args.Mode=="train" and args.Tdata != args.TNet:
         raise ValueError("Different temperatures in training mode not allowed")
@@ -644,7 +654,7 @@ def main(args):
     if args.AllJumps and args.BoundTrain:
         raise NotImplementedError("Cannot do all-jump training with boundary states.")
     
-    # 1. Load crystal parameters
+    # 1. Load crystal data
     GpermNNIdx, NNsiteList, JumpNewSites, dxJumps = Load_crysDats(args.CrysDatPath)
     N_ngb = NNsiteList.shape[0]
     z = N_ngb - 1
@@ -663,14 +673,6 @@ def main(args):
         print("Considering full symmetry group.")
         GnnPerms = pt.tensor(GpermNNIdx).long()
 
-    # Dump args to files if necessary.
-    if args.DumpArgs:
-        print("Dumping arguments to: {}".format(args.DumpFile))
-        opts = vars(args)
-        with open(RunPath + args.DumpFile, "w") as fl:
-            for key, val in opts.items():
-                fl.write("{}: {}\n".format(key, val))
-
     NNsites = pt.tensor(NNsiteList).long()
     JumpVecs = pt.tensor(dxJumps.T * args.LatParam, dtype=pt.double)
     print("Jump Vectors: \n", JumpVecs.T, "\n")
@@ -678,9 +680,6 @@ def main(args):
 
     # 2. Load data
     state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2 = Load_Data(args.DataPath, args.Perm)
-    
-    if args.BoundTrain and (AllJumpRates_st2 is None):
-        raise ValueError("Insufficient data to do boundary training. Need jump rates and average displacements from both initial and final states.")
 
     # 2.1 Convert jump rates to probabilities
     if args.BoundTrain:
@@ -692,12 +691,11 @@ def main(args):
     else:
         jProbs_st1 = None
         jProbs_st2 = None
-    
-    # 2.3 Make numpy arrays to feed into training/evaluation functions
+
+    # 3. Make directories
     specsToTrain = [int(args.SpecTrain[i]) for i in range(len(args.SpecTrain))]
     specsToTrain = sorted(specsToTrain)
 
-    # 3. Make directories if needed
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
     dirPath, direcString = makeDir(args, specsToTrain)
@@ -705,12 +703,13 @@ def main(args):
     if args.BoundTrain:
         assert args.NchLast == z
 
+    # 4. Initiate the network
     gNet = GCNet(GnnPerms.long(), NNsites, JumpVecs, N_ngb=N_ngb, NSpec=NSpec,
             mean=args.Mean_wt, std=args.Std_wt, nl=args.Nlayers, nch=args.Nchannels, nchLast=args.NchLast).double()
 
     print("No. of channels in last layer: {}".format(gNet.net[-3].Psi.shape[0]))
 
-    # 4. Call Training or evaluating or y-evaluating function here
+    # 5. Call Training or evaluating or y-evaluating or rep-getting function here
     N_train_jumps = z*args.N_train if args.AllJumps else args.N_train
     if args.Mode == "train":
         State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = \
