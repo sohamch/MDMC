@@ -3,7 +3,7 @@ import os
 import sys
 RunPath = os.getcwd() + "/"
 CrysDatPath = "../CrysDat_FCC/CrystData.h5"
-DataPath = "../MD_KMC_single/Run_2/"
+DataPath = "../MD_KMC_single/Run_4_EquiComp/singleStep_Run3_{}_AllRates.h5"
 ModulePath = "../Symm_Network/"
 
 import numpy as np
@@ -22,8 +22,8 @@ class TestGCNetRun(unittest.TestCase):
         self.T = 1073
 
         self.state1List, self.state2List, self.dispList, self.rateList, self.AllJumpRates_st1,\
-        self.AllJumpRates_st2=\
-            Load_Data(DataPath + "singleStep_Run2_{}_AllRates.h5".format(self.T))
+        self.AllJumpRates_st2 =\
+            Load_Data(DataPath.format(self.T))
 
         self.GpermNNIdx, self.NNsiteList, self.JumpNewSites, self.dxJumps = Load_crysDats(CrysDatPath)
 
@@ -166,7 +166,6 @@ class TestGCNetRun(unittest.TestCase):
         specCheck = self.specCheck
         specsToTrain = [specCheck]
         VacSpec = self.VacSpec
-        N_check = 200
         N_train = 1000
         AllJumps = False
         State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
