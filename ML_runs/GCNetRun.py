@@ -35,9 +35,9 @@ def Load_crysDats(CrysDatPath):
 
     return GpermNNIdx, NNsiteList, JumpNewSites, dxJumps
 
-def Load_Data(DataPath, NoPerm=False):
+def Load_Data(DataPath, Perm=False):
     with h5py.File(DataPath, "r") as fl:
-        if not NoPerm:
+        if Perm:
             try:
                 perm = np.array(fl["Permutation"])
                 print("found permuation to mix data set.")
@@ -695,7 +695,7 @@ def main(args):
     Ndim = dxJumps.shape[1]
 
     # 2. Load data
-    state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2 = Load_Data(args.DataPath, args.NoPerm)
+    state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2 = Load_Data(args.DataPath, args.Perm)
     
     if args.BoundTrain and (AllJumpRates_st2 is None):
         raise ValueError("Insufficient data to do boundary training. Need jump rates and average displacements from both initial and final states.")
@@ -891,7 +891,7 @@ if __name__ == "__main__":
     # Add argument parser
     parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str, help="Path to Data file.")
-    parser.add_argument("-np", "--NoPerm", action="store_true", help="Whether to mix up the data set if a permutation array is found.")
+    parser.add_argument("-prm", "--Perm", action="store_true", help="Whether to mix up the data set if a permutation array is found.")
     parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
     parser.add_argument("-a0", "--LatParam", type=float, default=1.0, metavar="3.59", help="Lattice parameter.")
 
