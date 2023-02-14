@@ -54,22 +54,9 @@ def Load_Data(DataPath, Perm=False):
         dispList = np.array(fl["SpecDisps"])[perm]
         rateList = np.array(fl["rates"])[perm]
         AllJumpRates_st1 = np.array(fl["AllJumpRates_Init"])[perm]
-        try: 
-            AllJumpRates_st2 = np.array(fl["AllJumpRates_Fin"])[perm]
-        except:
-            print("Second step rates not found.")
-            AllJumpRates_st2 = None
-        
-        try:
-            avgDisps_st1 = np.array(fl["AvgDisps_Init"])[perm]
-            avgDisps_st2 = np.array(fl["AvgDisps_Fin"])[perm]
-
-        except:
-            print("Average disps not found.")
-            avgDisps_st1 = None
-            avgDisps_st2 = None
+        AllJumpRates_st2 = np.array(fl["AllJumpRates_Fin"])[perm]
  
-    return state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, avgDisps_st1, avgDisps_st2
+    return state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2
 
 def makeOnSites(stateOccs, specsToTrain, VacSpec, sp_ch):
     OnSites = None

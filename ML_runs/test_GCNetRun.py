@@ -22,7 +22,7 @@ class TestGCNetRun(unittest.TestCase):
         self.T = 1073
 
         self.state1List, self.state2List, self.dispList, self.rateList, self.AllJumpRates_st1,\
-        self.AllJumpRates_st2, self.avgDisps_st1, self.avgDisps_st2 =\
+        self.AllJumpRates_st2=\
             Load_Data(DataPath + "singleStep_Run2_{}_AllRates.h5".format(self.T))
 
         self.GpermNNIdx, self.NNsiteList, self.JumpNewSites, self.dxJumps = Load_crysDats(CrysDatPath)
