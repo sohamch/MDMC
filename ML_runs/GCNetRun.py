@@ -2,11 +2,6 @@ import os
 import sys
 import argparse
 RunPath = os.getcwd() + "/"
-#CrysPath = "/home/sohamc2/HEA_FCC/MDMC/CrysDat_FCC/"
-#DataPath = "/home/sohamc2/HEA_FCC/MDMC/ML_runs/DataSets/"
-ModulePath = "/home/sohamc2/HEA_FCC/MDMC/Symm_Network/"
-
-sys.path.append(ModulePath)
 
 import numpy as np
 import torch as pt
