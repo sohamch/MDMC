@@ -3,7 +3,7 @@ import os
 import sys
 RunPath = os.getcwd() + "/"
 CrysDatPath = "../CrysDat_FCC/CrystData.h5"
-DataPath = "../MD_KMC_single/Run_4_EquiComp/singleStep_Run3_{}_AllRates.h5"
+DataPath = "../MEAM_KMC_2step_results/EquiComp/singleStep_Run3_{}_AllRates.h5"
 ModulePath = "../Symm_Network/"
 
 import numpy as np
