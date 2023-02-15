@@ -15,7 +15,7 @@ import unittest
 
 from LBAM_DataSet import *
 
-fp = "/mnt/WorkPartition/Work/Research/UIUC/MDMC/MD_KMC_single/Run_4_EquiComp/"
+fp = "/mnt/WorkPartition/Work/Research/UIUC/MDMC/MEAM_KMC_2step_results/EquiComp/"
 cp = "/mnt/WorkPartition/Work/Research/UIUC/MDMC/CrysDat_FCC/"
 class Test_HEA_LBAM(unittest.TestCase):
 
