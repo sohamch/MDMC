@@ -172,7 +172,7 @@ class Test_HEA_LBAM(unittest.TestCase):
 
             disp = dispList[samp, self.SpecExpand, :]
             if self.SpecExpand == self.vacSpec:
-                self.assertAlmostEqual(disp, self.dxList[jmp]*self.a0, places=10)
+                self.assertTrue(np.allclose(disp, self.dxList[jmp]*self.a0, atol=1e-10))
 
             # get the lambda of the two states by going through the vector stars explictly
             lamb1_all = np.zeros((len(self.VclusExp.vecVec), 3))
@@ -621,8 +621,8 @@ class Test_HEA_LBAM(unittest.TestCase):
 class Test_HEA_LBAM_vac(Test_HEA_LBAM):
 
     def setUp(self):
-        self.DataPath = ("../../MD_KMC_single/Run_2/singleStep_Run2_1073_AllRates.h5")
-        self.CrysDatPath = ("../../CrysDat_FCC/CrystData.h5")
+        self.DataPath = (fp + "singleStep_Run3_1073_AllRates.h5")
+        self.CrysDatPath = (cp + "CrystData.h5")
         self.a0 = 3.59
         self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
         self.jList, self.dxList, self.jumpNewIndices, self.superCell, self.jnet, self.vacsite, self.vacsiteInd =\
