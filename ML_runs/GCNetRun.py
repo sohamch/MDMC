@@ -288,7 +288,7 @@ def sort_jp(jProbs_st1, jProbs_st2, jumpSort):
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps,
           jProbs_st1, jProbs_st2, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
           gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False, jumpSort=True,
-          AddOnSites=False, scaleL0=False, chkpt=True, decay=0.0005):
+          AddOnSites=False, scaleL0=False, chkpt=True, randomize=False, decay=0.0005):
     
     print("Training conditions:")
     print("scratch: {}, DPr: {}, Boundary_train: {}, jumpSort: {}, AddOnSites: {}, scaleL0: {}".format(scratch_if_no_init, DPr, Boundary_train, jumpSort, AddOnSites, scaleL0))
@@ -355,7 +355,21 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
         ## checkpoint
         if epoch % interval == 0 and chkpt:
             pt.save(gNet.state_dict(), dirPath + "/ep_{0}.pt".format(epoch))
-            
+
+        if randomize:
+            randPerm = pt.randperm(state1Data.shape[0])
+            state1Data = state1Data[randPerm]
+            state2Data = state2Data[randPerm]
+            rateData = rateData[randPerm]
+            dispData = dispData[randPerm]
+            if Boundary_train:
+                jProbs_st1 = jProbs_st1[randPerm]
+                jProbs_st2 = jProbs_st2[randPerm]
+
+            if SpecsToTrain != [VacSpec]:
+                On_st1 = On_st1[randPerm]
+                On_st2 = On_st2[randPerm]
+
         for batch in range(0, N_train, N_batch):
             
             opt.zero_grad() 
@@ -723,7 +737,7 @@ def main(args):
               args.Start_epoch, args.End_epoch, args.Interval, N_train_jumps, gNet,
               lRate=args.Learning_rate, batch_size=args.Batch_size, scratch_if_no_init=args.Scratch,
               DPr=args.DatPar, Boundary_train=args.BoundTrain, jumpSort=args.JumpSort, AddOnSites=args.AddOnSitesJPINN,
-              scaleL0=args.ScaleL0, decay=args.Decay)
+              scaleL0=args.ScaleL0, randomize=args.Shuffle, decay=args.Decay)
 
     elif args.Mode == "eval":
         State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = \
@@ -877,6 +891,8 @@ if __name__ == "__main__":
     parser.add_argument("-a0", "--LatParam", type=float, default=1.0, metavar="3.59", help="Lattice parameter.")
 
     parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
+    parser.add_argument("-shf", "--Shuffle", action="store_true",
+                        help="Whether to Shuffle at every epoch - applicable only to training mode.")
     parser.add_argument("-rl", "--RepLayer", metavar="L (int)", type=int, help="Which Layer to extract representation from (count starts from 0). Must be (0 or 2 or 5 or 8 ...)")
     parser.add_argument("-rStart", "--RepStart", metavar="L (int)", type=int, default=0, help="Which sample to start computing representations onward (N_train no. of samples will be computed).")
     parser.add_argument("-bt","--BoundTrain", action="store_true", help="Whether to train using boundary state averages.")
