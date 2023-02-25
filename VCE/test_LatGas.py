@@ -2,6 +2,7 @@ from onsager import crystal, supercell, cluster
 import numpy as np
 import LatGas
 import unittest
+from tqdm import tqdm
 
 class Test_latGasKMC(unittest.TestCase):
 
@@ -404,7 +405,9 @@ class Test_latGasKMC(unittest.TestCase):
             LatGas.LatGasKMCTrajRandomRate(state0cpy, Nsteps, self.NSpec, jList, jumpNewSites,
                        siteGPerms, stringSites, dxList, muArray, stdArray)
 
-        for step in range(Nsteps):
+        print(t_steps, state0.shape[0], flush=True)
+        print(np.unique(state0, return_counts=True), flush=True)
+        for step in tqdm(range(Nsteps)):
             # get the jump selected
             jmpStep = JumpSelects[step]
             dxRSelect, ciSite = self.superCell.crys.cart2pos(self.dxList[jmpStep])
@@ -417,6 +420,7 @@ class Test_latGasKMC(unittest.TestCase):
 
             # # First, get where the vacancy is in the current state
             vacNow = np.where(state0 == self.NSpec-1)[0][0]
+            # vacs.append(vacNow)
             self.assertTrue(vacNow == self.vacsiteInd == 0)
             # Get the vacancy position
             Rvac = self.siteIndtoR[vacNow]
@@ -470,6 +474,8 @@ class Test_latGasKMC(unittest.TestCase):
                 state2Trans[siteIndNew] = state2[siteInd]
 
             state0 = state2Trans.copy()
+
+        # print(vacs)
 
 
 
