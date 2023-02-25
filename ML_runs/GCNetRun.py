@@ -350,6 +350,9 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     y1BatchTest = np.zeros((N_batch, 3))
     y2BatchTest = np.zeros((N_batch, 3))
 
+    if randomize:
+        print("Shuffling data at every epoch.")
+
     for epoch in tqdm(range(start_ep, end_ep + 1), position=0, leave=True):
         
         ## checkpoint
