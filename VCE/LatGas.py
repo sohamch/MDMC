@@ -246,8 +246,8 @@ def getJumpRate(st1, st2, GSites, stringSites, mu, std):
     s2 = getStateSum(st2, GSites, stringSites)
     sm = s1 * s2 // (s1 + s2)
     random.seed(sm)
-    for i in range(500):
-        un = random.gauss(mu, std)
+    # for i in range(500):
+    #     un = random.gauss(mu, std)
     un = random.gauss(mu, std) # un denotes a dimensionless energy barrier
     return np.exp(-un)
 
