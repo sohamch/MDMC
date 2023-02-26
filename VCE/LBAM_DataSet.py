@@ -320,7 +320,7 @@ def main(args):
 
     # Load Data
     specExpOriginal = args.SpecExpand
-    state1List, dispList, rateList, AllJumpRates, jumpSelects = Load_Data(args.DataPath, noPerm=args.noPerm)
+    state1List, dispList, rateList, AllJumpRates, jumpSelects = Load_Data(args.DataPath, Perm=args.Perm)
 
     AllSpecs = np.unique(state1List[0])
     NSpec = AllSpecs.shape[0]
