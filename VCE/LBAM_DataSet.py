@@ -427,9 +427,6 @@ if __name__ == "__main__":
     parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str,
                         help="Path to crystal Data.")
     
-    parser.add_argument("-ct", "--CrysType", metavar="FCC/BCC", default=None, type=str,
-                        help="Type of crystal.")
-    
     parser.add_argument("-mo", "--MaxOrder", metavar="eg. 3", type=int, default=None,
                         help="Maximum sites to consider in a cluster.")
     
