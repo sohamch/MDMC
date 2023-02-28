@@ -161,6 +161,8 @@ class Test_HEA_LBAM(unittest.TestCase):
         self.assertAlmostEqual(np.sum(Lsamps) / 10, L, places=8)
 
         # Now go through each of the samples and verify
+        if self.SpecExpand == self.vacSpec:
+            print("Testing vacancy.")
         for samp in range(10):
             state = stateList[samp]
             jmp = jumpSelects[samp]
@@ -648,6 +650,10 @@ class Test_HEA_LBAM_vac(Test_HEA_LBAM):
         self.MCJit, self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.NVclus = CreateJitCalculator(self.VclusExp, self.NSpec,
                                                                                                 scratch=True,
                                                                                                 save=True)
+
+        # Now re-make the same calculator by loading from saved h5 file
+        self.MCJit_load, self.numVecsInteracts_load, self.VecsInteracts_load, self.VecGroupInteracts_load, \
+        self.NVclus_load = CreateJitCalculator(self.VclusExp, self.NSpec, scratch=False)
 
         self.VclusExp_all = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=True)
