@@ -348,6 +348,7 @@ def main(args):
         assert np.allclose(dxList[jmpInd] * a0, dxVac)
         
         sp = state1List[stateInd, jList[jmpInd]]
+        assert state1List[stateInd, vacsiteInd] == args.VacSpec
         assert np.allclose(-dxVac, dispList[stateInd, sp, :])
         
         assert jumpSelects[stateInd] == jmpInd
