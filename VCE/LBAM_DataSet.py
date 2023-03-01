@@ -84,6 +84,7 @@ def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite, vac
                                                     TScutoff=TScutoff, TScombShellRange=TScombShellRange,
                                                     TSnnRange=TSnnRange, jumpnetwork=jnet)
 
+    print("Vacancy species : {}".format(VclusExp.vacSpec))
     vacSiteInd, _ = superCell.index(vacsite.R, vacsite.ci)
     reqSites = [vacSiteInd] + list(jList) if not AllInteracts else None
     print("Generating interactions with required sites : {}".format(reqSites))
