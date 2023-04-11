@@ -1,5 +1,5 @@
 #!/bin/bash
-potpath="/mnt/WorkPartition/Work/Research/UIUC/MDMC/pot"
+potpath="../pot"
 
 mkdir MC_test_traj
 cd MC_test_traj
