@@ -1,8 +1,20 @@
 # VKMC
 
-## A repository to compute transport coefficients in FCC CoNiCrFeMn High Entropy Alloys using non-linear Deep Learning and Linear vector-valued Cluster Expansion in combination with the Variational Principle of Mass Transport (Dallas R. Trinkle, Phys. Rev. Lett., 2018).
+## A repository to compute Onsager mass transport coefficients in FCC CoNiCrFeMn High Entropy Alloys using non-linear Neural networks and Linear vector-valued Cluster expansion models in combination with the Variational Principle of Mass Transport (Dallas R. Trinkle, Phys. Rev. Lett., 2018).
 
-In this project, FCC-based CoNiCrFeMn alloys were simulated using the classical MEAM potential by Choi et. al. (https://www.nature.com/articles/s41524-017-0060-9). This repository contains code to generate the necessary data sets as well as to train the Deep networks and cluster expansion models. An installation of the onsager module by Dallas. R. Trinkle, with the cluster modules is required (https://github.com/DallasTrinkle/Onsager/tree/cluster). The structure of this repository is described as follows:
+Requirements:
+ - Python 3
+ - Some Standard Python 3 Packages: numpy, scipy, numba, PyTorch(1.7 or higher), h5py and ASE.
+
+The repository contains code to generate the necessary data sets using this potential as well as to train:
+ - Vector-valued cluster expansion models, effectively implementing the SCMF approach for rough potential energy landscapes.
+ - Deep symmetry-conforming convolutional networks using the design of Cohen and Welling (https://arxiv.org/pdf/1602.07576v3.pdf).
+ 
+An installation of the onsager package by Dallas. R. Trinkle, with the cluster modules is required (https://github.com/DallasTrinkle/Onsager/tree/cluster).
+
+In this project, the classical MEAM potential by Choi et. al. (https://www.nature.com/articles/s41524-017-0060-9) was used. 
+
+The structure of this repository is described as follows:
 
 ## (1) Crystal Data
 
