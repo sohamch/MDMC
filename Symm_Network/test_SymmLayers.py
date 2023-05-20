@@ -5,7 +5,7 @@ import torch as pt
 import h5py
 from tqdm import tqdm
 from onsager import crystal, supercell
-from SymmLayers import GCNet
+from SymmLayers import GCNet, msgPassLayer, msgPassNet
 
 import torch.nn as nn
 import torch.nn.functional as F
@@ -197,3 +197,93 @@ class TestGConv(unittest.TestCase):
                 siteNew, _ = self.superCell.index(RsiteNew, (0, 0))
                 for ch in range(y0.shape[0]):
                     assert np.allclose(np.dot(g.cartrot, y0[ch, :, site]), y_np[gInd, ch, :, siteNew])
+
+class TestMsgPassing(unittest.TestCase):
+
+    def setUp(self):
+        crysType = "FCC"
+        CrysDatPath = "../CrysDat_" + crysType + "/"
+
+        with h5py.File(CrysDatPath + "CrystData.h5", "r") as fl:
+            self.lattice = np.array(fl["Lattice_basis_vectors"])
+            self.superlatt = np.array(fl["SuperLatt"])
+            self.dxJumps = np.array(fl["dxList_1nn"])
+            self.NNsiteList = np.array(fl["NNsiteList_sitewise"])
+            self.JumpNewSites = np.array(fl["JumpSiteIndexPermutation"])
+
+        self.N_ngb = self.NNsiteList.shape[0]
+        self.Nsites = self.NNsiteList.shape[1]
+
+        self.z = self.dxJumps.shape[0]
+
+        self.NNsites = pt.tensor(self.NNsiteList).long()
+        self.JumpVecs = pt.tensor(self.dxJumps.T, dtype=pt.double)
+        print("Jump Vectors: \n", self.JumpVecs.T, "\n")
+        self.Ndim = self.dxJumps.shape[1]
+
+        crys = crystal.Crystal(lattice=self.lattice, basis=[[np.array([0., 0., 0.])]], chemistry=["A"])
+        self.superCell = supercell.ClusterSupercell(crys, self.superlatt)
+        self.crys = crys
+
+        assert len(self.superCell.mobilepos) == self.Nsites
+        self.N_units = self.superCell.superlatt[0, 0]
+
+        # Now make a symmetry-related batch of "states"
+        # The occupancies here are random vectors - they don't necessarily need to be 0/1 valued
+        # we just want to check if the input and outputs are symmetry-preserving.
+        self.NspCh = 2
+        self.TestStates = np.random.randint(0, 5, (len(self.crys.G), self.NspCh, self.Nsites))
+        self.state0 = self.TestStates[0, :, :].copy()
+        self.GIndToGDict = {}
+        self.IdentityIndex = None
+        for gInd, g in enumerate(list(self.crys.G)):
+            self.GIndToGDict[gInd] = g  # Index the group operation
+            for siteInd in range(self.Nsites):
+                _, RSite = self.superCell.ciR(siteInd)
+                Rnew, _ = self.superCell.crys.g_pos(g, RSite, (0, 0))
+                siteIndNew, _ = self.superCell.index(Rnew, (0, 0))
+                self.TestStates[gInd, :, siteIndNew] = self.state0[:, siteInd]
+
+            # Check the identity operation
+            if np.allclose(g.cartrot, np.eye(3)):
+                assert np.array_equal(self.TestStates[gInd, :, :], self.state0[:, :])
+                self.IdentityIndex = gInd
+
+        self.StateTensors = pt.tensor(self.TestStates, dtype=pt.double)
+
+        print("Setup complete.")
+
+    def test_msgPassLayer(self):
+
+        # step 1 : make a message passing layer which produces vectors for each site then same size as
+        # the number of species (output=False)
+        NChannels = 8
+        msgL = msgPassLayer(NChannels, self.NspCh, self.NNsites, output=False, mean=1.0, std=0.1).double()
+
+        # step 2: pass our input states
+        out = msgL(self.StateTensors)
+        print(out.shape)
+        # step 3: Compute the message passing convolution explicitly for each site
+        with pt.no_grad():
+            for samp in tqdm(range(self.StateTensors.shape[0]), position=0, leave=True, ncols=65):
+                for siteInd in range(self.Nsites):
+                    zSum = pt.zeros(self.NspCh).double()
+                    for z in range(self.dxJumps.shape[0]):
+                        zSite = self.NNsiteList[1 + z, siteInd]
+
+                        # concatenate the neighboring site's vector to the site's own
+                        multTens = pt.zeros(2 * self.NspCh).double()
+                        multTens[:self.NspCh] = self.StateTensors[samp, :, siteInd]
+                        multTens[self.NspCh : 2*self.NspCh] = self.StateTensors[samp, :, zSite]
+
+                        # Linearly sum across channels
+                        chSum = pt.zeros(self.NspCh).double()
+                        for channel in range(NChannels):
+                            o = pt.matmul(msgL.Weights[channel], multTens) + msgL.bias[channel]
+                            chSum += o
+
+                        zSum += F.softplus(chSum)
+                    # print(out[samp, :, siteInd])
+                    self.assertTrue(pt.allclose(out[samp, :, siteInd], zSum),
+                                    msg="\nout: {}\nzsum: {}".format(out[samp, :, siteInd], zSum))
+

@@ -203,16 +203,17 @@ class msgPassLayer(nn.Module):
         self.register_buffer("NNsites", NNsites)
         self.register_buffer("NSpec", pt.tensor(NSpec))
         self.register_buffer("Z", pt.tensor(NNsites.shape[0] - 1))
-        self.register_buffer("NchIn", pt.tensor(NChannels))
+        self.register_buffer("NChannels", pt.tensor(NChannels))
 
         if output:
             Layerweights = nn.Parameter(pt.normal(mean, std, size=(NChannels, 1, 2 * NSpec),
                                                   requires_grad=True))
-            LayerBias = nn.Parameter(pt.normal(mean, std, size=(NChannels, NSpec)))
+            LayerBias = nn.Parameter(pt.normal(mean, std, size=(NChannels, 1)))
+
         else:
             Layerweights = nn.Parameter(pt.normal(mean, std, size=(NChannels, NSpec, 2 * NSpec),
                                                   requires_grad=True))
-            LayerBias = nn.Parameter(pt.normal(mean, std, size=(NChannels, 1)))
+            LayerBias = nn.Parameter(pt.normal(mean, std, size=(NChannels, NSpec)))
 
         self.register_parameter("Weights", Layerweights)
         self.register_parameter("bias", LayerBias)
@@ -230,16 +231,23 @@ class msgPassLayer(nn.Module):
 
         total[:, :In.shape[1], :] = In[:, :, :]
 
+        # ToDo : can this loop be optimized with primitives?
         out = pt.zeros(In.shape[0], In.shape[1], In.shape[2], dtype=dt).to(dev)
-
         for z in range(self.Z):
             # reindex the site according to the z^th nearest neighbor and append
             total[:, In.shape[1]:2*In.shape[1], :] = In[:, :, self.NNsites[1 + z, :]]
 
             # Apply mesagge passing
             o = pt.tensordot(total, self.Weights, dims=([1], [2])) + self.bias.view(1, 1, self.NChannels, self.NSpec)
-            o = pt.sum(o.transpose(1, -1), dim=2)
 
+            # sum across channels linearly for now
+            # o has shape (batch, Nsites, Nchannels, specChannels)
+            # we exchange the 2nd and 4th dimensions
+            # Then we sum over the channels
+            o = pt.sum(o.transpose(1, 3), dim=2)
+            # o now has the shape (batch, specChannels, Nsites)
+
+            # Apply non-linearity and sum across neighbors
             out += F.softplus(o)
 
         return out
