@@ -220,7 +220,8 @@ class msgPassLayer(nn.Module):
     def forward(self, In):
         """
         :param In: input tensor with shape (N_batch, NSpec, Nsites)
-        :return: out: output tensor of shape (N_batch, NSpec, Nsites)
+        :return: out: output tensor of shape (N_batch, NSpec, Nsites), or of shape
+        (N_batch, 1, Nsites) if "output" argument in __init__ was set to True.
         """
 
         dt = In.dtype
@@ -260,6 +261,7 @@ class msgPassNet(nn.Module):
         super().__init__()
         Nsites = NNsites.shape[1]
         self.register_buffer("JumpVecs", JumpVecs)
+        self.register_buffer("NNsites", NNsites[1:, :]) # exclude the vacancy site - this will be used to reindex
 
         seq = []
         for l in range(NLayers):
@@ -268,8 +270,24 @@ class msgPassNet(nn.Module):
             ]
 
         # Apply output layer
+        seq += [
+            msgPassLayer(NChannels, NSpec, NNsites, output=True, mean=mean, std=std)
+        ]
 
         self.net = nn.Sequential(*seq)
+
+    def reshapeOut(self, out):
+        N_ngb = self.NNsites.shape[0]
+        Nch = out.shape[1]
+        Nsites = out.shape[2]
+        out = out.repeat_interleave(N_ngb, dim=1)
+        NNRepeat = self.NNsites.unsqueeze(0).repeat(out.shape[0], Nch, 1)
+        return pt.gather(out, 2, NNRepeat).view(out.shape[0], Nch, N_ngb, Nsites)
+
+    def forward(self, In):
+        out = self.net(In) # shape (batch, 1, sites)
+        out = self.reshapeOut(out)
+        return pt.matmul(self.JumpVecs, out)
 
 
 
