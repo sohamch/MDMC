@@ -15,7 +15,17 @@ import torch.nn.functional as F
 class GConv(nn.Module):
     def __init__(self, InChannels, OutChannels, GnnPerms, NNsites, 
                  N_ngb, mean=1.0, std=0.1):
-        
+        """
+        Implements a group-equivariant convolutional layer. Permutations of convolutional filters under
+        space group operations are used to build symmetry-equivariant outputs that rotate/transform automatically
+        if the input is rotated.
+        :param: InChannel - no. of input channels.
+        :param: OutChannel - no. of output channels.
+        :param: GnnPerms - Permutation of nearest neighbors under inverse group operations - shape (Ng, coordination number + 1)
+        :param: NNsites - nearest neighbors of each site - shape(coordination number + 1, Nsites).
+        Note - the 0th row of NNsites is just [0, 1, 2...], i.e, the sites themselves are their own 0th neighbors
+        :param: N_ngb (coordination number + 1)
+        """
         super().__init__()
         Nsites = NNsites.shape[1]
         self.register_buffer("NSites", pt.tensor(Nsites))
@@ -26,8 +36,7 @@ class GConv(nn.Module):
         self.register_buffer("NchIn", pt.tensor(InChannels))
         self.register_buffer("NchOut", pt.tensor(OutChannels))
         
-        Layerweights = nn.Parameter(pt.normal(mean, std, size=(OutChannels, InChannels, N_ngb),
-                                     requires_grad=True))
+        Layerweights = nn.Parameter(pt.normal(mean, std, size=(OutChannels, InChannels, N_ngb)))
         
         LayerBias = nn.Parameter(pt.normal(mean, std, size=(OutChannels, 1)))
             
@@ -81,55 +90,6 @@ class GConv(nn.Module):
         out = pt.matmul(Psi, out) + bias
         
         return out.view(Nbatch, NchOut, Ng, NSites)
-
-
-class R3ConvSites(nn.Module):
-    def __init__(self, GnnPerms, gdiags, NNsites,
-                 N_ngb, dim, mean=1.0, std=0.1):
-        super().__init__()
-        Nsites = NNsites.shape[1]
-        self.register_buffer("NSites", pt.tensor(Nsites))
-        self.register_buffer("GnnPerms", GnnPerms)
-        self.register_buffer("NNsites", NNsites)
-        self.register_buffer("gdiags", gdiags)
-        self.register_buffer("N_ngb", pt.tensor(N_ngb))
-        self.register_buffer("dim", pt.tensor(dim))      
-        wtVC = nn.Parameter(pt.normal(mean, std, size=(dim, N_ngb), requires_grad=True))
-        self.register_parameter("wtVC", wtVC)
-        
-    def RotateParams(self, GnnPerms):
-        # First, we repeat the weights
-        Ng = GnnPerms.shape[0]
-        wtVC_repeat = self.wtVC.repeat(Ng, 1)
-        
-        # The we repeat group permutation indices
-        GnnPerm_repeat = self.GnnPerms.repeat_interleave(self.dim, dim=0)            
-        self.wtVC_repeat_transf = pt.matmul(self.gdiags, pt.gather(wtVC_repeat, 1, GnnPerm_repeat))
-        
-    
-    def RearrangeInput(self, In, NNsites):
-        N_ngb = NNsites.shape[0]        
-        Nch = In.shape[1]
-        In = In.repeat_interleave(N_ngb, dim=1)
-        NNRepeat = NNsites.unsqueeze(0).repeat(In.shape[0], Nch, 1)
-        return pt.gather(In, 2, NNRepeat)
-    
-    
-    def forward(self, In):
-        NSites, GnnPerms, NNsites = self.NSites, self.GnnPerms, self.NNsites
-
-        Nbatch = In.shape[0]
-        Ng = GnnPerms.shape[0]
-
-        self.RotateParams(GnnPerms)
-        out = self.RearrangeInput(In, NNsites)
-
-        # Finally, do the R3 convolution
-        out = pt.matmul(self.wtVC_repeat_transf, out).view(Nbatch, Ng, self.dim, NSites)
-
-        # Then group average
-        return pt.sum(out, dim=1) / Ng
-
 
 class GAvg(nn.Module):
     def __init__(self):
@@ -222,45 +182,95 @@ class GCNet(nn.Module):
         return y
 
 
-# This network was used in previous runs. R3ConvSites is a redundant operation
-# for cubic systems, and not appropriate for non-cubic systems for relaxation vectors.
-# It is still kept here because it is more general
-class GCNet_R3ConvSites(nn.Module):
-    def __init__(self, GnnPerms, gdiags, NNsites, dim, N_ngb,
-            NSpec, mean=1.0, std=0.1, b=1.0, nl=3, nch=8):
-        
+# Let's build a message passing / crystal graph network here
+class msgPassLayer(nn.Module):
+    """
+    Gathers information at each site with a message passing method from nearest neighbors.
+    GConv layers need space group information, but the message passing layer does not.
+    Message passing is more seamlessly applicable to multi-site lattices.
+    """
+    def __init__(self, NChannels, NSpec, NNsites, output=False, mean=1.0, std=0.1):
+        """
+        :param NChannels: No. of mesaage gathering linear transformations in each layer.
+        :param NSpec: No. of atomic species (excluding vacancy)
+        :param NNsites: nearest neighbors of each site - shape(coordination number + 1, Nsites).
+        :param mean: mean to initialize the weight arrays from a normal distribution.
+        :param std: standard deviation to initialize the weight arrays from a normal distribution.
+        """
         super().__init__()
-        modules = []
-        modules += [
-            GConv(NSpec, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
-            nn.Softplus(beta=b),
-            GAvg()
-        ]
-        
-        for l in range(nl):
-            modules += [
-                GConv(nch, nch, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
-                nn.Softplus(beta=b),
-                GAvg()
+        Nsites = NNsites.shape[1]
+        self.register_buffer("NSites", pt.tensor(Nsites))
+        self.register_buffer("NNsites", NNsites)
+        self.register_buffer("NSpec", pt.tensor(NSpec))
+        self.register_buffer("Z", pt.tensor(NNsites.shape[0] - 1))
+        self.register_buffer("NchIn", pt.tensor(NChannels))
+
+        if output:
+            Layerweights = nn.Parameter(pt.normal(mean, std, size=(NChannels, 1, 2 * NSpec),
+                                                  requires_grad=True))
+            LayerBias = nn.Parameter(pt.normal(mean, std, size=(NChannels, NSpec)))
+        else:
+            Layerweights = nn.Parameter(pt.normal(mean, std, size=(NChannels, NSpec, 2 * NSpec),
+                                                  requires_grad=True))
+            LayerBias = nn.Parameter(pt.normal(mean, std, size=(NChannels, 1)))
+
+        self.register_parameter("Weights", Layerweights)
+        self.register_parameter("bias", LayerBias)
+
+    def forward(self, In):
+        """
+        :param In: input tensor with shape (N_batch, NSpec, Nsites)
+        :return: out: output tensor of shape (N_batch, NSpec, Nsites)
+        """
+
+        dt = In.dtype
+        dev = In.device
+        total = pt.zeros(In.shape[0], 2*In.shape[1], In.shape[2], dtype=dt).to(dev)
+
+        total[:, :In.shape[1], :] = In[:, :, :]
+
+        out = pt.zeros(In.shape[0], In.shape[1], In.shape[2], dtype=dt).to(dev)
+
+        for z in range(self.Z):
+            # reindex the site according to the z^th nearest neighbor and append
+            total[:, In.shape[1]:2*In.shape[1], :] = In[:, :, self.NNsites[1 + z, :]]
+
+            # Apply mesagge passing
+            o = pt.tensordot(total, self.Weights, dims=([1], [2])) + self.bias.view(1, 1, self.NChannels, self.NSpec)
+            o = pt.sum(o.transpose(1, -1), dim=2)
+
+            out += F.softplus(o)
+
+        return out
+
+class msgPassNet(nn.Module):
+    """
+    Constructs a sequence of message passing layers, and return relaxation vector as a linear combination of
+    nearest neighbor vectors, with the coefficients of the combination being the output of the last layer.
+    """
+    def __int__(self, NLayers, NChannels, NSpec, NNsites, JumpVecs, mean=1.0, std=0.1):
+        """
+        :param NChannels: No. of mesaage gathering linear transformations in each layer.
+        :param NSpec: No. of atomic species (excluding vacancy)
+        :param NNsites: nearest neighbors of each site - shape(coordination number + 1, Nsites).
+        :param JumpVecs: nearest neighbor Jump vectors - shape(coordination number, 3).
+        :param mean: mean to initialize the weight arrays from a normal distribution.
+        :param std: standard deviation to initialize the weight arrays from a normal distribution.
+        """
+        super().__init__()
+        Nsites = NNsites.shape[1]
+        self.register_buffer("JumpVecs", JumpVecs)
+
+        seq = []
+        for l in range(NLayers):
+            seq += [
+                msgPassLayer(NChannels, NSpec, NNsites, mean=mean, std=std)
             ]
-        modules += [
-            GConv(nch, 1, GnnPerms, NNsites, N_ngb, mean=mean, std=std),
-            nn.Softplus(beta=b),
-            GAvg()
-        ]
-        modules.append(R3ConvSites(GnnPerms, gdiags, NNsites, N_ngb,
-                        dim, mean=mean, std=std))
-        
-        self.net = nn.Sequential(*modules)
-    
-    def forward(self, InState):
-        y = self.net(InState)
-        return y
-    
-    def getRep(self, InState, LayerInd):
-        # get the last single channel representation of the state
-        # LayerInd is counted starting from zero
-        y = self.net[0](InState)
-        for L in range(1, LayerInd + 1):
-            y = self.net[L](y)
-        return y
+
+        # Apply output layer
+
+        self.net = nn.Sequential(*seq)
+
+
+
+
