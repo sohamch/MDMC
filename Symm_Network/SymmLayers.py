@@ -189,7 +189,7 @@ class msgPassLayer(nn.Module):
     GConv layers need space group information, but the message passing layer does not.
     Message passing is more seamlessly applicable to multi-site lattices.
     """
-    def __init__(self, NChannels, CompsPerSiteIn, CompsPerSiteOut, NNsites, output=False, mean=1.0, std=0.1):
+    def __init__(self, NChannels, CompsPerSiteIn, CompsPerSiteOut, NNsites, mean=1.0, std=0.1):
         """
         :param NChannels: No. of mesaage gathering linear transformations in each layer.
         :param CompsPerSiteIn(Out): No. of components in the input (output) tensor for each site.
@@ -253,10 +253,11 @@ class msgPassNet(nn.Module):
     Constructs a sequence of message passing layers, and return relaxation vector as a linear combination of
     nearest neighbor vectors, with the coefficients of the combination being the output of the last layer.
     """
-    def __init__(self, NLayers, NChannels, NSpec, NNsites, JumpVecs, mean=1.0, std=0.1):
+    def __init__(self, NLayers, NChannels, NSpec, VecsPerSite, NNsites, JumpVecs, mean=1.0, std=0.1):
         """
         :param NChannels: No. of mesaage gathering linear transformations in each layer.
         :param NSpec: No. of atomic species (excluding vacancy)
+        :param VecsPerSite: No. of cartesian vectors to produce per site.
         :param NNsites: nearest neighbors of each site - shape(coordination number + 1, Nsites).
         :param JumpVecs: nearest neighbor Jump vectors - shape(coordination number, 3).
         :param mean: mean to initialize the weight arrays from a normal distribution.
@@ -268,14 +269,15 @@ class msgPassNet(nn.Module):
         self.register_buffer("NNsites", NNsites[1:, :]) # exclude the vacancy site - this will be used to reindex
 
         seq = []
+        # arguments of msgPassLayer: NChannels, CompsPerSiteIn, CompsPerSiteOut, NNsites, mean=1.0, std=0.1
         for l in range(NLayers):
             seq += [
-                msgPassLayer(NChannels, NSpec, NNsites, mean=mean, std=std)
+                msgPassLayer(NChannels, NSpec, NSpec, NNsites, mean=mean, std=std)
             ]
 
         # Apply output layer
         seq += [
-            msgPassLayer(NChannels, NSpec, NNsites, output=True, mean=mean, std=std)
+            msgPassLayer(NChannels, NSpec, VecsPerSite, NNsites, mean=mean, std=std)
         ]
 
         self.net = nn.Sequential(*seq)
