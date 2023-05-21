@@ -196,6 +196,7 @@ class TestGConv(unittest.TestCase):
                 for ch in range(y0.shape[0]):
                     assert np.allclose(np.dot(g.cartrot, y0[ch, :, site]), y_np[gInd, ch, :, siteNew])
 
+
 class TestMsgPassing(unittest.TestCase):
 
     def setUp(self):
@@ -336,7 +337,7 @@ class TestMsgPassing(unittest.TestCase):
             print(pt.mean(out).item(), pt.max(out).item(), pt.min(out).item())
 
             # Step 3 : Now let's check the correctness of the vectors
-            outSeq = msgNet.net(self.StateTensors).detach().numpy() # shape (Nbatch, 1, Nsites)
+            outSeq = msgNet.net(self.StateTensors).detach().numpy()  # shape (Nbatch, 1, Nsites)
             for samp in tqdm(range(outSeq.shape[0]), position=0, leave=True, ncols=65):
                 for siteInd in range(self.Nsites):
                     ngbSites = self.NNsiteList[1:, siteInd]
