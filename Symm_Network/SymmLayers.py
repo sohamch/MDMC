@@ -189,10 +189,10 @@ class msgPassLayer(nn.Module):
     GConv layers need space group information, but the message passing layer does not.
     Message passing is more seamlessly applicable to multi-site lattices.
     """
-    def __init__(self, NChannels, NSpec, NNsites, output=False, mean=1.0, std=0.1):
+    def __init__(self, NChannels, CompsPerSiteIn, CompsPerSiteOut, NNsites, output=False, mean=1.0, std=0.1):
         """
         :param NChannels: No. of mesaage gathering linear transformations in each layer.
-        :param NSpec: No. of atomic species (excluding vacancy)
+        :param CompsPerSiteIn(Out): No. of components in the input (output) tensor for each site.
         :param NNsites: nearest neighbors of each site - shape(coordination number + 1, Nsites).
         :param mean: mean to initialize the weight arrays from a normal distribution.
         :param std: standard deviation to initialize the weight arrays from a normal distribution.
@@ -201,19 +201,14 @@ class msgPassLayer(nn.Module):
         Nsites = NNsites.shape[1]
         self.register_buffer("NSites", pt.tensor(Nsites))
         self.register_buffer("NNsites", NNsites)
-        self.register_buffer("NSpec", pt.tensor(NSpec))
+        self.register_buffer("CompsPerSiteIn", pt.tensor(CompsPerSiteIn))
+        self.register_buffer("CompsPerSiteOut", pt.tensor(CompsPerSiteOut))
         self.register_buffer("Z", pt.tensor(NNsites.shape[0] - 1))
         self.register_buffer("NChannels", pt.tensor(NChannels))
 
-        if output:
-            Layerweights = nn.Parameter(pt.normal(mean, std, size=(NChannels, 1, 2 * NSpec),
-                                                  requires_grad=True))
-            LayerBias = nn.Parameter(pt.normal(mean, std, size=(NChannels, 1)))
-
-        else:
-            Layerweights = nn.Parameter(pt.normal(mean, std, size=(NChannels, NSpec, 2 * NSpec),
-                                                  requires_grad=True))
-            LayerBias = nn.Parameter(pt.normal(mean, std, size=(NChannels, NSpec)))
+        Layerweights = nn.Parameter(pt.normal(mean, std, size=(NChannels, CompsPerSiteOut, 2 * CompsPerSiteIn),
+                                              requires_grad=True))
+        LayerBias = nn.Parameter(pt.normal(mean, std, size=(NChannels, CompsPerSiteOut)))
 
         self.register_parameter("Weights", Layerweights)
         self.register_parameter("bias", LayerBias)
@@ -232,7 +227,7 @@ class msgPassLayer(nn.Module):
         total[:, :In.shape[1], :] = In[:, :, :]
 
         # ToDo : can this loop be optimized with primitives?
-        out = pt.zeros(In.shape[0], In.shape[1], In.shape[2], dtype=dt).to(dev)
+        out = pt.zeros(In.shape[0], self.Weights.shape[1], In.shape[2], dtype=dt).to(dev)
         for z in range(self.Z):
             # reindex the site according to the z^th nearest neighbor and append
             total[:, In.shape[1]:2*In.shape[1], :] = In[:, :, self.NNsites[1 + z, :]]
@@ -295,7 +290,9 @@ class msgPassNet(nn.Module):
 
     def forward(self, In):
         out = self.net(In) # shape (batch, 1, sites)
+        # print(out.shape)
         out = self.reshapeOut(out)
+        # print(out.shape)
         return pt.matmul(self.JumpVecs, out)
 
 
