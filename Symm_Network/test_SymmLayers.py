@@ -319,18 +319,52 @@ class TestMsgPassing(unittest.TestCase):
         # step 1 : make a message passing network to produce R3 vectors for each site
         NChannels = 8
         NLayers = 3
+        VecsPerSite = 1
         # NLayers, NChannels, NSpec, VecsPerSite, NNsites, JumpVecs, mean=1.0, std=0.1
         JumpVecs = pt.tensor(self.dxJumps.T, dtype=pt.float64)
-        msgNet = msgPassNet(NLayers=NLayers, NChannels=NChannels, NSpec=self.NspCh, VecsPerSite=1,
-                            NNsites=self.NNsites, JumpVecs=JumpVecs, mean=0.1, std=0.1).double()
+        msgNet = msgPassNet(NLayers=NLayers, NChannels=NChannels, NSpec=self.NspCh, VecsPerSite=VecsPerSite,
+                            NNsites=self.NNsites, JumpVecs=JumpVecs, mean=0.0, std=0.01).double()
 
-        # step 2: Do the forward pass on our input states
-        out = msgNet(self.StateTensors)
-        # print(out.shape)
-        # print(msgNet.net[-1].Weights.shape)
-        # step 3 - check the shape
-        self.assertEqual(len(out.shape), 3)
-        self.assertEqual(out.shape[0], len(self.GList))
-        self.assertEqual(out.shape[1], self.dxJumps.shape[1])
-        self.assertEqual(out.shape[2], self.Nsites)
+        with pt.no_grad():
+            # step 2: Do the forward pass on our input states
+            out = msgNet(self.StateTensors)
+
+            self.assertEqual(len(out.shape), 4)
+            self.assertEqual(out.shape[0], len(self.GList))
+            self.assertEqual(out.shape[1], VecsPerSite)
+            self.assertEqual(out.shape[2], self.dxJumps.shape[1])
+            self.assertEqual(out.shape[3], self.Nsites)
+
+            print(pt.mean(out).item(), pt.max(out).item(), pt.min(out).item())
+
+            # Step 3 : Now let's check the correctness of the vectors
+            outSeq = msgNet.net(self.StateTensors).detach().numpy() # shape (Nbatch, 1, Nsites)
+            for samp in tqdm(range(outSeq.shape[0]), position=0, leave=True, ncols=65):
+                for siteInd in range(self.Nsites):
+                    ngbSites = self.NNsiteList[1:, siteInd]
+                    ngbSum = np.zeros(3)
+                    for z in range(ngbSites.shape[0]):
+                        ngbSum += outSeq[samp, 0, ngbSites[z]] * self.dxJumps[z]
+
+                    self.assertTrue(np.allclose(ngbSum, out[samp, 0, :, siteInd]))
+
+            # Next check rotational symmetries of the vectors
+            outVecs = out.detach().numpy()
+            self.assertTrue(outVecs.shape[1] == 1)
+            outState0 = outVecs[self.IdentityIndex, 0, :, :]
+
+            for gInd in tqdm(range(len(self.GList)), position=0, leave=True, ncols=65):
+                g = self.GList[gInd]
+                yvecsG = outVecs[gInd, 0, :, :]
+                for siteInd in range(self.Nsites):
+
+                    # get the transformed site
+                    _, RSite = self.superCell.ciR(siteInd)
+                    Rnew, _ = self.superCell.crys.g_pos(g, RSite, (0, 0))
+                    siteIndNew, _ = self.superCell.index(Rnew, (0, 0))
+
+                    # check the rotational transformation of the output vectors
+                    yRot = np.dot(g.cartrot, outState0[:, siteInd])
+                    self.assertTrue(np.allclose(yRot, yvecsG[:, siteIndNew]))
+
 
