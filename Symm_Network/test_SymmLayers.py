@@ -236,7 +236,8 @@ class TestMsgPassing(unittest.TestCase):
         self.state0 = self.TestStates[0, :, :].copy()
         self.GIndToGDict = {}
         self.IdentityIndex = None
-        for gInd, g in enumerate(list(self.crys.G)):
+        self.GList = list(self.crys.G)
+        for gInd, g in enumerate(self.GList):
             self.GIndToGDict[gInd] = g  # Index the group operation
             for siteInd in range(self.Nsites):
                 _, RSite = self.superCell.ciR(siteInd)
@@ -260,11 +261,11 @@ class TestMsgPassing(unittest.TestCase):
         NChannels = 8
         msgL = msgPassLayer(NChannels, self.NspCh, self.NNsites, output=False, mean=1.0, std=0.1).double()
 
-        # step 2: pass our input states
-        out = msgL(self.StateTensors)
-        print(out.shape)
-        # step 3: Compute the message passing convolution explicitly for each site
         with pt.no_grad():
+            # step 2: pass our input states
+            out = msgL(self.StateTensors)
+            print(out.shape)
+            # step 3: Compute the message passing convolution explicitly for each site
             for samp in tqdm(range(self.StateTensors.shape[0]), position=0, leave=True, ncols=65):
                 for siteInd in range(self.Nsites):
                     zSum = pt.zeros(self.NspCh).double()
@@ -284,6 +285,16 @@ class TestMsgPassing(unittest.TestCase):
 
                         zSum += F.softplus(chSum)
                     # print(out[samp, :, siteInd])
-                    self.assertTrue(pt.allclose(out[samp, :, siteInd], zSum),
+                    self.assertTrue(pt.allclose(out[samp, :, siteInd], zSum, rtol=0, atol=1e-8),
                                     msg="\nout: {}\nzsum: {}".format(out[samp, :, siteInd], zSum))
 
+            # step 4 - check symmetry
+            out0 = out[self.IdentityIndex, :, :]
+            for gInd in tqdm(range(len(self.GList)), position=0, leave=True, ncols=65):
+                g = self.GList[gInd]
+                for site in range(self.Nsites):
+                    _, RSite = self.superCell.ciR(siteInd)
+                    Rnew, _ = self.superCell.crys.g_pos(g, RSite, (0, 0))
+                    siteIndNew, _ = self.superCell.index(Rnew, (0, 0))
+
+                    self.assertTrue(pt.allclose(out0[:, siteInd], out[gInd, :, siteIndNew], rtol=0, atol=1e-8))
