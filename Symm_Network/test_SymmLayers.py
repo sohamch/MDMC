@@ -8,6 +8,7 @@ from onsager import crystal, supercell
 from SymmLayers import GCNet, msgPassLayer, msgPassNet
 import torch.nn.functional as F
 
+
 class TestGConv(unittest.TestCase):
     def setUp(self):
         crysType="FCC"
@@ -45,7 +46,7 @@ class TestGConv(unittest.TestCase):
         self.GIndToGDict = {}
         self.IdentityIndex = None
         for gInd, g in enumerate(list(self.superCell.crys.G)):
-            self.GIndToGDict[gInd] = g # Index the group operation
+            self.GIndToGDict[gInd] = g  # Index the group operation
             for siteInd in range(self.Nsites):
                 _, RSite = self.superCell.ciR(siteInd)
                 Rnew, _ = self.superCell.crys.g_pos(g, RSite, (0, 0))
