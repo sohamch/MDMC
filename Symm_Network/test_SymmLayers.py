@@ -6,10 +6,7 @@ import h5py
 from tqdm import tqdm
 from onsager import crystal, supercell
 from SymmLayers import GCNet, msgPassLayer, msgPassNet
-
-import torch.nn as nn
 import torch.nn.functional as F
-import pickle
 
 class TestGConv(unittest.TestCase):
     def setUp(self):
