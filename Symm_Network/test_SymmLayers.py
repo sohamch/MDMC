@@ -259,42 +259,78 @@ class TestMsgPassing(unittest.TestCase):
         # step 1 : make a message passing layer which produces vectors for each site then same size as
         # the number of species (output=False)
         NChannels = 8
-        msgL = msgPassLayer(NChannels, self.NspCh, self.NNsites, output=False, mean=1.0, std=0.1).double()
+        CompsPerSiteIn = self.StateTensors.shape[1]
 
-        with pt.no_grad():
-            # step 2: pass our input states
-            out = msgL(self.StateTensors)
-            print(out.shape)
-            # step 3: Compute the message passing convolution explicitly for each site
-            for samp in tqdm(range(self.StateTensors.shape[0]), position=0, leave=True, ncols=65):
-                for siteInd in range(self.Nsites):
-                    zSum = pt.zeros(self.NspCh).double()
-                    for z in range(self.dxJumps.shape[0]):
-                        zSite = self.NNsiteList[1 + z, siteInd]
+        for CompsPerSiteOut in [1, CompsPerSiteIn]:  # check for single and multi-component outputs for each site.
+            msgL = msgPassLayer(NChannels=NChannels, CompsPerSiteIn=CompsPerSiteIn, CompsPerSiteOut=CompsPerSiteOut,
+                                NNsites=self.NNsites, mean=1.0, std=0.1).double()
 
-                        # concatenate the neighboring site's vector to the site's own
-                        multTens = pt.zeros(2 * self.NspCh).double()
-                        multTens[:self.NspCh] = self.StateTensors[samp, :, siteInd]
-                        multTens[self.NspCh : 2*self.NspCh] = self.StateTensors[samp, :, zSite]
+            self.assertEqual(msgL.Weights.shape[0], NChannels)
+            self.assertEqual(msgL.Weights.shape[1], CompsPerSiteOut)
+            self.assertEqual(msgL.Weights.shape[2], CompsPerSiteIn * 2)
 
-                        # Linearly sum across channels
-                        chSum = pt.zeros(self.NspCh).double()
-                        for channel in range(NChannels):
-                            o = pt.matmul(msgL.Weights[channel], multTens) + msgL.bias[channel]
-                            chSum += o
+            self.assertEqual(msgL.bias.shape[0], NChannels)
+            self.assertEqual(msgL.bias.shape[1], CompsPerSiteOut)
 
-                        zSum += F.softplus(chSum)
-                    # print(out[samp, :, siteInd])
-                    self.assertTrue(pt.allclose(out[samp, :, siteInd], zSum, rtol=0, atol=1e-8),
-                                    msg="\nout: {}\nzsum: {}".format(out[samp, :, siteInd], zSum))
+            with pt.no_grad():
+                # step 2: pass our input states
+                out = msgL(self.StateTensors)
+                self.assertEqual(len(out.shape), 3)
+                self.assertEqual(out.shape[0], self.StateTensors.shape[0])
+                self.assertEqual(out.shape[1], CompsPerSiteOut)
+                self.assertEqual(out.shape[2], self.Nsites)
 
-            # step 4 - check symmetry
-            out0 = out[self.IdentityIndex, :, :]
-            for gInd in tqdm(range(len(self.GList)), position=0, leave=True, ncols=65):
-                g = self.GList[gInd]
-                for site in range(self.Nsites):
-                    _, RSite = self.superCell.ciR(siteInd)
-                    Rnew, _ = self.superCell.crys.g_pos(g, RSite, (0, 0))
-                    siteIndNew, _ = self.superCell.index(Rnew, (0, 0))
+                # print(msgL.Weights.shape, "\n", self.StateTensors.shape, "\n", out.shape)
+                # step 3: Compute the message passing convolution explicitly for each site
+                for samp in tqdm(range(self.StateTensors.shape[0]), position=0, leave=True, ncols=65):
+                    for siteInd in range(self.Nsites):
+                        zSum = pt.zeros(self.NspCh).double()
+                        for z in range(self.dxJumps.shape[0]):
+                            zSite = self.NNsiteList[1 + z, siteInd]
 
-                    self.assertTrue(pt.allclose(out0[:, siteInd], out[gInd, :, siteIndNew], rtol=0, atol=1e-8))
+                            # concatenate the neighboring site's vector to the site's own
+                            multTens = pt.zeros(2 * self.NspCh).double()
+                            multTens[:self.NspCh] = self.StateTensors[samp, :, siteInd]
+                            multTens[self.NspCh : 2*self.NspCh] = self.StateTensors[samp, :, zSite]
+
+                            # Linearly sum across channels
+                            chSum = pt.zeros(self.NspCh).double()
+                            for channel in range(NChannels):
+                                o = pt.matmul(msgL.Weights[channel], multTens) + msgL.bias[channel]
+                                chSum += o
+
+                            zSum += F.softplus(chSum)
+                        # print(out[samp, :, siteInd])
+                        self.assertTrue(pt.allclose(out[samp, :, siteInd], zSum, rtol=0, atol=1e-8),
+                                        msg="\nout: {}\nzsum: {}".format(out[samp, :, siteInd], zSum))
+
+                # step 4 - check symmetry
+                out0 = out[self.IdentityIndex, :, :]
+                for gInd in tqdm(range(len(self.GList)), position=0, leave=True, ncols=65):
+                    g = self.GList[gInd]
+                    for site in range(self.Nsites):
+                        _, RSite = self.superCell.ciR(siteInd)
+                        Rnew, _ = self.superCell.crys.g_pos(g, RSite, (0, 0))
+                        siteIndNew, _ = self.superCell.index(Rnew, (0, 0))
+
+                        self.assertTrue(pt.allclose(out0[:, siteInd], out[gInd, :, siteIndNew], rtol=0, atol=1e-8))
+
+    def test_msgPassNet(self):
+        # step 1 : make a message passing network to produce R3 vectors for each site
+        NChannels = 8
+        NLayers = 3
+        # NLayers, NChannels, NSpec, VecsPerSite, NNsites, JumpVecs, mean=1.0, std=0.1
+        JumpVecs = pt.tensor(self.dxJumps.T, dtype=pt.float64)
+        msgNet = msgPassNet(NLayers=NLayers, NChannels=NChannels, NSpec=self.NspCh, VecsPerSite=1,
+                            NNsites=self.NNsites, JumpVecs=JumpVecs, mean=0.1, std=0.1).double()
+
+        # step 2: Do the forward pass on our input states
+        out = msgNet(self.StateTensors)
+        # print(out.shape)
+        # print(msgNet.net[-1].Weights.shape)
+        # step 3 - check the shape
+        self.assertEqual(len(out.shape), 3)
+        self.assertEqual(out.shape[0], len(self.GList))
+        self.assertEqual(out.shape[1], self.dxJumps.shape[1])
+        self.assertEqual(out.shape[2], self.Nsites)
+
