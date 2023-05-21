@@ -238,7 +238,8 @@ class msgPassLayer(nn.Module):
             total[:, In.shape[1]:2*In.shape[1], :] = In[:, :, self.NNsites[1 + z, :]]
 
             # Apply mesagge passing
-            o = pt.tensordot(total, self.Weights, dims=([1], [2])) + self.bias.view(1, 1, self.NChannels, self.NSpec)
+            o = pt.tensordot(total, self.Weights, dims=([1], [2])) + self.bias.view(1, 1, self.bias.shape[0],
+                                                                                    self.bias.shape[1])
 
             # sum across channels linearly for now
             # o has shape (batch, Nsites, Nchannels, specChannels)
@@ -257,7 +258,7 @@ class msgPassNet(nn.Module):
     Constructs a sequence of message passing layers, and return relaxation vector as a linear combination of
     nearest neighbor vectors, with the coefficients of the combination being the output of the last layer.
     """
-    def __int__(self, NLayers, NChannels, NSpec, NNsites, JumpVecs, mean=1.0, std=0.1):
+    def __init__(self, NLayers, NChannels, NSpec, NNsites, JumpVecs, mean=1.0, std=0.1):
         """
         :param NChannels: No. of mesaage gathering linear transformations in each layer.
         :param NSpec: No. of atomic species (excluding vacancy)
