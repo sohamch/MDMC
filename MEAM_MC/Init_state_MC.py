@@ -262,7 +262,7 @@ def main(args):
 if __name__ == "__main__":
     # N_units, a0, NoVac, T, N_swap, N_eqb, N_save
 
-    parser = argparse.ArgumentParser(description="Input parameters for using GCnets",
+    parser = argparse.ArgumentParser(description="Input parameters for Metropolis Monte Carlo simulations with ASE.",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("-pp", "--potPath", metavar="/path/to/potential/file", type=str,

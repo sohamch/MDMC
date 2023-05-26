@@ -272,7 +272,7 @@ def main(args):
 if __name__ == "__main__":
 
     # Add argument parser
-    parser = argparse.ArgumentParser(description="Input parameters for using GCnets",
+    parser = argparse.ArgumentParser(description="Input parameters for Kinetic Monte Carlo simulations with LAMMPS.",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
