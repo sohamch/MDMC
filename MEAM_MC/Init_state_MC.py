@@ -268,7 +268,7 @@ if __name__ == "__main__":
     parser.add_argument("-pp", "--potPath", metavar="/path/to/potential/file", type=str,
                         help="Path to the LAMMPS MEAM potential.")
 
-    parser.add_argument("-na", "--Natoms", metavar="List of ints", nargs="+", type=int, default=[102, 103, 102, 102, 102],
+    parser.add_argument("-na", "--Natoms", metavar="int", nargs="+", type=int, default=[102, 103, 102, 102, 102],
                         help="Number of atoms of each kind of Co, Ni, Cr, Fe, Mn in that order.")
 
 
