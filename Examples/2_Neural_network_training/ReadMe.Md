@@ -1,22 +1,19 @@
 ﻿This file describes all the options used to train the symmetry conforming neural network for
 predicting diffusion relaxation vectors using the GCNetRun.py module in the Symm_Network directory.
 
+The example job script in this directory provides examples of typical settings in which the neural networks are run.
+
 Pre-requisites:
--Running the networks always requires the path to a dataset file. The previous examples in the
-directory "1_Binary_Lattice_Gas_data_Generation" have Jupyter notebooks that show how to generate
-these dataset for lattice gas type of simulations. Later, examples in directories
-"4_Monte_Carlo_LAMMPS" and "5_Kinetic_Monte_Carlo_LAMMPS" show how to generate such datasets that can be used by the training code using vthe MEAM potential of Choi et.al. (2018) to generate datasets for the 5-component Cantor alloy.
+    • Running the networks always requires the path to a dataset file. The previous examples in the directory "1_Binary_Lattice_Gas_data_Generation" have Jupyter notebooks that show how to generate these dataset for lattice gas type of simulations. Later, examples in directories "4_Monte_Carlo_LAMMPS" and "5_Kinetic_Monte_Carlo_LAMMPS" show how to generate such datasets that can be used by the training code using the MEAM potential of Choi et.al. (2018) to generate datasets for the 5-component Cantor alloy.
 
--We also need to specify a path to a crystal data file that contains and supercell and symmetry-related information. Since in this repository we simulate only FCC-based alloys, such an example crystal data file can be found in the "CrysDat_FCC" directory in our repository home. Note that to generated the datasets and train/evaluate the networks, the same crystal data file must be used, since it contains the group operations and jump directions in a specified order.
-
--The example job scripts provided describe typical settings in which the neural networks are run.
+    • We also need to specify a path to a crystal data file that contains and supercell and symmetry-related information. Since in this repository we simulate only FCC-based alloys, such an example crystal data file can be found in the "CrysDat_FCC" directory in our repository home. Note that to generated the datasets and train/evaluate the networks, the same crystal data file must be used, since it contains the group operations and jump directions in a specified order.
  
--The networks are run in 1 of 3 main “modes” (--Mode option).
+The networks are run in 1 of 3 main “modes” (--Mode option).
     • The "train" mode: This is for training networks.
         ◦ When the networks are trained from scratch on a fresh dataset, the --Scratch (-scr) flag must be set.
         ◦ All trained networks are saved to directories with a name of the form "ep_T_{0}_{1}_n{2}c{3}_all_{4}", where:
             ▪ {0} : Temperature (or composition for the binary system) specified by the --TNet argument.
-            ▪ {1} : Either the string "vac" or the integer label of the atomic species whose transport coefficient is optimized. For example, in the binary lattice gas simulations, the fast species has label "1" while the slow species 	has label "0".
+            ▪ {1} : Either the string "vac" or the integer label of the atomic species whose transport coefficient is optimized. For example, in the binary lattice gas simulations, the fast species has label "1" while the slow species has label "0".
             ▪ {2} : The no. of intermediate layers (excluding input and output layers) in the neural network. Note that the input layer always has as many input channels as the no. of atomic species, and the output layer has (typically) only one channel (although more channels can be specified).
             ▪ {3} : The no. of input/output channels of the intermediate layers. For simplicity, all such layers have the same input/output channels.
             ▪ {4} : For all the example runs, as well as the runs in our data base this is "0". If the -aj (--AllJumps) option is set, this value is "1". The -aj option corresponds to considering all jumps out of a state, instead of a single KMC step jump out of the state, and can lead to significant increase in training time, which is why the -aj flag is typically not used during training.
@@ -36,10 +33,10 @@ these dataset for lattice gas type of simulations. Later, examples in directorie
             ▪ These exit state relaxations are used for the scaled residual bias method discussed in our main paper, and also illustrated with Jupyter notebooks in our data base for the Mn and vacancy diffusion.
         ◦ Our database has the optimal computed relaxation vectors (that give the least validation set transport coefficient) for every system simulated in our paper, along with jupyter notebooks to show how they are computed by our neural networks and how they are used for the scaled residual bias correction method.
 
-The next page onwards, all options in our training code are printed. The example job script (“job_scrip_NN.sb”) shows how to launch training (“train” mode), evaluation (“eval” mode) and relaxation vector computation (“getY” mode) runs. This example job script is sufficient to understand how to produce results like the ones we have in our database and our paper.
+The example job script (“job_scrip_NN.sb”) shows how to launch training (“train” mode), evaluation (“eval” mode) and relaxation vector computation (“getY” mode) runs. This example job script is sufficient to understand how to produce results like the ones we have in our database and our paper.
 
 
-
+All options/arguments for the GCNetRun.py module are printed below.
 
 usage: GCNetRun.py [-h] [-DP /path/to/data] [-prm] [-cr /path/to/crys/dat]
                    [-a0 float] [-m string] [-shf] [-rl int] [-rStart int]
