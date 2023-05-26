@@ -25,7 +25,8 @@ where the fields are:
 	{2}: option --idx (which state in the initial state file we started from)
 
 The information contained in this file are present as hdf5 fields with the following names ((see the "Extract_data.ipynb" notebook to see how to read them and what information
-they contain):
+they contain). Each of these fields are arrays of at least two dimensions, where the first dimension corresponds to each of the states simulated, analogous to the batch dimension
+in machine learning.
 "FinalStates" - the final atomic configurations after the vacancy jump (for each of the states simulated).
 "SpecDisps" - the displacement of each species during the KMC step (for each of the states simulated).
 "times" - the time of the jump (for each of the states simulated), i.e, the inverse of the total rate of all possible vacancy jumps.
