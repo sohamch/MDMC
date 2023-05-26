@@ -1,0 +1,55 @@
+#!/bin/bash
+#SBATCH --partition=debug
+#SBATCH --time=02:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=60
+#SBATCH --job-name="MyKMCJob"
+#SBATCH --output="MyKMCJob_%j.out"
+#SBATCH --error="MyKMCJob_%j.err"
+
+# The following lines may need to be included to activate a conda enviroment of your choice
+# module load avalaiable_conda_module_in_the_HPC_facility
+# conda activate My_fav_Env
+
+VKMC=/path/to/the/local/copy/of/the/VKMC/repository # We Need to add the full path to the local copy of the VKMC respository here.
+$LMP_KMC=$VKMC/Utils/MEAM_KMC # The path to the directory containing the NEB_steps_multiTraj.py module to perform KMC steps with LAMMPS NEB calculations for multiple KMC trajectories.
+potpath=$VKMC/Utils/pot # Path for the Lammps potential
+CD=$VKMC/CrysDat_FCC/CrystData.h5 # Path for the Crystal data
+T=1073 # Temperature
+
+IF=InitStates/statesAll_${T}.npy # path to initial states extracted from Monte Carlo runs.
+# If the starting KMC step (-st option) is set to 0, this indicates we are starting a fresh KMC run from initial states drawn from the Boltzmann distribution using
+# Metropolis Monte Carlo. In such cases, the initial state file is strictly required to read in these states. See the tutorial (number 1) on Metropolis Monte Carlo for
+# more information on how to generate these states.
+
+# The option -ns dictates how many KMC steps we want to do. For each such step, an hdf5 (.h5) file is created in the directory that contains information about that KMC 
+# step such as the chosen jump from each of "s" to "s+e"th state, the displacements of the species, the barriers of the jumps, etc. The format of such files are described in
+# the ReadMe.txt file.
+
+# NOTE: If the -st option is set to greater than 0, then the code will continue KMC calculations by reading in information from hdf5 file for that step.
+
+
+# We will perform KMC steps out of our starting states by computing barriers using LAMMPS.
+# We will do so in groups of 400 states up to the 2000th state in the file statesAll_${T}.npy
+# For our paper, we launched 10 such jobs, each time covering samples from 0-2e3, 2e3-4e3.. for the machine learning runs with 2-step KMC (-ns option set to 2).
+
+mkdir $T # make a directory for this temperature if the first time.
+cd $T
+for s in 0 400 800 1200 1600 # The index of the starting states - 0th, 400th...1600th state in the numpy file statesAll_${T}.npy
+do
+e=$((s + 400)) # the ending state index - 400 from the starting index
+mkdir states_${s}_${e} # make a directory to store results for this set of starting states.
+cd states_${s}_${e}
+python $LMP_KMC/NEB_steps_multiTraj.py -T $T -cr $CD -u 8 -pp $potpath -if $IF -st 0 -ns 2 -idx $s -bs 400 -cs 4 -dmp -dpf args_${T}_${SLURM_JOBID}.txt > JobOut_${s}_${e} 2>&1 &
+cd ../
+done
+wait
+
+cd ../ # step out to the job launch directory
+
+# In our paper, for the full KMC runs with 100 steps and averages over 1000 trajectories, a separate initial state file was created with every 20 states in statesAll_${T}.npy
+# to get 1000 starting states and the number of steps (the -ns option) was set to 100. Then, instead of launching a single job for all like above, 5 separate
+# jobs were launched, each handling 200 states, with a chunk size (-cs option) of 20. This command is given below, where $s goes from 0, 200, 400,..., 800 for each of the 5 jobs.
+# python $LMP_KMC/NEB_steps_multiTraj.py -T $T -cr $CD -pp $potpath -if $IF -st 0 -ns 100 -idx $s -bs 200 -dmp -dpf args_${T}_${SLURM_JOBID}.txt > JobOut_${s}_${e} 2>&1
+

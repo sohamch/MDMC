@@ -1,0 +1,50 @@
+Running from : /mnt/WorkPartition/Work/Research/UIUC/MDMC/Examples/2_Kinetic_Monte_Carlo_LAMMPS/
+usage: NEB_steps_multiTraj.py [-h] [-cr /path/to/crys/dat]
+                              [-pp /path/to/potential/file]
+                              [-if /path/to/initial/file.npy] [-a0 float]
+                              [-T int] [-st int] [-ns int] [-u int] [-idx int]
+                              [-bs int] [-cs int] [-wa] [-dmp] [-dpf string]
+
+Input parameters for Kinetic Monte Carlo simulations with LAMMPS.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -cr /path/to/crys/dat, --CrysDatPath /path/to/crys/dat
+                        Path to crystal Data. (default: None)
+  -pp /path/to/potential/file, --PotPath /path/to/potential/file
+                        Path to the LAMMPS MEAM potential. (default: None)
+  -if /path/to/initial/file.npy, --InitStateFile /path/to/initial/file.npy
+                        Path to the .npy file storing the 0-step states from
+                        Metropolis Monte Carlo. (default: None)
+  -a0 float, --LatPar float
+                        Lattice parameter - multiplied to displacements and
+                        usedto construct LAMMPS coordinates. (default: 3.59)
+  -T int, --Temp int    Temperature to read data from (default: None)
+  -st int, --startStep int
+                        From which step to start the simulation. Note -
+                        checkpointed data file must be present in running
+                        directory if value > 0. (default: 0)
+  -ns int, --Nsteps int
+                        How many steps to continue AFTER "starStep" argument.
+                        (default: 100)
+  -u int, --Nunits int  Number of unit cells in the supercell. (default: 8)
+  -idx int, --StateStart int
+                        The starting index of the state for this run from the
+                        whole data set of starting states. The whole data set
+                        is loaded, and then samples starting from this index
+                        to the next "batchSize" number of states are loaded.
+                        (default: 0)
+  -bs int, --batchSize int
+                        How many initial states starting from StateStart
+                        should initially be loaded. (default: 200)
+  -cs int, --chunkSize int
+                        How many samples to do NEB calculations for at a time.
+                        (default: 20)
+  -wa, --WriteAllJumps  Whether to store final style NEB files for all jumps
+                        separately. (default: False)
+  -dmp, --DumpArguments
+                        Whether to dump all the parsed arguments into a text
+                        file. (default: False)
+  -dpf string, --DumpFile string
+                        The file in the run directory where all the args will
+                        be dumped. (default: ArgFiles)
