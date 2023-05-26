@@ -1,0 +1,66 @@
+#!/bin/bash
+# This example slurm job submission file shows how to use a gpu queue in an HPC facility.
+# We'll take the example of the binary lattice gas system in the previous example directory.
+#SBATCH --job-name="MyJob"
+#SBATCH --output="MyJob_%j.out"
+#SBATCH --error="MyJob_%j.err"
+#SBATCH --partition=gpu
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+
+# The next SBATCH command should be the appropriate one to use a GPU in the HPC facility
+# In this example, the command request a single tesla v100 gpu.
+#SBATCH --gres=gpu:v100:1
+
+#SBATCH --time=24:00:00
+
+# The following lines (or similar) might be necessary if using a Conda environment
+# module load available_conda_module
+# conda activate my_conda_environment
+
+# We'll take the example of a SR-2 calculation for which the previous example of binary lattice gases
+# can be used to generate a generate.
+# We take the example of a data set with 80% slow species.
+c=80
+$VKMC=/path/to/local/copy/of/VKMC/repository/
+CP=$VKMC/CrysDat_FCC/CrystData.h5
+
+$DataSets=/full/path/to/dataset/file # example: /FullPathToMyDataSetDirectory/singleStep_FCC_SR2_c0_${c}.h5
+
+$ML_RUN=$VKMC/Symm_Network/
+
+# 1. TRAINING
+
+# The following command will train the networks from scratch from 0 to 500 epochs (-scr enabled, -sep 0, -eep 500)
+python -u $ML_RUN/GCNetRun.py -DP $DP -cr $CP -a0 1.0 -m train -scr -nl 6 -nch 8 -ncL 1 -td $c -tn $c -sep 0 -eep 500 -i 10 -sp 1 -vSp 2 -bs 128 -wm 0.02 -ws 0.02
+# We initialize our weights from a normal distribution with mean 0.002 (-wm option) and standard deviation 0.02 (-ws option)
+# We want to train neural networks with 6 intermediate layers, so we set -nl to 6 
+# Each such layer will have 8 input/output channels, so we set -nch to 8.
+# We will to predict one y-vector for each site, so we set -ncL to 1.
+# During training, we set both -tn and -td to the $c variable, since there no concept of "transfering networks" during training.
+
+# -sp is the label of the species whose transport coefficient we want to compute.
+# -vSp is the label of the vacancy.
+# We want to compute the transport coefficient of the "fast" species (label 1) so we set -sp to 1, and the vacancy
+# has a label of 2 in this system, so we set -vSp to 2.
+
+# We will save and evaluate networks every 10 epochs, so we set -i to 10.
+# We will use batch size of 128 for training, so we set -bs to 128.
+
+# The following command will train the networks from from 500 to 1000 epochs (-scr disabled, -sep 500, -eep 1000) by loading the network saved at the 500th epoch
+# in the previous run.
+python -u $ML_RUN/GCNetRun.py -DP $DP -cr $CP -a0 1.0 -m train -scr -nl 6 -nch 8 -ncL 1 -td $c -tn $c -sep 500 -eep 1000 -i 10 -sp 1 -vSp 2 -bs 128
+
+# 2. EVALUATION
+# The follwowing will evaluate the saved networks from 0 to 1000 epochs in intervals of 10 epochs, with a batch size of 1024.
+python -u $ML_RUN/GCNetRun.py -DP $DP -cr $CP -a0 1.0 -m eval -nl 6 -nch 8 -ncL 1 -td $c -tn $c -sep 0 -eep 1000 -i 10 -sp 1 -vSp 2 -bs 1024
+# Note if we set -tn and -td to different values, then the network trained at the composition (or temperature) -tn will be used on the dataset at composition -td. 
+
+# 3. COMPUTING RELAXATION VECTORS.
+# The following will compute the relaxation vectors of the fast species "species 1", by using the network at the 1000th epoch and save relaxation vectors for both the states in
+# the dataset (initial and final states of a vacancy jump)
+python -u $ML_RUN/GCNetRun.py -DP $DP -cr $CP -a0 1.0 -m getY -nl 6 -nch 8 -ncL 1 -td $c -tn $c -sep 1000 -sp 1 -vSp 2 -bs 1024
+
+# If we now set the -aj option, the following will also compute the relaxation vectors of the exit states out of ALL the states in our dataset that can be reached by a single vacancy jump.
+python -u $ML_RUN/GCNetRun.py -DP $DP -cr $CP -a0 1.0 -m getY -aj -nl 6 -nch 8 -ncL 1 -td $c -tn $c -sep 1000 -sp 1 -vSp 2 -bs 1024
