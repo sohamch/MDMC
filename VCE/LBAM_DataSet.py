@@ -415,9 +415,10 @@ def main(args):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(description="Input parameters for cluster expansion transport coefficient prediction",
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
-    parser.add_argument("-T", "--Temp", metavar="eg. 1073/50", type=int,
+    parser.add_argument("-T", "--Temp", metavar="int", type=int,
                         help="Temperature of data set (or composition for the binary alloys.")
     
     parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str,
@@ -429,19 +430,19 @@ if __name__ == "__main__":
     parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str,
                         help="Path to crystal Data.")
     
-    parser.add_argument("-mo", "--MaxOrder", metavar="eg. 3", type=int, default=None,
+    parser.add_argument("-mo", "--MaxOrder", metavar="int", type=int, default=None,
                         help="Maximum sites to consider in a cluster.")
     
-    parser.add_argument("-cc", "--ClustCut", metavar="eg. 2.0", type=float, default=None,
+    parser.add_argument("-cc", "--ClustCut", metavar="float", type=float, default=None,
                         help="Maximum distance between sites to consider in a cluster.")
     
-    parser.add_argument("-sp", "--SpecExpand", metavar="eg. 0", type=int, default=5,
+    parser.add_argument("-sp", "--SpecExpand", metavar="int", type=int, default=5,
                         help="Which species to expand.")
     
-    parser.add_argument("-vsp", "--VacSpec", metavar="eg. 0", type=int, default=0,
+    parser.add_argument("-vsp", "--VacSpec", metavar="int", type=int, default=0,
                         help="Index of vacancy species.")
     
-    parser.add_argument("-nt", "--NTrain", metavar="eg. 10000", type=int, default=10000,
+    parser.add_argument("-nt", "--NTrain", metavar="int", type=int, default=10000,
                         help="No. of training samples.")
     
     parser.add_argument("-aj", "--AllJumps", action="store_true",
@@ -463,13 +464,15 @@ if __name__ == "__main__":
                         help="Use the run to only generate the Jit arrays - no transport calculation.")
     
     parser.add_argument("-eo", "--ExpandOnly", action="store_true",
-                        help="Use the run to only generate the Jit arrays - no transport calculation.")
+                        help="Use the run to only generate and save rate and velocity expansions to compute transport calculations"
+                             "- no transport calculation. These expansions can then be loaded and reused later on if needed.")
     
     parser.add_argument("-rc", "--rcond", type=float, default=1e-8,
                         help="Threshold for zero singular values.")
     
     parser.add_argument("-nex", "--NoExpand", action="store_true",
-                        help="Use the run to only generate the Jit arrays - no transport calculation.")
+                        help="Use the run to use saved rate and velocity expansions to compute transport calculations\n."
+                        "without having to generate them again.")
 
     parser.add_argument("-d", "--DumpArgs", action="store_true",
                         help="Whether to dump arguments in a file")
