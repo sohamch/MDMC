@@ -1,6 +1,9 @@
 #!/bin/bash
-# This example slurm job submission file shows how to use a gpu queue in an HPC facility.
-# We'll take the example of the binary lattice gas system in the previous example directory.
+# This example slurm job submission file shows how to use a gpu queue in an HPC facility to train our symmetry-conforming
+# neural networks.
+# We'll take the example of the binary lattice gas system in the previous example directory and compute the transport coefficients
+# of the "fast" species.
+
 #SBATCH --job-name="MyJob"
 #SBATCH --output="MyJob_%j.out"
 #SBATCH --error="MyJob_%j.err"
@@ -10,7 +13,7 @@
 #SBATCH --cpus-per-task=8
 
 # The next SBATCH command should be the appropriate one to use a GPU in the HPC facility
-# In this example, the command request a single tesla v100 gpu.
+# In this example, the command requests a single tesla v100 gpu.
 #SBATCH --gres=gpu:v100:1
 
 #SBATCH --time=24:00:00
@@ -19,9 +22,7 @@
 # module load available_conda_module
 # conda activate my_conda_environment
 
-# We'll take the example of a SR-2 calculation for which the previous example of binary lattice gases
-# can be used to generate a generate.
-# We take the example of a data set with 80% slow species.
+# We take the example of the data set with 80% slow species.
 c=80
 $VKMC=/path/to/local/copy/of/VKMC/repository/
 CP=$VKMC/CrysDat_FCC/CrystData.h5
@@ -34,10 +35,14 @@ $ML_RUN=$VKMC/Symm_Network/
 
 # The following command will train the networks from scratch from 0 to 500 epochs (-scr enabled, -sep 0, -eep 500)
 python -u $ML_RUN/GCNetRun.py -DP $DP -cr $CP -a0 1.0 -m train -scr -nl 6 -nch 8 -ncL 1 -td $c -tn $c -sep 0 -eep 500 -i 10 -sp 1 -vSp 2 -bs 128 -wm 0.02 -ws 0.02
-# We initialize our weights from a normal distribution with mean 0.002 (-wm option) and standard deviation 0.02 (-ws option)
+
+# The options used are discussed below:
+# -DP, -cr and -a0 are used to set the path of the data file, the crystal data file, and the lattice parameter (which for the lattice gases is 1.0 units).
+
 # We want to train neural networks with 6 intermediate layers, so we set -nl to 6 
 # Each such layer will have 8 input/output channels, so we set -nch to 8.
 # We will to predict one y-vector for each site, so we set -ncL to 1.
+
 # During training, we set both -tn and -td to the $c variable, since there no concept of "transfering networks" during training.
 
 # -sp is the label of the species whose transport coefficient we want to compute.
@@ -47,6 +52,8 @@ python -u $ML_RUN/GCNetRun.py -DP $DP -cr $CP -a0 1.0 -m train -scr -nl 6 -nch 8
 
 # We will save and evaluate networks every 10 epochs, so we set -i to 10.
 # We will use batch size of 128 for training, so we set -bs to 128.
+
+# We initialize the network's weights and biases from a normal distribution with mean 0.002 (-wm option) and standard deviation 0.02 (-ws option)
 
 # The following command will train the networks from from 500 to 1000 epochs (-scr disabled, -sep 500, -eep 1000) by loading the network saved at the 500th epoch
 # in the previous run.
