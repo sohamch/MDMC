@@ -403,7 +403,7 @@ class Test_latGasKMC(unittest.TestCase):
         state0cpy = state0.copy()
         X_steps, t_steps, JumpSelects, rates_steps, rn_steps = \
             LatGas.LatGasKMCTrajRandomRate(state0cpy, Nsteps, self.NSpec, jList, jumpNewSites,
-                       siteGPerms, stringSites, dxList, muArray, stdArray)
+                                           siteGPerms, stringSites, dxList, muArray, stdArray)
 
         print(t_steps, state0.shape[0], flush=True)
         print(np.unique(state0, return_counts=True), flush=True)
