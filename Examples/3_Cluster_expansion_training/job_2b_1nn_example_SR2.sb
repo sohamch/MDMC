@@ -17,7 +17,11 @@ CP=$VKMC/CrysDat_FCC/CrystData.h5
 # For this example, we'll launch a 2-body 1st nearest neighbor cluster expansion, in which all possible clusters up to pair cluster with atoms being first
 # nearest neighbors of each other will be considered.
 MO=2 # This variable will store the maximum order (MO) of the clusters, i.e, the maximum number of atoms allowed in a cluster.
-CC=0.71 # This variable is the cluster cutoff (CC), which gives the maximum distance of separation between any pair atoms in any cluster with more than one body.
+
+CC=0.71 # This variable is the cluster cutoff (CC), which gives the maximum distance of separation between any pair atoms in
+# any cluster with more than one body. Note: the cluster cutoff distance is ALWAYS measured in units of the lattice parameter.
+# For example, in this particular case, the FCC nearest neighbor distance is 0.5 * sqrt(2) * a0 = 0.707 a0, which is what we used as the
+# value of CC (0.71), after diving by a0 (the lattice parameter) and adding a small tolerance to ensure all atoms within this separation are considered.
 
 CE_RUN=$VKMC/VCE # get the path to the directory containing the cluster expansion codes 
 
