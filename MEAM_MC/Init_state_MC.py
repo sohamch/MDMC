@@ -268,7 +268,7 @@ if __name__ == "__main__":
     parser.add_argument("-pp", "--potPath", metavar="/path/to/potential/file", type=str,
                         help="Path to the LAMMPS MEAM potential.")
 
-    parser.add_argument("-na", "--Natoms", nargs="+", type=int, default=[102, 103, 102, 102, 102],
+    parser.add_argument("-na", "--Natoms", metavar="List of ints", nargs="+", type=int, default=[102, 103, 102, 102, 102],
                         help="Number of atoms of each kind of Co, Ni, Cr, Fe, Mn in that order.")
 
 
@@ -279,27 +279,27 @@ if __name__ == "__main__":
 
                         )
 
-    parser.add_argument("-u", "--Nunits", type=int, default=8,
+    parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
                         help="Number of unit cells in the supercell.")
 
-    parser.add_argument("-a0", "--LatPar", type=float, default=3.59,
+    parser.add_argument("-a0", "--LatPar", metavar="float", type=float, default=3.59,
                         help="Lattice parameter - multiplied to displacements and used"
                              "to construct LAMMPS coordinates.")
 
     parser.add_argument("-nv", "--NoVac", action="store_true",
                         help="Whether to disable vacancy creation.")
 
-    parser.add_argument("-T", "--Temp", type=float, default=1073.0,
+    parser.add_argument("-T", "--Temp", metavar="float", type=float, default=1073.0,
                         help="Temperature in Kelvin.")
 
-    parser.add_argument("-nt", "--Nsteps", type=int, default=60000,
+    parser.add_argument("-nt", "--Nsteps", metavar="int", type=int, default=60000,
                         help="Total number of Metropolis trials to run. A Metropolis trial consists of swapping two\n"
                              "sites and accepting with a probability.")
 
-    parser.add_argument("-ne", "--NEqb", type=int, default=2000,
+    parser.add_argument("-ne", "--NEqb", metavar="int", type=int, default=2000,
                         help="Number of equilibrating/thermalizing steps.")
 
-    parser.add_argument("-ns", "--Nsave", type=int, default=200,
+    parser.add_argument("-ns", "--Nsave", metavar="int", type=int, default=200,
                         help="Interval of steps after equilibration after which to collect a state as a sample.")
 
     parser.add_argument("-dmp", "--DumpArguments", action="store_true",

@@ -300,10 +300,10 @@ if __name__ == "__main__":
                              "The whole data set is loaded, and then samples starting from this index to the next "
                              "\"batchSize\" number of states are loaded.")
 
-    parser.add_argument("-bs", "--batchSize", metavar="0", type=int, default=200,
+    parser.add_argument("-bs", "--batchSize", metavar="int", type=int, default=200,
                         help="How many initial states starting from StateStart should initially be loaded.")
 
-    parser.add_argument("-cs", "--chunkSize", metavar="0", type=int, default=20,
+    parser.add_argument("-cs", "--chunkSize", metavar="int", type=int, default=20,
                         help="How many samples to do NEB calculations for at a time.")
 
     parser.add_argument("-wa", "--WriteAllJumps", action="store_true",
