@@ -280,21 +280,22 @@ if __name__ == "__main__":
     parser.add_argument("-if", "--InitStateFile", metavar="/path/to/initial/file.npy", type=str, default=None,
                         help="Path to the .npy file storing the 0-step states from Metropolis Monte Carlo.")
 
-    parser.add_argument("-a0", "--LatPar", metavar="1.0", type=float, help="Lattice parameter - multiplied to displacements and used"
+    parser.add_argument("-a0", "--LatPar", metavar="float", type=float, default=3.59,
+                        help="Lattice parameter - multiplied to displacements and used"
                                                                            "to construct LAMMPS coordinates.")
 
-    parser.add_argument("-T", "--Temp", metavar="1073", type=int, help="Temperature to read data from")
+    parser.add_argument("-T", "--Temp", metavar="int", type=int, help="Temperature to read data from")
 
-    parser.add_argument("-st", "--startStep", metavar="0", type=int, default=0,
+    parser.add_argument("-st", "--startStep", metavar="int", type=int, default=0,
                         help="From which step to start the simulation. Note - checkpointed data file must be present in running directory if value > 0.")
 
-    parser.add_argument("-ns", "--Nsteps", metavar="0", type=int, default=100,
+    parser.add_argument("-ns", "--Nsteps", metavar="int", type=int, default=100,
                         help="How many steps to continue AFTER \"starStep\" argument.")
 
-    parser.add_argument("-u", "--Nunits", metavar="0", type=int, default=8,
+    parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
                         help="Number of unit cells in the supercell.")
 
-    parser.add_argument("-idx", "--StateStart", metavar="0", type=int, default=0,
+    parser.add_argument("-idx", "--StateStart", metavar="int", type=int, default=0,
                         help="The starting index of the state for this run from the whole data set of starting states. "
                              "The whole data set is loaded, and then samples starting from this index to the next "
                              "\"batchSize\" number of states are loaded.")
