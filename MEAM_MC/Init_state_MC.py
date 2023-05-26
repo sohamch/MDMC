@@ -273,7 +273,11 @@ if __name__ == "__main__":
 
 
     parser.add_argument("-ckp", "--UseLastChkPt", action="store_true",
-                        help="Whether to store final style NEB files for all jumps separately.")
+                        help="Whether to restart simulations from saved checkpoints.\n"
+                             "If used, this flag will restart the Monte Carlo runs from \n"
+                             "the second last saved ASE supercell in the checkpoint directory."
+
+                        )
 
     parser.add_argument("-u", "--Nunits", metavar="0", type=int, default=8,
                         help="Number of unit cells in the supercell.")
@@ -289,7 +293,7 @@ if __name__ == "__main__":
                         help="Temperature in Kelvin.")
 
     parser.add_argument("-nt", "--Nsteps", metavar="60000", type=int, default=60000,
-                        help="Total number of Metropolis trials to run. A Metropolis trial consists of swapping two "
+                        help="Total number of Metropolis trials to run. A Metropolis trial consists of swapping two\n"
                              "sites and accepting with a probability.")
 
     parser.add_argument("-ne", "--NEqb", metavar="2000", type=int, default=2000,
