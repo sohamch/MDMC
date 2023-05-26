@@ -891,47 +891,49 @@ if __name__ == "__main__":
     parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str, help="Path to Data file.")
     parser.add_argument("-prm", "--Perm", action="store_true", help="Whether to mix up the data set if a permutation array is found.")
     parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
-    parser.add_argument("-a0", "--LatParam", type=float, default=1.0, metavar="3.59", help="Lattice parameter.")
+    parser.add_argument("-a0", "--LatParam", metavar="float", type=float, default=1.0, help="Lattice parameter.")
 
-    parser.add_argument("-m", "--Mode", metavar="M", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
+    parser.add_argument("-m", "--Mode", metavar="string", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
     parser.add_argument("-shf", "--Shuffle", action="store_true",
                         help="Whether to Shuffle at every epoch - applicable only to training mode.")
-    parser.add_argument("-rl", "--RepLayer", metavar="L (int)", type=int, help="Which Layer to extract representation from (count starts from 0). Must be (0 or 2 or 5 or 8 ...)")
-    parser.add_argument("-rStart", "--RepStart", metavar="L (int)", type=int, default=0, help="Which sample to start computing representations onward (N_train no. of samples will be computed).")
+    parser.add_argument("-rl", "--RepLayer", metavar="int", type=int, help="Which Layer to extract representation from (count starts from 0). Must be (0 or 2 or 5 or 8 ...)")
+    parser.add_argument("-rStart", "--RepStart", metavar="int", type=int, default=0, help="Which sample to start computing representations onward (N_train no. of samples will be computed).")
     parser.add_argument("-bt","--BoundTrain", action="store_true", help="Whether to train using boundary state averages.")
     parser.add_argument("-nojsr", "--JumpSort", action="store_false", help="Whether to switch on/off sort jumps by rates. Not doing it will cause symmetry to break.")
     parser.add_argument("-aos","--AddOnSitesJPINN", action="store_true", help="Whether to consider on sites along with vacancy sites in JPINN.")
     parser.add_argument("-nosym", "--NoSymmetry", action="store_true", help="Whether to switch off all symmetry operations except identity.")
     parser.add_argument("-l0", "--ScaleL0", action="store_true", help="Whether to scale transport coefficients during training with uncorrelated value.")
 
-    parser.add_argument("-nl", "--Nlayers",  metavar="L", type=int, default=1, help="No. of intermediate layers of the neural network.")
-    parser.add_argument("-nch", "--Nchannels", metavar="Ch", type=int, default=4, help="No. of representation channels in non-input layers.")
-    parser.add_argument("-ncL", "--NchLast", metavar="1", type=int, default=1, help="No. channels of the last layers - how many vectors to produce per site.")
+    parser.add_argument("-nl", "--Nlayers",  metavar="int", type=int, default=1, help="No. of intermediate layers of the neural network.")
+    parser.add_argument("-nch", "--Nchannels", metavar="int", type=int, default=4, help="No. of representation channels in non-input layers.")
+    parser.add_argument("-ncL", "--NchLast", metavar="int", type=int, default=1, help="No. channels of the last layers - how many vectors to produce per site.")
 
     parser.add_argument("-scr", "--Scratch", action="store_true", help="Whether to create new network and start from scratch")
     parser.add_argument("-DPr", "--DatPar", action="store_true", help="Whether to use data parallelism. Note - does not work for residual or subnet models. Used only in Train and eval modes.")
 
-    parser.add_argument("-td", "--Tdata", metavar="T", type=int, help="Temperature to read data from")
-    parser.add_argument("-tn", "--TNet", metavar="T", type=int, help="Temperature to use networks from\n For example one can evaluate a network trained on 1073 K data, on the 1173 K data, to see what it does.")
-    parser.add_argument("-sep", "--Start_epoch", metavar="Ep", type=int, help="Starting epoch (for training, this network will be read in.)")
-    parser.add_argument("-eep", "--End_epoch", metavar="Ep", type=int, help="Ending epoch (for training, this will be the last epoch.)")
+    parser.add_argument("-td", "--Tdata", metavar="int", type=int, help="Temperature (or composition for SR2) to read data from")
+    parser.add_argument("-tn", "--TNet", metavar="int", type=int, help="Temperature (or composition for SR2) to use networks from\n For example one can evaluate a network trained on 1073 K data, on the 1173 K data, to see what it does.")
+    parser.add_argument("-sep", "--Start_epoch", metavar="int", type=int, help="Starting epoch (for training, this network will be read in.)")
+    parser.add_argument("-eep", "--End_epoch", metavar="int", type=int, help="Ending epoch (for training, this will be the last epoch.)")
 
-    parser.add_argument("-sp", "--SpecTrain", metavar="s1s2s3", type=str, help="species to consider, order independent (Eg, 123 or 213 etc for species 1, 2 and 3")
-    parser.add_argument("-vSp", "--VacSpec", metavar="SpV", type=int, default=0, help="species index of vacancy, must match dataset, default 0")
+    parser.add_argument("-sp", "--SpecTrain", metavar="string", type=str, help="species to compute transport coefficients for."
+                                                                               "Order independent, string of integers"
+                                                                               "(Eg, 1 for species 1 etc")
+    parser.add_argument("-vSp", "--VacSpec", metavar="int", type=int, default=0, help="species index of vacancy, must match dataset, default 0")
 
     parser.add_argument("-aj", "--AllJumps", action="store_true", help="Whether to train on all jumps, or single selected jumps out of a state.")
     parser.add_argument("-ajn", "--AllJumpsNetType", action="store_true", help="Whether to use network trained on all jumps, or single selected jumps out of a state.")
 
-    parser.add_argument("-nt", "--N_train", type=int, default=10000, help="No. of training samples.")
-    parser.add_argument("-i", "--Interval", type=int, default=1, help="Epoch intervals in which to save or load networks.")
-    parser.add_argument("-lr", "--Learning_rate", type=float, default=0.001, help="Learning rate for Adam algorithm.")
-    parser.add_argument("-dcy", "--Decay", type=float, default=0.0005, help="Weight decay (L2 penalty for the weights).")
-    parser.add_argument("-bs", "--Batch_size", type=int, default=128, help="size of a single batch of samples.")
-    parser.add_argument("-wm", "--Mean_wt", type=float, default=0.02, help="Initialization mean value of weights.")
-    parser.add_argument("-ws", "--Std_wt", type=float, default=0.2, help="Initialization standard dev of weights.")
+    parser.add_argument("-nt", "--N_train", type=int, metavar="int", default=10000, help="No. of training samples.")
+    parser.add_argument("-i", "--Interval", type=int, default=1, maetavar="int", help="Epoch intervals in which to save or load networks.")
+    parser.add_argument("-lr", "--Learning_rate", metavar="float", type=float, default=0.001, help="Learning rate for Adam algorithm.")
+    parser.add_argument("-dcy", "--Decay", metavar="float", type=float, default=0.0005, help="Weight decay (L2 penalty for the weights).")
+    parser.add_argument("-bs", "--Batch_size", metavar="float", type=int, default=128, help="size of a single batch of samples.")
+    parser.add_argument("-wm", "--Mean_wt", metavar="float", type=float, default=0.02, help="Initialization mean value of weights.")
+    parser.add_argument("-ws", "--Std_wt", metavar="float", type=float, default=0.2, help="Initialization standard dev of weights.")
 
     parser.add_argument("-d", "--DumpArgs", action="store_true", help="Whether to dump arguments in a file")
-    parser.add_argument("-dpf", "--DumpFile", metavar="F", type=str, help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
+    parser.add_argument("-dpf", "--DumpFile", metavar="string", type=str, help="Name of file to dump arguments to (can be the jobID in a cluster for example).")
 
     args = parser.parse_args()
 
