@@ -312,7 +312,7 @@ if __name__ == "__main__":
     parser.add_argument("-dmp", "--DumpArguments", action="store_true",
                         help="Whether to dump all the parsed arguments into a text file.")
 
-    parser.add_argument("-dpf", "--DumpFile", type=str, default="ArgFiles",
+    parser.add_argument("-dpf", "--DumpFile", metavar="string", type=str, default="ArgFiles",
                         help="The file in the run directory where all the args will be dumped.")
 
     args = parser.parse_args()
