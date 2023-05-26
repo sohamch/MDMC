@@ -13,9 +13,36 @@ relative energy tolerance of 1e-5, and total force tolerance of 1e-5.
 To get started:
 	1. The file "job_script_KMC.sb" is given as an example to show how to run the KMC simulations in an HPC environment.
 	2. The notebook "Extract_data.ipynb" is provided to show how data is saved during the KMC runs and how we can extract
-	that data and save it in a format required by the neural network and cluster expansion codes.
+	that data and save it in a format required by the neural network and cluster expansion codes. The format of the data
+	is also discussed next in Section 2.
 
-Section 2 - Input parameters for Kinetic Monte Carlo simulations with LAMMPS.
+
+Section 2 - Description of code output
+After every "i"th KMC step, the code outputs an hdf5 file with the name "data_{0}_{1}_{2}.h5"
+where the fields are:
+	{0}: T (option --Temp)
+	{1}: startStep (option --startStep) + i + 1
+	{2}: option --idx (which state in the initial state file we started from)
+
+The information contained in this file are present as hdf5 fields with the following names ((see the "Extract_data.ipynb" notebook to see how to read them and what information
+they contain):
+"FinalStates" - the final atomic configurations after the vacancy jump (for each of the states simulated).
+"SpecDisps" - the displacement of each species during the KMC step (for each of the states simulated).
+"times" - the time of the jump (for each of the states simulated), i.e, the inverse of the total rate of all possible vacancy jumps.
+"AllJumpRates" - the rate of each of the possible vacancy jumps.
+"AllJumpBarriers" - the barrier of each of the possible vacancy jumps computed by NEB calculations.
+"AllJumpISEnergy" - the energies of each of the initial states computed during the NEB calculations.
+"AllJumpTSEnergy" - the transition state energies for each jump computed by the NEB calculations.
+"AllJumpFSEnergy" - the final state energies for each jump computed by the NEB calculations.
+"JumpSelects" - From the jump rates, which particular jump was selected by the KMC algorithm.
+"TestRandNums" - The random number used to select the jump, which will be used to test the correctness of the decisions in the "Extract_data.ipynb" notebook.
+
+Suppose we want to continue our simulation after 3 KMC steps have been performed, at which point a data file with {1} = "3" was saved.
+We pass 3 as the --startStep argument, and the code will search for this file in the working directory, and read in the states stored there as the initial states
+to continue the simulation from.
+
+
+Section 3 - Input parameters for Kinetic Monte Carlo simulations with LAMMPS.
 usage: NEB_steps_multiTraj.py [-h] [-cr /path/to/crys/dat]
                               [-pp /path/to/potential/file]
                               [-if /path/to/initial/file.npy] [-a0 float]
@@ -79,27 +106,3 @@ optional arguments:
   -dpf string, --DumpFile string
                         The file in the run directory where all the args will
                         be dumped. (default: ArgFiles)
-
-Section 3 - Description of code output
-After every "i"th KMC step, the code outputs an hdf5 file with the name "data_{0}_{1}_{2}.h5"
-where the fields are:
-	{0}: T (option --Temp)
-	{1}: startStep (option --startStep) + i + 1
-	{2}: option --idx (which state in the initial state file we started from)
-
-The information contained in this file are present as hdf5 fields with the following names ((see the "Extract_data.ipynb" notebook to see how to read them and what information
-they contain):
-"FinalStates" - the final atomic configurations after the vacancy jump (for each of the states simulated).
-"SpecDisps" - the displacement of each species during the KMC step (for each of the states simulated).
-"times" - the time of the jump (for each of the states simulated), i.e, the inverse of the total rate of all possible vacancy jumps.
-"AllJumpRates" - the rate of each of the possible vacancy jumps.
-"AllJumpBarriers" - the barrier of each of the possible vacancy jumps computed by NEB calculations.
-"AllJumpISEnergy" - the energies of each of the initial states computed during the NEB calculations.
-"AllJumpTSEnergy" - the transition state energies for each jump computed by the NEB calculations.
-"AllJumpFSEnergy" - the final state energies for each jump computed by the NEB calculations.
-"JumpSelects" - From the jump rates, which particular jump was selected by the KMC algorithm.
-"TestRandNums" - The random number used to select the jump, which will be used to test the correctness of the decisions in the "Extract_data.ipynb" notebook.
-
-Suppose we want to continue our simulation after 3 KMC steps have been performed, at which point a data file with {1} = "3" was saved.
-We pass 3 as the --startStep argument, and the code will search for this file in the working directory, and read in the states stored there as the initial states
-to continue the simulation from.
