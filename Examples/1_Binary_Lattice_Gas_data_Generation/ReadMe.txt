@@ -1,4 +1,4 @@
-The example notebooks give hand-on introduction into the basics of data set generation to train our cluster expansion 
+The example notebooks in this directory give hand-on introduction into the basics of data set generation to train our cluster expansion 
 and neural network models for predicting transport coefficients. To do this, we take the example of the simplest system
 in our paper, the SR-2 system, or the binary lattice gas.
 
