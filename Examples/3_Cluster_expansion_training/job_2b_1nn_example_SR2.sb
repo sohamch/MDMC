@@ -1,0 +1,57 @@
+#!/bin/bash
+# This shell script is an example of launching a cluster expansion run using the "LBAM_dataset.py" module in the VCE directory
+# to predict the relaxation vectors of the "fast" species in our binary lattice gas system (from the first example directory).
+# The cluster expansion method is mathematically identical to the SCMF method for computing transport coefficients.
+
+# As with the neural network runs, predicting relaxation vectors with cluster expansions requires us to know the path to a crystal
+# data file, and the data set of single step KMC jumps that contains the initial and final states. (see the first example directory).
+
+# Activate conda environment if necessary
+# conda activate MyEnv
+
+VKMC=/path/to/local/copy/of/VKMC/repository
+
+# Path to crystal data file
+CP=$VKMC/CrysDat_FCC/CrystData.h5
+
+# For this example, we'll launch a 2-body 1st nearest neighbor cluster expansion, in which all possible clusters up to pair cluster with atoms being first
+# nearest neighbors of each other will be considered.
+MO=2 # This variable will store the maximum order (MO) of the clusters, i.e, the maximum number of atoms allowed in a cluster.
+CC=0.71 # This variable is the cluster cutoff (CC), which gives the maximum distance of separation between any pair atoms in any cluster with more than one body.
+
+CE_RUN=$VKMC/VCE # get the path to the directory containing the cluster expansion codes 
+
+# Launch the jobs
+# First, we'll launch a "dry run" with the options -ao and -svj set. The first option -ao stands for "Arrays only" and indicates that
+# we want to launch a job to only generate the clusters. The -svj option indicates to the code to save all the information about the generated clusters
+# in an hdf5 file named "JitArrays.h5". The cluster information stored in this file can be reused for multiple data sets without recalculating it again
+# since the geometrical information about the clusters does not change as long as the system has the same number of components.
+
+# The "dry-run" is done with the following commands.
+# First, we specify the path to ANY given data set. In the dry-run, the data set will only be used to gather species and geometrical data
+# about the clusters (the number of atomic species we are dealing with, the size of the supercell etc). No transport coefficient calculation is performed.
+
+DP=/full/path/to/any/data/file/ # example ../1_Binary_Lattice_Gas_data_Generation/singleStep_FCC_SR2_c0_80.h5" if the notebooks are run in the first example directory for 80% slow species.
+python -u $CE_RUN/LBAM_DataSet.py -T $T -DP $DP -cr $CP -mo $Mo -cc $CC -sp 1 -vsp 2 -scr -ao -svj
+
+# In this command, the options are described as follows:
+# -DP and -CP are the paths to the data set and crystal data file respectively.
+# -mo and -cc are the maximum order and cluster cutoff distances as discussed previously.
+# -sp is the species whose transport coefficients we want to find ("fast" species with label 1 in this example), -vsp is the vacancy species (label 2 in this example).
+# -scr indicates that we are starting from scratch, so the code will not look for any saved data from any previous dry run.
+# -ao stands for "Arrays only" and indicates that we are only interested in building the necessary clusters in this array.
+# -svj stands for "Save Jit" and indicates to the code that we want to save all cluster information in a file named "JitArrays.h5" so we can load them for Just-in-time (JIT) compiled
+# calculations later on.
+
+# Once the dry run is complete, we can then do the actual transport coefficient calculation using the saved cluster information in the file "JitArrays.h5".
+# This involves removing the -scr, -ao and -svj options. By doing so, the code is indicated that we are not doing a run from scratch, so it looks for the "JitArrays.h5"
+# file for only loading (removing -svj indicates load-only). Removing -ao indicates to the code that we don't want to do a dry run but compute the full transport coefficient.
+for cslow in 60 70 75 80 85
+do
+        DP=/full/path/to/data/file/for/given/composition/ # example ../1_Binary_Lattice_Gas_data_Generation/singleStep_FCC_SR2_c0_${cslow}.h5"
+        python -u $CE_RUN/LBAM_DataSet.py -T $T -DP $DP -cr $CP -sp 1 -vsp 2 -nt 10000
+        # For each run, the first -nt (the last option above) states in the dataset are considered as training samples and the rest are considered validation samples.
+        # The transport coefficients for the (training, validation) sets will be output to a saved ".npy" file named L_11_${c}.npy.
+        # The first element of this array is the training and the second element the validation set transport coefficients.
+done
+wait
