@@ -925,7 +925,7 @@ if __name__ == "__main__":
     parser.add_argument("-ajn", "--AllJumpsNetType", action="store_true", help="Whether to use network trained on all jumps, or single selected jumps out of a state.")
 
     parser.add_argument("-nt", "--N_train", type=int, metavar="int", default=10000, help="No. of training samples.")
-    parser.add_argument("-i", "--Interval", type=int, default=1, maetavar="int", help="Epoch intervals in which to save or load networks.")
+    parser.add_argument("-i", "--Interval", type=int, default=1, metavar="int", help="Epoch intervals in which to save or load networks.")
     parser.add_argument("-lr", "--Learning_rate", metavar="float", type=float, default=0.001, help="Learning rate for Adam algorithm.")
     parser.add_argument("-dcy", "--Decay", metavar="float", type=float, default=0.0005, help="Weight decay (L2 penalty for the weights).")
     parser.add_argument("-bs", "--Batch_size", metavar="float", type=int, default=128, help="size of a single batch of samples.")
