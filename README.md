@@ -13,13 +13,13 @@ All examples in this repository are mainly focused on FCC alloys, both model sys
 
 ## Getting Started
 ## (1) Accessing the modules
-The easiest way to access the required codes to perform transport coefficient calculations is to the add the "Symm_Network", "VCE" (short for Vector-valued Cluster Expansion) and "Utils" directories to the $PYTHONPATH variable or add them to your conda environment using the ```conda develop``` command.
+The easiest way to access the required codes to perform transport coefficient calculations is to the add the "Symm_Network", "VCE" (short for Vector-valued Cluster Expansion) and "Utils" directories to the $PYTHONPATH variable or add them to your conda environment using the ```conda develop``` command
 
-##(2) Crystal Data File.
+## (2) Crystal Data File.
 Nearly every calculation using the codes in this repository requires a hdf5 data file containing information about the crystal structure and supercells. The directory "CrysDat_FCC" contains example notebooks that show how to generate this required information about the FCC crystal structure. In all our examples, we have use 8x8x8 primitive FCC supercells with 512 sites. The notebook "Supercell_data_generation_1nn.ipynb" contains code to generate this data, while the notebook "Test_Crystal_Data_FCC.ipynb" has code to test the generated crystal data. An example hdf5 crystal data file "CrysData.h5" is also provided.
 
 ## (3) Examples
-The "Examples" directory contains more jupyter notebooks as well as example job submission scripts for slurm to show to use the codes in this repository to perform transport coefficient calculations similar to the ones in our publication (in progress as of May 26, 2023). These examples directories are described as follows:
+The "Examples" directory contains jupyter notebooks as well as example job submission scripts for slurm to show how to use the codes in this repository to perform transport coefficient calculations similar to the ones in our publication (in progress as of May 26, 2023). These examples directories are described as follows:
 
 ### (3.1) Lattice Gas Data Generation Example
 The directory ```Examples/1_Binary_Lattice_Gas_data_Generation/``` contains the example notebook ```1_makeDataSet.ipynb```. This notebook shows how to use the ```Utils/LatGas.py``` module to generate single KMC-step data for a non-interacting, binary, FCC lattice gas which has fixed rates for vacancy atom-exchange (1.0 for the "fast" species, and 0.001 for the "slow" species). The notebook also illustrates the format in which the sinlge KMC step data must be saved so that it can be used by our neural network and cluster expansion codes.
@@ -40,7 +40,5 @@ The directory ```Examples/4_Monte_Carlo_LAMMPS/``` contains a ReadMe file and an
 * Soham Chattopadhyay and Dallas R. Trinkle "Accelerated Transport Coefficient Prediction in Random Alloys
 Using Deep Learning" (publication in progress)
 * Dallas R. Trinkle, "Variational principle for mass transport.", Physcial Review Letters (2018) [doi:doi.org/10.1103/PhysRevLett.121.235901]
-* Won-Mi Choi, Yong Hee Jo, Seok Su Sohn, Sunghak Lee & Byeong-Joo Lee - "Understanding the physical metallurgy of the CoCrFeMnNi high-entropy alloy: an atomistic simulation study", npj Computational Materials, 2018 [doi: doi.org/10.1038/s41524-017-0060-9]
- - This MEAM potential was obtained from this paper.
-* Taco Cohen and Max Welling - "Group equivariant convolutional networks", PMLR 48:2990-2999, 2016.
- - This paper is the basis for the symmetry-conforming neural network design.
+* Won-Mi Choi, Yong Hee Jo, Seok Su Sohn, Sunghak Lee & Byeong-Joo Lee - "Understanding the physical metallurgy of the CoCrFeMnNi high-entropy alloy: an atomistic simulation study", npj Computational Materials, 2018 [doi: doi.org/10.1038/s41524-017-0060-9]. The MEAM potential was obtained from this paper.
+* Taco Cohen and Max Welling - "Group equivariant convolutional networks", PMLR 48:2990-2999, 2016. This paper is the basis for the symmetry-conforming neural network design.
