@@ -3,7 +3,8 @@ import os
 import sys
 RunPath = os.getcwd() + "/"
 CrysDatPath = "../CrysDat_FCC/CrystData.h5"
-DataPath = "../MEAM_KMC_2step_results/EquiComp/singleStep_Run3_{}_AllRates.h5"
+Data1 = "Test_Data/testData_HEA.h5"
+Data2 = "Test_Data/testData_SR2.h5"
 
 import numpy as np
 import h5py
@@ -22,7 +23,7 @@ class TestGCNetRun(unittest.TestCase):
 
         self.state1List, self.state2List, self.dispList, self.rateList, self.AllJumpRates_st1,\
         self.AllJumpRates_st2 =\
-            Load_Data(DataPath.format(self.T))
+            Load_Data(Data1.format(self.T))
 
         self.GpermNNIdx, self.NNsiteList, self.JumpNewSites, self.dxJumps = Load_crysDats(CrysDatPath)
 
@@ -117,7 +118,7 @@ class TestGCNetRun(unittest.TestCase):
                 NNsiteVac = self.NNsiteList[jSelect + 1, 0]
                 _, RsiteVac = self.superCell.ciR(NNsiteVac)
                 state2[0] = state2[NNsiteVac]
-                state2[NNsiteVac] = 0
+                state2[NNsiteVac] = self.VacSpec
 
                 for site in range(self.state1List.shape[1]):
                     _, Rsite = self.superCell.ciR(site)
@@ -127,17 +128,17 @@ class TestGCNetRun(unittest.TestCase):
                     spec2 = state2[siteNew]
 
                     if site == 0:
-                        assert spec2 == 0
-                        assert np.all(State1_occs[samp, :, site] == 0)
-                        assert np.all(State2_occs[samp, :, site] == 0)
+                        self.assertEqual(spec2, self.VacSpec)
+                        self.assertTrue(np.all(State1_occs[samp, :, site] == 0))
+                        self.assertTrue(np.all(State2_occs[samp, :, site] == 0))
 
                     else:
-                        assert spec2 != 0
-                        assert State1_occs[samp, self.sp_ch[spec1], site] == 1
-                        assert np.sum(State1_occs[samp, :, site]) == 1
+                        self.assertNotEqual(spec2, self.VacSpec)
+                        self.assertEqual(State1_occs[samp, self.sp_ch[spec1], site], 1)
+                        self.assertEqual(np.sum(State1_occs[samp, :, site]), 1)
 
-                        assert State2_occs[samp, self.sp_ch[spec2], site] == 1
-                        assert np.sum(State2_occs[samp, :, site]) == 1
+                        self.assertEqual(State2_occs[samp, self.sp_ch[spec2], site], 1)
+                        self.assertEqual(np.sum(State2_occs[samp, :, site]), 1)
 
                 NNR = np.dot(np.linalg.inv(self.superCell.crys.lattice), self.dxJumps[jSelect]).astype(int)
                 # Check that the displacements for each jump are okay
@@ -149,10 +150,10 @@ class TestGCNetRun(unittest.TestCase):
                 self.assertTrue(np.all(NNRSite == NNsiteVac))
 
                 spec = self.state1List[samp, NNsiteVac]
-                assert np.allclose(disps[samp, 0], 3.59 * self.dxJumps[jSelect])
+                assert np.allclose(disps[samp, 0], self.a0 * self.dxJumps[jSelect])
                 # Check that displacements are okay
                 if spec == specCheck:
-                    self.assertTrue(np.allclose(disps[samp, 1], -3.59 * self.dxJumps[jSelect]))
+                    self.assertTrue(np.allclose(disps[samp, 1], -self.a0 * self.dxJumps[jSelect]))
                 else:
                     self.assertTrue(np.allclose(disps[samp, 1], 0.0))
 
@@ -366,7 +367,7 @@ class TestGCNetRun(unittest.TestCase):
                     NNsiteVac = self.NNsiteList[jInd + 1, 0]
                     _, RsiteVacNN = self.superCell.ciR(NNsiteVac)
                     state2[0] = state2[NNsiteVac]
-                    state2[NNsiteVac] = 0
+                    state2[NNsiteVac] = self.VacSpec
 
                     for site in range(self.state1List.shape[1]):
                         _, Rsite = self.superCell.ciR(site)
@@ -376,12 +377,12 @@ class TestGCNetRun(unittest.TestCase):
                         spec2 = state2[siteNew]
 
                         if site == 0:
-                            self.assertEqual(spec2, 0)
+                            self.assertEqual(spec2, self.VacSpec)
                             self.assertTrue(np.all(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site] == 0))
                             self.assertTrue(np.all(State2_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site] == 0))
 
                         else:
-                            self.assertNotEqual(spec2, 0)
+                            self.assertNotEqual(spec2, self.VacSpec)
                             self.assertEqual(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, self.sp_ch[spec1], site], 1)
                             self.assertEqual(np.sum(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site]), 1)
 
@@ -776,6 +777,52 @@ class TestGCNetRun(unittest.TestCase):
                 y2_jumpSum += y2_samp[jump] * state1JumpProbs[jump]
 
             assert np.allclose(y2_jumpSum, np.dot(g.cartrot, y1_jumpSum))
+
+
+# In the previous test, the vacancy had the lowest species. Now we make it the largest like in our lattice gas data
+class TestGCNetRun_binary_data(TestGCNetRun):
+    def setUp(self):
+        self.T = 1073
+
+        self.state1List, self.state2List, self.dispList, self.rateList, self.AllJumpRates_st1, \
+        self.AllJumpRates_st2 = \
+            Load_Data(Data2.format(self.T))
+
+        self.GpermNNIdx, self.NNsiteList, self.JumpNewSites, self.dxJumps = Load_crysDats(CrysDatPath)
+
+        with h5py.File(CrysDatPath, "r") as fl:
+            lattice = np.array(fl["Lattice_basis_vectors"])
+            superlatt = np.array(fl["SuperLatt"])
+            NNList = np.array(fl["NNsiteList_sitewise"])
+
+        jList = NNList[1:, 0]
+
+        crys = crystal.Crystal(lattice=lattice, basis=[[np.array([0., 0., 0.])]], chemistry=["A"])
+        self.superCell = supercell.ClusterSupercell(crys, superlatt)
+
+        self.N_units = self.superCell.superlatt[0, 0]
+
+        self.z = self.dxJumps.shape[0]
+        self.N_ngb = self.NNsiteList.shape[0]
+
+        self.GnnPerms = pt.tensor(self.GpermNNIdx).long()
+
+        print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(1, self.N_ngb - 1))
+        self.Nsites = self.NNsiteList.shape[1]
+
+        self.assertEqual(self.Nsites, self.state1List.shape[1])
+        self.assertEqual(self.Nsites, self.state2List.shape[1])
+
+        self.a0 = 1.0
+        self.NNsites = pt.tensor(self.NNsiteList).long()
+        self.JumpVecs = pt.tensor(self.dxJumps.T * self.a0, dtype=pt.double)
+        print("Jump Vectors: \n", self.JumpVecs.T, "\n")
+        self.Ndim = self.dxJumps.shape[1]
+
+        self.specCheck = 1
+        self.VacSpec = 2
+        self.sp_ch = {0: 0, 1: 1}
+        print("Setup complete.")
 
 
 
