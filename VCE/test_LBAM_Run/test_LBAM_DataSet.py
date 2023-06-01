@@ -15,12 +15,11 @@ import unittest
 
 from LBAM_DataSet import *
 
-fp = "/mnt/WorkPartition/Work/Research/UIUC/MDMC/MEAM_KMC_2step_results/EquiComp/"
-cp = "/mnt/WorkPartition/Work/Research/UIUC/MDMC/CrysDat_FCC/"
+cp = "../../CrysDat_FCC/"
 class Test_HEA_LBAM(unittest.TestCase):
 
     def setUp(self):
-        self.DataPath = (fp + "singleStep_Run3_1073_AllRates.h5")
+        self.DataPath = ("testData_HEA.h5")
         self.CrysDatPath = (cp + "CrystData.h5")
         self.a0 = 3.59
         self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
@@ -623,7 +622,7 @@ class Test_HEA_LBAM(unittest.TestCase):
 class Test_HEA_LBAM_vac(Test_HEA_LBAM):
 
     def setUp(self):
-        self.DataPath = (fp + "singleStep_Run3_1073_AllRates.h5")
+        self.DataPath = ("testData_HEA.h5")
         self.CrysDatPath = (cp + "CrystData.h5")
         self.a0 = 3.59
         self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
@@ -660,4 +659,43 @@ class Test_HEA_LBAM_vac(Test_HEA_LBAM):
 
         self.MCJit_all, self.numVecsInteracts_all, self.VecsInteracts_all, self.VecGroupInteracts_all,\
         self.NVclus_all = CreateJitCalculator(self.VclusExp_all, self.NSpec, save=False)
+
+class Test_HEA_LBAM_SR2(Test_HEA_LBAM):
+
+    def setUp(self):
+        self.DataPath = ("testData_SR2.h5")
+        self.CrysDatPath = (cp + "CrystData.h5")
+        self.a0 = 1
+        self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
+        self.jList, self.dxList, self.jumpNewIndices, self.superCell, self.jnet, self.vacsite, self.vacsiteInd =\
+            Load_crys_Data(self.CrysDatPath)
+
+        self.AllSpecs = np.unique(self.state1List[0])
+        self.NSpec = self.AllSpecs.shape[0]
+        self.vacSpec = self.state1List[0, 0]
+        print(self.vacSpec)
+        self.SpecExpand = 1
+        print("All Species: {}".format(self.AllSpecs))
+        print("Vacancy Species: {}".format(self.vacSpec))
+        print("Expanding Species: {}".format(self.SpecExpand))
+
+        self.ClustCut = 1.01
+        self.MaxOrder = 2
+
+        self.VclusExp = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
+                                AllInteracts=False)
+
+        self.MCJit, self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.NVclus = CreateJitCalculator(self.VclusExp, self.NSpec,
+                                                                                                scratch=True,
+                                                                                                save=True)
+
+        # Now re-make the same calculator by loading from saved h5 file
+        self.MCJit_load, self.numVecsInteracts_load, self.VecsInteracts_load, self.VecGroupInteracts_load,\
+        self.NVclus_load = CreateJitCalculator(self.VclusExp, self.NSpec, scratch=False)
+
+        self.VclusExp_all = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
+                                AllInteracts=True)
+
+        self.MCJit_all, self.numVecsInteracts_all, self.VecsInteracts_all, self.VecGroupInteracts_all,\
+        self.NVclus_all = CreateJitCalculator(self.VclusExp_all, self.NSpec, scratch=True, save=False)
 
