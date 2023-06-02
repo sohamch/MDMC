@@ -17,6 +17,7 @@ The easiest way to access the required codes to perform transport coefficient ca
 
 ## (2) Crystal Data File.
 Every transport coefficient calculation using the codes in this repository requires a hdf5 data file containing information about the crystal structure and supercells. The directory "CrysDat_FCC" contains example notebooks that show how to generate this required information about the FCC crystal structure. In all our examples, we have use 8x8x8 primitive FCC supercells with 512 sites. The notebook "Supercell_data_generation_1nn.ipynb" contains code to generate this data, while the notebook "Test_Crystal_Data_FCC.ipynb" has code to test the generated crystal data. An example hdf5 crystal data file "CrysData.h5" is also provided.
+
 Important: while generating the crystal data file, a lattice parameter of 1.0 is assumed. During transport coefficient calculations, the lattice parameter is then passed in for the specific material at hand.
 
 ## (3) Examples
