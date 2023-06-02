@@ -283,12 +283,35 @@ def sort_jp(jProbs_st1, jProbs_st2, jumpSort):
 
     return jProbs_st1, jProbs_st2
 
+def train_batch_collective(gNet, batch, end, state1Batch, state2Batch, rateBatch, dispBatch,
+                           jProbs_st1_batch, jProbs_st2_batch, Boundary_train=False):
+
+    y1 = gNet(state1Batch)
+    y2 = gNet(state2Batch)
+
+    if SpecsToTrain == [VacSpec]:
+        y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
+
+    else:
+        On_st1Batch = On_st1[batch: end]
+        On_st2Batch = On_st2[batch: end]
+
+        y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch,
+                               Boundary_train, AddOnSites)
+
+    dy = y2 - y1
+    diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1) ** 2) / (6. * L0)
+    return diff, y1.cpu().detach().numpy(), y2.cpu().detach().numpy()
+
+def train_batch_tracer(state1Batch, state2Batch, rateBatch, dispBatch):
+    pass
 
 """## Write the training loop"""
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps,
           jProbs_st1, jProbs_st2, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
           gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False, jumpSort=True,
-          AddOnSites=False, scaleL0=False, chkpt=True, randomize=False, decay=0.0005):
+          AddOnSites=False, scaleL0=False, chkpt=True, randomize=False,
+          tracers=False, decay=0.0005):
     
     print("Training conditions:")
     print("scratch: {}, DPr: {}, Boundary_train: {}, jumpSort: {}, AddOnSites: {}, scaleL0: {}".format(scratch_if_no_init, DPr, Boundary_train, jumpSort, AddOnSites, scaleL0))
@@ -374,38 +397,28 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
                 On_st2 = On_st2[randPerm]
 
         for batch in range(0, N_train, N_batch):
-            
-            opt.zero_grad() 
+            opt.zero_grad()
             end = min(batch + N_batch, N_train)
 
-            state1Batch = state1Data[batch : end].double().to(device)
-            state2Batch = state2Data[batch : end].double().to(device)
-            
-            rateBatch = rateData[batch : end]
-            dispBatch = dispData[batch : end]
-            
-            if Boundary_train:
-                jProbs_st1_batch = jProbs_st1[batch : end]
-                jProbs_st2_batch = jProbs_st2[batch : end]
-            else:
-                jProbs_st1_batch = None
-                jProbs_st2_batch = None
+            state1Batch = state1Data[batch: end].double().to(device)
+            state2Batch = state2Data[batch: end].double().to(device)
 
-            y1 = gNet(state1Batch)
-            y2 = gNet(state2Batch)
-                
-            if SpecsToTrain==[VacSpec]: 
-                y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
+            rateBatch = rateData[batch: end]
+            dispBatch = dispData[batch: end]
+
+            if tracers:
+                diff = train_batch_tracer(gNet, batch, end, state1Batch, state2Batch, rateBatch, dispBatch)
 
             else:
-                On_st1Batch = On_st1[batch : end]
-                On_st2Batch = On_st2[batch : end]
+                if Boundary_train:
+                    jProbs_st1_batch = jProbs_st1[batch: end]
+                    jProbs_st2_batch = jProbs_st2[batch: end]
+                else:
+                    jProbs_st1_batch = None
+                    jProbs_st2_batch = None
 
-                y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch,
-                                       Boundary_train, AddOnSites)
-
-            dy = y2 - y1
-            diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/(6. * L0)
+                diff, y1, y2 = train_batch_collective(gNet, batch, end, state1Batch, state2Batch, rateBatch, dispBatch,
+                                                      jProbs_st1_batch, jProbs_st2_batch)
 
             diff.backward()
             opt.step()
