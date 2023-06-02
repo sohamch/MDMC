@@ -1,7 +1,7 @@
 # Variational Kinetic Monte Carlo (VKMC)
 This repository provides routines to use the Variational Principle for Mass Transport (Trinkle, phy. rev. lett. 2018) to compute transport coefficients in random alloys. This involves predicting a vector-valued function of atomic configurations, called the relaxation vector from single-step Kinetic Monte Carlo data. This vector is the solution to a Poisson equation in an abstract space of atomic configurations. We approximately solve for this vector using neural network and cluster expansion models, in combination with the Variational Principle, which provides a minimization problem to which they are the optimal solutions. We thus effectively try to predict transport coefficients from a single KMC step, reducing the computational load by millions of KMC calculations, making the method suitable for high-throughput type of applications with energy models that may be too expensive for standard random walk Kinetic Monte Carlo methods.
 
-All examples in this repository are mainly focused on FCC alloys, both model systems (non-interacting lattice gases) as well a realistic 5-component Cantor alloy (CoNiCrFeMn) simulated with a MEAM potential from Choi et. al. (npj Computational Materials 2018).
+All examples in this repository are focused on FCC alloys, both model systems (non-interacting lattice gases) as well a realistic 5-component Cantor alloy (CoNiCrFeMn) simulated with a MEAM potential from Choi et. al. (npj Computational Materials 2018).
 
 ## Pre-requisites
  - Python 3.
@@ -18,7 +18,7 @@ The easiest way to access the required codes to perform transport coefficient ca
 ## (2) Crystal Data File.
 Every transport coefficient calculation using the codes in this repository requires a hdf5 data file containing information about the crystal structure and supercells. The directory "CrysDat_FCC" contains example notebooks that show how to generate this required information about the FCC crystal structure. In all our examples, we have use 8x8x8 primitive FCC supercells with 512 sites. The notebook "Supercell_data_generation_1nn.ipynb" contains code to generate this data, while the notebook "Test_Crystal_Data_FCC.ipynb" has code to test the generated crystal data. An example hdf5 crystal data file "CrysData.h5" is also provided.
 
-Important: while generating the crystal data file, a lattice parameter of 1.0 is assumed. During transport coefficient calculations, the lattice parameter is then passed in for the specific material at hand.
+Important: while generating the crystal data file, a lattice parameter of 1.0 is assumed. During dataset generation and transport coefficient calculation, the lattice parameter is then passed in for the specific material.
 
 ## (3) Examples
 The "Examples" directory contains jupyter notebooks as well as example job submission scripts for slurm to show how to use the codes in this repository to perform transport coefficient calculations similar to the ones in our publication (in progress as of May 26, 2023). These examples directories are described as follows:
