@@ -283,8 +283,12 @@ def sort_jp(jProbs_st1, jProbs_st2, jumpSort):
 
     return jProbs_st1, jProbs_st2
 
-def train_batch_collective(gNet, batch, end, state1Batch, state2Batch, rateBatch, dispBatch,
-                           jProbs_st1_batch, jProbs_st2_batch, Boundary_train=False):
+
+# function to train collective transport coefficients for a single batch.
+def train_batch_collective(gNet, state1Batch, state2Batch, rateBatch, dispBatch,
+                           jProbs_st1_batch, jProbs_st2_batch, SpecsToTrain, VacSpec,
+                           On_st1Batch, On_st2Batch,
+                           Boundary_train=False, AddOnSites=False, L0=1.0):
 
     y1 = gNet(state1Batch)
     y2 = gNet(state2Batch)
@@ -293,9 +297,6 @@ def train_batch_collective(gNet, batch, end, state1Batch, state2Batch, rateBatch
         y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
 
     else:
-        On_st1Batch = On_st1[batch: end]
-        On_st2Batch = On_st2[batch: end]
-
         y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch,
                                Boundary_train, AddOnSites)
 
@@ -303,8 +304,11 @@ def train_batch_collective(gNet, batch, end, state1Batch, state2Batch, rateBatch
     diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1) ** 2) / (6. * L0)
     return diff, y1.cpu().detach().numpy(), y2.cpu().detach().numpy()
 
+
+# function to train tracer transport coefficients for a single batch.
 def train_batch_tracer(state1Batch, state2Batch, rateBatch, dispBatch):
     pass
+
 
 """## Write the training loop"""
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps,
@@ -417,12 +421,17 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
                     jProbs_st1_batch = None
                     jProbs_st2_batch = None
 
-                diff, y1, y2 = train_batch_collective(gNet, batch, end, state1Batch, state2Batch, rateBatch, dispBatch,
-                                                      jProbs_st1_batch, jProbs_st2_batch)
+                On_st1Batch = On_st1[batch: end]
+                On_st2Batch = On_st2[batch: end]
+
+                diff, y1, y2 = train_batch_collective(gNet, state1Batch, state2Batch, rateBatch, dispBatch,
+                           jProbs_st1_batch, jProbs_st2_batch, SpecsToTrain, VacSpec,
+                           On_st1Batch, On_st2Batch, Boundary_train=Boundary_train, AddOnSites=AddOnSites, L0=L0)
 
             diff.backward()
             opt.step()
 
+            # Need to fix things this point onward
             if epoch == 0 and batch == 0:
                 y1BatchTest[:, :] = y1.cpu().detach().numpy()
                 y2BatchTest[:, :] = y2.cpu().detach().numpy()
