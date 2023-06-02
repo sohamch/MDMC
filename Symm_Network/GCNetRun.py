@@ -1,12 +1,10 @@
 import os
-import sys
 import argparse
 RunPath = os.getcwd() + "/"
 
 import numpy as np
 import torch as pt
 import torch.nn as nn
-import torch.nn.functional as F
 import h5py
 from tqdm import tqdm
 from SymmLayers import GCNet
@@ -117,7 +115,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
 
     # tracer training only for non-vacancy species
     if tracers and VacSpec in specsToTrain:
-        raise NotImplementedError("Tracer training is only for non-vacancy species right now.")
+        raise NotImplementedError("Tracer training is only for non-vacancy species.")
 
     # make the input tensors
     if mode=="train":
@@ -193,20 +191,25 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
             makeStateTensors(state2List[:Nsamples], specsToTrain, VacSpec, JumpNewSites, AllJumps=AllJumps)
 
         for samp in tqdm(range(Nsamples), position=0, leave=True):
-            dispData[samp, 0, :] = dispList[samp, VacSpec, :]
-            dispData[samp, 1, :] = sum(dispList[samp, spec, :] for spec in specsToTrain)
             rateData[samp] = rateList[samp]
             # Now make the gather tensor
             if tracers:
                 jInd = JumpSelects[samp]
+                specJump = state1List[samp, NNsvac[jInd]]
                 for siteInd in range(Nsites):
                     for dim in range(Ndim):
                         GatherTensor_tracers[samp, dim, siteInd] = source2Dest[jInd, siteInd]
+                        if siteInd == NNsvac[jInd]:
+                            dispData[samp, dim, siteInd] += dispList[samp, specJump, :]
+            else:
+                dispData[samp, 0, :] = dispList[samp, VacSpec, :]
+                dispData[samp, 1, :] = sum(dispList[samp, spec, :] for spec in specsToTrain)
 
     return State1_occs, State2_occs, rateData, dispData, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch
 
 
-def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=3):
+def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch,
+                    Ndim=3, tracers=False):
     # Do a small check that species channels were assigned correctly
     if sp_ch is not None:
         for key, item in sp_ch.items():
@@ -234,14 +237,16 @@ def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites
     else:
         print("Training Species : {}".format(SpecsToTrain))
         if disps is not None:
-            dispData = pt.tensor(disps[:, 1, :]).double().to(device)
+            if not tracers:
+                dispData = pt.tensor(disps[:, 1, :]).double().to(device)
+            else:
+                dispData = pt.tensor(disps).double().to(device)
         
         # Convert on-site tensor to boolean mask
         On_st1 = pt.tensor(OnSites_st1, dtype=pt.bool)
         On_st2 = pt.tensor(OnSites_st2, dtype=pt.bool)
 
     return state1Data, state2Data, dispData, rateData, On_st1, On_st2
-
 
 # All vacancy batch output calculations to be done here
 def vacBatchOuts(y1, y2, jProbs_st1, jProbs_st2, Boundary_Train):
@@ -370,18 +375,24 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
           gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False, jumpSort=True,
           AddOnSites=False, scaleL0=False, chkpt=True, randomize=False,
           tracers=False, decay=0.0005):
-    
-    print("Training conditions:")
-    print("scratch: {}, DPr: {}, Boundary_train: {}, jumpSort: {}, AddOnSites: {}, scaleL0: {}".format(scratch_if_no_init, DPr, Boundary_train, jumpSort, AddOnSites, scaleL0))
+
+    if tracers and VacSpec in SpecsToTrain:
+        raise NotImplementedError("Tracer training is only for non-vacancy species.")
 
     Ndim = disps.shape[2]
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
-            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim)
+            OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim, tracers=tracers)
 
-    if SpecsToTrain == [VacSpec]:
-        assert pt.allclose(dispData.cpu(), pt.tensor(disps[:, 0, :], dtype=pt.double))
+    if not tracers:
+        if SpecsToTrain == [VacSpec]:
+            assert pt.allclose(dispData.cpu(), pt.tensor(disps[:, 0, :], dtype=pt.double))
+        else:
+            assert pt.allclose(dispData.cpu(), pt.tensor(disps[:, 1, :], dtype=pt.double))
+
     else:
-        assert pt.allclose(dispData.cpu(), pt.tensor(disps[:, 1, :], dtype=pt.double))
+        assert dispData.shape[0] == state1Data.shape[0]
+        assert dispData.shape[1] == Ndim
+        assert dispData.shape[2] == State2_Occs.shape[2]
 
     # scale with L0 if indicated
     if scaleL0:
