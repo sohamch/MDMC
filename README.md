@@ -42,3 +42,6 @@ Using Deep Learning" (publication in progress)
 * Dallas R. Trinkle, "Variational principle for mass transport.", Physcial Review Letters (2018) [doi:doi.org/10.1103/PhysRevLett.121.235901]
 * Won-Mi Choi, Yong Hee Jo, Seok Su Sohn, Sunghak Lee & Byeong-Joo Lee - "Understanding the physical metallurgy of the CoCrFeMnNi high-entropy alloy: an atomistic simulation study", npj Computational Materials, 2018 [doi: doi.org/10.1038/s41524-017-0060-9]. The MEAM potential was obtained from this paper.
 * Taco Cohen and Max Welling - "Group equivariant convolutional networks", PMLR 48:2990-2999, 2016. This paper is the basis for the symmetry-conforming neural network design.
+
+## Limitations and Future Scope
+Currently, the codes in this repository are geared towards mono-atomic lattices such as FCC and BCC which are commonly found lattices for high-entropy alloys. In the future, the codes in this repository need to be extended to multi-site lattices.
