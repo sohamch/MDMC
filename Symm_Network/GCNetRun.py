@@ -302,12 +302,32 @@ def train_batch_collective(gNet, state1Batch, state2Batch, rateBatch, dispBatch,
 
     dy = y2 - y1
     diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1) ** 2) / (6. * L0)
-    return diff, y1.cpu().detach().numpy(), y2.cpu().detach().numpy()
+    return diff, y1, y2
 
 
 # function to train tracer transport coefficients for a single batch.
-def train_batch_tracer(state1Batch, state2Batch, rateBatch, dispBatch):
+def train_batch_tracer(gNet, state1Batch, state2Batch, rateBatch, dispBatch,
+                       SpecsToTrain, VacSpec, On_st1Batch, On_st2Batch, L0=1.0):
+
+    if SpecsToTrain == [VacSpec]:
+        raise RuntimeError("Tracer training type is not meant for single vacancy.")
+
+    else:
+        y1 = gNet(state1Batch)[:, 0, :, :]
+        y2 = gNet(state2Batch)[:, 0, :, :]
+        # y1 and y2 have shape (Nbatch, 3, Nsites)
+
+        # dxMod = dispBatch + y2[:, :, GatherTensor_batch] - y1
+        # dxMod has shape (Nbatch, 3, Nsites)
+
+        # get the squared norms of the modified displacements
+        # dxModNorms = pt.norm(dxMod, dim=1)**2
+        # dxModNorms has shape (Nbatch, Nsites)
+
+        # get
     pass
+
+
 
 
 """## Write the training loop"""
@@ -411,7 +431,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
             dispBatch = dispData[batch: end]
 
             if tracers:
-                diff = train_batch_tracer(gNet, batch, end, state1Batch, state2Batch, rateBatch, dispBatch)
+                diff, y1, y2 = train_batch_tracer(gNet, batch, end, state1Batch, state2Batch, rateBatch, dispBatch)
 
             else:
                 if Boundary_train:
@@ -428,13 +448,13 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
                            jProbs_st1_batch, jProbs_st2_batch, SpecsToTrain, VacSpec,
                            On_st1Batch, On_st2Batch, Boundary_train=Boundary_train, AddOnSites=AddOnSites, L0=L0)
 
+                # Need to fix things this point onward
+                if epoch == 0 and batch == 0:
+                    y1BatchTest[:, :] = y1.cpu().detach().numpy()
+                    y2BatchTest[:, :] = y2.cpu().detach().numpy()
+
             diff.backward()
             opt.step()
-
-            # Need to fix things this point onward
-            if epoch == 0 and batch == 0:
-                y1BatchTest[:, :] = y1.cpu().detach().numpy()
-                y2BatchTest[:, :] = y2.cpu().detach().numpy()
 
     # For testing return y1 and y2 - we'll test on a single epoch, single batch sample.
     return y1BatchTest, y2BatchTest
