@@ -50,8 +50,9 @@ def Load_Data(DataPath, Perm=False):
         rateList = np.array(fl["rates"])[perm]
         AllJumpRates_st1 = np.array(fl["AllJumpRates_Init"])[perm]
         AllJumpRates_st2 = np.array(fl["AllJumpRates_Fin"])[perm]
+        JumpSelects = np.array(fl["JumpSelects"])[perm]
  
-    return state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2
+    return state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, JumpSelects
 
 def makeOnSites(stateOccs, specsToTrain, VacSpec, sp_ch):
     OnSites = None
@@ -111,9 +112,13 @@ def makeStateTensors(stateList, specsToTrain, VacSpec, JumpNewSites, AllJumps=Fa
         Onsites = makeOnSites(stateOccs, specsToTrain, VacSpec, sp_ch)
         return stateOccs, Onsites, sp_ch
 
-def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList,
-        AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False, mode="train"):
-    
+def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rateList, JumpSelects,
+        AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, N_train, AllJumps=False, mode="train", tracers=False):
+
+    # tracer training only for non-vacancy species
+    if tracers and VacSpec in specsToTrain:
+        raise NotImplementedError("Tracer training is only for non-vacancy species right now.")
+
     # make the input tensors
     if mode=="train":
         Nsamples = N_train
@@ -124,34 +129,60 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
     specs = np.unique(state1List[0])
     NSpec = specs.shape[0] - 1
     Nsites = state1List.shape[1]
+    Ndim = dispList.shape[2]
+    assert Ndim == dxJumps.shape[1]
     NNsvac = NNsiteList[1:, 0]
 
     NData = Nsamples
     if AllJumps:
         NData = Nsamples*dxJumps.shape[0]
 
-    dispData = np.zeros((NData, 2, 3))
+    # dispData = np.zeros((NData, 2, Ndim))
     rateData = np.zeros(NData)
+
+    if tracers:
+        GatherTensor_tracers = np.zeros((NData, Ndim, Nsites), dtype=int)
+        dispData = np.zeros((NData, Ndim, Nsites))
+    else:
+        GatherTensor_tracers = None
+        dispData = np.zeros((NData, 2, Ndim))
     
     # Make the multichannel occupancies
     print("Building Occupancy Tensors for species : {}".format(specsToTrain))
     print("No. of jumps : {}".format(NData))
 
+    # Make a source to destination site tensor
+    source2Dest = np.zeros_like(JumpNewSites)
+    for jInd in range(dxJumps.shape[0]):
+        for destination in range(Nsites):
+            source = JumpNewSites[jInd, destination]
+            if destination == 0:
+                assert source == 0
+            source2Dest[source] = destination
+
     if AllJumps:
         State1_occs, State2_occs, OnSites_state1, OnSites_state2, sp_ch =\
             makeStateTensors(state1List[:Nsamples], specsToTrain, VacSpec, JumpNewSites, AllJumps=AllJumps)
 
-        # Next, Build the rates and displacements
         for samp in tqdm(range(Nsamples), position=0, leave=True):
             state1 = state1List[samp]
             for jInd in range(dxJumps.shape[0]):
                 JumpSpec = state1[NNsvac[jInd]]
                 Idx = samp*dxJumps.shape[0] + jInd
-                dispData[Idx, 0, :] = dxJumps[jInd]*a
-                if JumpSpec in specsToTrain:
-                    dispData[Idx, 1, :] -= dxJumps[jInd]*a
-
                 rateData[Idx] = AllJumpRates_st1[samp, jInd]
+
+                # Now make the gather tensor
+                if tracers:
+                    for siteInd in range(Nsites):
+                        for dim in range(Ndim):
+                            GatherTensor_tracers[Idx, dim, siteInd] = source2Dest[jInd, siteInd]
+                            if JumpSpec in specsToTrain:
+                                dispData[Idx, dim, siteInd] -= dxJumps[jInd] * a
+
+                else:
+                    dispData[Idx, 0, :] = dxJumps[jInd] * a
+                    if JumpSpec in specsToTrain:
+                        dispData[Idx, 1, :] -= dxJumps[jInd] * a
 
     else:
         # Next, Build the rates and displacements
@@ -165,9 +196,14 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
             dispData[samp, 0, :] = dispList[samp, VacSpec, :]
             dispData[samp, 1, :] = sum(dispList[samp, spec, :] for spec in specsToTrain)
             rateData[samp] = rateList[samp]
+            # Now make the gather tensor
+            if tracers:
+                jInd = JumpSelects[samp]
+                for siteInd in range(Nsites):
+                    for dim in range(Ndim):
+                        GatherTensor_tracers[samp, dim, siteInd] = source2Dest[jInd, siteInd]
 
-    
-    return State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch
+    return State1_occs, State2_occs, rateData, dispData, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch
 
 
 def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=3):
@@ -326,8 +362,6 @@ def train_batch_tracer(gNet, state1Batch, state2Batch, rateBatch, dispBatch,
 
         # get
     pass
-
-
 
 
 """## Write the training loop"""
@@ -712,6 +746,9 @@ def main(args):
     
     if args.AllJumps and args.BoundTrain:
         raise NotImplementedError("Cannot do all-jump training with boundary states.")
+
+    if args.Tracers and args.BoundTrain:
+        raise NotImplementedError("Cannot do tracer training with boundary states.")
     
     # 1. Load crystal data
     GpermNNIdx, NNsiteList, JumpNewSites, dxJumps = Load_crysDats(args.CrysDatPath)
@@ -738,7 +775,8 @@ def main(args):
     Ndim = dxJumps.shape[1]
 
     # 2. Load data
-    state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2 = Load_Data(args.DataPath, args.Perm)
+    state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, JumpSelects =\
+        Load_Data(args.DataPath, args.Perm)
 
     # 2.1 Convert jump rates to probabilities
     if args.BoundTrain:
@@ -771,8 +809,8 @@ def main(args):
     # 5. Call Training or evaluating or y-evaluating or rep-getting function here
     N_train_jumps = z*args.N_train if args.AllJumps else args.N_train
     if args.Mode == "train":
-        State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = \
-            makeComputeData(state1List, state2List, dispList, specsToTrain, args.VacSpec, rateList,
+        State1_occs, State2_occs, rateData, dispData, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
+            makeComputeData(state1List, state2List, dispList, specsToTrain, args.VacSpec, rateList, JumpSelects,
                             AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, args.N_train, AllJumps=args.AllJumps,
                             mode=args.Mode)
         print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
@@ -785,8 +823,8 @@ def main(args):
               scaleL0=args.ScaleL0, randomize=args.Shuffle, decay=args.Decay)
 
     elif args.Mode == "eval":
-        State1_occs, State2_occs, rateData, dispData, OnSites_state1, OnSites_state2, sp_ch = \
-            makeComputeData(state1List, state2List, dispList, specsToTrain, args.VacSpec, rateList,
+        State1_occs, State2_occs, rateData, dispData, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
+            makeComputeData(state1List, state2List, dispList, specsToTrain, args.VacSpec, rateList, JumpSelects,
                             AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, args.N_train, AllJumps=args.AllJumps,
                             mode=args.Mode)
         print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
