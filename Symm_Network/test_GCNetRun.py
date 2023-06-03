@@ -3,8 +3,8 @@ import os
 import sys
 RunPath = os.getcwd() + "/"
 CrysDatPath = "../CrysDat_FCC/CrystData.h5"
-Data1 = "Test_Data/testData_HEA.h5"
-Data2 = "Test_Data/testData_SR2.h5"
+Data1 = "Test_Data/testData_HEA.h5" # test data set of HEA at 1073 K.
+Data2 = "Test_Data/testData_SR2.h5" # test data set of SR2 at 60% c0.
 
 import numpy as np
 import h5py
@@ -23,7 +23,7 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
 
         self.state1List, self.state2List, self.dispList, self.rateList, self.AllJumpRates_st1,\
         self.AllJumpRates_st2, self.JumpSelects =\
-            Load_Data(Data1.format(self.T))
+            Load_Data(Data1)
 
         self.GpermNNIdx, self.NNsiteList, self.JumpNewSites, self.dxJumps = Load_crysDats(CrysDatPath)
 
@@ -839,11 +839,10 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
 # In the previous test, the vacancy had the lowest species. Now we make it the largest like in our lattice gas data
 class TestGCNetRun_binary_collective(TestGCNetRun_HEA_collective):
     def setUp(self):
-        self.T = 1073
-
+        self.T = 60
         self.state1List, self.state2List, self.dispList, self.rateList, self.AllJumpRates_st1, \
         self.AllJumpRates_st2, self.JumpSelects = \
-            Load_Data(Data2.format(self.T))
+            Load_Data(Data2)
 
         self.GpermNNIdx, self.NNsiteList, self.JumpNewSites, self.dxJumps = Load_crysDats(CrysDatPath)
 
@@ -882,4 +881,159 @@ class TestGCNetRun_binary_collective(TestGCNetRun_HEA_collective):
         print("Setup complete.")
 
 
+class TestGCNetRun_HEA_tracers(unittest.TestCase):
+    def setUp(self):
+        self.T = 1073
+
+        self.state1List, self.state2List, self.dispList, self.rateList, self.AllJumpRates_st1, \
+        self.AllJumpRates_st2, self.JumpSelects = \
+            Load_Data(Data1)
+
+        self.GpermNNIdx, self.NNsiteList, self.JumpNewSites, self.dxJumps = Load_crysDats(CrysDatPath)
+
+        with h5py.File(CrysDatPath, "r") as fl:
+            lattice = np.array(fl["Lattice_basis_vectors"])
+            superlatt = np.array(fl["SuperLatt"])
+            NNList = np.array(fl["NNsiteList_sitewise"])
+
+        jList = NNList[1:, 0]
+
+        crys = crystal.Crystal(lattice=lattice, basis=[[np.array([0., 0., 0.])]], chemistry=["A"])
+        self.superCell = supercell.ClusterSupercell(crys, superlatt)
+
+        self.N_units = self.superCell.superlatt[0, 0]
+
+        self.z = self.dxJumps.shape[0]
+        self.N_ngb = self.NNsiteList.shape[0]
+
+        self.GnnPerms = pt.tensor(self.GpermNNIdx).long()
+
+        print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(1, self.N_ngb - 1))
+        self.Nsites = self.NNsiteList.shape[1]
+
+        self.assertEqual(self.Nsites, self.state1List.shape[1])
+        self.assertEqual(self.Nsites, self.state2List.shape[1])
+
+        self.a0 = 3.59
+        self.NNsites = pt.tensor(self.NNsiteList).long()
+        self.JumpVecs = pt.tensor(self.dxJumps.T * self.a0, dtype=pt.double)
+        print("Jump Vectors: \n", self.JumpVecs.T, "\n")
+        self.Ndim = self.dxJumps.shape[1]
+
+        self.specCheck = 5
+        self.VacSpec = 0
+        self.sp_ch = {1: 0, 2: 1, 3: 2, 4: 3, 5: 4}
+        print("Setup complete.")
+
+    def test_makeComputeData_singleJump(self):
+        specCheck = self.specCheck
+        specsToTrain = [specCheck]
+        VacSpec = self.VacSpec
+        N_check = 200
+        N_train = 1000
+        AllJumps = False
+
+        for m in ["train", "all"]:
+            print("testing mode : {}".format(m))
+            State1_occs, State2_occs, rates, disps, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
+                makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
+                                self.JumpSelects, self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps,
+                                self.NNsiteList, N_train, tracers=True, AllJumps=AllJumps, mode=m)
+
+            self.assertTrue(GatherTensor_tracers is not None)  # check that gathering tracer is built for tracers.
+
+            if m == "all":
+                self.assertTrue(State1_occs.shape[0] == self.state1List.shape[0] == State2_occs.shape[0])
+                self.assertTrue(rates.shape[0] == self.state1List.shape[0] == disps.shape[0])
+                self.assertTrue(OnSites_state1.shape[0] == self.state1List.shape[0] == OnSites_state2.shape[0])
+                sampsCheck = np.random.randint(0, State1_occs.shape[0], N_check)
+
+            else:
+                self.assertTrue(State1_occs.shape[0] == N_train == State2_occs.shape[0])
+                self.assertTrue(rates.shape[0] == N_train == disps.shape[0])
+                self.assertTrue(OnSites_state1.shape[0] == N_train == OnSites_state2.shape[0])
+                sampsCheck = np.random.randint(0, N_train, N_check)
+
+            for samp in tqdm(sampsCheck, position=0, leave=True):
+                for site in range(self.state1List.shape[1]):
+                    if site == 0:
+                        self.assertTrue(np.all(State1_occs[samp, :, site] == 0))
+                        self.assertTrue(np.all(State2_occs[samp, :, site] == 0))
+                        self.assertTrue(np.all(OnSites_state1[samp, site] == 0))
+                        self.assertTrue(np.all(GatherTensor_tracers[samp, :, site] == 0))
+                    else:
+                        spec1 = self.state1List[samp, site]
+                        self.assertEqual(State1_occs[samp, self.sp_ch[spec1], site], 1)
+                        self.assertEqual(np.sum(State1_occs[samp, :, site]), 1)
+                        if spec1 == self.specCheck:
+                            self.assertTrue(np.all(OnSites_state1[samp, site] == 1))
+
+                        spec2 = self.state2List[samp, site]
+                        self.assertEqual(State2_occs[samp, self.sp_ch[spec2], site], 1)
+                        self.assertEqual(np.sum(State2_occs[samp, :, site]), 1)
+                        if spec2 == self.specCheck:
+                            self.assertTrue(np.all(OnSites_state2[samp, site] == 1))
+
+                        # check the Gather tensor
+                        jSelect = self.JumpSelects[samp]
+                        sourceSite = self.JumpNewSites[jSelect, site]
+                        self.assertTrue(np.all(GatherTensor_tracers[samp, :, sourceSite] == site),
+                                        msg="\n{} {} {}".format(site, sourceSite, GatherTensor_tracers[samp, :, site]))
+
+                # check the displacements
+                jSelect = None
+                count = 0
+                for jInd in range(self.JumpNewSites.shape[0]):
+                    state2_try = self.state1List[samp][self.JumpNewSites[jInd]]
+                    if np.all(state2_try == self.state2List[samp]):
+                        jSelect = jInd
+                        count += 1
+                self.assertEqual(count, 1) # there should be exactly one match
+
+                # Check occupancies using supercell
+                state1 = self.state1List[samp]
+                state2 = state1.copy()
+                NNsiteVac = self.NNsiteList[jSelect + 1, 0]
+                _, RsiteVac = self.superCell.ciR(NNsiteVac)
+                state2[0] = state2[NNsiteVac]
+                state2[NNsiteVac] = self.VacSpec
+
+                for site in range(self.state1List.shape[1]):
+                    _, Rsite = self.superCell.ciR(site)
+                    RsiteNew = (Rsite + RsiteVac)
+                    siteNew, _ = self.superCell.index(RsiteNew, (0, 0))
+                    spec1 = state1[site]
+                    spec2 = state2[siteNew]
+
+                    if site == 0:
+                        self.assertEqual(spec2, self.VacSpec)
+                        self.assertTrue(np.all(State1_occs[samp, :, site] == 0))
+                        self.assertTrue(np.all(State2_occs[samp, :, site] == 0))
+
+                    else:
+                        self.assertNotEqual(spec2, self.VacSpec)
+                        self.assertEqual(State1_occs[samp, self.sp_ch[spec1], site], 1)
+                        self.assertEqual(np.sum(State1_occs[samp, :, site]), 1)
+
+                        self.assertEqual(State2_occs[samp, self.sp_ch[spec2], site], 1)
+                        self.assertEqual(np.sum(State2_occs[samp, :, site]), 1)
+
+                NNR = np.dot(np.linalg.inv(self.superCell.crys.lattice), self.dxJumps[jSelect]).astype(int)
+                # Check that the displacements for each jump are okay
+                self.assertTrue(np.allclose(np.dot(self.superCell.crys.lattice, NNR), self.dxJumps[jSelect]))
+                NNRSite = self.superCell.index(NNR, (0, 0))[0]
+
+                NNsiteVac = self.NNsiteList[jSelect + 1, 0]
+                # check that NN sequence matches
+                self.assertTrue(np.all(NNRSite == NNsiteVac))
+
+                # check the rate
+                self.assertTrue(np.math.isclose(rates[samp], self.rateList[samp]))
+
+                # check the displacement
+                for site in range(self.state1List.shape[1]):
+                    if site == NNsiteVac:
+                        self.assertTrue(np.allclose(disps[samp, :, site], -self.dxJumps[jSelect] * self.a0))
+
+        print("Done single jump data construction test")
 

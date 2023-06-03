@@ -197,10 +197,12 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
                 jInd = JumpSelects[samp]
                 specJump = state1List[samp, NNsvac[jInd]]
                 for siteInd in range(Nsites):
+                    if siteInd == NNsvac[jInd]:  # whichever site jumps, record it. We'll extract it later if it is the
+                                                 # species of interest using the Onsites tensor.
+                        dispData[samp, :, siteInd] -= dispList[samp, 0, :]
                     for dim in range(Ndim):
                         GatherTensor_tracers[samp, dim, siteInd] = source2Dest[jInd, siteInd]
-                        if siteInd == NNsvac[jInd]:
-                            dispData[samp, dim, siteInd] += dispList[samp, specJump, :]
+
             else:
                 dispData[samp, 0, :] = dispList[samp, VacSpec, :]
                 dispData[samp, 1, :] = sum(dispList[samp, spec, :] for spec in specsToTrain)
@@ -348,29 +350,40 @@ def train_batch_collective(gNet, batch, end, state1Batch, state2Batch, rateBatch
 
 
 # function to train tracer transport coefficients for a single batch.
-def train_batch_tracer(gNet, state1Batch, state2Batch, rateBatch, dispBatch, GatherTensorBatch,
+def train_batch_tracer(gNet, batch, end, state1Batch, state2Batch, rateBatch, dispBatch, GatherTensorBatch,
                        SpecsToTrain, VacSpec, On_st1, L0=1.0):
 
     if VacSpec in SpecsToTrain:
-        raise RuntimeError("Tracer training type is not meant for single vacancy.")
+        raise NotImplementedError("Tracer training type is not meant for single vacancy.")
 
-    else:
-        y1 = gNet(state1Batch)[:, 0, :, :]
-        y2 = gNet(state2Batch)[:, 0, :, :]
+    y1 = gNet(state1Batch)[:, 0, :, :]
+    y2 = gNet(state2Batch)[:, 0, :, :]
 
-        # rearrange y2 so that sites correspond to their original positions in the initial state.
-        y2 = pt.gather(y2, 2, GatherTensorBatch)
-        # y1 and y2 have shape (Nbatch, 3, Nsites)
+    # rearrange y2 so that sites correspond to their original positions in the initial state.
+    y2 = pt.gather(y2, 2, GatherTensorBatch)
+    # y1 and y2 have shape (Nbatch, 3, Nsites)
 
-        # dxMod = dispBatch + y2[:, :, GatherTensor_batch] - y1
-        # dxMod has shape (Nbatch, 3, Nsites)
+    dxMod = dispBatch + y2 - y1
+    # dxMod has shape (Nbatch, 3, Nsites)
 
-        # get the squared norms of the modified displacements
-        # dxModNorms = pt.norm(dxMod, dim=1)**2
-        # dxModNorms has shape (Nbatch, Nsites)
+    # get the squared norms of the modified displacements
+    dxModNorms = pt.norm(dxMod, dim=1)**2
+    # dxModNorms has shape (Nbatch, Nsites)
 
-        # get
-    pass
+    # rateBatch has shape (Nbatch,)
+    # unsqueeze the rates
+    rateBatch = rateBatch.unsqueeze(1).to(device)
+
+    # Now do a broadcasted multiple and divide by 6 to get average of the trace
+    diff_sites_all = rateBatch * dxModNorms / 6.0
+    # diff_sites has shape (Nbatch, Nsites)
+
+    # sum the contributions by each site occupied by the species of interest in the initial state
+    On_st1Batch = On_st1[batch: end]
+    diff_sum_sites = pt.sum(diff_sites_all * On_st1Batch, dim=1)
+    diff_batch_total = pt.sum(diff_sum_sites) / L0
+
+    return diff_batch_total, y1, y2
 
 
 """## Write the training loop"""
@@ -459,8 +472,8 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     # 7. Create optimizers, any additional tensors
     gNet.to(device)
     opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=decay)
-    y1BatchTest = np.zeros((batch_size, 3))
-    y2BatchTest = np.zeros((batch_size, 3))
+    y1BatchTest = None
+    y2BatchTest = None
 
     # 8. start the training loop
     print("Starting Training loop")
@@ -499,8 +512,9 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
 
             if tracers:
                 GatherTensorsBatch = GatherTensor_tracers[batch : end]
+
                 diff, y1, y2 = train_batch_tracer(gNet, batch, end, state1Batch, state2Batch, rateBatch, dispBatch,
-                                                  GatherTensorsBatch, On_st1, L0=L0)
+                                                  GatherTensorsBatch, SpecsToTrain, VacSpec, On_st1, L0=L0)
 
             else:
                 if Boundary_train:
@@ -514,10 +528,10 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
                            jProbs_st1_batch, jProbs_st2_batch, SpecsToTrain, VacSpec,
                            On_st1, On_st2, Boundary_train=Boundary_train, AddOnSites=AddOnSites, L0=L0)
 
-                # Need to fix things this point onward
-                if epoch == 0 and batch == 0:
-                    y1BatchTest[:, :] = y1.cpu().detach().numpy()
-                    y2BatchTest[:, :] = y2.cpu().detach().numpy()
+            # Need to fix things this point onward
+            if epoch == 0 and batch == 0:
+                y1BatchTest[:, :] = y1.cpu().detach().numpy().copy()
+                y2BatchTest[:, :] = y2.cpu().detach().numpy().copy()
 
             diff.backward()
             opt.step()
