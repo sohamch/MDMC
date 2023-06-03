@@ -174,8 +174,8 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
                     for siteInd in range(Nsites):
                         for dim in range(Ndim):
                             GatherTensor_tracers[Idx, dim, siteInd] = source2Dest[jInd, siteInd]
-                            if JumpSpec in specsToTrain:
-                                dispData[Idx, dim, siteInd] -= dxJumps[jInd] * a
+                            if siteInd == NNsvac[jInd]:
+                                dispData[Idx, dim, siteInd] = -dxJumps[jInd] * a
 
                 else:
                     dispData[Idx, 0, :] = dxJumps[jInd] * a
@@ -347,8 +347,8 @@ def train_batch_collective(gNet, state1Batch, state2Batch, rateBatch, dispBatch,
 
 
 # function to train tracer transport coefficients for a single batch.
-def train_batch_tracer(gNet, state1Batch, state2Batch, rateBatch, dispBatch,
-                       SpecsToTrain, VacSpec, On_st1Batch, On_st2Batch, L0=1.0):
+def train_batch_tracer(gNet, state1Batch, state2Batch, rateBatch, dispBatch, GatherTensorBatch,
+                       SpecsToTrain, VacSpec, On_st1Batch, L0=1.0):
 
     if SpecsToTrain == [VacSpec]:
         raise RuntimeError("Tracer training type is not meant for single vacancy.")
@@ -356,6 +356,7 @@ def train_batch_tracer(gNet, state1Batch, state2Batch, rateBatch, dispBatch,
     else:
         y1 = gNet(state1Batch)[:, 0, :, :]
         y2 = gNet(state2Batch)[:, 0, :, :]
+        y2 = pt.gather(y2, 2, GatherTensorBatch)
         # y1 and y2 have shape (Nbatch, 3, Nsites)
 
         # dxMod = dispBatch + y2[:, :, GatherTensor_batch] - y1
@@ -373,28 +374,41 @@ def train_batch_tracer(gNet, state1Batch, state2Batch, rateBatch, dispBatch,
 def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates, disps,
           jProbs_st1, jProbs_st2, SpecsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval, N_train,
           gNet, lRate=0.001, batch_size=128, scratch_if_no_init=True, DPr=False, Boundary_train=False, jumpSort=True,
-          AddOnSites=False, scaleL0=False, chkpt=True, randomize=False,
+          AddOnSites=False, scaleL0=False, chkpt=True, randomize=False, GatherTensor=None,
           tracers=False, decay=0.0005):
 
     if tracers and VacSpec in SpecsToTrain:
         raise NotImplementedError("Tracer training is only for non-vacancy species.")
 
     Ndim = disps.shape[2]
+
+    # 1. get the necessary data tensors
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim, tracers=tracers)
 
+    # 2. Some safety checks
     if not tracers:
         if SpecsToTrain == [VacSpec]:
             assert pt.allclose(dispData.cpu(), pt.tensor(disps[:, 0, :], dtype=pt.double))
         else:
             assert pt.allclose(dispData.cpu(), pt.tensor(disps[:, 1, :], dtype=pt.double))
 
+        assert GatherTensor is None
+        GatherTensor_tracers=None
+
     else:
         assert dispData.shape[0] == state1Data.shape[0]
         assert dispData.shape[1] == Ndim
         assert dispData.shape[2] == State2_Occs.shape[2]
 
-    # scale with L0 if indicated
+        # check gathering tensor
+        assert GatherTensor is not None
+        GatherTensor_tracers = pt.tensor(GatherTensor)
+        assert GatherTensor_tracers.shape[0] == state1Data.shape[0]
+        assert GatherTensor_tracers.shape[1] == Ndim
+        assert GatherTensor_tracers.shape[2] == State2_Occs.shape[2]
+
+    # 3. scale with L0 if indicated
     if scaleL0:
         L0 = pt.dot(rateData, pt.norm(dispData, dim=1)**2)/(6.0 * dispData.shape[0])
         L0 = L0.item()
@@ -403,19 +417,19 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     
     print("L0 : {}".format(L0))
 
+    # 4. Check if we want to do a training with the bounding states.
     if Boundary_train:
         assert gNet.net[-3].Psi.shape[0] == jProbs_st1.shape[1] == jProbs_st2.shape[1] 
         print("Boundary training indicated. Using jump probabilities.")
         jProbs_st1, jProbs_st2 = sort_jp(jProbs_st1[:N_train], jProbs_st2[:N_train], jumpSort)
 
-    N_batch = batch_size
-
+    # 5. convert to data parallel if needed. ToDo: move to DistributedDataParallel from DataParallel.
     if pt.cuda.device_count() > 1 and DPr:
         print("Running on Devices : {}".format(DeviceIDList))
         gNet = nn.DataParallel(gNet, device_ids=DeviceIDList)
 
+    # 6. Load saved networks if needed.
     try:
-        # strict=False to ignore the renamed buffer "JumpVecs" (renamed from JumpUnitVecs)
         # As long as the same crysdats are used, this will not change
         gNet.load_state_dict(pt.load(dirPath + "/ep_{1}.pt".format(T, start_ep), map_location="cpu"))
 
@@ -423,7 +437,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
             print("Training from scratch indicated (check option --Scratch), but saved initial network for epoch 0 found at", flush=True)
             print("save/load directory : {}".format(dirPath), flush=True)
             print("Terminating so as not to replace existing this pre-existing initial network.".format(dirPath), flush=True)
-            raise RuntimeError("Terminating out of caution to not replace existing epoch 0 network. Please check printed message for more details.")
+            raise RuntimeError("Terminating out of caution.")
 
         print("Starting from epoch {}".format(start_ep), flush=True)
 
@@ -433,17 +447,20 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
         else:
             raise FileNotFoundError("Required saved networks not found in {} at epoch {}".format(dirPath, start_ep))
 
-    print("Batch size : {}".format(N_batch))
+    print("Batch size : {}".format(batch_size))
 
-    gNet.to(device)
-    opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=decay)
-    print("Starting Training loop")
-
-    y1BatchTest = np.zeros((N_batch, 3))
-    y2BatchTest = np.zeros((N_batch, 3))
-
+    # 6. Check if we want to randomize the data at every epoch
     if randomize:
         print("Shuffling data at every epoch.")
+
+    # 7. Create optimizers, any additional tensors
+    gNet.to(device)
+    opt = pt.optim.Adam(gNet.parameters(), lr=lRate, weight_decay=decay)
+    y1BatchTest = np.zeros((batch_size, 3))
+    y2BatchTest = np.zeros((batch_size, 3))
+
+    # 8. start the training loop
+    print("Starting Training loop")
 
     for epoch in tqdm(range(start_ep, end_ep + 1), position=0, leave=True):
         
@@ -457,17 +474,19 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
             state2Data = state2Data[randPerm]
             rateData = rateData[randPerm]
             dispData = dispData[randPerm]
+
+            if tracers:
+                GatherTensor_tracers = GatherTensor_tracers[randPerm]
             if Boundary_train:
                 jProbs_st1 = jProbs_st1[randPerm]
                 jProbs_st2 = jProbs_st2[randPerm]
-
             if SpecsToTrain != [VacSpec]:
                 On_st1 = On_st1[randPerm]
                 On_st2 = On_st2[randPerm]
 
-        for batch in range(0, N_train, N_batch):
+        for batch in range(0, N_train, batch_size):
             opt.zero_grad()
-            end = min(batch + N_batch, N_train)
+            end = min(batch + batch_size, N_train)
 
             state1Batch = state1Data[batch: end].double().to(device)
             state2Batch = state2Data[batch: end].double().to(device)
@@ -475,8 +494,12 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
             rateBatch = rateData[batch: end]
             dispBatch = dispData[batch: end]
 
+            On_st1Batch = On_st1[batch: end]
+
             if tracers:
-                diff, y1, y2 = train_batch_tracer(gNet, batch, end, state1Batch, state2Batch, rateBatch, dispBatch)
+                GatherTensorsBatch = GatherTensor_tracers[batch : end]
+                diff, y1, y2 = train_batch_tracer(gNet, batch, end, state1Batch, state2Batch, rateBatch, dispBatch,
+                                                  GatherTensorsBatch, On_st1Batch, L0=L0)
 
             else:
                 if Boundary_train:
@@ -486,7 +509,6 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
                     jProbs_st1_batch = None
                     jProbs_st2_batch = None
 
-                On_st1Batch = On_st1[batch: end]
                 On_st2Batch = On_st2[batch: end]
 
                 diff, y1, y2 = train_batch_collective(gNet, state1Batch, state2Batch, rateBatch, dispBatch,
@@ -823,7 +845,7 @@ def main(args):
         State1_occs, State2_occs, rateData, dispData, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(state1List, state2List, dispList, specsToTrain, args.VacSpec, rateList, JumpSelects,
                             AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, args.N_train, AllJumps=args.AllJumps,
-                            mode=args.Mode)
+                            mode=args.Mode, tracers=args.Tracer)
         print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
 
         Train(args.Tdata, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2,
@@ -831,7 +853,8 @@ def main(args):
               args.Start_epoch, args.End_epoch, args.Interval, N_train_jumps, gNet,
               lRate=args.Learning_rate, batch_size=args.Batch_size, scratch_if_no_init=args.Scratch,
               DPr=args.DatPar, Boundary_train=args.BoundTrain, jumpSort=args.JumpSort, AddOnSites=args.AddOnSitesJPINN,
-              scaleL0=args.ScaleL0, randomize=args.Shuffle, decay=args.Decay)
+              scaleL0=args.ScaleL0, randomize=args.Shuffle, GatherTensor=GatherTensor_tracers,
+              tracers=args.Tracers, decay=args.Decay)
 
     elif args.Mode == "eval":
         State1_occs, State2_occs, rateData, dispData, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
