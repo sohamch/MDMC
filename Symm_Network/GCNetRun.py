@@ -156,7 +156,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
             source = JumpNewSites[jInd, destination]
             if destination == 0:
                 assert source == 0
-            source2Dest[source] = destination
+            source2Dest[jInd, source] = destination
 
     if AllJumps:
         State1_occs, State2_occs, OnSites_state1, OnSites_state2, sp_ch =\
