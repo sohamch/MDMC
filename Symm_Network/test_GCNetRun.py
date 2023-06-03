@@ -196,10 +196,10 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
 
         specsToTrain=[VacSpec]
 
-        State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+        State1_occs, State2_occs, rates, disps, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                            self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_train,
-                            AllJumps=AllJumps, mode="train")
+                            self.JumpSelects, self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps,
+                            self.NNsiteList, N_train, tracers=False, AllJumps=AllJumps, mode="train")
 
         state1Data, state2Data, dispData, rateData, On_st1, On_st2 = \
             makeDataTensors(State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2,
@@ -842,7 +842,7 @@ class TestGCNetRun_binary_collective(TestGCNetRun_HEA_collective):
         self.T = 1073
 
         self.state1List, self.state2List, self.dispList, self.rateList, self.AllJumpRates_st1, \
-        self.AllJumpRates_st2 = \
+        self.AllJumpRates_st2, self.JumpSelects = \
             Load_Data(Data2.format(self.T))
 
         self.GpermNNIdx, self.NNsiteList, self.JumpNewSites, self.dxJumps = Load_crysDats(CrysDatPath)
