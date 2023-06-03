@@ -17,7 +17,7 @@ from GCNetRun import Train
 from SymmLayers import GCNet
 
 
-class TestGCNetRun(unittest.TestCase):
+class TestGCNetRun_HEA_collective(unittest.TestCase):
     def setUp(self):
         self.T = 1073
 
@@ -780,7 +780,7 @@ class TestGCNetRun(unittest.TestCase):
 
 
 # In the previous test, the vacancy had the lowest species. Now we make it the largest like in our lattice gas data
-class TestGCNetRun_binary_data(TestGCNetRun):
+class TestGCNetRun_binary_collective(TestGCNetRun_HEA_collective):
     def setUp(self):
         self.T = 1073
 
