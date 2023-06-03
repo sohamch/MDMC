@@ -326,10 +326,9 @@ def sort_jp(jProbs_st1, jProbs_st2, jumpSort):
 
 
 # function to train collective transport coefficients for a single batch.
-def train_batch_collective(gNet, state1Batch, state2Batch, rateBatch, dispBatch,
+def train_batch_collective(gNet, batch, end, state1Batch, state2Batch, rateBatch, dispBatch,
                            jProbs_st1_batch, jProbs_st2_batch, SpecsToTrain, VacSpec,
-                           On_st1Batch, On_st2Batch,
-                           Boundary_train=False, AddOnSites=False, L0=1.0):
+                           On_st1, On_st2, Boundary_train=False, AddOnSites=False, L0=1.0):
 
     y1 = gNet(state1Batch)
     y2 = gNet(state2Batch)
@@ -338,6 +337,8 @@ def train_batch_collective(gNet, state1Batch, state2Batch, rateBatch, dispBatch,
         y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
 
     else:
+        On_st1Batch = On_st1[batch: end]
+        On_st2Batch = On_st2[batch: end]
         y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch,
                                Boundary_train, AddOnSites)
 
@@ -348,14 +349,16 @@ def train_batch_collective(gNet, state1Batch, state2Batch, rateBatch, dispBatch,
 
 # function to train tracer transport coefficients for a single batch.
 def train_batch_tracer(gNet, state1Batch, state2Batch, rateBatch, dispBatch, GatherTensorBatch,
-                       SpecsToTrain, VacSpec, On_st1Batch, L0=1.0):
+                       SpecsToTrain, VacSpec, On_st1, L0=1.0):
 
-    if SpecsToTrain == [VacSpec]:
+    if VacSpec in SpecsToTrain:
         raise RuntimeError("Tracer training type is not meant for single vacancy.")
 
     else:
         y1 = gNet(state1Batch)[:, 0, :, :]
         y2 = gNet(state2Batch)[:, 0, :, :]
+
+        # rearrange y2 so that sites correspond to their original positions in the initial state.
         y2 = pt.gather(y2, 2, GatherTensorBatch)
         # y1 and y2 have shape (Nbatch, 3, Nsites)
 
@@ -494,12 +497,10 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
             rateBatch = rateData[batch: end]
             dispBatch = dispData[batch: end]
 
-            On_st1Batch = On_st1[batch: end]
-
             if tracers:
                 GatherTensorsBatch = GatherTensor_tracers[batch : end]
                 diff, y1, y2 = train_batch_tracer(gNet, batch, end, state1Batch, state2Batch, rateBatch, dispBatch,
-                                                  GatherTensorsBatch, On_st1Batch, L0=L0)
+                                                  GatherTensorsBatch, On_st1, L0=L0)
 
             else:
                 if Boundary_train:
@@ -509,11 +510,9 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
                     jProbs_st1_batch = None
                     jProbs_st2_batch = None
 
-                On_st2Batch = On_st2[batch: end]
-
-                diff, y1, y2 = train_batch_collective(gNet, state1Batch, state2Batch, rateBatch, dispBatch,
+                diff, y1, y2 = train_batch_collective(gNet, batch, end, state1Batch, state2Batch, rateBatch, dispBatch,
                            jProbs_st1_batch, jProbs_st2_batch, SpecsToTrain, VacSpec,
-                           On_st1Batch, On_st2Batch, Boundary_train=Boundary_train, AddOnSites=AddOnSites, L0=L0)
+                           On_st1, On_st2, Boundary_train=Boundary_train, AddOnSites=AddOnSites, L0=L0)
 
                 # Need to fix things this point onward
                 if epoch == 0 and batch == 0:

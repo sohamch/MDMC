@@ -481,6 +481,7 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
 
         # Now for each sample, compute the y explicitly and match
         for samp in tqdm(range(N_check * self.z)):
+            # The occupancies were checked in test_makeComputeData_AllJumps
             state1Input = pt.tensor(State1_occs[samp:samp + 1], dtype=pt.double)
             state2Input = pt.tensor(State2_occs[samp:samp + 1], dtype=pt.double)
 
@@ -618,7 +619,7 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         # Get the original network
         gNet2.load_state_dict(sd)
 
-        # Compute vectors with only vacancy sites
+        # Compute vectors with only vacancy sites (AddOnSites=False)
         y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
                        jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
                        N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False,
