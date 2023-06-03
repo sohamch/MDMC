@@ -22,7 +22,7 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         self.T = 1073
 
         self.state1List, self.state2List, self.dispList, self.rateList, self.AllJumpRates_st1,\
-        self.AllJumpRates_st2 =\
+        self.AllJumpRates_st2, self.JumpSelects =\
             Load_Data(Data1.format(self.T))
 
         self.GpermNNIdx, self.NNsiteList, self.JumpNewSites, self.dxJumps = Load_crysDats(CrysDatPath)
@@ -71,10 +71,12 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
 
         for m in ["train", "all"]:
             print("testing mode : {}".format(m))
-            State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+            State1_occs, State2_occs, rates, disps, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
                 makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                                self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_train,
-                                AllJumps=AllJumps, mode=m)
+                                self.JumpSelects, self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps,
+                                self.NNsiteList, N_train, tracers=False, AllJumps=AllJumps, mode=m)
+
+            self.assertTrue(GatherTensor_tracers is None) # check that no gathering tracer is built for collective training.
 
             if m == "all":
                 self.assertTrue(State1_occs.shape[0] == self.state1List.shape[0] == State2_occs.shape[0])
@@ -93,14 +95,19 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
                     if site == 0:
                         self.assertTrue(np.all(State1_occs[samp, :, site] == 0))
                         self.assertTrue(np.all(State2_occs[samp, :, site] == 0))
+                        self.assertTrue(np.all(OnSites_state1[samp, site] == 0))
                     else:
                         spec1 = self.state1List[samp, site]
                         self.assertEqual(State1_occs[samp, self.sp_ch[spec1], site], 1)
                         self.assertEqual(np.sum(State1_occs[samp, :, site]), 1)
+                        if spec1 == self.specCheck:
+                            self.assertTrue(np.all(OnSites_state1[samp, site] == 1))
 
                         spec2 = self.state2List[samp, site]
                         self.assertEqual(State2_occs[samp, self.sp_ch[spec2], site], 1)
                         self.assertEqual(np.sum(State2_occs[samp, :, site]), 1)
+                        if spec2 == self.specCheck:
+                            self.assertTrue(np.all(OnSites_state2[samp, site] == 1))
 
                 # check the displacements
                 jSelect = None
@@ -168,10 +175,13 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         VacSpec = self.VacSpec
         N_train = 1000
         AllJumps = False
-        State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+
+        State1_occs, State2_occs, rates, disps, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                            self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_train,
-                            AllJumps=AllJumps, mode="train")
+                            self.JumpSelects, self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps,
+                            self.NNsiteList, N_train, tracers=False, AllJumps=AllJumps, mode="train")
+
+        self.assertTrue(GatherTensor_tracers is None)
 
         state1Data, state2Data, dispData, rateData, On_st1, On_st2 = \
             makeDataTensors(State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2,
@@ -208,10 +218,12 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         VacSpec = self.VacSpec
         N_check = 50
         AllJumps = False
-        State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+        State1_occs, State2_occs, rates, disps, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                            self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
-                            AllJumps=AllJumps, mode="train")
+                            self.JumpSelects, self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps,
+                            self.NNsiteList, N_check, tracers=False, AllJumps=AllJumps, mode="train")
+
+        self.assertTrue(GatherTensor_tracers is None)
 
         # Everything related to JPINN will be None
         jProbs_st1 = None
@@ -275,10 +287,12 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         specsToTrain = [VacSpec]
         N_check = 50
         AllJumps = False
-        State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+        State1_occs, State2_occs, rates, disps, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                            self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
-                            AllJumps=AllJumps, mode="train")
+                            self.JumpSelects, self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps,
+                            self.NNsiteList, N_check, tracers=False, AllJumps=AllJumps, mode="train")
+
+        self.assertTrue(GatherTensor_tracers is None)
 
         # Everything related to JPINN will be None
         jProbs_st1 = None
@@ -338,15 +352,22 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         specsToTrain = [specCheck]
         VacSpec = self.VacSpec
         N_check = 200
-        N_train = 1000
+        N_train = 500
         AllJumps = True
 
         for m in ["train", "all"]:
             print("testing mode : {}".format(m))
-            State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+            # State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+            #     makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
+            #                     self.JumpSelects, self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps,
+            #                     self.NNsiteList, N_train, tracers=False, AllJumps=AllJumps, mode=m)
+
+            State1_occs, State2_occs, rates, disps, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
                 makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                                self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_train,
-                                AllJumps=AllJumps, mode=m)
+                                self.JumpSelects, self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps,
+                                self.NNsiteList, N_train, tracers=False, AllJumps=AllJumps, mode=m)
+
+            self.assertTrue(GatherTensor_tracers is None)  # check that no gathering tracer is built for collective training.
 
             if m == "all":
                 self.assertTrue(State1_occs.shape[0] == self.state1List.shape[0] * self.z == State2_occs.shape[0])
@@ -385,9 +406,13 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
                             self.assertNotEqual(spec2, self.VacSpec)
                             self.assertEqual(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, self.sp_ch[spec1], site], 1)
                             self.assertEqual(np.sum(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site]), 1)
+                            if spec1 == self.specCheck:
+                                self.assertEqual(np.sum(OnSites_state1[stateInd * self.dxJumps.shape[0] + jInd, site]), 1)
 
                             self.assertEqual(State2_occs[stateInd * self.dxJumps.shape[0] + jInd, self.sp_ch[spec2], site], 1)
                             self.assertEqual(np.sum(State2_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site]), 1)
+                            if spec2 == self.specCheck:
+                                self.assertEqual(np.sum(OnSites_state2[stateInd * self.dxJumps.shape[0] + jInd, site]), 1)
 
                     # check the displacements
                     NNR = np.dot(np.linalg.inv(self.superCell.crys.lattice), self.dxJumps[jInd]).astype(int) % self.N_units
@@ -409,10 +434,18 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         VacSpec = self.VacSpec
         N_check = 20
         AllJumps = True
-        State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+
+        State1_occs, State2_occs, rates, disps, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                            self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
-                            AllJumps=AllJumps, mode="train")
+                            self.JumpSelects, self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps,
+                            self.NNsiteList, N_check, tracers=False, AllJumps=AllJumps, mode="train")
+
+        self.assertTrue(GatherTensor_tracers is None)  # check that no gathering tracer is built for collective training.
+
+        # State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+        #     makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
+        #                     self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
+        #                     AllJumps=AllJumps, mode="train")
 
         # Everything related to JPINN will be None
         jProbs_st1 = None
@@ -475,10 +508,17 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         specsToTrain = [VacSpec]
         N_check = 20
         AllJumps = True
-        State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+
+        State1_occs, State2_occs, rates, disps, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                            self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
-                            AllJumps=AllJumps, mode="train")
+                            self.JumpSelects, self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps,
+                            self.NNsiteList, N_check, tracers=False, AllJumps=AllJumps, mode="train")
+
+        self.assertTrue(GatherTensor_tracers is None)  # check that no gathering tracer is built for collective training.
+        # State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+        #     makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
+        #                     self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
+        #                     AllJumps=AllJumps, mode="train")
 
         for samp in range(N_check):
             for j in range(self.z):
@@ -542,10 +582,18 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         VacSpec = self.VacSpec
         N_check = 50
         AllJumps = False
-        State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+
+        State1_occs, State2_occs, rates, disps, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                            self.AllJumpRates_st1,  self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
-                            AllJumps=AllJumps, mode="train")
+                            self.JumpSelects, self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps,
+                            self.NNsiteList, N_check, tracers=False, AllJumps=AllJumps, mode="train")
+
+        self.assertTrue(GatherTensor_tracers is None)
+
+        # State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+        #     makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
+        #                     self.AllJumpRates_st1,  self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
+        #                     AllJumps=AllJumps, mode="train")
 
         # Everything related to JPINN will be None
         jProbs_st1 = self.AllJumpRates_st1 / np.sum(self.AllJumpRates_st1, axis=1).reshape(-1, 1)
@@ -656,10 +704,18 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         VacSpec = self.VacSpec
         N_check = 50
         AllJumps = False
-        State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+
+        State1_occs, State2_occs, rates, disps, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-                            self.AllJumpRates_st1,  self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
-                            AllJumps=AllJumps, mode="train")
+                            self.JumpSelects, self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps,
+                            self.NNsiteList, N_check, tracers=False, AllJumps=AllJumps, mode="train")
+
+        self.assertTrue(GatherTensor_tracers is None)
+
+        # State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
+        #     makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
+        #                     self.AllJumpRates_st1,  self.JumpNewSites, self.dxJumps, self.NNsiteList, N_check,
+        #                     AllJumps=AllJumps, mode="train")
 
         # Everything related to JPINN will be None
         jProbs_st1 = self.AllJumpRates_st1 / np.sum(self.AllJumpRates_st1, axis=1).reshape(-1, 1)
@@ -684,7 +740,7 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         # Get the original network
         gNet2.load_state_dict(sd)
 
-        # Compute vectors with only vacancy sites
+        # Compute vectors with vacancy sites and other occupied sites (AddOnsites = True).
         y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
                        jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
                        N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False,
