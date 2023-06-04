@@ -613,8 +613,7 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                         GatherTensorsBatch = GatherTensor_tracers[batch: end]
 
                         diff_batch, _, _ = train_batch_tracer(gNet, batch, end, state1Batch, state2Batch, rateBatch,
-                                                          dispBatch,
-                                                          GatherTensorsBatch, SpecsToTrain, VacSpec, On_st1)
+                                                          dispBatch, GatherTensorsBatch, SpecsToTrain, VacSpec, On_st1)
 
                     else:
                         if Boundary_train:
