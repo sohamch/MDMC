@@ -892,12 +892,24 @@ def main(args):
         train_diff, valid_diff = Evaluate(args.TNet, dirPath, State1_occs, State2_occs,
                 OnSites_state1, OnSites_state2, rateData, dispData,
                 specsToTrain, jProbs_st1, jProbs_st2, sp_ch, args.VacSpec, args.Start_epoch, args.End_epoch,
-                args.Interval, N_train_jumps, gNet, batch_size=args.Batch_size, Boundary_train=args.BoundTrain,
-                DPr=args.DatPar, jumpSort=args.JumpSort, AddOnSites=args.AddOnSitesJPINN)
-        np.save("tr_{0}_{1}_{2}_n{3}c{4}_all_{5}.npy".format(direcString, args.Tdata, args.TNet, args.Nlayers, args.Nchannels,
-                                                             int(args.AllJumps)), train_diff/(1.0*args.N_train))
-        np.save("val_{0}_{1}_{2}_n{3}c{4}_all_{5}.npy".format(direcString, args.Tdata, args.TNet, args.Nlayers, args.Nchannels,
-                                                              int(args.AllJumps)), valid_diff/(1.0*args.N_train))
+                args.Interval, N_train_jumps, gNet, batch_size=args.Batch_size, tracers=args.Tracers,
+                GatherTensor=GatherTensor_tracers, Boundary_train=args.BoundTrain, DPr=args.DatPar,
+                jumpSort=args.JumpSort, AddOnSites=args.AddOnSitesJPINN)
+
+        if not args.Tracers:
+            np.save("tr_{0}_{1}_{2}_n{3}c{4}_all_{5}.npy".format(direcString, args.Tdata, args.TNet, args.Nlayers, args.Nchannels,
+                                                                 int(args.AllJumps)), train_diff/(1.0*args.N_train))
+            np.save("val_{0}_{1}_{2}_n{3}c{4}_all_{5}.npy".format(direcString, args.Tdata, args.TNet, args.Nlayers, args.Nchannels,
+                                                                  int(args.AllJumps)), valid_diff/(1.0*args.N_train))
+
+        else:
+            np.save("tr_{0}_{1}_{2}_n{3}c{4}_all_{5}_tracer.npy".format(direcString, args.Tdata, args.TNet, args.Nlayers,
+                                                                 args.Nchannels,
+                                                                 int(args.AllJumps)), train_diff / (1.0 * args.N_train))
+            np.save("val_{0}_{1}_{2}_n{3}c{4}_all_{5}_tracer.npy".format(direcString, args.Tdata, args.TNet, args.Nlayers,
+                                                                  args.Nchannels,
+                                                                  int(args.AllJumps)),
+                    valid_diff / (1.0 * args.N_train))
 
     elif args.Mode == "getY":
         if args.AllJumps:
