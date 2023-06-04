@@ -172,10 +172,10 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
                 # Now make the gather tensor
                 if tracers:
                     for siteInd in range(Nsites):
+                        if siteInd == NNsvac[jInd]:
+                            dispData[Idx, :, siteInd] = -dxJumps[jInd] * a
                         for dim in range(Ndim):
                             GatherTensor_tracers[Idx, dim, siteInd] = source2Dest[jInd, siteInd]
-                            if siteInd == NNsvac[jInd]:
-                                dispData[Idx, dim, siteInd] = -dxJumps[jInd] * a
 
                 else:
                     dispData[Idx, 0, :] = dxJumps[jInd] * a
@@ -419,10 +419,10 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
 
         # check gathering tensor
         assert GatherTensor is not None
-        GatherTensor_tracers = pt.tensor(GatherTensor)
-        assert GatherTensor_tracers.shape[0] == state1Data.shape[0]
-        assert GatherTensor_tracers.shape[1] == Ndim
-        assert GatherTensor_tracers.shape[2] == State2_Occs.shape[2]
+        assert GatherTensor.shape[0] == state1Data.shape[0]
+        assert GatherTensor.shape[1] == Ndim
+        assert GatherTensor.shape[2] == State2_Occs.shape[2]
+        GatherTensor_tracers = pt.tensor(GatherTensor).long().to(device)
 
     # 3. scale with L0 if indicated
     if scaleL0:

@@ -95,19 +95,24 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
                     if site == 0:
                         self.assertTrue(np.all(State1_occs[samp, :, site] == 0))
                         self.assertTrue(np.all(State2_occs[samp, :, site] == 0))
-                        self.assertTrue(np.all(OnSites_state1[samp, site] == 0))
+                        self.assertTrue(OnSites_state1[samp, site] == 0)
+                        self.assertTrue(OnSites_state2[samp, site] == 0)
                     else:
                         spec1 = self.state1List[samp, site]
                         self.assertEqual(State1_occs[samp, self.sp_ch[spec1], site], 1)
                         self.assertEqual(np.sum(State1_occs[samp, :, site]), 1)
                         if spec1 == self.specCheck:
-                            self.assertTrue(np.all(OnSites_state1[samp, site] == 1))
+                            self.assertTrue(OnSites_state1[samp, site] == 1)
+                        else:
+                            self.assertTrue(OnSites_state1[samp, site] == 0)
 
                         spec2 = self.state2List[samp, site]
                         self.assertEqual(State2_occs[samp, self.sp_ch[spec2], site], 1)
                         self.assertEqual(np.sum(State2_occs[samp, :, site]), 1)
                         if spec2 == self.specCheck:
-                            self.assertTrue(np.all(OnSites_state2[samp, site] == 1))
+                            self.assertTrue(OnSites_state2[samp, site] == 1)
+                        else:
+                            self.assertTrue(OnSites_state2[samp, site] == 0)
 
                 # check the displacements
                 jSelect = None
@@ -210,6 +215,7 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
 
         self.assertTrue(pt.allclose(rateData, pt.tensor(rates)))
 
+        print(dispData.shape, disps.shape)
         self.assertTrue(pt.allclose(dispData, pt.tensor(disps[:, 0, :])))
 
     def test_Train_Batch_SpNN_1Jump(self):
@@ -401,18 +407,24 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
                             self.assertEqual(spec2, self.VacSpec)
                             self.assertTrue(np.all(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site] == 0))
                             self.assertTrue(np.all(State2_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site] == 0))
+                            self.assertEqual(OnSites_state1[stateInd * self.dxJumps.shape[0] + jInd, site], 0)
+                            self.assertEqual(OnSites_state2[stateInd * self.dxJumps.shape[0] + jInd, site], 0)
 
                         else:
                             self.assertNotEqual(spec2, self.VacSpec)
                             self.assertEqual(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, self.sp_ch[spec1], site], 1)
                             self.assertEqual(np.sum(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site]), 1)
                             if spec1 == self.specCheck:
-                                self.assertEqual(np.sum(OnSites_state1[stateInd * self.dxJumps.shape[0] + jInd, site]), 1)
+                                self.assertEqual(OnSites_state1[stateInd * self.dxJumps.shape[0] + jInd, site], 1)
+                            else:
+                                self.assertEqual(OnSites_state1[stateInd * self.dxJumps.shape[0] + jInd, site], 0)
 
                             self.assertEqual(State2_occs[stateInd * self.dxJumps.shape[0] + jInd, self.sp_ch[spec2], site], 1)
                             self.assertEqual(np.sum(State2_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site]), 1)
                             if spec2 == self.specCheck:
-                                self.assertEqual(np.sum(OnSites_state2[stateInd * self.dxJumps.shape[0] + jInd, site]), 1)
+                                self.assertEqual(OnSites_state2[stateInd * self.dxJumps.shape[0] + jInd, site], 1)
+                            else:
+                                self.assertEqual(OnSites_state2[stateInd * self.dxJumps.shape[0] + jInd, site], 0)
 
                     # check the displacements
                     NNR = np.dot(np.linalg.inv(self.superCell.crys.lattice), self.dxJumps[jInd]).astype(int) % self.N_units
@@ -930,7 +942,7 @@ class TestGCNetRun_HEA_tracers(unittest.TestCase):
         specsToTrain = [specCheck]
         VacSpec = self.VacSpec
         N_check = 200
-        N_train = 1000
+        N_train = 500
         AllJumps = False
 
         for m in ["train", "all"]:
@@ -946,12 +958,14 @@ class TestGCNetRun_HEA_tracers(unittest.TestCase):
                 self.assertTrue(State1_occs.shape[0] == self.state1List.shape[0] == State2_occs.shape[0])
                 self.assertTrue(rates.shape[0] == self.state1List.shape[0] == disps.shape[0])
                 self.assertTrue(OnSites_state1.shape[0] == self.state1List.shape[0] == OnSites_state2.shape[0])
+                self.assertTrue(GatherTensor_tracers.shape[0] == self.state1List.shape[0])
                 sampsCheck = np.random.randint(0, State1_occs.shape[0], N_check)
 
             else:
                 self.assertTrue(State1_occs.shape[0] == N_train == State2_occs.shape[0])
                 self.assertTrue(rates.shape[0] == N_train == disps.shape[0])
                 self.assertTrue(OnSites_state1.shape[0] == N_train == OnSites_state2.shape[0])
+                self.assertTrue(GatherTensor_tracers.shape[0] == N_train)
                 sampsCheck = np.random.randint(0, N_train, N_check)
 
             for samp in tqdm(sampsCheck, position=0, leave=True):
@@ -959,14 +973,14 @@ class TestGCNetRun_HEA_tracers(unittest.TestCase):
                     if site == 0:
                         self.assertTrue(np.all(State1_occs[samp, :, site] == 0))
                         self.assertTrue(np.all(State2_occs[samp, :, site] == 0))
-                        self.assertTrue(np.all(OnSites_state1[samp, site] == 0))
+                        self.assertTrue(OnSites_state1[samp, site] == 0)
                         self.assertTrue(np.all(GatherTensor_tracers[samp, :, site] == 0))
                     else:
                         spec1 = self.state1List[samp, site]
                         self.assertEqual(State1_occs[samp, self.sp_ch[spec1], site], 1)
                         self.assertEqual(np.sum(State1_occs[samp, :, site]), 1)
                         if spec1 == self.specCheck:
-                            self.assertTrue(np.all(OnSites_state1[samp, site] == 1))
+                            self.assertTrue(OnSites_state1[samp, site] == 1)
 
                         spec2 = self.state2List[samp, site]
                         self.assertEqual(State2_occs[samp, self.sp_ch[spec2], site], 1)
@@ -988,7 +1002,7 @@ class TestGCNetRun_HEA_tracers(unittest.TestCase):
                     if np.all(state2_try == self.state2List[samp]):
                         jSelect = jInd
                         count += 1
-                self.assertEqual(count, 1) # there should be exactly one match
+                self.assertEqual(count, 1)  # there should be exactly one match
 
                 # Check occupancies using supercell
                 state1 = self.state1List[samp]
@@ -1030,10 +1044,136 @@ class TestGCNetRun_HEA_tracers(unittest.TestCase):
                 # check the rate
                 self.assertTrue(np.math.isclose(rates[samp], self.rateList[samp]))
 
-                # check the displacement
+                # check the displacement - only the jumping site will move
                 for site in range(self.state1List.shape[1]):
                     if site == NNsiteVac:
+                        self.assertTrue(np.allclose(disps[samp, :, site], -self.dxJumps[jSelect] * self.a0))
+                    else:
                         self.assertTrue(np.allclose(disps[samp, :, site], -self.dxJumps[jSelect] * self.a0))
 
         print("Done single jump data construction test")
 
+    def test_makeComputeData_AllJumps(self):
+        specCheck = self.specCheck
+        specsToTrain = [specCheck]
+        VacSpec = self.VacSpec
+        N_check = 200
+        N_train = 500
+        AllJumps = True
+
+        for m in ["train", "all"]:
+            print("testing mode : {}".format(m))
+            State1_occs, State2_occs, rates, disps, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
+                makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
+                                self.JumpSelects, self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps,
+                                self.NNsiteList, N_train, tracers=True, AllJumps=AllJumps, mode=m)
+
+            self.assertTrue(GatherTensor_tracers is not None)  # check that no gathering tracer is built for collective training.
+
+            if m == "all":
+                self.assertTrue(State1_occs.shape[0] == self.state1List.shape[0] * self.z == State2_occs.shape[0])
+                self.assertTrue(rates.shape[0] == self.state1List.shape[0] * self.z == disps.shape[0])
+                self.assertTrue(OnSites_state1.shape[0] == self.state1List.shape[0] * self.z == OnSites_state2.shape[0])
+                self.assertTrue(GatherTensor_tracers.shape[0] == self.state1List.shape[0] * self.z)
+                sampsCheck = np.random.randint(0, self.state1List.shape[0], N_check)
+
+            else:
+                self.assertTrue(State1_occs.shape[0] == N_train * self.z == State2_occs.shape[0])
+                self.assertTrue(rates.shape[0] == N_train * self.z == disps.shape[0])
+                self.assertTrue(OnSites_state1.shape[0] == N_train * self.z == OnSites_state2.shape[0])
+                self.assertTrue(GatherTensor_tracers.shape[0] == N_train * self.z)
+                sampsCheck = np.random.randint(0, N_train, N_check)
+
+            for stateInd in tqdm(sampsCheck, position=0, leave=True):
+                state1 = self.state1List[stateInd]
+                for jInd in range(self.z):
+                    state2 = state1.copy()
+                    NNsiteVac = self.NNsiteList[jInd + 1, 0]
+                    _, RsiteVacNN = self.superCell.ciR(NNsiteVac)
+                    state2[0] = state2[NNsiteVac]
+                    state2[NNsiteVac] = self.VacSpec
+
+                    for site in range(self.state1List.shape[1]):
+                        _, Rsite = self.superCell.ciR(site)
+                        RsiteNew = (Rsite + RsiteVacNN) % self.N_units
+                        siteNew, _ = self.superCell.index(RsiteNew, (0,0))
+                        spec1 = state1[site]
+                        spec2 = state2[siteNew]
+
+                        if site == 0:
+                            self.assertEqual(spec2, self.VacSpec)
+                            self.assertTrue(np.all(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site] == 0))
+                            self.assertTrue(np.all(State2_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site] == 0))
+                            self.assertEqual(OnSites_state1[stateInd * self.dxJumps.shape[0] + jInd, site], 0)
+                            self.assertEqual(OnSites_state2[stateInd * self.dxJumps.shape[0] + jInd, site], 0)
+                            self.assertTrue(np.all(GatherTensor_tracers[stateInd * self.dxJumps.shape[0] + jInd, :, site] == 0))
+
+                        else:
+                            self.assertNotEqual(spec2, self.VacSpec)
+                            self.assertEqual(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, self.sp_ch[spec1], site], 1)
+                            self.assertEqual(np.sum(State1_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site]), 1)
+                            if spec1 == self.specCheck:
+                                self.assertEqual(OnSites_state1[stateInd * self.dxJumps.shape[0] + jInd, site], 1)
+                            else:
+                                self.assertEqual(OnSites_state1[stateInd * self.dxJumps.shape[0] + jInd, site], 0)
+
+                            self.assertEqual(State2_occs[stateInd * self.dxJumps.shape[0] + jInd, self.sp_ch[spec2], site], 1)
+                            self.assertEqual(np.sum(State2_occs[stateInd * self.dxJumps.shape[0] + jInd, :, site]), 1)
+                            if spec2 == self.specCheck:
+                                self.assertEqual(OnSites_state2[stateInd * self.dxJumps.shape[0] + jInd, site], 1)
+                            else:
+                                self.assertEqual(OnSites_state2[stateInd * self.dxJumps.shape[0] + jInd, site], 0)
+
+                            # check the Gather tensor
+                            sourceSite = self.JumpNewSites[jInd, site]
+                            self.assertTrue(np.all(GatherTensor_tracers[stateInd * self.dxJumps.shape[0] + jInd, :, sourceSite] == site))
+                    #
+                    NNR = np.dot(np.linalg.inv(self.superCell.crys.lattice), self.dxJumps[jInd]).astype(int)
+                    # Check that the displacements for each jump are okay
+                    self.assertTrue(np.allclose(np.dot(self.superCell.crys.lattice, NNR), self.dxJumps[jInd]))
+                    NNRSite = self.superCell.index(NNR, (0, 0))[0]
+
+                    NNsiteVac = self.NNsiteList[jInd + 1, 0]
+                    # check that NN sequence matches
+                    self.assertTrue(np.all(NNRSite == NNsiteVac))
+
+                    # check the rate
+                    self.assertTrue(np.math.isclose(rates[stateInd * self.dxJumps.shape[0] + jInd],
+                                                    self.AllJumpRates_st1[stateInd, jInd]))
+
+                    # check the displacement - only the jumping site will move
+                    for site in range(self.state1List.shape[1]):
+                        if site == NNsiteVac:
+                            self.assertTrue(np.allclose(disps[stateInd * self.dxJumps.shape[0] + jInd, :, site],
+                                                        -self.dxJumps[jInd] * self.a0))
+
+                        else:
+                            self.assertTrue(np.allclose(disps[stateInd * self.dxJumps.shape[0] + jInd, :, site],
+                                                        0))
+
+    def test_makeDataTensor(self):
+        specCheck = self.specCheck
+        specsToTrain = [specCheck]
+        VacSpec = self.VacSpec
+        N_train = 1000
+        AllJumps = False
+
+        State1_occs, State2_occs, rates, disps, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
+            makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
+                            self.JumpSelects, self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps,
+                            self.NNsiteList, N_train, tracers=True, AllJumps=AllJumps, mode="train")
+
+        self.assertTrue(GatherTensor_tracers is not None)
+
+        state1Data, state2Data, dispData, rateData, On_st1, On_st2 = \
+            makeDataTensors(State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2,
+                            specsToTrain, VacSpec, sp_ch, Ndim=3, tracers=True)
+
+        self.assertTrue(pt.equal(pt.tensor(State1_occs), state1Data))
+        self.assertTrue(pt.equal(pt.tensor(State2_occs), state2Data))
+
+        self.assertTrue(pt.allclose(rateData, pt.tensor(rates)))
+
+        print("{} {}".format(dispData.shape, disps.shape))
+
+        self.assertTrue(pt.allclose(dispData, pt.tensor(disps).double()))
