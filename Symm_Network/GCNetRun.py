@@ -360,10 +360,10 @@ def train_batch_tracer(gNet, batch, end, state1Batch, state2Batch, rateBatch, di
     y2 = gNet(state2Batch)[:, 0, :, :]
 
     # rearrange y2 so that sites correspond to their original positions in the initial state.
-    y2 = pt.gather(y2, 2, GatherTensorBatch)
+    y2_re = pt.gather(y2, 2, GatherTensorBatch)
     # y1 and y2 have shape (Nbatch, 3, Nsites)
 
-    dxMod = dispBatch + y2 - y1
+    dxMod = dispBatch + y2_re - y1
     # dxMod has shape (Nbatch, 3, Nsites)
 
     # get the squared norms of the modified displacements
@@ -380,7 +380,8 @@ def train_batch_tracer(gNet, batch, end, state1Batch, state2Batch, rateBatch, di
 
     # sum the contributions by each site occupied by the species of interest in the initial state
     On_st1Batch = On_st1[batch: end]
-    diff_sum_sites = pt.sum(diff_sites_all * On_st1Batch, dim=1)
+    On_counts = pt.sum(On_st1Batch.long(), dim=1)
+    diff_sum_sites = pt.sum(diff_sites_all * On_st1Batch, dim=1) / On_counts
     diff_batch_total = pt.sum(diff_sum_sites) / L0
 
     return diff_batch_total, y1, y2
