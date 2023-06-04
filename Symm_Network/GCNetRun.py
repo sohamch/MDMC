@@ -870,7 +870,7 @@ def main(args):
         State1_occs, State2_occs, rateData, dispData, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(state1List, state2List, dispList, specsToTrain, args.VacSpec, rateList, JumpSelects,
                             AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, args.N_train, AllJumps=args.AllJumps,
-                            mode=args.Mode, tracers=args.Tracer)
+                            mode=args.Mode, tracers=args.Tracers)
         print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
 
         Train(args.Tdata, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2,
@@ -885,7 +885,7 @@ def main(args):
         State1_occs, State2_occs, rateData, dispData, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
             makeComputeData(state1List, state2List, dispList, specsToTrain, args.VacSpec, rateList, JumpSelects,
                             AllJumpRates_st1, JumpNewSites, dxJumps, NNsiteList, args.N_train, AllJumps=args.AllJumps,
-                            mode=args.Mode)
+                            mode=args.Mode, tracers=args.Tracers)
         print("Done Creating numpy occupancy tensors. Species channels: {}".format(sp_ch))
 
         train_diff, valid_diff = Evaluate(args.TNet, dirPath, State1_occs, State2_occs,
@@ -1045,7 +1045,7 @@ if __name__ == "__main__":
     parser.add_argument("-a0", "--LatParam", metavar="float", type=float, default=1.0, help="Lattice parameter.")
 
     parser.add_argument("-m", "--Mode", metavar="string", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
-    parser.add_argument("-trc", "--Tracer", action="store_true",
+    parser.add_argument("-trc", "--Tracers", action="store_true",
                         help="Whether to train to or evaluate tracer transport coefficients. Used only with \"train\"and \"eval\" modes.")
     parser.add_argument("-shf", "--Shuffle", action="store_true",
                         help="Whether to Shuffle at every epoch - applicable only to training mode.")
