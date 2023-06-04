@@ -1045,6 +1045,8 @@ if __name__ == "__main__":
     parser.add_argument("-a0", "--LatParam", metavar="float", type=float, default=1.0, help="Lattice parameter.")
 
     parser.add_argument("-m", "--Mode", metavar="string", type=str, help="Running mode (one of train, eval, getY, getRep). If getRep, then layer must specified with -RepLayer.")
+    parser.add_argument("-trc", "--Tracer", action="store_true",
+                        help="Whether to train to or evaluate tracer transport coefficients. Used only with \"train\"and \"eval\" modes.")
     parser.add_argument("-shf", "--Shuffle", action="store_true",
                         help="Whether to Shuffle at every epoch - applicable only to training mode.")
     parser.add_argument("-rl", "--RepLayer", metavar="int", type=int, help="Which Layer to extract representation from (count starts from 0). Must be (0 or 2 or 5 or 8 ...)")
