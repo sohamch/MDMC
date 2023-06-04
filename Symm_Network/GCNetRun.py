@@ -403,8 +403,10 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
 
     # 1. get the necessary data tensors
     if not tracers:
+        print("Training collective transport coefficients.")
         Ndim = disps.shape[2]
     else:
+        print("Training tracer transport coefficients.")
         Ndim = disps.shape[1]
 
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
