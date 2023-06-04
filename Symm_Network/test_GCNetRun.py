@@ -253,7 +253,7 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         # Get the original network
         gNet2.load_state_dict(sd)
 
-        y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
+        diff, y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
                        jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
                        N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False)
 
@@ -322,7 +322,7 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         # Get the original network
         gNet2.load_state_dict(sd)
 
-        y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
+        diff, y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
                        jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
                        N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False)
 
@@ -481,7 +481,7 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         # Get the original network
         gNet2.load_state_dict(sd)
 
-        y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
+        diff, y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
                               jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep,
                               interval, N_check * self.z, gNet,
                               lRate=0.001, batch_size=N_check * self.z, scratch_if_no_init=True, chkpt=False)
@@ -559,7 +559,7 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         # Get the original network
         gNet2.load_state_dict(sd)
 
-        y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
+        diff, y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
                               jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep,
                               interval, N_check * self.z, gNet,
                               lRate=0.001, batch_size=N_check * self.z, scratch_if_no_init=True, chkpt=False)
@@ -632,7 +632,7 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         gNet2.load_state_dict(sd)
 
         # Compute vectors with only vacancy sites (AddOnSites=False)
-        y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
+        diff, y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
                        jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
                        N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False,
                        Boundary_train=True, jumpSort=True, AddOnSites=False)
@@ -754,7 +754,7 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
         gNet2.load_state_dict(sd)
 
         # Compute vectors with vacancy sites and other occupied sites (AddOnsites = True).
-        y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
+        diff, y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
                        jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
                        N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False,
                        Boundary_train=True, jumpSort=True, AddOnSites=True)
@@ -1177,3 +1177,91 @@ class TestGCNetRun_HEA_tracers(unittest.TestCase):
         print("{} {}".format(dispData.shape, disps.shape))
 
         self.assertTrue(pt.allclose(dispData, pt.tensor(disps).double()))
+
+    def test_Train_Batch_SpNN_1Jump(self):
+        specCheck = self.specCheck
+        specsToTrain = [specCheck]
+        VacSpec = self.VacSpec
+        N_check = 300
+        AllJumps = False
+        State1_occs, State2_occs, rates, disps, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
+            makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
+                            self.JumpSelects, self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps,
+                            self.NNsiteList, N_check, tracers=True, AllJumps=AllJumps, mode="train")
+
+        self.assertTrue(GatherTensor_tracers is not None)
+
+        # Everything related to JPINN will be None
+        jProbs_st1 = None
+        jProbs_st2 = None
+        start_ep = 0
+        end_ep = 0
+        interval = 100 # don't save networks
+        dirPath="."
+
+        # Make the network
+        specs = np.unique(self.state1List[0])
+        NSpec = specs.shape[0] - 1
+        gNet = GCNet(self.GnnPerms.long(), self.NNsites, self.JumpVecs, N_ngb=self.N_ngb, NSpec=NSpec,
+                     mean=0.02, std=0.2, nl=1, nch=8, nchLast=1).double()
+
+        sd = gNet.state_dict()
+
+        gNet2 = GCNet(self.GnnPerms.long(), self.NNsites, self.JumpVecs, N_ngb=self.N_ngb, NSpec=NSpec,
+                     mean=0.02, std=0.2, nl=1, nch=8, nchLast=1).double()
+
+        # Get the original network
+        gNet2.load_state_dict(sd)
+
+        diff, y1, y2 = Train(self.T, dirPath, State1_occs, State2_occs, OnSites_state1, OnSites_state2, rates, disps,
+                       jProbs_st1, jProbs_st2, specsToTrain, sp_ch, VacSpec, start_ep, end_ep, interval,
+                       N_check, gNet, lRate=0.001, batch_size=N_check, scratch_if_no_init=True, chkpt=False,
+                       tracers=True, GatherTensor=GatherTensor_tracers)
+
+        print("Max, min and avg values")
+        print(np.max(y1), np.max(y2))
+        print(np.min(y1), np.min(y2))
+        print(np.mean(y1), np.mean(y2))
+        #
+        # Now for each sample, compute the y explicitly and match
+        NNs_vac = self.NNsiteList[1:, 0]
+        z = np.zeros(3)
+        diff_total = 0
+        for samp in tqdm(range(N_check)):
+            state1Input = pt.tensor(State1_occs[samp:samp + 1], dtype=pt.double)
+            state2Input = pt.tensor(State2_occs[samp:samp + 1], dtype=pt.double)
+
+            with pt.no_grad():
+                y1SampAllSites = gNet2(state1Input)
+                y2SampAllSites = gNet2(state2Input)
+
+            self.assertTrue(np.allclose(y1SampAllSites[0, 0, :, :].detach().numpy(), y1[samp], rtol=0, atol=1e-8))
+            self.assertTrue(np.allclose(y2SampAllSites[0, 0, :, :].detach().numpy(), y2[samp], rtol=0, atol=1e-8))
+
+            # Now compute tracer coefficients explicitly
+            diff_tracers = 0.
+            rate_samp = rates[samp]
+            count = 0
+            for site in range(1, self.state1List.shape[1]):
+                if self.state2List[samp, site] == specCheck:
+                    count += 1
+                    # get the source site
+                    source = self.JumpNewSites[self.JumpSelects[samp], site]
+                    self.assertEqual(self.state1List[samp, source], specCheck)
+                    y1_site = y1[samp, :, source]
+                    y2_site = y2[samp, :, site]
+
+                    if source == NNs_vac[self.JumpSelects[samp]]: # check if this is the jumping site
+                        dx = -self.dxJumps[self.JumpSelects[samp]] * self.a0
+                    else:
+                        dx = z
+
+                    dxMod_sq = np.linalg.norm(dx + y2_site - y1_site)**2
+                    diff_tracers += rate_samp * dxMod_sq / 6.
+
+            self.assertEqual(np.sum(OnSites_state1[samp]), count)
+            diff_total += diff_tracers / (1.0 * count)
+
+        self.assertTrue(np.math.isclose(diff_total, diff), msg="{} {} {}")
+
+

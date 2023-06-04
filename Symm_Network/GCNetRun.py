@@ -213,6 +213,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
 def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch,
                     Ndim=3, tracers=False):
     # Do a small check that species channels were assigned correctly
+    # print("Tracers: ", tracers)
     if sp_ch is not None:
         for key, item in sp_ch.items():
             if key > VacSpec:
@@ -248,6 +249,7 @@ def makeDataTensors(State1_Occs, State2_Occs, rates, disps, OnSites_st1, OnSites
         On_st1 = pt.tensor(OnSites_st1, dtype=pt.bool)
         On_st2 = pt.tensor(OnSites_st2, dtype=pt.bool)
 
+    # print(dispData.shape, disps.shape)
     return state1Data, state2Data, dispData, rateData, On_st1, On_st2
 
 # All vacancy batch output calculations to be done here
@@ -381,6 +383,7 @@ def train_batch_tracer(gNet, batch, end, state1Batch, state2Batch, rateBatch, di
     # sum the contributions by each site occupied by the species of interest in the initial state
     On_st1Batch = On_st1[batch: end]
     On_counts = pt.sum(On_st1Batch.long(), dim=1)
+    # print(On_counts)
     diff_sum_sites = pt.sum(diff_sites_all * On_st1Batch, dim=1) / On_counts
     diff_batch_total = pt.sum(diff_sum_sites) / L0
 
@@ -397,9 +400,13 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
     if tracers and VacSpec in SpecsToTrain:
         raise NotImplementedError("Tracer training is only for non-vacancy species.")
 
-    Ndim = disps.shape[2]
 
     # 1. get the necessary data tensors
+    if not tracers:
+        Ndim = disps.shape[2]
+    else:
+        Ndim = disps.shape[1]
+
     state1Data, state2Data, dispData, rateData, On_st1, On_st2 = makeDataTensors(State1_Occs, State2_Occs, rates, disps,
             OnSites_st1, OnSites_st2, SpecsToTrain, VacSpec, sp_ch, Ndim=Ndim, tracers=tracers)
 
@@ -415,7 +422,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
 
     else:
         assert dispData.shape[0] == state1Data.shape[0]
-        assert dispData.shape[1] == Ndim
+        # assert dispData.shape[1] == Ndim, "{}".format(dispData.shape)
         assert dispData.shape[2] == State2_Occs.shape[2]
 
         # check gathering tensor
@@ -531,14 +538,15 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
 
             # Need to fix things this point onward
             if epoch == 0 and batch == 0:
-                y1BatchTest[:, :] = y1.cpu().detach().numpy().copy()
-                y2BatchTest[:, :] = y2.cpu().detach().numpy().copy()
+                y1BatchTest = y1.cpu().detach().numpy().copy()
+                y2BatchTest = y2.cpu().detach().numpy().copy()
+                diff0 = diff.item()
 
             diff.backward()
             opt.step()
 
     # For testing return y1 and y2 - we'll test on a single epoch, single batch sample.
-    return y1BatchTest, y2BatchTest
+    return diff0, y1BatchTest, y2BatchTest
 
 
 def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
