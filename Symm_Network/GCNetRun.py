@@ -539,7 +539,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
                            On_st1, On_st2, Boundary_train=Boundary_train, AddOnSites=AddOnSites, L0=L0)
 
             # Need to fix things this point onward
-            if epoch == 0 and batch == 0:
+            if epoch-start_ep == 0 and batch == 0:
                 y1BatchTest = y1.cpu().detach().numpy().copy()
                 y2BatchTest = y2.cpu().detach().numpy().copy()
                 diff0 = diff.item()
