@@ -552,7 +552,7 @@ def Train(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, rates,
 def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, 
         rates, disps, SpecsToTrain, jProbs_st1, jProbs_st2, sp_ch, VacSpec,
         start_ep, end_ep, interval, N_train, gNet, batch_size=512, Boundary_train=False,
-        DPr=False, jumpSort=True, AddOnSites=True):
+        DPr=False, jumpSort=True, AddOnSites=True, tracers=False, GatherTensor=None):
     
     for key, item in sp_ch.items():
         if key > VacSpec:
@@ -560,6 +560,11 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
         else:
             assert key < VacSpec
             assert item == key
+
+    if tracers:
+        GatherTensor_tracers = pt.tensor(GatherTensor).long().to(device)
+    else:
+        GatherTensor_tracers = None
 
     N_batch = batch_size
     # Convert compute data to pytorch tensors
@@ -603,36 +608,35 @@ def Evaluate(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2,
                     
                     rateBatch = rateData[batch : end].to(device)
                     dispBatch = dispData[batch : end].to(device)
-                    
-                    if Boundary_train:
-                        jProbs_st1_batch = jProbs_st1[batch : end]
-                        jProbs_st2_batch = jProbs_st2[batch : end]
-                    else:
-                        jProbs_st1_batch = None
-                        jProbs_st2_batch = None
 
-                    y1 = gNet(state1Batch)
-                    y2 = gNet(state2Batch)
-            
-                    if SpecsToTrain==[VacSpec]: 
-                        y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
+                    if tracers:
+                        GatherTensorsBatch = GatherTensor_tracers[batch: end]
+
+                        diff_batch, _, _ = train_batch_tracer(gNet, batch, end, state1Batch, state2Batch, rateBatch,
+                                                          dispBatch,
+                                                          GatherTensorsBatch, SpecsToTrain, VacSpec, On_st1)
 
                     else:
-                        On_st1Batch = On_st1[batch : end]
-                        On_st2Batch = On_st2[batch : end]
-                        y1, y2 = SpecBatchOuts(y1, y2, On_st1Batch, On_st2Batch, jProbs_st1_batch, jProbs_st2_batch,
-                                Boundary_train, AddOnSites)
+                        if Boundary_train:
+                            jProbs_st1_batch = jProbs_st1[batch: end]
+                            jProbs_st2_batch = jProbs_st2[batch: end]
+                        else:
+                            jProbs_st1_batch = None
+                            jProbs_st2_batch = None
 
-                    dy = y2 - y1
-                    loss = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1)**2)/6.
-                    diff += loss.item()
+                        diff_batch, _, _ = train_batch_collective(gNet, batch, end, state1Batch, state2Batch, rateBatch,
+                                                                  dispBatch, jProbs_st1_batch, jProbs_st2_batch,
+                                                                  SpecsToTrain, VacSpec, On_st1, On_st2,
+                                                                  Boundary_train=Boundary_train, AddOnSites=AddOnSites)
+
+                    diff += diff_batch.item()
 
                 diff_epochs.append(diff)
 
         return np.array(diff_epochs)
     
-    train_diff = compute(0, N_train)#/(1.0*N_train)
-    test_diff = compute(N_train, Nsamples)#/(1.0*(Nsamples - N_train))
+    train_diff = compute(0, N_train)
+    test_diff = compute(N_train, Nsamples)
 
     return train_diff, test_diff
 
