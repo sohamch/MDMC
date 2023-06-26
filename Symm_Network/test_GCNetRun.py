@@ -1260,7 +1260,7 @@ class TestGCNetRun_HEA_tracers(unittest.TestCase):
                     diff_tracers += rate_samp * dxMod_sq / 6.
 
             self.assertEqual(np.sum(OnSites_state1[samp]), count)
-            diff_total += diff_tracers / (1.0 * count)
+            diff_total += diff_tracers #/ (1.0 * count)
 
         self.assertTrue(np.math.isclose(diff_total, diff), msg="{} {} {}")
 
@@ -1353,6 +1353,6 @@ class TestGCNetRun_HEA_tracers(unittest.TestCase):
                         diff_tracers += rate_samp * dxMod_sq / 6.
 
                 self.assertEqual(np.sum(OnSites_state1[samp]), count)
-                diff_total += diff_tracers / (1.0 * count)
+                diff_total += diff_tracers #/ (1.0 * count)
 
         self.assertTrue(np.math.isclose(diff_total, diff))
