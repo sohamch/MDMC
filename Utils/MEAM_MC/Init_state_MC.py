@@ -30,7 +30,7 @@ def write_lammps_input(potPath, ftol=0.001):
              "read_data \t inp_MC.data\n",
              "pair_style \t meam\n",
              "pair_coeff \t * * {0}/library.meam Co Ni Cr Fe Mn {0}/params.meam Co Ni Cr Fe Mn\n".format(potPath),
-             "minimize	\t 0.0 {0} 1000 10000\n".format(ftol),
+             "minimize	\t 0.0 {0} 500 10000\n".format(ftol),
              "variable x equal pe\n",
              "print \"$x\" file Eng.txt"]
 
@@ -221,7 +221,7 @@ def main(args):
         
         # randomize occupancies of the sites
         Nsites = len(superFCC.get_positions())
-        assert sum(args.Natoms, Nsites), "Total number of atoms does not match supercell size."
+        assert sum(args.Natoms) == Nsites, "Total number of atoms does not match supercell size."
 
         Indices = np.random.permutation(Nsites) # store the sites in random order to be occupied randomly.
         NSpec = len(elems)
