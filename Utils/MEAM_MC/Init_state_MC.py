@@ -20,7 +20,7 @@ import argparse
 RunPath = os.getcwd() + "/"
 
 # First, we write a lammps input script for this run
-def write_lammps_input(potPath):
+def write_lammps_input(potPath, ftol=0.001):
 
     lines = ["units \t metal\n",
              "atom_style \t atomic\n",
@@ -30,7 +30,7 @@ def write_lammps_input(potPath):
              "read_data \t inp_MC.data\n",
              "pair_style \t meam\n",
              "pair_coeff \t * * {0}/library.meam Co Ni Cr Fe Mn {0}/params.meam Co Ni Cr Fe Mn\n".format(potPath),
-             "minimize	\t 1e-5 0.0 1000 10000\n",
+             "minimize	\t 0.0 {0} 1000 10000\n".format(ftol),
              "variable x equal pe\n",
              "print \"$x\" file Eng.txt"]
 
@@ -247,7 +247,7 @@ def main(args):
     if not args.UseLastChkPt:
         # Lammps input script need be written only once. We're also starting from on-lattice positions for
         # reproducibility.
-        write_lammps_input(args.potPath)
+        write_lammps_input(args.potPath, ftol=args.ForceTol)
 
     start = time.time()
     N_total, N_accept = MC_Run(args.Temp, args.Nsteps, superFCC, elems, N_therm=args.NEqb, N_save=args.Nsave, lastChkPt=lastSave)
@@ -301,6 +301,9 @@ if __name__ == "__main__":
 
     parser.add_argument("-ns", "--Nsave", metavar="int", type=int, default=200,
                         help="Interval of steps after equilibration after which to collect a state as a sample.")
+
+    parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.001,
+                        help="Force tolerance to stop CG minimization of energies.")
 
     parser.add_argument("-dmp", "--DumpArguments", action="store_true",
                         help="Whether to dump all the parsed arguments into a text file.")
