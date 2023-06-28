@@ -93,7 +93,7 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
 
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, batchSize, SiteIndToNgb, chunkSize, PotPath,
-          SiteIndToPos, WriteAllJumps=False, ftol=0.001):
+          SiteIndToPos, WriteAllJumps=False, ftol=0.001, etol=1e-7):
     try:
         with open("lammpsBox.txt", "r") as fl:
             Initlines = fl.readlines()
@@ -127,7 +127,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     AllJumpFSE = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
 
     # Before starting, write the lammps input files
-    write_input_files(chunkSize, potPath=PotPath, ftol=ftol)
+    write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol)
 
     start = time.time()
 
@@ -267,7 +267,7 @@ def main(args):
     # Then do the KMC steps
     DoKMC(args.Temp, args.startStep, args.Nsteps, args.StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
-          SiteIndToPos, WriteAllJumps=args.WriteAllJumps, ftol=args.ForceTol)
+          SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol)
 
 if __name__ == "__main__":
 
@@ -294,6 +294,9 @@ if __name__ == "__main__":
 
     parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.001,
                         help="Force tolerance for ending NEB calculations.")
+
+    parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=1e-7,
+                        help="Relative Energy change tolerance for ending NEB calculations.")
 
     parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
                         help="Number of unit cells in the supercell.")
