@@ -292,10 +292,10 @@ if __name__ == "__main__":
     parser.add_argument("-ns", "--Nsteps", metavar="int", type=int, default=100,
                         help="How many steps to continue AFTER \"starStep\" argument.")
 
-    parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.001,
+    parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.0,
                         help="Force tolerance for ending NEB calculations.")
 
-    parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=1e-7,
+    parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=1e-8,
                         help="Relative Energy change tolerance for ending NEB calculations.")
 
     parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
