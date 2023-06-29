@@ -166,7 +166,7 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
                 rt = cmd_zip.wait()
                 assert rt ==0
 
-                cmd_zip = subprocess.Popen("zip -r History_backup.zip History_backup/ > zipout.txt", shell=True)
+                cmd_zip = subprocess.Popen("zip -r History_backup.zip History_backup > zipout.txt", shell=True)
                 rt = cmd_zip.wait()
                 assert rt == 0
 
