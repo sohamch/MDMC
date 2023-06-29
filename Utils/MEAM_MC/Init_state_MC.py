@@ -161,7 +161,14 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
             shutil.copy("accepts_all_steps.npy", "History_backup/")
             shutil.copy("rands_all_steps.npy", "History_backup/")
             shutil.copy("swap_atoms_all_steps.npy", "History_backup/")
+            if N_total % (10*N_save) == 0:
+                cmd_zip = subprocess.Popen("zip -r chkp_backup.zip chkpt > zipout.txt", shell=True)
+                rt = cmd_zip.wait()
+                assert rt ==0
 
+                cmd_zip = subprocess.Popen("zip -r History_backup.zip History_backup/ > zipout.txt", shell=True)
+                rt = cmd_zip.wait()
+                assert rt == 0
 
         # For the first 20 steps, store all the supercells as well to a test directory if we want to check later
         if N_total <= 20 and lastChkPt == 0:
