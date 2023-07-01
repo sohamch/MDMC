@@ -289,14 +289,14 @@ if __name__ == "__main__":
     parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
                         help="Number of unit cells in the supercell.")
 
-    parser.add_argument("-a0", "--LatPar", metavar="float", type=float, default=3.59,
+    parser.add_argument("-a0", "--LatPar", metavar="float", type=float, default=3.595,
                         help="Lattice parameter - multiplied to displacements and used"
                              "to construct LAMMPS coordinates.")
 
     parser.add_argument("-nv", "--NoVac", action="store_true",
                         help="Whether to disable vacancy creation.")
 
-    parser.add_argument("-T", "--Temp", metavar="float", type=float, default=1073.0,
+    parser.add_argument("-T", "--Temp", metavar="float", type=float,
                         help="Temperature in Kelvin.")
 
     parser.add_argument("-nt", "--Nsteps", metavar="int", type=int, default=60000,
