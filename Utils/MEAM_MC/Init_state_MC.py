@@ -210,6 +210,7 @@ def main(args):
             lastFlName=max_file.split("/")[-1]
             lastSave=int(lastFlName[10:-4])
             print("Loading checkpointed step : {} from : {}".format(lastSave, os.getcwd() + "/chkpt/"))
+            print("Supercell formula: {}".format(superFCC.get_chemical_formula()))
 
     else:
         lastSave=0
