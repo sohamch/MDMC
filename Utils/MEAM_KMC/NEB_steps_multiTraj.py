@@ -280,7 +280,7 @@ if __name__ == "__main__":
     parser.add_argument("-if", "--InitStateFile", metavar="/path/to/initial/file.npy", type=str, default=None,
                         help="Path to the .npy file storing the 0-step states from Metropolis Monte Carlo.")
 
-    parser.add_argument("-a0", "--LatPar", metavar="float", type=float, default=3.59,
+    parser.add_argument("-a0", "--LatPar", metavar="float", type=float, default=3.595,
                         help="Lattice parameter - multiplied to displacements and used"
                                                                            "to construct LAMMPS coordinates.")
 
