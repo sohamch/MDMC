@@ -279,7 +279,7 @@ if __name__ == "__main__":
     parser.add_argument("-pp", "--potPath", metavar="/path/to/potential/file", type=str,
                         help="Path to the LAMMPS MEAM potential.")
 
-    parser.add_argument("-na", "--Natoms", metavar="int", nargs="+", type=int, default=[119, 120, 120, 120, 120],
+    parser.add_argument("-na", "--Natoms", metavar="int", nargs="+", type=int, default=[99, 100, 100, 100, 100],
                         help="Number of atoms of each kind of Co, Ni, Cr, Fe, Mn in that order.")
 
 
@@ -290,7 +290,7 @@ if __name__ == "__main__":
 
                         )
 
-    parser.add_argument("-u", "--Nunits", metavar="int", type=int, nargs="+", default=[5, 5, 6],
+    parser.add_argument("-u", "--Nunits", metavar="int", type=int, nargs="+", default=[5, 5, 5],
                         help="Number of unit cells in the supercell.")
 
     parser.add_argument("-pr", "--Prim", action="store_true",
