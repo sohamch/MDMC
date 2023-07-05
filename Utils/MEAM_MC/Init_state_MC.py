@@ -6,7 +6,7 @@ import time
 
 from ase.spacegroup import crystal
 from ase.build import make_supercell
-from ase.io.lammpsdata import write_lammps_data, read_lammps_data
+from ase.io.lammpsdata import write_lammps_data
 
 from scipy.constants import physical_constants
 kB = physical_constants["Boltzmann constant in eV/K"][0]
@@ -19,7 +19,7 @@ import argparse
 
 RunPath = os.getcwd() + "/"
 
-# First, we write a lammps input script for this run
+# Next, write a lammps input script for this run
 def write_lammps_input(potPath, etol=1e-7, ftol=0.001):
 
     lines = ["units \t metal\n",
@@ -62,7 +62,7 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
     accepts = []
     rand_steps = []
     swap_steps = []
-    
+
     # Store the starting supercell in the test directory if doing from scratch
     if lastChkPt == 0:
         write_lammps_data("test/inp_MC_test_step_{0}.data".format(N_total), ASE_Super, specorder=elems)
@@ -77,6 +77,7 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
 
 
     # write the supercell as a lammps file
+
     write_lammps_data("inp_MC.data", ASE_Super, specorder=elems)
 
     # evaluate the energy
@@ -219,10 +220,10 @@ def main(args):
 
         # Create an FCC primitive unit cell
         a = args.LatPar
-        fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=True)
+        fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=args.prim)
 
         # Form a supercell with a vacancy at the centre
-        superlatt = np.identity(3) * args.Nunits
+        superlatt = np.diag(np.array(list(args.Nunits)))
         superFCC = make_supercell(fcc, superlatt)
 
         if not args.NoVac:
@@ -278,7 +279,7 @@ if __name__ == "__main__":
     parser.add_argument("-pp", "--potPath", metavar="/path/to/potential/file", type=str,
                         help="Path to the LAMMPS MEAM potential.")
 
-    parser.add_argument("-na", "--Natoms", metavar="int", nargs="+", type=int,
+    parser.add_argument("-na", "--Natoms", metavar="int", nargs="+", type=int, default=[120, 120, 120, 120, 120],
                         help="Number of atoms of each kind of Co, Ni, Cr, Fe, Mn in that order.")
 
 
@@ -289,7 +290,7 @@ if __name__ == "__main__":
 
                         )
 
-    parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
+    parser.add_argument("-u", "--Nunits", metavar="int", type=int, nargs="+", default=[5, 5, 6],
                         help="Number of unit cells in the supercell.")
 
     parser.add_argument("-a0", "--LatPar", metavar="float", type=float, default=3.595,
