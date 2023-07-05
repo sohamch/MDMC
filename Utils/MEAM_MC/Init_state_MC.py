@@ -220,7 +220,7 @@ def main(args):
 
         # Create an FCC primitive unit cell
         a = args.LatPar
-        fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=args.prim)
+        fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=args.Prim)
 
         # Form a supercell with a vacancy at the centre
         superlatt = np.diag(np.array(list(args.Nunits)))
@@ -279,7 +279,7 @@ if __name__ == "__main__":
     parser.add_argument("-pp", "--potPath", metavar="/path/to/potential/file", type=str,
                         help="Path to the LAMMPS MEAM potential.")
 
-    parser.add_argument("-na", "--Natoms", metavar="int", nargs="+", type=int, default=[120, 120, 120, 120, 120],
+    parser.add_argument("-na", "--Natoms", metavar="int", nargs="+", type=int, default=[119, 120, 120, 120, 120],
                         help="Number of atoms of each kind of Co, Ni, Cr, Fe, Mn in that order.")
 
 
@@ -292,6 +292,9 @@ if __name__ == "__main__":
 
     parser.add_argument("-u", "--Nunits", metavar="int", type=int, nargs="+", default=[5, 5, 6],
                         help="Number of unit cells in the supercell.")
+
+    parser.add_argument("-pr", "--Prim", action="store_true",
+                        help="Whether to use primitive cell")
 
     parser.add_argument("-a0", "--LatPar", metavar="float", type=float, default=3.595,
                         help="Lattice parameter - multiplied to displacements and used"
