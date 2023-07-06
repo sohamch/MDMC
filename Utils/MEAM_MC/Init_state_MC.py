@@ -20,8 +20,11 @@ import argparse
 RunPath = os.getcwd() + "/"
 
 # Next, write a lammps input script for this run
-def write_lammps_input(potPath, etol=1e-7, ftol=0.001):
-
+def write_lammps_input(potPath, etol=1e-7, ftol=0.001, quickmin=False):
+    if quickmin:
+        qminLines = "\ntimestep \t 0.01\nmin_style \t quickmin\n"
+    else:
+        qminLines = "\n"
     lines = ["units \t metal\n",
              "atom_style \t atomic\n",
              "atom_modify \t map array\n",
@@ -29,9 +32,8 @@ def write_lammps_input(potPath, etol=1e-7, ftol=0.001):
              "atom_modify \t sort 0 0.0\n",
              "read_data \t inp_MC.data\n",
              "pair_style \t meam\n",
-             "pair_coeff \t * * {0}/library.meam Co Ni Cr Fe Mn {0}/params.meam Co Ni Cr Fe Mn\n".format(potPath),
-             "timestep \t 0.01\n",
-             "min_style \t quickmin\n",
+             "pair_coeff \t * * {0}/library.meam Co Ni Cr Fe Mn {0}/params.meam Co Ni Cr Fe Mn".format(potPath),
+             qminLines,
              "minimize	\t {0} {1} 500 1000000\n".format(etol, ftol),
              "variable x equal pe\n",
              "print \"$x\" file Eng.txt"]
@@ -258,7 +260,7 @@ def main(args):
     if not args.UseLastChkPt:
         # Lammps input script need be written only once. We're also starting from on-lattice positions for
         # reproducibility.
-        write_lammps_input(args.potPath, etol=args.EnTol, ftol=args.ForceTol)
+        write_lammps_input(args.potPath, etol=args.EnTol, ftol=args.ForceTol, quickmin=args.Quickmin)
 
     start = time.time()
     N_total, N_accept = MC_Run(args.Temp, args.Nsteps, superFCC, elems, N_therm=args.NEqb, N_save=args.Nsave, lastChkPt=lastSave)
@@ -318,6 +320,9 @@ if __name__ == "__main__":
 
     parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.0,
                         help="Force tolerance to stop CG minimization of energies.")
+
+    parser.add_argument("-qm", "--Quickmin", action="store_true",
+                        help="Whether to use quickmin or not. If False, CG minimization will be done.")
 
     parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=1e-8,
                         help="Relative energy change tolerance to stop CG minimization of energies.")
