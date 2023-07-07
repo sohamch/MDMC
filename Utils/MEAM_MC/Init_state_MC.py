@@ -208,7 +208,7 @@ def main(args):
 
         else:
             files_sorted = sorted(files, key=lambda fl: int(fl.split("/")[-1][10:-4]))
-            max_file = files_sorted[-3] # Get the file created 400 steps before last
+            max_file = files_sorted[-2] # Get the file created 1 checkpoint before last
             with open(max_file, "rb") as fl:
                 superFCC = pickle.load(fl)
         
@@ -281,7 +281,7 @@ if __name__ == "__main__":
     parser.add_argument("-pp", "--potPath", metavar="/path/to/potential/file", type=str,
                         help="Path to the LAMMPS MEAM potential.")
 
-    parser.add_argument("-na", "--Natoms", metavar="int", nargs="+", type=int, default=[99, 100, 100, 100, 100],
+    parser.add_argument("-na", "--Natoms", metavar="int", nargs="+", type=int,
                         help="Number of atoms of each kind of Co, Ni, Cr, Fe, Mn in that order.")
 
 
