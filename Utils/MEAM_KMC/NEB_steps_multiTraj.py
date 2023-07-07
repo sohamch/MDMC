@@ -254,6 +254,20 @@ def main(args):
     # Load the crystal data
     dxList, SiteIndToNgb = Load_crysDat(args.CrysDatPath, args.LatPar)
 
+    # For orthogonal supercell, check the displacements and neighbors
+    if not args.Prim:
+        for siteInd in range(SiteIndToNgb.shape[0]):
+            siteCoord = SiteIndToPos[siteInd]
+            for jmp in range(dxList.shape[0]):
+                ngbCoord = siteCoord + dxList[jmp]
+                ngbInd = SiteIndToNgb[siteInd, jmp]
+                try:
+                    assert np.allclose(SiteIndToPos[ngbInd], ngbCoord, rtol=0, atol=1e-10)
+                except AssertionError:
+                    print("Neighbor list not matching for orthogonal supercell.")
+
+        print("Checked Neighbor list consistency.")
+
     # Load the initial states
     SiteIndToSpecAll, vacSiteIndAll = load_Data(args.Temp, args.startStep, args.StateStart,
                                                 args.batchSize, args.InitStateFile)
@@ -268,8 +282,10 @@ def main(args):
         state = SiteIndToSpecAll[traj]
         vacInd = np.where(state == 0)[0][0]
         assert vacInd == vacSiteIndAll[traj]
+    print("Checked vacancy occupancies.")
 
     # Then do the KMC steps
+    print("Starting KMC NEB calculations.")
     DoKMC(args.Temp, args.startStep, args.Nsteps, args.StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
           SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol)
