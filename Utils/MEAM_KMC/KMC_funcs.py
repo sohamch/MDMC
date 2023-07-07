@@ -21,11 +21,11 @@ def write_input_files(Ntr, potPath=None, etol=1e-8, ftol=0.00):
             fl.write("neb \t {2} {0} 500 500 10 final final_{1}.data".format(ftol, traj, etol))
 
 
-def write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, TopLines, linStartCoords=11):
+def write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, TopLines):
     Ntr = vacSiteInd.shape[0]
     for traj in range(Ntr):
         with open("initial_{}.data".format(traj), "w") as fl:
-            fl.writelines(TopLines[:linStartCoords])
+            fl.writelines(TopLines)
             counter = 1
             for idx in range(SiteIndToSpec.shape[1]):
                 spec = SiteIndToSpec[traj, idx]

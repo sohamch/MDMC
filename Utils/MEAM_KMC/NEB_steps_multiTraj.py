@@ -23,9 +23,9 @@ NImage = 3
 RunPath = os.getcwd()+'/'
 print("Running from : " + RunPath)
 
-def CreateLammpsData(N_units, a):
+def CreateLammpsData(N_units, a, prim=False):
     # Create an FCC primitive unit cell
-    fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=True)
+    fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=prim)
 
     # Form a supercell
     superlatt = np.identity(3) * N_units
@@ -39,7 +39,9 @@ def CreateLammpsData(N_units, a):
     SiteIndToCartPos = np.zeros((Nsites, 3))
     for i in range(Nsites):
         SiteIndToCartPos[i, :] = Sup_lammps_unrelax_coords[i].position[:]
-    np.save("SiteIndToLmpCartPos.npy", SiteIndToCartPos) # In case we want to check later
+        if not prim:
+            assert np.allclose(SiteIndToCartPos[i, :], superFCC[i].position)
+    np.save("SiteIndToLmpCartPos.npy", SiteIndToCartPos)  # In case we want to check later
     return SiteIndToCartPos
 
 def Load_crysDat(CrysDatPath, a0):
@@ -98,9 +100,10 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
         with open("lammpsBox.txt", "r") as fl:
             Initlines = fl.readlines()
             lineStartCoords = None
-            for lineInd, line in Initlines:
+            for lineInd, line in enumerate(Initlines):
                 if "Atoms" in line:
                     lineStartCoords = lineInd + 2
+                    break
     except:
         raise FileNotFoundError("Template lammps data file not found. Run the \"Setup_Lammps_coords.py\" file.")
 
@@ -144,7 +147,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             SiteIndToSpec = FinalStates[sampleStart: sampleEnd].copy()
             vacSiteInd = FinalVacSites[sampleStart: sampleEnd].copy()
 
-            write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, Initlines, linStartCoords=11)
+            write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, Initlines[:lineStartCoords])
 
             rates = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
             barriers = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
@@ -244,11 +247,9 @@ def main(args):
     # Create the Lammps cartesian positions - first check if they have already been made.
     try:
         SiteIndToPos = np.load("SiteIndToLmpCartPos.npy")
-        with open("lammpsBox.txt", "r") as fl:
-            l = fl.readlines()
 
     except FileNotFoundError:
-        SiteIndToPos = CreateLammpsData(args.Nunits, args.LatPar)
+        SiteIndToPos = CreateLammpsData(args.Nunits, args.LatPar, prim=args.Prim)
 
     # Load the crystal data
     dxList, SiteIndToNgb = Load_crysDat(args.CrysDatPath, args.LatPar)
