@@ -97,6 +97,10 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     try:
         with open("lammpsBox.txt", "r") as fl:
             Initlines = fl.readlines()
+            lineStartCoords = None
+            for lineInd, line in Initlines:
+                if "Atoms" in line:
+                    lineStartCoords = lineInd + 2
     except:
         raise FileNotFoundError("Template lammps data file not found. Run the \"Setup_Lammps_coords.py\" file.")
 
@@ -140,7 +144,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             SiteIndToSpec = FinalStates[sampleStart: sampleEnd].copy()
             vacSiteInd = FinalVacSites[sampleStart: sampleEnd].copy()
 
-            write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, Initlines)
+            write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, Initlines, linStartCoords=11)
 
             rates = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
             barriers = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
@@ -283,6 +287,9 @@ if __name__ == "__main__":
     parser.add_argument("-a0", "--LatPar", metavar="float", type=float, default=3.595,
                         help="Lattice parameter - multiplied to displacements and used"
                                                                            "to construct LAMMPS coordinates.")
+
+    parser.add_argument("-pr", "--Prim", action="store_true",
+                        help="Whether to use primitive cell")
 
     parser.add_argument("-T", "--Temp", metavar="int", type=int, help="Temperature to read data from")
 
