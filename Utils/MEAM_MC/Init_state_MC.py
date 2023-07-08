@@ -72,10 +72,17 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
             pickle.dump(ASE_Super, fl_sup)
 
     else:
-        Eng_steps_all = list(np.load("Eng_all_steps.npy")[:lastChkPt])
-        accepts = list(np.load("accepts_all_steps.npy")[:lastChkPt])
-        rand_steps = list(np.load("rands_all_steps.npy")[:lastChkPt])
-        swap_steps = list(np.load("swap_atoms_all_steps.npy")[:lastChkPt])
+        try:
+            Eng_steps_all = list(np.load("Eng_all_steps.npy")[:lastChkPt])
+            accepts = list(np.load("accepts_all_steps.npy")[:lastChkPt])
+            rand_steps = list(np.load("rands_all_steps.npy")[:lastChkPt])
+            swap_steps = list(np.load("swap_atoms_all_steps.npy")[:lastChkPt])
+        except:
+            print("Could not load history array, but checkpoint found. Starting again from checkpoint.")
+            Eng_steps_all = []
+            accepts = []
+            rand_steps = []
+            swap_steps = []
 
 
     # write the supercell as a lammps file
@@ -167,14 +174,14 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
             shutil.copy("rands_all_steps.npy", "History_backup/")
             shutil.copy("swap_atoms_all_steps.npy", "History_backup/")
 
-            cmd_zip = subprocess.Popen("zip -r History_backup.zip History_backup > zipout.txt", shell=True)
-            rt = cmd_zip.wait()
-            assert rt == 0
-
             if N_total % (10*N_save) == 0:
                 cmd_zip = subprocess.Popen("zip -r chkp_backup.zip chkpt > zipout.txt", shell=True)
                 rt = cmd_zip.wait()
-                assert rt ==0
+                assert rt == 0
+
+                cmd_zip = subprocess.Popen("zip -r History_backup.zip History_backup > zipout.txt", shell=True)
+                rt = cmd_zip.wait()
+                assert rt == 0
 
         # For the first 20 steps, store all the supercells as well to a test directory if we want to check later
         if N_total <= 20 and lastChkPt == 0:
