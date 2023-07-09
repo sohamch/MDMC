@@ -72,7 +72,7 @@ class test_KMC_funcs(unittest.TestCase):
         self.assertEqual(InitialSpecCount, 1)  # should have only the Nickel case
 
         specs = np.unique(self.SiteIndToSpec[0])
-        Nspecs = len(specs) - 1
+        Nspecs = len(specs)
 
         Initlines[2] = "{} \t atoms\n".format(self.Nsites - 1)
         Initlines[3] = "{} atom types\n".format(Nspecs - 1)
@@ -135,8 +135,8 @@ class test_KMC_funcs(unittest.TestCase):
         self.assertEqual(InitialSpecCount, 1)  # should have only the Nickel case
 
         specs = np.unique(self.SiteIndToSpec[0])
-        Nspecs = len(specs) - 1
-
+        Nspecs = len(specs)
+        print("Nspec: ", Nspecs)
         Initlines[2] = "{} \t atoms\n".format(self.Nsites - 1)
         Initlines[3] = "{} atom types\n".format(Nspecs - 1)
 
