@@ -105,7 +105,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     lineStartCoords = lineInd + 2
                     break
     except:
-        raise FileNotFoundError("Template lammps data file not found. Run the \"Setup_Lammps_coords.py\" file.")
+        raise FileNotFoundError("Template lammps data file not found.")
 
     assert SiteIndToSpecAll.shape[1] == len(Initlines[12:])
 
@@ -266,7 +266,7 @@ def main(args):
                 except AssertionError:
                     print("Neighbor list not matching for orthogonal supercell.")
 
-        print("Checked Neighbor list consistency.")
+        print("Checked Neighbor list consistency for orthogonal supercell.")
 
     # Load the initial states
     SiteIndToSpecAll, vacSiteIndAll = load_Data(args.Temp, args.startStep, args.StateStart,

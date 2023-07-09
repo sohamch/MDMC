@@ -5,6 +5,7 @@ from ase.build import make_supercell
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 from tqdm import tqdm
 from KMC_funcs import write_init_states, write_final_states, updateStates, getJumpSelects
+from NEB_steps_multiTraj import CreateLammpsData
 import os
 import subprocess
 import h5py
@@ -18,7 +19,10 @@ class test_KMC_funcs(unittest.TestCase):
         # Create an FCC primitive unit cell
         self.a = 3.59
         a = self.a
-        self.fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=True)
+        self.prim = True
+        self.top = 12 # No. of lines in the lammps coords file until the coordiantes begin
+
+        self.fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=self.prim)
 
         # Form a supercell with a vacancy at the centre
         self.superlatt = np.identity(3) * self.N_units
@@ -36,6 +40,9 @@ class test_KMC_funcs(unittest.TestCase):
         for i in range(Nsites):
             self.SiteIndToCartPos[i, :] = self.Sup_lammps_unrelax_coords[i].position[:]
 
+        sup_coords_script = CreateLammpsData(self.N_units, self.a, prim=self.prim)
+        assert np.array_equal(self.SiteIndToCartPos, sup_coords_script)
+
         # give some random occupancies to 2 random trajectories
         self.NtrajTest = 5
         self.SiteIndToSpec = np.random.randint(1, 6, (self.NtrajTest, self.SiteIndToCartPos.shape[0]))
@@ -47,7 +54,7 @@ class test_KMC_funcs(unittest.TestCase):
 
         np.save("TestOccs.npy", self.SiteIndToSpec)
 
-        with h5py.File("../CrysDat_FCC/CrystData.h5", "r") as fl:
+        with h5py.File("../../CrysDat_FCC/CrystData.h5", "r") as fl:
             self.dxList = np.array(fl["dxList_1nn"])
             self.NNsites = np.array(fl["NNsiteList_sitewise"])[1:, :].T
 
@@ -71,7 +78,7 @@ class test_KMC_funcs(unittest.TestCase):
         Initlines[3] = "{} atom types\n".format(Nspecs - 1)
 
         # Write out the initial state
-        write_init_states(self.SiteIndToSpec, self.SiteIndToCartPos, self.vacSiteInd, Initlines)
+        write_init_states(self.SiteIndToSpec, self.SiteIndToCartPos, self.vacSiteInd, Initlines[:self.top])#Initlines[:12])
 
         # Move the files to the test folder (to prevent cluttering of source directory)
         cmd = "mv initial_* test_KMC_funcs_files"
@@ -87,8 +94,8 @@ class test_KMC_funcs(unittest.TestCase):
             with open("test_KMC_funcs_files/initial_{}.data".format(traj), "r") as fl:
                 fileLines = fl.readlines()
 
-            self.assertEqual(fileLines[:12], Initlines[:12])
-            atomLines = fileLines[12:]
+            self.assertEqual(fileLines[:self.top], Initlines[:self.top])
+            atomLines = fileLines[self.top:]
             self.assertEqual(len(atomLines), self.Nsites - 1)
             # except the vacancy site, sites should not have been skipped
             for lineInd, writtenSite in enumerate(tqdm(atomLines, position=0, leave=True, ncols=65)):
@@ -134,7 +141,7 @@ class test_KMC_funcs(unittest.TestCase):
         Initlines[3] = "{} atom types\n".format(Nspecs - 1)
 
         # Write out the initial state
-        write_init_states(self.SiteIndToSpec, self.SiteIndToCartPos, self.vacSiteInd, Initlines)
+        write_init_states(self.SiteIndToSpec, self.SiteIndToCartPos, self.vacSiteInd, Initlines[:self.top])
 
         # Move the files to the test folder (to prevent cluttering of source directory)
         cmd = "mv initial_* test_KMC_funcs_files"
@@ -211,9 +218,8 @@ class test_KMC_funcs(unittest.TestCase):
                 with open("test_KMC_funcs_files/initial_{}.data".format(traj), "r") as fl:
                     AllLines = fl.readlines()
 
-                InitCoords = AllLines[12:]
+                InitCoords = AllLines[self.top:]
                 initCoord = self.SiteIndToCartPos[vacNgb]
-
                 spliInitCoords = InitCoords[lammpsSiteInd - 1].split() # the sites start from 1
                 self.assertEqual(initCoord[0], float(spliInitCoords[2]), msg="{} {} {}".format(vacSite, vacNgb, lammpsSiteInd))
                 self.assertEqual(initCoord[1], float(spliInitCoords[3]), msg="{} {} {}".format(vacSite, vacNgb, lammpsSiteInd))
@@ -261,3 +267,49 @@ class test_KMC_funcs(unittest.TestCase):
             self.assertTrue(np.array_equal(X[traj, specJump, :], -self.dxList[jSelect]))
 
             self.assertTrue(np.allclose(np.sum(X[traj, :, :], axis=0), np.zeros(3)))
+
+
+class test_KMC_funcs_orthogonal(test_KMC_funcs):
+    def setUp(self):
+        self.N_units = 5
+        with h5py.File("../../CrysDat_FCC/CrystData_ortho_{}_cube.h5".format(self.N_units), "r") as fl:
+            self.dxList = np.array(fl["dxList_1nn"])
+            self.NNsites = np.array(fl["NNsiteList_sitewise"])[1:, :].T
+
+        # Create an FCC primitive unit cell
+        self.a = 3.59
+        a = self.a
+        self.prim=False
+        self.top = 11
+        self.fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=self.prim)
+
+        # Form a supercell with a vacancy at the centre
+        self.superlatt = np.identity(3) * self.N_units
+        self.superFCCASE = make_supercell(self.fcc, self.superlatt)
+        Nsites = len(self.superFCCASE.get_positions())
+        self.Nsites = Nsites
+
+        # Write the lammps box
+        write_lammps_data("lammpsBox.txt", self.superFCCASE)
+        self.Sup_lammps_unrelax_coords = read_lammps_data("lammpsBox.txt", style="atomic")
+        self.assertEqual(len(self.Sup_lammps_unrelax_coords), Nsites)
+
+        # Store the lammps-basis coordinate of each site
+        self.SiteIndToCartPos = np.zeros((Nsites, 3))
+        for i in range(Nsites):
+            self.SiteIndToCartPos[i, :] = self.Sup_lammps_unrelax_coords[i].position[:]
+
+        sup_coords_script = CreateLammpsData(self.N_units, self.a, prim=self.prim)
+        assert np.array_equal(self.SiteIndToCartPos, sup_coords_script)
+
+        # give some random occupancies to 2 random trajectories
+        self.NtrajTest = 6
+        self.SiteIndToSpec = np.random.randint(1, 6, (self.NtrajTest, self.SiteIndToCartPos.shape[0]))
+        self.vacSiteInd = np.random.randint(0, Nsites, self.NtrajTest)
+        # self.vacSiteInd = np.zeros(self.NtrajTest, dtype=int)
+
+        for traj in range(self.NtrajTest):
+            self.SiteIndToSpec[traj, self.vacSiteInd[traj]] = 0
+
+        np.save("TestOccs.npy", self.SiteIndToSpec)
+
