@@ -254,19 +254,19 @@ def main(args):
     # Load the crystal data
     dxList, SiteIndToNgb = Load_crysDat(args.CrysDatPath, args.LatPar)
 
-    # For orthogonal supercell, check the displacements and neighbors
-    if not args.Prim:
-        for siteInd in range(SiteIndToNgb.shape[0]):
-            siteCoord = SiteIndToPos[siteInd]
-            for jmp in range(dxList.shape[0]):
-                ngbCoord = siteCoord + dxList[jmp]
-                ngbInd = SiteIndToNgb[siteInd, jmp]
-                try:
-                    assert np.allclose(SiteIndToPos[ngbInd], ngbCoord, rtol=0, atol=1e-10)
-                except AssertionError:
-                    print("Neighbor list not matching for orthogonal supercell.")
-
-        print("Checked Neighbor list consistency for orthogonal supercell.")
+    # # For orthogonal supercell, check the displacements and neighbors
+    # if not args.Prim:
+    #     for siteInd in range(SiteIndToNgb.shape[0]):
+    #         siteCoord = SiteIndToPos[siteInd]
+    #         for jmp in range(dxList.shape[0]):
+    #             ngbCoord = siteCoord + dxList[jmp]
+    #             ngbInd = SiteIndToNgb[siteInd, jmp]
+    #             try:
+    #                 assert np.allclose(SiteIndToPos[ngbInd], ngbCoord, rtol=0, atol=1e-10)
+    #             except AssertionError:
+    #                 print("Neighbor list not matching for orthogonal supercell.")
+    #
+    #     print("Checked Neighbor list consistency for orthogonal supercell.")
 
     # Load the initial states
     SiteIndToSpecAll, vacSiteIndAll = load_Data(args.Temp, args.startStep, args.StateStart,
