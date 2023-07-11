@@ -107,7 +107,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     except:
         raise FileNotFoundError("Template lammps data file not found.")
 
-    assert SiteIndToSpecAll.shape[1] == len(Initlines[12:])
+    assert SiteIndToSpecAll.shape[1] == len(Initlines[lineStartCoords:])
 
     specs, counts = np.unique(SiteIndToSpecAll[0], return_counts=True)
     Nspec = len(specs)  # including the vacancy
@@ -253,20 +253,6 @@ def main(args):
 
     # Load the crystal data
     dxList, SiteIndToNgb = Load_crysDat(args.CrysDatPath, args.LatPar)
-
-    # # For orthogonal supercell, check the displacements and neighbors
-    # if not args.Prim:
-    #     for siteInd in range(SiteIndToNgb.shape[0]):
-    #         siteCoord = SiteIndToPos[siteInd]
-    #         for jmp in range(dxList.shape[0]):
-    #             ngbCoord = siteCoord + dxList[jmp]
-    #             ngbInd = SiteIndToNgb[siteInd, jmp]
-    #             try:
-    #                 assert np.allclose(SiteIndToPos[ngbInd], ngbCoord, rtol=0, atol=1e-10)
-    #             except AssertionError:
-    #                 print("Neighbor list not matching for orthogonal supercell.")
-    #
-    #     print("Checked Neighbor list consistency for orthogonal supercell.")
 
     # Load the initial states
     SiteIndToSpecAll, vacSiteIndAll = load_Data(args.Temp, args.startStep, args.StateStart,
