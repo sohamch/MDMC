@@ -19,7 +19,7 @@ kB = physical_constants["Boltzmann constant in eV/K"][0]
 import argparse
 
 # Need to get rid of these argument
-NImage = 3
+# NImage = 3
 RunPath = os.getcwd()+'/'
 print("Running from : " + RunPath)
 
@@ -95,7 +95,7 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
 
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, batchSize, SiteIndToNgb, chunkSize, PotPath,
-          SiteIndToPos, WriteAllJumps=False, ftol=0.001, etol=1e-7):
+          SiteIndToPos, WriteAllJumps=False, ftol=0.001, etol=1e-7, NImages=5):
     try:
         with open("lammpsBox.txt", "r") as fl:
             Initlines = fl.readlines()
@@ -160,7 +160,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
                 # Then run lammps
                 commands = [
-                    "mpirun -np {0} --oversubscribe $LMPPATH/lmp -log out_{1}.txt -screen screen_{1}.txt -p {0}x1 -in in.neb_{1}".format(NImage, traj)
+                    "mpirun -np {0} --oversubscribe $LMPPATH/lmp -log out_{1}.txt -screen screen_{1}.txt -p {0}x1 -in in.neb_{1}".format(NImages, traj)
                     for traj in range(SiteIndToSpec.shape[0])
                 ]
                 cmdList = [subprocess.Popen(cmd, shell=True) for cmd in commands]
@@ -274,7 +274,7 @@ def main(args):
     print("Starting KMC NEB calculations.")
     DoKMC(args.Temp, args.startStep, args.Nsteps, args.StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
-          SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol)
+          SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages)
 
 if __name__ == "__main__":
 
@@ -298,6 +298,9 @@ if __name__ == "__main__":
 
     parser.add_argument("-st", "--startStep", metavar="int", type=int, default=0,
                         help="From which step to start the simulation. Note - checkpointed data file must be present in running directory if value > 0.")
+
+    parser.add_argument("-ni", "--NImages", metavar="int", type=int, default=5,
+                        help="How many NEB Images to use.")
 
     parser.add_argument("-ns", "--Nsteps", metavar="int", type=int, default=100,
                         help="How many steps to continue AFTER \"starStep\" argument.")
