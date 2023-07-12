@@ -304,7 +304,7 @@ if __name__ == "__main__":
                         help="From which step to start the simulation. Note - checkpointed data file must be present in running directory if value > 0.")
 
     parser.add_argument("-ni", "--NImages", metavar="int", type=int, default=5,
-                        help="How many NEB Images to use.")
+                        help="How many NEB Images to use. Must be odd number.")
 
     parser.add_argument("-ns", "--Nsteps", metavar="int", type=int, default=100,
                         help="How many steps to continue AFTER \"starStep\" argument.")
