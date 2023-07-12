@@ -178,8 +178,8 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     ebfLine = line.split()
                     ebf = float(ebfLine[6])
                     Is = float(ebfLine[10])
-                    Ts = float(ebfLine[10 + 2 * NImages // 2])
-                    Fs = float(ebfLine[10 + 4 * NImages // 2])
+                    Ts = float(ebfLine[10 + 2 * (NImages // 2)])
+                    Fs = float(ebfLine[10 + 4 * (NImages // 2)])
 
                     rates[traj, jumpInd] = np.exp(-ebf / (kB * T))
                     barriers[traj, jumpInd] = ebf
