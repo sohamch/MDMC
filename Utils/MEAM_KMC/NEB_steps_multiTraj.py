@@ -178,8 +178,8 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     ebfLine = line.split()
                     ebf = float(ebfLine[6])
                     Is = float(ebfLine[10])
-                    Ts = float(ebfLine[12])
-                    Fs = float(ebfLine[14])
+                    Ts = float(ebfLine[10 + 2 * NImages // 2])
+                    Fs = float(ebfLine[10 + 4 * NImages // 2])
 
                     rates[traj, jumpInd] = np.exp(-ebf / (kB * T))
                     barriers[traj, jumpInd] = ebf
@@ -243,6 +243,10 @@ def main(args):
 
     # SourcePath = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
     # SourcePath += "/"
+
+    # check number of images is odd
+    if args.NImages % 2 == 0:
+        raise ValueError("Can only use odd values for the number of images (-ni, --NImages).")
 
     # Create the Lammps cartesian positions - first check if they have already been made.
     try:
