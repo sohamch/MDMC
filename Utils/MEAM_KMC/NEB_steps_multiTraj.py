@@ -186,7 +186,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                         Ts = float(ebfLine[10 + 2 * (im + 1)])
                         TSE[traj, im, jumpInd] = Ts
 
-                    Fs = float(ebfLine[10 + 2 * NImages])
+                    Fs = float(ebfLine[10 + 2 * (NImages-1)])
 
                     ISE[traj, jumpInd] = Is
                     FSE[traj, jumpInd] = Fs
