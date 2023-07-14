@@ -130,7 +130,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     AllJumpRates = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
     AllJumpBarriers = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
     AllJumpISE = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
-    AllJumpTSE = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
+    AllJumpTSE = np.zeros((Ntraj, NImages-2, SiteIndToNgb.shape[1]))
     AllJumpFSE = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
 
     # Before starting, write the lammps input files
@@ -152,7 +152,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             rates = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
             barriers = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
             ISE = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
-            TSE = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
+            TSE = np.zeros((SiteIndToSpec.shape[0], NImages-2, SiteIndToNgb.shape[1]))
             FSE = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
             for jumpInd in range(SiteIndToNgb.shape[1]):
                 # Write the final states in NEB format for lammps
@@ -177,14 +177,18 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                             continue
                     ebfLine = line.split()
                     ebf = float(ebfLine[6])
-                    Is = float(ebfLine[10])
-                    Ts = float(ebfLine[10 + 2 * (NImages // 2)])
-                    Fs = float(ebfLine[10 + 4 * (NImages // 2)])
-
                     rates[traj, jumpInd] = np.exp(-ebf / (kB * T))
                     barriers[traj, jumpInd] = ebf
+
+                    Is = float(ebfLine[10])
+
+                    for im in range(NImages-2):
+                        Ts = float(ebfLine[10 + 2 * (im + 1)])
+                        TSE[traj, im, jumpInd] = Ts
+
+                    Fs = float(ebfLine[10 + 2 * NImages])
+
                     ISE[traj, jumpInd] = Is
-                    TSE[traj, jumpInd] = Ts
                     FSE[traj, jumpInd] = Fs
 
                     # get the jumping species and store the barrier for later use
@@ -196,7 +200,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             AllJumpRates[sampleStart:sampleEnd] = rates[:, :]
             AllJumpBarriers[sampleStart:sampleEnd] = barriers[:, :]
             AllJumpISE[sampleStart:sampleEnd] = ISE[:, :]
-            AllJumpTSE[sampleStart:sampleEnd] = TSE[:, :]
+            AllJumpTSE[sampleStart:sampleEnd, :, :] = TSE[:, :, :]
             AllJumpFSE[sampleStart:sampleEnd] = FSE[:, :]
 
             # Then do selection
@@ -312,7 +316,7 @@ if __name__ == "__main__":
     parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.0,
                         help="Force tolerance for ending NEB calculations.")
 
-    parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=1e-8,
+    parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=1e-6,
                         help="Relative Energy change tolerance for ending NEB calculations.")
 
     parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
