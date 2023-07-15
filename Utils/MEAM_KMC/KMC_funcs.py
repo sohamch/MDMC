@@ -108,7 +108,7 @@ def write_minim_final_states_relax_fix(SiteIndToSpec, SiteIndToPos, vacSiteInd, 
                     continue
 
                 # the neighbor will move to the vacancy site
-                if idx == siteIndToNgb[vacSiteInd[traj]]:
+                if idx == siteIndToNgb[vacSiteInd[traj], jmp]:
                     pos = SiteIndToPos[vacSiteInd[traj]]
                 else:
                     pos = SiteIndToPos[idx]
