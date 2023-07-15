@@ -55,7 +55,7 @@ def write_input_files_relax_fix(Ntr, potPath=None, etol=1e-8, ftol=0.00, etol_re
             else:
                 fl.write("pair_coeff \t * * " + potPath + "/library.meam Co Ni Cr Fe Mn " +
                          potPath + "/params.meam Co Ni Cr Fe Mn\n")
-            fl.write("minimize {1} {0} 500 100000".format(ftol, etol_relax))
+            fl.write("minimize {1} {0} 500 100000\n".format(ftol, etol_relax))
             fl.write("write_data initial_relax_{0}.data".format(traj))
 
         with open("in.minim_fin_{0}".format(traj), "w") as fl:
@@ -71,7 +71,7 @@ def write_input_files_relax_fix(Ntr, potPath=None, etol=1e-8, ftol=0.00, etol_re
             else:
                 fl.write("pair_coeff \t * * " + potPath + "/library.meam Co Ni Cr Fe Mn " +
                          potPath + "/params.meam Co Ni Cr Fe Mn\n")
-            fl.write("minimize {1} {0} 500 100000".format(ftol, etol_relax))
+            fl.write("minimize {1} {0} 500 100000\n".format(ftol, etol_relax))
             fl.write("write_data final_relax_{0}.data".format(traj))
 
 def write_final_NEB_relax_fix(Ntr, Natoms=499):
