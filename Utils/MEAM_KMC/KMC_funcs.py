@@ -117,7 +117,7 @@ def write_minim_final_states_relax_fix(SiteIndToSpec, SiteIndToPos, vacSiteInd, 
                 counter += 1
 
         with open("JumpSite_{}.data".format(traj), "w") as fl:
-            fl.write("{}  {}  {}".format(jmp, siteIndToNgb[vacSiteInd[traj], jmp], SiteIndToPos[vacSiteInd[traj]]))
+            fl.write("{}  {}  {}".format(jmp, siteIndToNgb[vacSiteInd[traj], jmp], SiteIndToPos[siteIndToNgb[vacSiteInd[traj], jmp]]))
 
 def write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, TopLines):
     Ntr = vacSiteInd.shape[0]
