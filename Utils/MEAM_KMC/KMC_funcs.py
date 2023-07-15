@@ -110,7 +110,7 @@ def write_minim_final_states_relax_fix(SiteIndToSpec, SiteIndToPos, vacSiteInd, 
             for idx in range(SiteIndToSpecExchange.shape[1]):
                 spec = SiteIndToSpecExchange[traj, idx]
                 if spec == 0:  # if the site is vacant
-                    assert idx == vacSiteInd[traj], "{} {}".format(idx, SiteIndToSpec[traj, idx])
+                    assert idx == siteIndToNgb[vacSiteInd[traj], jmp], "{} {}".format(idx, SiteIndToSpecExchange[traj, idx])
                     continue
                 pos = SiteIndToPos[idx]
                 fl.write("{} {} {} {} {}\n".format(counter, spec, pos[0], pos[1], pos[2]))
