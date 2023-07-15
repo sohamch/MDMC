@@ -176,7 +176,7 @@ if __name__ == "__main__":
     parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=1e-6,
                         help="Relative Energy change tolerance for ending NEB calculations.")
 
-    parser.add_argument("-etol", "--EnTolRel", metavar="float", type=float, default=1e-6,
+    parser.add_argument("-erel", "--EnTolRel", metavar="float", type=float, default=1e-6,
                         help="Energy tolerance for CG pre-relaxation of initial and final states.")
 
     parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
