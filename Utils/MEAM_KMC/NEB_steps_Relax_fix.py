@@ -192,7 +192,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
                 # Then run lammps
                 commands = [
-                    "mpirun -np {0} --oversubscribe $LMPPATH/lmp -log out_{1}.txt -screen screen_{1}.txt -p {0}x1 -in in.neb_{1}".format(NImages, traj)
+                    "mpirun -np {0} --oversubscribe $LMPPATH/lmp -log out_NEB_{1}.txt -screen screen_NEB_{1}.txt -p {0}x1 -in in.neb_{1}".format(NImages, traj)
                     for traj in range(SiteIndToSpec.shape[0])
                 ]
                 cmdList = [subprocess.Popen(cmd, shell=True) for cmd in commands]
@@ -204,7 +204,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
                 # Then read the forward barrier -> ebf
                 for traj in range(SiteIndToSpec.shape[0]):
-                    with open("out_{0}.txt".format(traj), "r") as fl:
+                    with open("out_NEB_{0}.txt".format(traj), "r") as fl:
                         for line in fl:
                             continue
                     ebfLine = line.split()
