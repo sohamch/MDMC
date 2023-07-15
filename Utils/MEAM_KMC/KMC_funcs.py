@@ -79,6 +79,7 @@ def write_input_files_relax_fix(Ntr, potPath=None, etol=1e-8, ftol=0.00, etol_re
             fl.write("minimize {1} {0} 500 100000\n".format(ftol, etol_relax))
             fl.write("write_data final_relax_{0}.data".format(traj))
 
+
 def write_final_NEB_relax_fix(Ntr, Natoms=499):
     for tr in range(Ntr):
         with open("final_relax_{0}.data".format(tr), "r") as fl:
@@ -99,7 +100,9 @@ def write_final_NEB_relax_fix(Ntr, Natoms=499):
             fl.write("{}\n".format(Natoms))
             fl.writelines(coords)
 
-def write_minim_final_states_relax_fix(SiteIndToSpec, SiteIndToPos, vacSiteInd, siteIndToNgb, jmp, TopLines):
+
+def write_minim_final_states_relax_fix(SiteIndToSpec, SiteIndToPos, vacSiteInd,
+                                       siteIndToNgb, jmp, TopLines, writeAll=False):
 
     for traj in range(SiteIndToSpec.shape[0]):
         with open("final_{}.data".format(traj), "w") as fl:
@@ -120,8 +123,15 @@ def write_minim_final_states_relax_fix(SiteIndToSpec, SiteIndToPos, vacSiteInd, 
                 fl.write("{} {} {} {} {}\n".format(counter, spec, pos[0], pos[1], pos[2]))
                 counter += 1
 
-        with open("JumpSite_{}.data".format(traj), "w") as fl:
+        with open("JumpSite_{}_{}.data".format(traj, jmp), "w") as fl:
             fl.write("{}  {}  {}".format(jmp, siteIndToNgb[vacSiteInd[traj], jmp], SiteIndToPos[siteIndToNgb[vacSiteInd[traj], jmp]]))
+
+        if writeAll:
+            with open("final_{}.data".format(traj), "r") as fl:
+                lines = fl.readlines()
+            with open("final_{}_{}.data".format(traj, jmp), "w") as fl:
+                fl.writelines(lines)
+
 
 def write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, TopLines):
     Ntr = vacSiteInd.shape[0]
@@ -159,7 +169,6 @@ def write_final_states(SiteIndToPos, vacSiteInd, siteIndToNgb, jInd, writeAll=Fa
                 fl.writelines(lines)
 
 
-# @jit(nopython=True)
 def getJumpSelects(rates):
     Ntr = rates.shape[0]
     timeStep = 1. / np.sum(rates, axis=1)
@@ -174,7 +183,6 @@ def getJumpSelects(rates):
     return jumpID, ratesProb, ratesProbSum, rn, timeStep
 
 
-# @jit(nopython=True)
 def updateStates(SiteIndToNgb, Nspec, SiteIndToSpec, vacSiteInd, jumpID, dxList):
     Ntraj = jumpID.shape[0]
     jumpAtomSelectArray = np.zeros(Ntraj, dtype=int)
@@ -191,6 +199,7 @@ def updateStates(SiteIndToNgb, Nspec, SiteIndToSpec, vacSiteInd, jumpID, dxList)
         X[tr, jumpAtomSelect, :] = -dxList[jumpID[tr]]
 
     return jumpAtomSelectArray, X
+
 
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, batchSize, SiteIndToNgb, chunkSize, PotPath,
@@ -346,7 +355,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 # ToDo: This is similar to the previous function, can we modularize things further?
 def DoKMC_Relax_Fix(T, startStep, Nsteps, StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, batchSize, SiteIndToNgb, chunkSize, PotPath,
-          SiteIndToPos, ftol=0.001, etol=1e-7, etol_relax=1e-8, NImages=5):
+          SiteIndToPos, WriteAllJumps=False, ftol=0.001, etol=1e-7, etol_relax=1e-8, NImages=5):
     try:
         with open("lammpsBox.txt", "r") as fl:
             Initlines = fl.readlines()
@@ -423,7 +432,8 @@ def DoKMC_Relax_Fix(T, startStep, Nsteps, StateStart, dxList,
 
                 # Create the minimization input file for the final states
                 write_minim_final_states_relax_fix(SiteIndToSpec, SiteIndToPos, vacSiteInd,
-                                                   SiteIndToNgb, jumpInd, Initlines[:lineStartCoords])
+                                                   SiteIndToNgb, jumpInd, Initlines[:lineStartCoords],
+                                                   writeAll=WriteAllJumps)
 
                 # Then relax the final states
                 commands = [

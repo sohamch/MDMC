@@ -124,10 +124,19 @@ def main(args):
     print("Checked vacancy occupancies.")
 
     # Then do the KMC steps
-    print("Starting KMC NEB calculations.")
-    DoKMC(args.Temp, args.startStep, args.Nsteps, args.StateStart, dxList,
-          SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
-          SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages)
+    if args.SimpleNEB:
+        print("Starting KMC calculations with simple NEB from on-lattice states.")
+        DoKMC(args.Temp, args.startStep, args.Nsteps, args.StateStart, dxList,
+              SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
+              SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages)
+
+    else:
+        print("Starting KMC calculations with pre-relaxed initial and final states.")
+        DoKMC_Relax_Fix(args.Temp, args.startStep, args.Nsteps, args.StateStart, dxList,
+              SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
+              SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages,
+              etol_relax=args.EnTolRel)
+
 
 if __name__ == "__main__":
 
@@ -152,6 +161,9 @@ if __name__ == "__main__":
     parser.add_argument("-st", "--startStep", metavar="int", type=int, default=0,
                         help="From which step to start the simulation. Note - checkpointed data file must be present in running directory if value > 0.")
 
+    parser.add_argument("-smp", "--SimpleNEB", action="store_true",
+                        help="Whether to just do simple NEB from on-lattice initial and final states with all images being relaxed.")
+
     parser.add_argument("-ni", "--NImages", metavar="int", type=int, default=5,
                         help="How many NEB Images to use. Must be odd number.")
 
@@ -163,6 +175,9 @@ if __name__ == "__main__":
 
     parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=1e-6,
                         help="Relative Energy change tolerance for ending NEB calculations.")
+
+    parser.add_argument("-etol", "--EnTolRel", metavar="float", type=float, default=1e-6,
+                        help="Energy tolerance for CG pre-relaxation of initial and final states.")
 
     parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
                         help="Number of unit cells in the supercell.")
@@ -179,7 +194,7 @@ if __name__ == "__main__":
                         help="How many samples to do NEB calculations for at a time.")
 
     parser.add_argument("-wa", "--WriteAllJumps", action="store_true",
-                        help="Whether to store final style NEB files for all jumps separately.")
+                        help="Whether to store final state files for all jumps separately.")
 
     parser.add_argument("-dmp", "--DumpArguments", action="store_true",
                         help="Whether to dump all the parsed arguments into a text file.")
