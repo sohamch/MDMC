@@ -21,6 +21,101 @@ def write_input_files(Ntr, potPath=None, etol=1e-8, ftol=0.00):
             fl.write("neb \t {2} {0} 500 500 10 final final_{1}.data".format(ftol, traj, etol))
 
 
+def write_input_files_relax_fix(Ntr, potPath=None, etol=1e-8, ftol=0.00, NImages=5):
+    for traj in range(Ntr):
+        with open("in.neb_{0}".format(traj), "w") as fl:
+            fl.write("units \t metal\n")
+            fl.write("atom_style \t atomic\n")
+            fl.write("atom_modify \t map array\n")
+            fl.write("boundary \t p p p\n")
+            fl.write("atom_modify \t sort 0 0.0\n")
+            fl.write("read_data \t initial_relax_{0}.data\n".format(traj)) # read RELAXED initial state
+            fl.write("pair_style \t meam\n")
+            if potPath is None:
+                fl.write("pair_coeff \t * * pot/library.meam Co Ni Cr Fe Mn pot/params.meam Co Ni Cr Fe Mn\n")
+            else:
+                fl.write("pair_coeff \t * * " + potPath + "/library.meam Co Ni Cr Fe Mn " +
+                         potPath + "/params.meam Co Ni Cr Fe Mn\n")
+            fl.write("timestep \t 0.01\n")
+            fl.write("min_style \t quickmin\n")
+            fl.write("partition no 2*{0} fix 2 all setforce 0.0 0.0 0.0\n".format(NImages-1))
+            fl.write("fix \t 1 all neb 1.0\n")
+            fl.write("neb \t {2} {0} 500 500 10 final final_NEB_coords_{1}.data".format(ftol, traj, etol))
+
+        with open("in.minim_init_{0}".format(traj), "w") as fl:
+            fl.write("units \t metal\n")
+            fl.write("atom_style \t atomic\n")
+            fl.write("atom_modify \t map array\n")
+            fl.write("boundary \t p p p\n")
+            fl.write("atom_modify \t sort 0 0.0\n")
+            fl.write("read_data \t initial_{0}.data\n".format(traj))
+            fl.write("pair_style \t meam\n")
+            if potPath is None:
+                fl.write("pair_coeff \t * * pot/library.meam Co Ni Cr Fe Mn pot/params.meam Co Ni Cr Fe Mn\n")
+            else:
+                fl.write("pair_coeff \t * * " + potPath + "/library.meam Co Ni Cr Fe Mn " +
+                         potPath + "/params.meam Co Ni Cr Fe Mn\n")
+            fl.write("minimize {1} {0} 500 100000".format(ftol, etol))
+            fl.write("write_data initial_relax_{0}.data".format(traj))
+
+        with open("in.minim_fin_{0}".format(traj), "w") as fl:
+            fl.write("units \t metal\n")
+            fl.write("atom_style \t atomic\n")
+            fl.write("atom_modify \t map array\n")
+            fl.write("boundary \t p p p\n")
+            fl.write("atom_modify \t sort 0 0.0\n")
+            fl.write("read_data \t final_{0}.data\n".format(traj))
+            fl.write("pair_style \t meam\n")
+            if potPath is None:
+                fl.write("pair_coeff \t * * pot/library.meam Co Ni Cr Fe Mn pot/params.meam Co Ni Cr Fe Mn\n")
+            else:
+                fl.write("pair_coeff \t * * " + potPath + "/library.meam Co Ni Cr Fe Mn " +
+                         potPath + "/params.meam Co Ni Cr Fe Mn\n")
+            fl.write("minimize {1} {0} 500 100000".format(ftol, etol))
+            fl.write("write_data final_relax_{0}.data".format(traj))
+
+def write_final_NEB_relax_fix(Ntr, Natoms=499):
+    for tr in range(Ntr):
+        with open("final_relax_{0}.data".format(tr), "r") as fl:
+            lines = fl.readlines()
+
+        for lineInd, l in enumerate(lines):
+            if "Atoms" in l:
+                break
+
+        lineInd += 2
+        coords = []
+        for lInd, l in enumerate(lines[lineInd: lineInd + Natoms]):
+            l_s = l.split()
+            coords.append("{} {} {} {}\n".format(lInd + 1, l_s[2], l_s[3], l_s[4]))
+        assert int(l_s[0]) == Natoms
+
+        with open("final_NEB_coords_{0}.data".format(tr), "w") as fl:
+            fl.write("{}\n".format(Natoms))
+            fl.writelines(coords)
+
+def write_minim_final_states_relax_fix(SiteIndToSpec, SiteIndToPos, vacSiteInd, siteIndToNgb, jmp, TopLines):
+    # first update occupancies
+    SiteIndToSpecExchange = SiteIndToSpec.copy()
+    for tr in range(SiteIndToSpec.shape[0]):
+        vacInd = vacSiteInd[tr]
+        ngb = siteIndToNgb[vacInd, jmp]
+        SiteIndToSpecExchange[tr, vacInd] = SiteIndToSpec[tr, ngb]
+        SiteIndToSpecExchange[tr, ngb] = SiteIndToSpec[tr, vacInd]
+
+    for traj in range(SiteIndToSpecExchange.shape[0]):
+        with open("final_{}.data".format(traj), "w") as fl:
+            fl.writelines(TopLines)
+            counter = 1
+            for idx in range(SiteIndToSpecExchange.shape[1]):
+                spec = SiteIndToSpecExchange[traj, idx]
+                if spec == 0:  # if the site is vacant
+                    assert idx == vacSiteInd[traj], "{} {}".format(idx, SiteIndToSpec[traj, idx])
+                    continue
+                pos = SiteIndToPos[idx]
+                fl.write("{} {} {} {} {}\n".format(counter, spec, pos[0], pos[1], pos[2]))
+                counter += 1
+
 def write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, TopLines):
     Ntr = vacSiteInd.shape[0]
     for traj in range(Ntr):
