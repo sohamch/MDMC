@@ -95,7 +95,7 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
 
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, batchSize, SiteIndToNgb, chunkSize, PotPath,
-          SiteIndToPos, WriteAllJumps=False, ftol=0.001, etol=1e-7, NImages=5):
+          SiteIndToPos, WriteAllJumps=False, ftol=0.001, etol=1e-7, etol_relax=1e-8, NImages=5):
     try:
         with open("lammpsBox.txt", "r") as fl:
             Initlines = fl.readlines()
@@ -135,7 +135,8 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
     # Before starting, write the lammps input files
     # write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol)
-    write_input_files_relax_fix(chunkSize, potPath=PotPath, etol=etol, ftol=ftol, NImages=NImages)
+    write_input_files_relax_fix(chunkSize, potPath=PotPath, etol=etol, etol_relax=etol_relax,
+                                ftol=ftol, NImages=NImages)
 
     start = time.time()
 
@@ -313,7 +314,8 @@ def main(args):
     print("Starting KMC NEB calculations.")
     DoKMC(args.Temp, args.startStep, args.Nsteps, args.StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
-          SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages)
+          SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages,
+          etol_relax=args.EnTolRel)
 
 if __name__ == "__main__":
 
@@ -349,6 +351,8 @@ if __name__ == "__main__":
 
     parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=1e-6,
                         help="Relative Energy change tolerance for ending NEB calculations.")
+    parser.add_argument("-erel", "--EnTolRel", metavar="float", type=float, default=1e-8,
+                        help="Relative Energy change tolerance for ending end-point relaxation.")
 
     parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
                         help="Number of unit cells in the supercell.")
