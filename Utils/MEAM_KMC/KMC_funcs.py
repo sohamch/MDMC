@@ -95,15 +95,8 @@ def write_final_NEB_relax_fix(Ntr, Natoms=499):
             fl.writelines(coords)
 
 def write_minim_final_states_relax_fix(SiteIndToSpec, SiteIndToPos, vacSiteInd, siteIndToNgb, jmp, TopLines):
-    # first update occupancies
-    SiteIndToSpecExchange = SiteIndToSpec.copy()
-    # for tr in range(SiteIndToSpec.shape[0]):
-    #     vacInd = vacSiteInd[tr]
-    #     ngb = siteIndToNgb[vacInd, jmp]
-    #     SiteIndToSpecExchange[tr, vacInd] = SiteIndToSpec[tr, ngb]
-    #     SiteIndToSpecExchange[tr, ngb] = SiteIndToSpec[tr, vacInd]
 
-    for traj in range(SiteIndToSpecExchange.shape[0]):
+    for traj in range(SiteIndToSpec.shape[0]):
         with open("final_{}.data".format(traj), "w") as fl:
             fl.writelines(TopLines)
             counter = 1
@@ -111,7 +104,7 @@ def write_minim_final_states_relax_fix(SiteIndToSpec, SiteIndToPos, vacSiteInd, 
 
                 spec = SiteIndToSpec[traj, idx]
                 if spec == 0:  # if the site is vacant
-                    assert idx == siteIndToNgb[vacSiteInd[traj], jmp], "{} {}".format(idx, SiteIndToSpecExchange[traj, idx])
+                    assert idx == vacSiteInd[traj], "{} {}".format(idx, SiteIndToSpec[traj, idx])
                     continue
 
                 # the neighbor will move to the vacancy site
