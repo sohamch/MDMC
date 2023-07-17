@@ -95,7 +95,7 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
 
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, batchSize, SiteIndToNgb, chunkSize, PotPath,
-          SiteIndToPos, WriteAllJumps=False, ftol=0.001, etol=1e-7, NImages=5):
+          SiteIndToPos, WriteAllJumps=False, ftol=0.01, etol=5e-7, ts=0.001, NImages=5):
     try:
         with open("lammpsBox.txt", "r") as fl:
             Initlines = fl.readlines()
@@ -134,7 +134,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     AllJumpFSE = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
 
     # Before starting, write the lammps input files
-    write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol)
+    write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol, ts=ts)
 
     start = time.time()
 
@@ -282,7 +282,8 @@ def main(args):
     print("Starting KMC NEB calculations.")
     DoKMC(args.Temp, args.startStep, args.Nsteps, args.StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
-          SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages)
+          SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages,
+          ts=args.TimeStep)
 
 if __name__ == "__main__":
 
@@ -313,10 +314,13 @@ if __name__ == "__main__":
     parser.add_argument("-ns", "--Nsteps", metavar="int", type=int, default=100,
                         help="How many steps to continue AFTER \"starStep\" argument.")
 
-    parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.0,
+    parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.01,
                         help="Force tolerance for ending NEB calculations.")
 
-    parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=1e-6,
+    parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=5e-7,
+                        help="Relative Energy change tolerance for ending NEB calculations.")
+
+    parser.add_argument("-ts", "--TimeStep", metavar="float", type=float, default=0.001,
                         help="Relative Energy change tolerance for ending NEB calculations.")
 
     parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
