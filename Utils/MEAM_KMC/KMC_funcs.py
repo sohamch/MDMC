@@ -1,6 +1,6 @@
 import numpy as np
 
-def write_input_files(Ntr, potPath=None, ts = 0.001, etol=5e-7, ftol=0.01):
+def write_input_files(Ntr, potPath=None, ts = 0.001, etol=5e-7, ftol=0.001):
     for traj in range(Ntr):
         with open("in.neb_{0}".format(traj), "w") as fl:
             fl.write("units \t metal\n")
