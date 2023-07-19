@@ -261,7 +261,7 @@ def main(args):
         SiteIndToPos = CreateLammpsData(args.Nunits, args.LatPar, prim=args.Prim)
 
     # Check algorithm for minimization
-    if args.Algo != "quickmin" or args.Algo != "fire":
+    if not (args.Algo == "quickmin" or args.Algo == "fire"):
         raise ValueError("Algo can only be either \"quickmin\" or \"fire\"")
 
     # Load the crystal data
