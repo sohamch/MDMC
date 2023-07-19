@@ -95,7 +95,8 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
 
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, batchSize, SiteIndToNgb, chunkSize, PotPath,
-          SiteIndToPos, WriteAllJumps=False, ftol=0.001, etol=5e-7, ts=0.001, NImages=5):
+          SiteIndToPos, WriteAllJumps=False, ftol=0.001, etol=5e-7, ts=0.001, NImages=5,
+          algo="quickmin"):
     try:
         with open("lammpsBox.txt", "r") as fl:
             Initlines = fl.readlines()
@@ -134,7 +135,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     AllJumpFSE = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
 
     # Before starting, write the lammps input files
-    write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol, ts=ts)
+    write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol, ts=ts, algo=algo)
 
     start = time.time()
 
@@ -259,6 +260,10 @@ def main(args):
     except FileNotFoundError:
         SiteIndToPos = CreateLammpsData(args.Nunits, args.LatPar, prim=args.Prim)
 
+    # Check algorithm for minimization
+    if args.Algo != "quickmin" or args.Algo != "fire":
+        raise ValueError("Algo can only be either \"quickmin\" or \"fire\"")
+
     # Load the crystal data
     dxList, SiteIndToNgb = Load_crysDat(args.CrysDatPath, args.LatPar)
 
@@ -283,7 +288,7 @@ def main(args):
     DoKMC(args.Temp, args.startStep, args.Nsteps, args.StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
           SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages,
-          ts=args.TimeStep)
+          ts=args.TimeStep, algo=args.Algo)
 
 if __name__ == "__main__":
 
@@ -322,6 +327,9 @@ if __name__ == "__main__":
 
     parser.add_argument("-ts", "--TimeStep", metavar="float", type=float, default=0.001,
                         help="Relative Energy change tolerance for ending NEB calculations.")
+
+    parser.add_argument("-al", "--Algo", metavar="quickmin/fire", type=str, default="quickmin",
+                        help="Which algo to use to relax NEB images (quickmin or fire).")
 
     parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
                         help="Number of unit cells in the supercell.")

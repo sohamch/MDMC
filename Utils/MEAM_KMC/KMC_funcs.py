@@ -1,6 +1,6 @@
 import numpy as np
 
-def write_input_files(Ntr, potPath=None, ts = 0.001, etol=5e-7, ftol=0.001):
+def write_input_files(Ntr, potPath=None, ts = 0.001, etol=5e-7, ftol=0.001, algo="quickmin"):
     for traj in range(Ntr):
         with open("in.neb_{0}".format(traj), "w") as fl:
             fl.write("units \t metal\n")
@@ -17,7 +17,7 @@ def write_input_files(Ntr, potPath=None, ts = 0.001, etol=5e-7, ftol=0.001):
                          potPath + "/params.meam Co Ni Cr Fe Mn\n")
             fl.write("fix \t 1 all neb 1.0\n")
             fl.write("timestep \t {}\n".format(ts))
-            fl.write("min_style \t quickmin\n")
+            fl.write("min_style \t {}\n".format(algo))
             fl.write("neb \t {2} {0} 500 500 10 final final_{1}.data".format(ftol, traj, etol))
 
 
