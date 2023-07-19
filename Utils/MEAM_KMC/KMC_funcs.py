@@ -18,7 +18,7 @@ def write_input_files(Ntr, potPath=None, ts = 0.001, etol=5e-7, ftol=0.001, algo
             fl.write("fix \t 1 all neb 1.0\n")
             fl.write("timestep \t {}\n".format(ts))
             fl.write("min_style \t {}\n".format(algo))
-            fl.write("neb \t {2} {0} 500 500 10 final final_{1}.data".format(ftol, traj, etol))
+            fl.write("neb \t {2} {0} 5000 500 10 final final_{1}.data".format(ftol, traj, etol))
 
 
 def write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, TopLines):
