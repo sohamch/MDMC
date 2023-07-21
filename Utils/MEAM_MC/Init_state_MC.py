@@ -72,10 +72,10 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
             pickle.dump(ASE_Super, fl_sup)
 
     else:
-        Eng_steps_all = list(np.load("Eng_all_steps.npy")[:lastChkPt])
-        accepts = list(np.load("accepts_all_steps.npy")[:lastChkPt])
-        rand_steps = list(np.load("rands_all_steps.npy")[:lastChkPt])
-        swap_steps = list(np.load("swap_atoms_all_steps.npy")[:lastChkPt])
+        Eng_steps_all = list(np.load("History_backup/Eng_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
+        accepts = list(np.load("History_backup/accepts_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
+        rand_steps = list(np.load("History_backup/rands_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
+        swap_steps = list(np.load("History_backup/swap_atoms_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
 
     # write the supercell as a lammps file
 
@@ -153,18 +153,18 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
                 t_now = time.time()
                 fl_timer.write("Time Per step ({0} steps): {1}\n".format(N_total, (t_now-start_time)/N_total))
 
-            if N_total + lastChkPt >= N_therm:
-                with open("chkpt/supercell_{}.pkl".format(N_total + lastChkPt), "wb") as fl_sup:
-                    pickle.dump(ASE_Super, fl_sup)
+            # if N_total + lastChkPt >= N_therm:
+            with open("chkpt/supercell_{}.pkl".format(N_total + lastChkPt), "wb") as fl_sup:
+                pickle.dump(ASE_Super, fl_sup)
 
-                with open("chkpt/counter.txt", "w") as fl_counter:
-                    fl_counter.write("last step saved\n{}".format(N_total))
+            with open("chkpt/counter.txt", "w") as fl_counter:
+                fl_counter.write("last step saved\n{}".format(N_total))
 
             # Back up the trajectory history
-            shutil.copy("Eng_all_steps.npy", "History_backup/")
-            shutil.copy("accepts_all_steps.npy", "History_backup/")
-            shutil.copy("rands_all_steps.npy", "History_backup/")
-            shutil.copy("swap_atoms_all_steps.npy", "History_backup/")
+            shutil.copy("Eng_all_steps.npy", "History_backup/Eng_all_steps_{}.npy".format(N_total + lastChkPt))
+            shutil.copy("accepts_all_steps.npy", "History_backup/accepts_all_steps_{}.npy".format(N_total + lastChkPt))
+            shutil.copy("rands_all_steps.npy", "History_backup/rands_all_steps_{}.npy".format(N_total + lastChkPt))
+            shutil.copy("swap_atoms_all_steps.npy", "History_backup/swap_atoms_all_steps_{}.npy".format(N_total + lastChkPt))
 
             if N_total % (10*N_save) == 0:
                 cmd_zip = subprocess.Popen("zip -r chkp_backup.zip chkpt > zipout.txt", shell=True)
