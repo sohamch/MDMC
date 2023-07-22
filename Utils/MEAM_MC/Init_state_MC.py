@@ -77,10 +77,10 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
         rand_steps = list(np.load("History_backup/rands_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
         swap_steps = list(np.load("History_backup/swap_atoms_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
 
-        assert len(Eng_steps_all) == lastChkPt - 1
-        assert len(accepts) == lastChkPt - 1
-        assert len(rand_steps) == lastChkPt - 1
-        assert len(swap_steps) == lastChkPt - 1
+        assert len(Eng_steps_all) == lastChkPt - 1, "{} {}".format(len(Eng_steps_all), lastChkPt)
+        assert len(accepts) == lastChkPt - 1, "{} {}".format(len(accepts), lastChkPt)
+        assert len(rand_steps) == lastChkPt - 1, "{} {}".format(len(rand_steps), lastChkPt)
+        assert len(swap_steps) == lastChkPt - 1, "{} {}".format(len(swap_steps), lastChkPt)
 
     # write the supercell as a lammps file
 
