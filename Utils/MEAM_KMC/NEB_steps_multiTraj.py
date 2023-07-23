@@ -106,7 +106,7 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
 
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, JumpsToAvoid, batchSize, SiteIndToNgb, chunkSize, PotPath,
-          SiteIndToPos, WriteAllJumps=False, ftol=0.001, etol=0.0, ts=0.001, NImages=11):
+          SiteIndToPos, WriteAllJumps=False, ftol=0.01, etol=0.0, ts=0.001, NImages=11):
     try:
         with open("lammpsBox.txt", "r") as fl:
             Initlines = fl.readlines()
@@ -404,7 +404,7 @@ if __name__ == "__main__":
     parser.add_argument("-ns", "--Nsteps", metavar="int", type=int, default=100,
                         help="How many steps to continue AFTER \"starStep\" argument.")
 
-    parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.001,
+    parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.01,
                         help="Force tolerance for ending NEB calculations.")
 
     parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=0.0,
