@@ -335,13 +335,6 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
 def main(args):
 
-    # SourcePath = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
-    # SourcePath += "/"
-
-    # check number of images is odd
-    if args.NImages % 2 == 0:
-        raise ValueError("Can only use odd values for the number of images (-ni, --NImages).")
-
     # Create the Lammps cartesian positions - first check if they have already been made.
     try:
         SiteIndToPos = np.load("SiteIndToLmpCartPos.npy")
