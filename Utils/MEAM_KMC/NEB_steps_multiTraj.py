@@ -262,16 +262,16 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                         barriers[traj, jumpInd] = ebf
                         MaxForceAtom[traj, jumpInd] = maxForce
 
-                    Is = float(ebfLine[10])
+                        Is = float(ebfLine[10])
 
-                    for im in range(NImages-2):
-                        Ts = float(ebfLine[10 + 2 * (im + 1)])
-                        TSE[traj, im, jumpInd] = Ts
+                        for im in range(NImages-2):
+                            Ts = float(ebfLine[10 + 2 * (im + 1)])
+                            TSE[traj, im, jumpInd] = Ts
 
-                    Fs = float(ebfLine[10 + 2 * (NImages-1)])
+                        Fs = float(ebfLine[10 + 2 * (NImages-1)])
 
-                    ISE[traj, jumpInd] = Is
-                    FSE[traj, jumpInd] = Fs
+                        ISE[traj, jumpInd] = Is
+                        FSE[traj, jumpInd] = Fs
 
 
             # store all the rates
