@@ -90,6 +90,7 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
         assert startStep == 0
         try:
             allStates = np.load(InitStateFile)
+            assert allStates.dtype == np.int8
             print("Starting from step zero.")
         except FileNotFoundError:
             raise FileNotFoundError("Initial states not found.")
@@ -97,7 +98,7 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
         SiteIndToSpecAll = allStates[StateStart: StateStart + batchSize]
 
         assert np.all(SiteIndToSpecAll[:, 0] == 0), "All vacancies must be at the 0th site initially."
-        vacSiteIndAll = np.zeros(SiteIndToSpecAll.shape[0], dtype = int)
+        vacSiteIndAll = np.zeros(SiteIndToSpecAll.shape[0], dtype=int)
         np.save("states_step0_{}.npy".format(T), SiteIndToSpecAll)
         JumpsToAvoid = set()
         
@@ -191,7 +192,6 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
                 # Then read the results for each trajectory
                 for traj in range(SiteIndToSpec.shape[0]):
-                    st = SiteIndToSpec[traj]
 
                     with open("out_{0}.txt".format(traj), "r") as fl:
                         lines = fl.readlines()
@@ -207,20 +207,22 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     iters_regular = int(LastLine_Regular[0])
                     iters_CI = iters_total - iters_regular
 
-                    if tuple((tuple(st), jumpInd)) in JumpsToAvoid:
+                    st = SiteIndToSpec[traj]
+                    if tuple((tuple(st), jumpInd)) in JumpsToAvoid: # Check if this is a jump to avoid.
                         ebfLine = None
 
                     else:
-                        if iters_CI < 500 and iters_regular < 5000:
+                        if iters_CI < 500 and iters_regular < 5000: # both CI and regular NEB are converged
                             ebfLine = LastLine_CI
                             ChooseCI[traj, jumpInd] = 1
 
-                        elif iters_regular < 5000 and not iters_CI < 500:
+                        elif iters_CI >= 500 and iters_regular < 5000:  # regular converged but CI is not
                             ebfLine = LastLine_Regular
                             ChooseRegular[traj, jumpInd] = 1
 
-                        else:
+                        else:  # regular NEB not converged within 5000 iterations (we'll set 0 rates for these and their reverse jumps).
                             ebfLine = None
+
                             # put the state, the jump and the reverse state and jump in jumps to avoid
                             JumpsToAvoid.add(tuple((tuple(st), jumpInd)))
 
