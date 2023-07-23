@@ -6,6 +6,7 @@ import numpy as np
 import subprocess
 import time
 import h5py
+import pickle
 
 from ase.spacegroup import crystal
 from ase.build import make_supercell
@@ -72,7 +73,15 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
             state = SiteIndToSpecAll[stateInd]
             vacSite = np.where(state == 0)[0][0]
             vacSiteIndAll[stateInd] = vacSite
-
+        
+        try:
+            with open("JumpsToAvoid.pkl", "rb") as fl:
+                JumpsToAvoid = pickle.load(fl)
+        
+        except FileNotFoundError:
+            print("No Jumps found to avoid.")
+            JumpsToAvoid = set()
+        
         print("Starting from checkpointed step {}".format(startStep))
         np.save("states_{0}_{1}_{2}.npy".format(T, startStep, StateStart), SiteIndToSpecAll)
         np.save("vacSites_{0}_{1}_{2}.npy".format(T, startStep, StateStart), vacSiteIndAll)
@@ -90,11 +99,12 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
         assert np.all(SiteIndToSpecAll[:, 0] == 0), "All vacancies must be at the 0th site initially."
         vacSiteIndAll = np.zeros(SiteIndToSpecAll.shape[0], dtype = int)
         np.save("states_step0_{}.npy".format(T), SiteIndToSpecAll)
-
-    return SiteIndToSpecAll, vacSiteIndAll
+        JumpsToAvoid = set()
+        
+    return SiteIndToSpecAll, vacSiteIndAll, JumpsToAvoid
 
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
-          SiteIndToSpecAll, vacSiteIndAll, batchSize, SiteIndToNgb, chunkSize, PotPath,
+          SiteIndToSpecAll, vacSiteIndAll, JumpsToAvoid, batchSize, SiteIndToNgb, chunkSize, PotPath,
           SiteIndToPos, WriteAllJumps=False, ftol=0.01, etol=0.0, ts=0.001, NImages=11):
     try:
         with open("lammpsBox.txt", "r") as fl:
@@ -181,6 +191,8 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
                 # Then read the results for each trajectory
                 for traj in range(SiteIndToSpec.shape[0]):
+                    st = SiteIndToSpec[traj]
+
                     with open("out_{0}.txt".format(traj), "r") as fl:
                         lines = fl.readlines()
 
@@ -195,26 +207,55 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     iters_regular = int(LastLine_Regular[0])
                     iters_CI = iters_total - iters_regular
 
-                    if iters_CI < 500 and iters_regular < 5000:
-                        ebfLine = LastLine_CI
-                        ChooseCI[traj, jumpInd] = 1
-                    elif iters_regular < 5000 and not iters_CI < 500:
-                        ebfLine = LastLine_Regular
-                        ChooseRegular[traj, jumpInd] = 1
-                    else:
+                    if tuple((tuple(st), jumpInd)) in JumpsToAvoid:
                         ebfLine = None
 
-                    if ebfLine is not None:
+                    else:
+                        if iters_CI < 500 and iters_regular < 5000:
+                            ebfLine = LastLine_CI
+                            ChooseCI[traj, jumpInd] = 1
+
+                        elif iters_regular < 5000 and not iters_CI < 500:
+                            ebfLine = LastLine_Regular
+                            ChooseRegular[traj, jumpInd] = 1
+
+                        else:
+                            ebfLine = None
+                            # put the state, the jump and the reverse state and jump in jumps to avoid
+                            JumpsToAvoid.add(tuple((tuple(st), jumpInd)))
+
+                            # First get the reverse jump
+                            jIndRev = None
+                            count = 0
+                            for jInd in dxList:
+                                if np.allclose(dxList[jInd] + dxList[jumpInd], 0):
+                                    count += 1
+                                    jIndRev = jInd
+
+                            assert count == 1 and jIndRev is not None
+
+                            # Then get the reverse jump's initial state
+                            vac = vacSiteInd[traj]
+                            vacngb = SiteIndToNgb[vac, jumpInd]
+                            assert  st[vac] == 0
+                            stRev = st.copy()
+                            stRev[vac] = st[vacngb]
+                            st[vacngb] = st[vac]
+
+                            JumpsToAvoid.add(tuple((tuple(stRev), jIndRev)))
+
+                    if ebfLine is None:
+                        rates[traj, jumpInd] = 0.0
+                        barriers[traj, jumpInd] = np.inf
+                        MaxForceAtom[traj, jumpInd] = np.inf
+
+                    else:
                         ebf = float(ebfLine[6])
                         maxForce = float(ebfLine[2])
 
                         rates[traj, jumpInd] = np.exp(-ebf / (kB * T))
                         barriers[traj, jumpInd] = ebf
                         MaxForceAtom[traj, jumpInd] = maxForce
-                    else:
-                        rates[traj, jumpInd] = 0.0
-                        barriers[traj, jumpInd] = np.inf
-                        MaxForceAtom[traj, jumpInd] = np.inf
 
                     Is = float(ebfLine[10])
 
@@ -282,6 +323,10 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             fl.create_dataset("JumpSelects", data=JumpSelects)
             fl.create_dataset("TestRandNums", data=TestRandomNums)
 
+        if len(JumpsToAvoid) > 0:
+            with open("JumpsToAvoid.pkl", "wb") as fl:
+                pickle.dump(JumpsToAvoid, fl)
+
 def main(args):
 
     # SourcePath = os.path.split(os.path.realpath(__file__))[0] # the directory where the main script is
@@ -306,7 +351,7 @@ def main(args):
     dxList, SiteIndToNgb = Load_crysDat(args.CrysDatPath, args.LatPar)
 
     # Load the initial states
-    SiteIndToSpecAll, vacSiteIndAll = load_Data(args.Temp, args.startStep, args.StateStart,
+    SiteIndToSpecAll, vacSiteIndAll, JumpsToAvoid = load_Data(args.Temp, args.startStep, args.StateStart,
                                                 args.batchSize, args.InitStateFile)
 
     # Run a check on the vacancy positions
@@ -324,7 +369,7 @@ def main(args):
     # Then do the KMC steps
     print("Starting KMC NEB calculations.")
     DoKMC(args.Temp, args.startStep, args.Nsteps, args.StateStart, dxList,
-          SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
+          SiteIndToSpecAll, vacSiteIndAll, JumpsToAvoid, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
           SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages,
           ts=args.TimeStep)
 
