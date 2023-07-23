@@ -208,7 +208,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     iters_CI = iters_total - iters_regular
 
                     st = SiteIndToSpec[traj]
-                    if tuple((tuple(st), jumpInd)) in JumpsToAvoid: # Check if this is a jump to avoid.
+                    if (tuple(st), jumpInd) in JumpsToAvoid: # Check if this is a jump to avoid.
                         ebfLine = None
 
                     else:
@@ -224,12 +224,12 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                             ebfLine = None
 
                             # put the state, the jump and the reverse state and jump in jumps to avoid
-                            JumpsToAvoid.add(tuple((tuple(st), jumpInd)))
+                            JumpsToAvoid.add((tuple(st), jumpInd))
 
                             # First get the reverse jump
                             jIndRev = None
                             count = 0
-                            for jInd in dxList:
+                            for jInd in range(dxList.shape[0]):
                                 if np.allclose(dxList[jInd] + dxList[jumpInd], 0):
                                     count += 1
                                     jIndRev = jInd
@@ -239,19 +239,22 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                             # Then get the reverse jump's initial state
                             vac = vacSiteInd[traj]
                             vacngb = SiteIndToNgb[vac, jumpInd]
-                            assert  st[vac] == 0
+                            assert st[vac] == 0  # check the vacancy site
+                            assert SiteIndToNgb[vacngb, jIndRev] == vac
                             stRev = st.copy()
                             stRev[vac] = st[vacngb]
-                            st[vacngb] = st[vac]
+                            stRev[vacngb] = st[vac]
 
-                            JumpsToAvoid.add(tuple((tuple(stRev), jIndRev)))
+                            JumpsToAvoid.add((tuple(stRev), jIndRev))
 
                     if ebfLine is None:
+                        assert ChooseRegular[traj, jumpInd] == ChooseCI[traj, jumpInd] == 0
                         rates[traj, jumpInd] = 0.0
                         barriers[traj, jumpInd] = np.inf
                         MaxForceAtom[traj, jumpInd] = np.inf
 
                     else:
+                        assert ChooseRegular[traj, jumpInd] + ChooseCI[traj, jumpInd] == 1
                         ebf = float(ebfLine[6])
                         maxForce = float(ebfLine[2])
 
@@ -325,6 +328,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             fl.create_dataset("JumpSelects", data=JumpSelects)
             fl.create_dataset("TestRandNums", data=TestRandomNums)
 
+        # save if there are some jumps to avoid
         if len(JumpsToAvoid) > 0:
             with open("JumpsToAvoid.pkl", "wb") as fl:
                 pickle.dump(JumpsToAvoid, fl)
