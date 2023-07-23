@@ -95,8 +95,7 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
 
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, batchSize, SiteIndToNgb, chunkSize, PotPath,
-          SiteIndToPos, WriteAllJumps=False, ftol=0.001, etol=5e-7, ts=0.001, NImages=5,
-          algo="quickmin"):
+          SiteIndToPos, WriteAllJumps=False, ftol=0.01, etol=0.0, ts=0.001, NImages=11):
     try:
         with open("lammpsBox.txt", "r") as fl:
             Initlines = fl.readlines()
@@ -133,9 +132,12 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     AllJumpISE = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
     AllJumpTSE = np.zeros((Ntraj, NImages-2, SiteIndToNgb.shape[1]))
     AllJumpFSE = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
+    AllJumpMaxForceAtom = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
+    AllJumpChooseCI = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
+    AllJumpChooseRegular = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
 
     # Before starting, write the lammps input files
-    write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol, ts=ts, algo=algo)
+    write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol, ts=ts)
 
     start = time.time()
 
@@ -150,11 +152,17 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
             write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, Initlines[:lineStartCoords])
 
+            # declare arrays to store quantities
             rates = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
             barriers = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
             ISE = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
             TSE = np.zeros((SiteIndToSpec.shape[0], NImages-2, SiteIndToNgb.shape[1]))
             FSE = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
+            MaxForceAtom = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
+            ChooseRegular = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]), dtype=np.int8)
+            ChooseCI = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]), dtype=np.int8)
+
+            # iterate through the 12 jumps
             for jumpInd in range(SiteIndToNgb.shape[1]):
                 # Write the final states in NEB format for lammps
                 write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd, writeAll=WriteAllJumps)
@@ -171,15 +179,42 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     rt_code = c.wait()
                     assert rt_code == 0  # check for system errors
 
-                # Then read the forward barrier -> ebf
+                # Then read the results for each trajectory
                 for traj in range(SiteIndToSpec.shape[0]):
                     with open("out_{0}.txt".format(traj), "r") as fl:
-                        for line in fl:
-                            continue
-                    ebfLine = line.split()
-                    ebf = float(ebfLine[6])
-                    rates[traj, jumpInd] = np.exp(-ebf / (kB * T))
-                    barriers[traj, jumpInd] = ebf
+                        lines = fl.readlines()
+
+                    for lInd, l in enumerate(lines):
+                        if "Climbing" in l:
+                            break
+
+                    LastLine_CI = lines[-1].split()
+                    LastLine_Regular = lines[lInd - 1].split()
+
+                    iters_total = int(LastLine_CI[0])
+                    iters_regular = int(LastLine_Regular[0])
+                    iters_CI = iters_total - iters_regular
+
+                    if iters_CI < 500 and iters_regular < 5000:
+                        ebfLine = LastLine_CI
+                        ChooseCI[traj, jumpInd] = 1
+                    elif iters_regular < 5000 and not iters_CI < 500:
+                        ebfLine = LastLine_Regular
+                        ChooseRegular[traj, jumpInd] = 1
+                    else:
+                        ebfLine = None
+
+                    if ebfLine is not None:
+                        ebf = float(ebfLine[6])
+                        maxForce = float(ebfLine[2])
+
+                        rates[traj, jumpInd] = np.exp(-ebf / (kB * T))
+                        barriers[traj, jumpInd] = ebf
+                        MaxForceAtom[traj, jumpInd] = maxForce
+                    else:
+                        rates[traj, jumpInd] = 0.0
+                        barriers[traj, jumpInd] = np.inf
+                        MaxForceAtom[traj, jumpInd] = np.inf
 
                     Is = float(ebfLine[10])
 
@@ -192,10 +227,6 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     ISE[traj, jumpInd] = Is
                     FSE[traj, jumpInd] = Fs
 
-                    # get the jumping species and store the barrier for later use
-                    vInd = vacSiteInd[traj]
-                    vacNgb = SiteIndToNgb[vInd, jumpInd]
-                    jAtom = SiteIndToSpec[traj, vacNgb]
 
             # store all the rates
             AllJumpRates[sampleStart:sampleEnd] = rates[:, :]
@@ -203,6 +234,10 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             AllJumpISE[sampleStart:sampleEnd] = ISE[:, :]
             AllJumpTSE[sampleStart:sampleEnd, :, :] = TSE[:, :, :]
             AllJumpFSE[sampleStart:sampleEnd] = FSE[:, :]
+
+            AllJumpMaxForceAtom[sampleStart:sampleEnd] = MaxForceAtom[:, :]
+            AllJumpChooseCI[sampleStart:sampleEnd] = ChooseCI[:, :]
+            AllJumpChooseRegular[sampleStart:sampleEnd] = ChooseRegular[:, :]
 
             # Then do selection
             jumpID, rateProbs, ratesCsum, rndNums, time_step = getJumpSelects(rates)
@@ -241,6 +276,9 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             fl.create_dataset("AllJumpISEnergy", data=AllJumpISE)
             fl.create_dataset("AllJumpTSEnergy", data=AllJumpTSE)
             fl.create_dataset("AllJumpFSEnergy", data=AllJumpFSE)
+            fl.create_dataset("AllJumpMaxForceComponent", data=AllJumpMaxForceAtom)
+            fl.create_dataset("AllJumpChooseRegular", data=AllJumpChooseRegular)
+            fl.create_dataset("AllJumpChooseCI", data=AllJumpChooseCI)
             fl.create_dataset("JumpSelects", data=JumpSelects)
             fl.create_dataset("TestRandNums", data=TestRandomNums)
 
@@ -288,7 +326,7 @@ def main(args):
     DoKMC(args.Temp, args.startStep, args.Nsteps, args.StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
           SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages,
-          ts=args.TimeStep, algo=args.Algo)
+          ts=args.TimeStep)
 
 if __name__ == "__main__":
 
@@ -313,23 +351,20 @@ if __name__ == "__main__":
     parser.add_argument("-st", "--startStep", metavar="int", type=int, default=0,
                         help="From which step to start the simulation. Note - checkpointed data file must be present in running directory if value > 0.")
 
-    parser.add_argument("-ni", "--NImages", metavar="int", type=int, default=5,
+    parser.add_argument("-ni", "--NImages", metavar="int", type=int, default=11,
                         help="How many NEB Images to use. Must be odd number.")
 
     parser.add_argument("-ns", "--Nsteps", metavar="int", type=int, default=100,
                         help="How many steps to continue AFTER \"starStep\" argument.")
 
-    parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.001,
+    parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.01,
                         help="Force tolerance for ending NEB calculations.")
 
-    parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=5e-7,
+    parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=0.0,
                         help="Relative Energy change tolerance for ending NEB calculations.")
 
     parser.add_argument("-ts", "--TimeStep", metavar="float", type=float, default=0.001,
                         help="Relative Energy change tolerance for ending NEB calculations.")
-
-    parser.add_argument("-al", "--Algo", metavar="quickmin/fire", type=str, default="quickmin",
-                        help="Which algo to use to relax NEB images (quickmin or fire).")
 
     parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
                         help="Number of unit cells in the supercell.")
