@@ -349,10 +349,6 @@ def main(args):
     except FileNotFoundError:
         SiteIndToPos = CreateLammpsData(args.Nunits, args.LatPar, prim=args.Prim)
 
-    # Check algorithm for minimization
-    if not (args.Algo == "quickmin" or args.Algo == "fire"):
-        raise ValueError("Algo can only be either \"quickmin\" or \"fire\"")
-
     # Load the crystal data
     dxList, SiteIndToNgb = Load_crysDat(args.CrysDatPath, args.LatPar)
 
