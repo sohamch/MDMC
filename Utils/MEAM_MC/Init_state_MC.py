@@ -116,9 +116,9 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
         write_lammps_data("inp_MC.data", ASE_Super, specorder=elems)
 
         # evaluate the energy
-        cmd = subprocess.Popen(cmdString, shell=True)
-        rt = cmd.wait()
-        assert rt == 0
+        cmd = subprocess.run(cmdString, shell=True, check=True)
+        # rt = cmd.wait()
+        # assert rt == 0
         # read the energy
         with open("Eng.txt", "r") as fl_en:
             e2 = fl_en.readline().split()[0]
