@@ -20,11 +20,7 @@ import argparse
 RunPath = os.getcwd() + "/"
 
 # Next, write a lammps input script for this run
-def write_lammps_input(potPath, etol=1e-7, ftol=0.001, quickmin=False):
-    if quickmin:
-        qminLines = "\ntimestep \t 0.01\nmin_style \t quickmin\n"
-    else:
-        qminLines = "\n"
+def write_lammps_input(potPath, etol=1e-7, ftol=0.001):
     lines = ["units \t metal\n",
              "atom_style \t atomic\n",
              "atom_modify \t map array\n",
@@ -33,7 +29,8 @@ def write_lammps_input(potPath, etol=1e-7, ftol=0.001, quickmin=False):
              "read_data \t inp_MC.data\n",
              "pair_style \t meam\n",
              "pair_coeff \t * * {0}/library.meam Co Ni Cr Fe Mn {0}/params.meam Co Ni Cr Fe Mn".format(potPath),
-             qminLines,
+             "min_style fire\n"
+             "min_modify abcfire\n"
              "minimize	\t {0} {1} 500 1000000\n".format(etol, ftol),
              "variable x equal pe\n",
              "print \"$x\" file Eng.txt"]
