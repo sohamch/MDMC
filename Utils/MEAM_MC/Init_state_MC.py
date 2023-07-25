@@ -266,7 +266,7 @@ def main(args):
     if not args.UseLastChkPt:
         # Lammps input script need be written only once. We're also starting from on-lattice positions for
         # reproducibility.
-        write_lammps_input(args.potPath, etol=args.EnTol, ftol=args.ForceTol, quickmin=args.Quickmin)
+        write_lammps_input(args.potPath, etol=args.EnTol, ftol=args.ForceTol)
 
     start = time.time()
     N_total, N_accept = MC_Run(args.Temp, args.Nsteps, superFCC, elems, N_therm=args.NEqb, N_save=args.Nsave, lastChkPt=lastSave,
@@ -330,9 +330,6 @@ if __name__ == "__main__":
 
     parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.0,
                         help="Force tolerance to stop CG minimization of energies.")
-
-    parser.add_argument("-qm", "--Quickmin", action="store_true",
-                        help="Whether to use quickmin or not. If False, CG minimization will be done.")
 
     parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=1e-8,
                         help="Relative energy change tolerance to stop CG minimization of energies.")
