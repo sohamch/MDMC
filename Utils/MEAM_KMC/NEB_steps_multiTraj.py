@@ -180,7 +180,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
                 # Then run lammps
                 commands = [
-                    "mpirun -np {0} $LMPPATH/lmp -log out_{1}.txt -screen screen_{1}.txt -p {0}x1 -in in.neb_{1}".format(NImages, traj)
+                    "srun -n {0} --cpus-per-task=1 $LMPPATH/lmp -log out_{1}.txt -screen screen_{1}.txt -p {0}x1 -in in.neb_{1}".format(NImages, traj)
                     for traj in range(SiteIndToSpec.shape[0])
                 ]
                 cmdList = [subprocess.Popen(cmd, shell=True) for cmd in commands]
