@@ -75,6 +75,7 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
             pickle.dump(ASE_Super, fl_sup)
 
     else:
+        print("Loading checkpointed history.")
         Eng_steps_all = list(np.load("History_backup/Eng_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
         accepts = list(np.load("History_backup/accepts_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
         rand_steps = list(np.load("History_backup/rands_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
