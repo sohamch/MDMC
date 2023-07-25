@@ -29,9 +29,11 @@ def write_lammps_input(potPath, etol=1e-7, ftol=0.001):
              "read_data \t inp_MC.data\n",
              "pair_style \t meam\n",
              "pair_coeff \t * * {0}/library.meam Co Ni Cr Fe Mn {0}/params.meam Co Ni Cr Fe Mn".format(potPath),
-             "min_style fire\n"
+             "\n",
+             "min_style fire\n",
              "min_modify abcfire\n"
              "minimize	\t {0} {1} 1000 1000000\n".format(etol, ftol),
+             "\n",
              "variable x equal pe\n",
              "print \"$x\" file Eng.txt"]
 
