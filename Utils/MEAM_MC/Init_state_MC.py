@@ -55,7 +55,7 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
     if not os.path.isdir(RunPath + "History_backup"):
         os.mkdir(RunPath + "History_backup")
 
-    cmdString = "$LMPPATH/lmp -in in.minim > out.txt"
+    cmdString = "srun --ntasks=1 --cpus-per-task=1 $LMPPATH/lmp -in in.minim > out.txt"
 
     Natoms = len(ASE_Super)
     N_accept = 0
