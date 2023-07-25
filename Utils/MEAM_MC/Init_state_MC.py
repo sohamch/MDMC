@@ -44,7 +44,7 @@ def write_lammps_input(potPath, etol=1e-7, ftol=0.001, quickmin=False):
 
 # Next, we write the MC loop
 def MC_Run(T, SwapRun, ASE_Super, elems,
-           N_therm=2000, N_save=200, lastChkPt=0):
+           N_therm=2000, N_save=200, lastChkPt=0, NoSrun=False):
 
     if not os.path.isdir(RunPath + "chkpt"):
         os.mkdir(RunPath + "chkpt")
@@ -55,7 +55,10 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
     if not os.path.isdir(RunPath + "History_backup"):
         os.mkdir(RunPath + "History_backup")
 
-    cmdString = "srun --ntasks=1 --cpus-per-task=1 $LMPPATH/lmp -in in.minim > out.txt"
+    if not NoSrun:
+        cmdString = "srun --ntasks=1 --cpus-per-task=1 $LMPPATH/lmp -in in.minim > out.txt"
+    else:
+        cmdString = "$LMPPATH/lmp -in in.minim > out.txt"
 
     Natoms = len(ASE_Super)
     N_accept = 0
@@ -86,10 +89,11 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
 
     write_lammps_data("inp_MC.data", ASE_Super, specorder=elems)
 
-    # evaluate the energy
-    cmd = subprocess.Popen(cmdString, shell=True)
-    rt = cmd.wait()
-    assert rt == 0
+    # evaluate the energy of the last check-pointed supercell (remember energies were loaded to the step before that)
+    cmd = subprocess.run(cmdString, shell=True, check=True)
+    # cmd = subprocess.Popen(cmdString, shell=True)
+    # rt = cmd.wait()
+    # assert rt == 0
     start_time = time.time()
     # read the energy
     with open("Eng.txt", "r") as fl_en:
@@ -267,7 +271,8 @@ def main(args):
         write_lammps_input(args.potPath, etol=args.EnTol, ftol=args.ForceTol, quickmin=args.Quickmin)
 
     start = time.time()
-    N_total, N_accept = MC_Run(args.Temp, args.Nsteps, superFCC, elems, N_therm=args.NEqb, N_save=args.Nsave, lastChkPt=lastSave)
+    N_total, N_accept = MC_Run(args.Temp, args.Nsteps, superFCC, elems, N_therm=args.NEqb, N_save=args.Nsave, lastChkPt=lastSave,
+                               NoSrun=args.NoSrun)
     end = time.time()
     print("Thermalization Run acceptance ratio : {}".format(N_accept/N_total))
     print("Thermalization Run accepted moves : {}".format(N_accept))
@@ -301,6 +306,9 @@ if __name__ == "__main__":
 
     parser.add_argument("-pr", "--Prim", action="store_true",
                         help="Whether to use primitive cell")
+
+    parser.add_argument("-nosr", "--NoSrun", action="store_true",
+                        help="Whether to use srun on not to launch lammps jobs.")
 
     parser.add_argument("-a0", "--LatPar", metavar="float", type=float, default=3.595,
                         help="Lattice parameter - multiplied to displacements and used"
