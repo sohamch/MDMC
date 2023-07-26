@@ -30,8 +30,8 @@ def write_lammps_input(potPath, etol=1e-7, ftol=0.001):
              "pair_style \t meam\n",
              "pair_coeff \t * * {0}/library.meam Co Ni Cr Fe Mn {0}/params.meam Co Ni Cr Fe Mn".format(potPath),
              "\n",
-             "min_style fire\n",
-             "min_modify norm max abcfire yes\n"
+             "min_style cg\n",
+             "min_modify norm max\n"
              "minimize	\t {0} {1} 1000 1000000\n".format(etol, ftol),
              "\n",
              "variable x equal pe\n",
