@@ -348,10 +348,10 @@ if __name__ == "__main__":
     parser.add_argument("-ns", "--Nsave", metavar="int", type=int, default=200,
                         help="Interval of steps after equilibration after which to collect a state as a sample.")
 
-    parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.0,
+    parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.001,
                         help="Force tolerance to stop CG minimization of energies.")
 
-    parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=1e-8,
+    parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=0.0,
                         help="Relative energy change tolerance to stop CG minimization of energies.")
 
     parser.add_argument("-dmp", "--DumpArguments", action="store_true",
