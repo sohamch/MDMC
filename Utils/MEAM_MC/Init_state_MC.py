@@ -87,6 +87,12 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
             accepts = list(np.load("accepts_all_steps.npy")[:lastChkPt])
             rand_steps = list(np.load("rands_all_steps.npy")[:lastChkPt])
             swap_steps = list(np.load("swap_atoms_all_steps.npy")[:lastChkPt])
+
+            assert len(Eng_steps_all) == lastChkPt, "{} {}".format(len(Eng_steps_all), lastChkPt)
+            assert len(accepts) == lastChkPt, "{} {}".format(len(accepts), lastChkPt)
+            assert len(rand_steps) == lastChkPt, "{} {}".format(len(rand_steps), lastChkPt)
+            assert len(swap_steps) == lastChkPt, "{} {}".format(len(swap_steps), lastChkPt)
+
             print("Loading running history.")
         except:
             print("Loading checkpointed history.")
@@ -95,10 +101,10 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
             rand_steps = list(np.load("History_backup/rands_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
             swap_steps = list(np.load("History_backup/swap_atoms_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
 
-        assert len(Eng_steps_all) == lastChkPt, "{} {}".format(len(Eng_steps_all), lastChkPt)
-        assert len(accepts) == lastChkPt, "{} {}".format(len(accepts), lastChkPt)
-        assert len(rand_steps) == lastChkPt, "{} {}".format(len(rand_steps), lastChkPt)
-        assert len(swap_steps) == lastChkPt, "{} {}".format(len(swap_steps), lastChkPt)
+            assert len(Eng_steps_all) == lastChkPt, "{} {}".format(len(Eng_steps_all), lastChkPt)
+            assert len(accepts) == lastChkPt, "{} {}".format(len(accepts), lastChkPt)
+            assert len(rand_steps) == lastChkPt, "{} {}".format(len(rand_steps), lastChkPt)
+            assert len(swap_steps) == lastChkPt, "{} {}".format(len(swap_steps), lastChkPt)
 
         # Then clear the backup folder and only store the last loaded history
         clear_backup(lastChkPt, Eng_steps_all, accepts, rand_steps, swap_steps)
