@@ -6,18 +6,14 @@ cd MC_test_traj
 
 mkdir 1
 cd 1
-python3 ../../Init_state_MC.py -nosr -pp $potpath -T 1073 -etol 1e-8 -ftol 0.0 -na 99 100 100 100 100 -nt 100 -ne 5 -ns 1 -dmp -dpf test_args_first_run.txt
+python3 ../../Init_state_MC.py -nosr -pp $potpath -T 1073 -etol 1e-8 -ftol 0.0 -na 99 100 100 100 100 -nt 400 -ne 5 -ns 1 -dmp -dpf test_args_first_run.txt
 
-# remove the last 20 files to simulate incomplete run
-for i in {80..100}
-do
-	rm chkpt/supercell_${i}.pkl
-done
-
-# copy the lammps command file before continuation runs
-# we'll compare the two command files later to ensure
-# no new command files were created.
 cp in.minim in_run_1.minim
 
 # Now re-run from last checkpoint
-python3 ../../Init_state_MC.py -etol 1e-8 -ftol 0.0 -nosr -pp $potpath -T 1073 -ckp -nt 100 -ne 5 -ns 1 -dmp -dpf test_args_second_run.txt
+python3 ../../Init_state_MC.py -etol 1e-8 -ftol 0.0 -nosr -pp $potpath -T 1073 -ckp -nt 450 -ne 5 -ns 1 -dmp -dpf test_args_second_run.txt
+
+# Do it again, but this time load the backed up history
+rm *.npy # delete the running array so the code is forced to load a backup
+python3 ../../Init_state_MC.py -etol 1e-8 -ftol 0.0 -nosr -pp $potpath -T 1073 -ckp -nt 500 -ne 5 -ns 1 -dmp -dpf test_args_second_run.txt
+
