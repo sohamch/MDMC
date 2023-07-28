@@ -40,6 +40,14 @@ def write_lammps_input(potPath, etol=1e-7, ftol=0.001):
     with open("in.minim", "w") as fl:
         fl.writelines(lines)
 
+def clear_backup(lastChkPt, Eng_steps_all, accepts, rand_steps, swap_steps):
+    cmd = subprocess.run("rm History_backup/*", shell=True)
+    np.save("History_backup/Eng_all_steps_{}.npy".format(lastChkPt), np.array(Eng_steps_all))
+    np.save("History_backup/accepts_all_steps_{}.npy".format(lastChkPt), np.array(accepts))
+    np.save("History_backup/rands_all_steps_{}.npy".format(lastChkPt), np.array(rand_steps))
+    np.save("History_backup/swap_atoms_all_steps_{}.npy".format(lastChkPt), np.array(swap_steps))
+
+    pass
 
 # Next, we write the MC loop
 def MC_Run(T, SwapRun, ASE_Super, elems,
@@ -74,16 +82,26 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
             pickle.dump(ASE_Super, fl_sup)
 
     else:
-        print("Loading checkpointed history.")
-        Eng_steps_all = list(np.load("History_backup/Eng_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
-        accepts = list(np.load("History_backup/accepts_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
-        rand_steps = list(np.load("History_backup/rands_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
-        swap_steps = list(np.load("History_backup/swap_atoms_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
+        try:
+            Eng_steps_all = list(np.load("Eng_all_steps.npy")[:lastChkPt])
+            accepts = list(np.load("accepts_all_steps.npy")[:lastChkPt])
+            rand_steps = list(np.load("rands_all_steps.npy")[:lastChkPt])
+            swap_steps = list(np.load("swap_atoms_all_steps.npy")[:lastChkPt])
+            print("Loading running history.")
+        except:
+            print("Loading checkpointed history.")
+            Eng_steps_all = list(np.load("History_backup/Eng_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
+            accepts = list(np.load("History_backup/accepts_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
+            rand_steps = list(np.load("History_backup/rands_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
+            swap_steps = list(np.load("History_backup/swap_atoms_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
 
         assert len(Eng_steps_all) == lastChkPt, "{} {}".format(len(Eng_steps_all), lastChkPt)
         assert len(accepts) == lastChkPt, "{} {}".format(len(accepts), lastChkPt)
         assert len(rand_steps) == lastChkPt, "{} {}".format(len(rand_steps), lastChkPt)
         assert len(swap_steps) == lastChkPt, "{} {}".format(len(swap_steps), lastChkPt)
+
+        # Then clear the backup folder
+        clear_backup(lastChkPt, Eng_steps_all, accepts, rand_steps, swap_steps)
 
     # write the supercell as a lammps file
 
