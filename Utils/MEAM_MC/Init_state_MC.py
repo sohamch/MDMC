@@ -41,7 +41,9 @@ def write_lammps_input(potPath, etol=1e-7, ftol=0.001):
         fl.writelines(lines)
 
 def clear_backup(lastChkPt, Eng_steps_all, accepts, rand_steps, swap_steps):
-    cmd = subprocess.run("rm History_backup/*", shell=True)
+    cmd = subprocess.run("rm History_backup/*", shell=True, check=True)
+    # remove the old backup zip, or they will just keep getting added
+    cmd = subprocess.run("rm History_backup.zip", shell=True, check=True)
     np.save("History_backup/Eng_all_steps_{}.npy".format(lastChkPt), np.array(Eng_steps_all))
     np.save("History_backup/accepts_all_steps_{}.npy".format(lastChkPt), np.array(accepts))
     np.save("History_backup/rands_all_steps_{}.npy".format(lastChkPt), np.array(rand_steps))
@@ -87,13 +89,13 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
             accepts = list(np.load("accepts_all_steps.npy")[:lastChkPt])
             rand_steps = list(np.load("rands_all_steps.npy")[:lastChkPt])
             swap_steps = list(np.load("swap_atoms_all_steps.npy")[:lastChkPt])
-            print("Loading running history.")
+            print("Loaded running history.")
         except:
-            print("Loading checkpointed history.")
             Eng_steps_all = list(np.load("History_backup/Eng_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
             accepts = list(np.load("History_backup/accepts_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
             rand_steps = list(np.load("History_backup/rands_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
             swap_steps = list(np.load("History_backup/swap_atoms_all_steps_{}.npy".format(lastChkPt))[:lastChkPt])
+            print("Loaded checkpointed history.")
 
         assert len(Eng_steps_all) == lastChkPt, "{} {}".format(len(Eng_steps_all), lastChkPt)
         assert len(accepts) == lastChkPt, "{} {}".format(len(accepts), lastChkPt)
