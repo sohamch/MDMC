@@ -41,9 +41,13 @@ def write_lammps_input(potPath, etol=1e-7, ftol=0.001):
         fl.writelines(lines)
 
 def clear_backup(lastChkPt, Eng_steps_all, accepts, rand_steps, swap_steps):
-    cmd = subprocess.run("rm History_backup/*", shell=True, check=True)
-    # remove the old backup zip, or they will just keep getting added
-    cmd = subprocess.run("rm History_backup.zip", shell=True, check=True)
+    try:
+        # remove the old backup zip, or they will just keep getting added
+        cmd = subprocess.run("rm History_backup/*", shell=True, check=True)
+        cmd = subprocess.run("rm History_backup.zip", shell=True, check=True)
+    except:
+        print("Backups not found for removal. Proceeding from current checkpointed step {}.".format(lastChkPt))
+
     np.save("History_backup/Eng_all_steps_{}.npy".format(lastChkPt), np.array(Eng_steps_all))
     np.save("History_backup/accepts_all_steps_{}.npy".format(lastChkPt), np.array(accepts))
     np.save("History_backup/rands_all_steps_{}.npy".format(lastChkPt), np.array(rand_steps))
