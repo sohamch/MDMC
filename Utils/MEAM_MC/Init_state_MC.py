@@ -53,8 +53,6 @@ def clear_backup(lastChkPt, Eng_steps_all, accepts, rand_steps, swap_steps):
     np.save("History_backup/rands_all_steps_{}.npy".format(lastChkPt), np.array(rand_steps))
     np.save("History_backup/swap_atoms_all_steps_{}.npy".format(lastChkPt), np.array(swap_steps))
 
-    pass
-
 # Next, we write the MC loop
 def MC_Run(T, SwapRun, ASE_Super, elems,
            N_therm=2000, N_save=200, lastChkPt=0, NoSrun=False):
