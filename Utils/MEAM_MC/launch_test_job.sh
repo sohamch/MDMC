@@ -1,6 +1,12 @@
 #!/bin/bash
 potpath="/mnt/WorkPartition/Work/Research/UIUC/MDMC/Utils/pot"
 
+# start fresh test
+if [[ -d "MC_test_traj" ]]
+then
+	rm -rf MC_test_traj
+fi
+
 mkdir MC_test_traj
 cd MC_test_traj
 
@@ -15,5 +21,5 @@ python3 ../../Init_state_MC.py -etol 1e-8 -ftol 0.0 -nosr -pp $potpath -T 1073 -
 
 # Do it again, but this time load the backed up history
 rm *.npy # delete the running array so the code is forced to load a backup
-python3 ../../Init_state_MC.py -etol 1e-8 -ftol 0.0 -nosr -pp $potpath -T 1073 -ckp -nt 500 -ne 5 -ns 1 -dmp -dpf test_args_second_run.txt
+python3 ../../Init_state_MC.py -etol 1e-8 -ftol 0.0 -nosr -pp $potpath -T 1073 -ckp -nt 500 -ne 5 -ns 1 -dmp -dpf test_args_third_run.txt
 
