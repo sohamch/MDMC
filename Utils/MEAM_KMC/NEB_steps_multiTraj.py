@@ -357,6 +357,7 @@ def main(args):
 
     for traj in range(SiteIndToSpecAll.shape[0]):
         state = SiteIndToSpecAll[traj]
+        assert np.where(state == 0)[0].shape[0] == 1
         vacInd = np.where(state == 0)[0][0]
         assert vacInd == vacSiteIndAll[traj]
     print("Checked vacancy occupancies.")
