@@ -25,7 +25,7 @@ RunPath = os.getcwd()+'/'
 print("Running from : " + RunPath)
 
 def CreateLammpsData(N_units, a, prim=False):
-    # Create an FCC primitive unit cell
+    # Create an FCC unit cell
     fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=prim)
 
     # Form a supercell
