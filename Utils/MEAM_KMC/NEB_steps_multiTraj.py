@@ -75,7 +75,7 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
             vacSiteIndAll[stateInd] = vacSite
         
         try:
-            with open("JumpsToAvoid.pkl", "rb") as fl:
+            with open("JumpsToAvoid.pkl", "rb") as fl:#
                 JumpsToAvoid = pickle.load(fl)
         
         except FileNotFoundError:
