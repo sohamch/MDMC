@@ -74,14 +74,6 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
             vacSite = np.where(state == 0)[0][0]
             vacSiteIndAll[stateInd] = vacSite
         
-        try:
-            with open("JumpsToAvoid.pkl", "rb") as fl:#
-                JumpsToAvoid = pickle.load(fl)
-        
-        except FileNotFoundError:
-            print("No Jumps found to avoid.")
-            JumpsToAvoid = set()
-        
         print("Starting from checkpointed step {}".format(startStep))
         np.save("states_{0}_{1}_{2}.npy".format(T, startStep, StateStart), SiteIndToSpecAll)
         np.save("vacSites_{0}_{1}_{2}.npy".format(T, startStep, StateStart), vacSiteIndAll)
@@ -102,10 +94,10 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
         np.save("states_step0_{}.npy".format(T), SiteIndToSpecAll)
         JumpsToAvoid = set()
         
-    return SiteIndToSpecAll, vacSiteIndAll, JumpsToAvoid
+    return SiteIndToSpecAll, vacSiteIndAll
 
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
-          SiteIndToSpecAll, vacSiteIndAll, JumpsToAvoid, batchSize, SiteIndToNgb, chunkSize, PotPath,
+          SiteIndToSpecAll, vacSiteIndAll, batchSize, SiteIndToNgb, chunkSize, PotPath,
           SiteIndToPos, WriteAllJumps=False, ftol=0.01, etol=0.0, ts=0.001, NImages=11):
     try:
         with open("lammpsBox.txt", "r") as fl:
@@ -207,45 +199,16 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     iters_regular = int(LastLine_Regular[0])
                     iters_CI = iters_total - iters_regular
 
-                    st = SiteIndToSpec[traj]
-                    if (tuple(st), jumpInd) in JumpsToAvoid: # Check if this is a jump to avoid.
-                        ebfLine = None
+                    if iters_CI >= 500 and iters_regular >= 5000:  # Neither CI nor regular converged
+                        ebfLine = None  # discard this jump
 
-                    else:
-                        if iters_CI < 500 and iters_regular < 5000: # both CI and regular NEB are converged
-                            ebfLine = LastLine_CI
-                            ChooseCI[traj, jumpInd] = 1
+                    elif iters_CI < 500:  # if CI is converged, consider the barrier
+                        ebfLine = LastLine_CI
+                        ChooseCI[traj, jumpInd] = 1
 
-                        elif iters_CI >= 500 and iters_regular < 5000:  # regular converged but CI is not
-                            ebfLine = LastLine_Regular
-                            ChooseRegular[traj, jumpInd] = 1
-
-                        else:  # regular NEB not converged within 5000 iterations (we'll set 0 rates for these and their reverse jumps).
-                            ebfLine = None
-
-                            # put the state, the jump and the reverse state and jump in jumps to avoid
-                            JumpsToAvoid.add((tuple(st), jumpInd))
-
-                            # First get the reverse jump
-                            jIndRev = None
-                            count = 0
-                            for jInd in range(dxList.shape[0]):
-                                if np.allclose(dxList[jInd] + dxList[jumpInd], 0):
-                                    count += 1
-                                    jIndRev = jInd
-
-                            assert count == 1 and jIndRev is not None
-
-                            # Then get the reverse jump's initial state
-                            vac = vacSiteInd[traj]
-                            vacngb = SiteIndToNgb[vac, jumpInd]
-                            assert st[vac] == 0  # check the vacancy site
-                            assert SiteIndToNgb[vacngb, jIndRev] == vac
-                            stRev = st.copy()
-                            stRev[vac] = st[vacngb]
-                            stRev[vacngb] = st[vac]
-
-                            JumpsToAvoid.add((tuple(stRev), jIndRev))
+                    else:  # if CI is not converged, choose regular NEB barrier
+                        ebfLine = LastLine_Regular
+                        ChooseRegular[traj, jumpInd] = 1
 
                     if ebfLine is None:
                         assert ChooseRegular[traj, jumpInd] == ChooseCI[traj, jumpInd] == 0
@@ -328,11 +291,6 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             fl.create_dataset("JumpSelects", data=JumpSelects)
             fl.create_dataset("TestRandNums", data=TestRandomNums)
 
-        # save if there are some jumps to avoid
-        if len(JumpsToAvoid) > 0:
-            with open("JumpsToAvoid.pkl", "wb") as fl:
-                pickle.dump(JumpsToAvoid, fl)
-
 def main(args):
 
     # Create the Lammps cartesian positions - first check if they have already been made.
@@ -346,7 +304,7 @@ def main(args):
     dxList, SiteIndToNgb = Load_crysDat(args.CrysDatPath, args.LatPar)
 
     # Load the initial states
-    SiteIndToSpecAll, vacSiteIndAll, JumpsToAvoid = load_Data(args.Temp, args.startStep, args.StateStart,
+    SiteIndToSpecAll, vacSiteIndAll = load_Data(args.Temp, args.startStep, args.StateStart,
                                                 args.batchSize, args.InitStateFile)
 
     # Run a check on the vacancy positions
@@ -365,7 +323,7 @@ def main(args):
     # Then do the KMC steps
     print("Starting KMC NEB calculations.")
     DoKMC(args.Temp, args.startStep, args.Nsteps, args.StateStart, dxList,
-          SiteIndToSpecAll, vacSiteIndAll, JumpsToAvoid, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
+          SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
           SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages,
           ts=args.TimeStep)
 
