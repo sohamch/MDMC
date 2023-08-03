@@ -55,10 +55,10 @@ def Load_crysDat(CrysDatPath, a0):
     return dxList, SiteIndToNgb
 
 # load the data
-def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
+def load_Data(startStep, StateStart, batchSize, InitStateFile):
     if startStep > 0:
 
-        with h5py.File(RunPath + "data_{0}_{1}_{2}.h5".format(T, startStep, StateStart), "r") as fl:
+        with h5py.File(RunPath + "data_{0}_{1}.h5".format(startStep, StateStart), "r") as fl:
             batchStates = np.array(fl["FinalStates"])
 
         try:
@@ -75,8 +75,8 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
             vacSiteIndAll[stateInd] = vacSite
         
         print("Starting from checkpointed step {}".format(startStep))
-        np.save("states_{0}_{1}_{2}.npy".format(T, startStep, StateStart), SiteIndToSpecAll)
-        np.save("vacSites_{0}_{1}_{2}.npy".format(T, startStep, StateStart), vacSiteIndAll)
+        np.save("states_{0}_{1}.npy".format(startStep, StateStart), SiteIndToSpecAll)
+        np.save("vacSites_{0}_{1}.npy".format(startStep, StateStart), vacSiteIndAll)
 
     else:
         assert startStep == 0
@@ -91,8 +91,7 @@ def load_Data(T, startStep, StateStart, batchSize, InitStateFile):
 
         assert np.all(SiteIndToSpecAll[:, 0] == 0), "All vacancies must be at the 0th site initially."
         vacSiteIndAll = np.zeros(SiteIndToSpecAll.shape[0], dtype=int)
-        np.save("states_step0_{}.npy".format(T), SiteIndToSpecAll)
-        JumpsToAvoid = set()
+        np.save("states_step0.npy", SiteIndToSpecAll)
         
     return SiteIndToSpecAll, vacSiteIndAll
 
@@ -276,7 +275,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
         # Next, save all the arrays in an hdf5 file for the current step.
         # For the first 10 steps, store test random numbers.
-        with h5py.File("data_{0}_{1}_{2}.h5".format(T, startStep + step + 1, StateStart), "w") as fl:
+        with h5py.File("data_{0}_{1}.h5".format(startStep + step + 1, StateStart), "w") as fl:
             fl.create_dataset("FinalStates", data=FinalStates)
             fl.create_dataset("SpecDisps", data=SpecDisps)
             fl.create_dataset("times", data=tarr)
@@ -304,7 +303,7 @@ def main(args):
     dxList, SiteIndToNgb = Load_crysDat(args.CrysDatPath, args.LatPar)
 
     # Load the initial states
-    SiteIndToSpecAll, vacSiteIndAll = load_Data(args.Temp, args.startStep, args.StateStart,
+    SiteIndToSpecAll, vacSiteIndAll = load_Data(args.startStep, args.StateStart,
                                                 args.batchSize, args.InitStateFile)
 
     # Run a check on the vacancy positions
@@ -345,7 +344,7 @@ if __name__ == "__main__":
     parser.add_argument("-pr", "--Prim", action="store_true",
                         help="Whether to use primitive cell")
 
-    parser.add_argument("-T", "--Temp", metavar="int", type=int, help="Temperature to read data from")
+    parser.add_argument("-T", "--Temp", metavar="int", type=float, help="Temperature to read data from")
 
     parser.add_argument("-st", "--startStep", metavar="int", type=int, default=0,
                         help="From which step to start the simulation. Note - checkpointed data file must be present in running directory if value > 0.")
