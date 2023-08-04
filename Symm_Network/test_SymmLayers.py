@@ -39,7 +39,9 @@ class TestGConv(unittest.TestCase):
         assert len(self.superCell.mobilepos) == self.Nsites
         self.N_units = self.superCell.superlatt[0, 0]
 
-        # Now make a symmetry-related batch of states
+        # Now make a symmetry-related batch of random states
+        # The occupancies don't have to make sense. We just want them to follow symmetry based on site mapping
+        # by group operations.
         self.NspCh = 2
         self.TestStates = np.random.randint(0, 5, (len(self.GpermNNIdx), self.NspCh, self.Nsites))
         self.state0 = self.TestStates[0, :, :].copy()
@@ -64,7 +66,7 @@ class TestGConv(unittest.TestCase):
 
     def test_GConv(self):
         gNet = GCNet(self.GnnPerms.long(), self.NNsites, self.JumpVecs, N_ngb=self.N_ngb, NSpec=self.NspCh,
-                     mean=0.02, std=0.2, nl=1, nch=8, nchLast=5).double()
+                     mean=0.02, std=0.2, nl=1, nch=4, nchLast=5).double()
 
         # Do the first Gconv explicitly
         with pt.no_grad():
@@ -82,6 +84,13 @@ class TestGConv(unittest.TestCase):
                                 siteConv = pt.sum(Psi_g * self.StateTensors[stateInd, chIn, sitesNgb])
                                 sm += siteConv
                             self.assertTrue(pt.allclose(outl_Gconv[stateInd, chOut, gInd, site], sm + b))
+
+            out_non_lin = gNet.net[l+1].forward(outl_Gconv)
+            self.assertTrue(pt.allclose(out_non_lin, F.softplus(outl_Gconv)),
+                            msg="{} {}".format(out_non_lin.shape, out_non_lin.shape))
+
+            out_Gav = gNet.net[l+2].forward(out_non_lin)
+            self.assertTrue(pt.allclose(out_Gav, pt.mean(out_non_lin[:, :, :, :], dim=2)), msg="{} {}".format(out_Gav.shape, out_non_lin.shape))
             print("Gconv explicit symmetry test passed")
 
     def test_GConv_noSym(self):
@@ -138,7 +147,7 @@ class TestGConv(unittest.TestCase):
                 Nch = out.shape[1]
                 self.assertEqual(Nch, gNet.net[l].Psi.shape[0])
 
-                print("layer: {}. max value: {}, min value: {}, mean vslue: {}".format((l + 3) // 3, pt.max(out), pt.min(out), pt.mean(out) ) )
+                print("layer: {}. max value: {}, min value: {}, mean value: {}".format((l + 3) // 3, pt.max(out), pt.min(out), pt.mean(out) ) )
                 # Test the symmetry for each output channel
                 for ch in range(Nch):
                     # Get the identity sample
@@ -146,9 +155,9 @@ class TestGConv(unittest.TestCase):
                     for gInd, g in self.GIndToGDict.items():
                         outsamp = pt.zeros_like(outsamp0)
                         for siteInd in range(self.Nsites):
-                            _, RSite = self.superCell.ciR(siteInd)
-                            Rnew, _ = self.superCell.crys.g_pos(g, RSite, (0, 0))
-                            siteIndNew, _ = self.superCell.index(Rnew, (0,0))
+                            ciSite, RSite = self.superCell.ciR(siteInd)
+                            Rnew, ciSiteNew = self.superCell.crys.g_pos(g, RSite, ciSite)
+                            siteIndNew, _ = self.superCell.index(Rnew, ciSiteNew)
                             outsamp[siteIndNew] = outsamp0[siteInd]
                         self.assertTrue(pt.allclose(outsamp, out[gInd, ch, :], atol=1e-12))
                 print("Layer {} symmetry assertion passed".format((l + 3) // 3))
@@ -172,13 +181,13 @@ class TestGConv(unittest.TestCase):
             for stateInd in tqdm(range(out.shape[0]), position=0, leave=True, ncols=65):
                 for channel in range(out.shape[1]):
                     for site in range(self.Nsites):
-                        _, Rsite = self.superCell.ciR(site)
+                        ciSite, Rsite = self.superCell.ciR(site)
+                        xSite = self.superCell.crys.pos2cart(Rsite, ciSite)
                         a_site = pt.zeros(self.z, dtype=pt.double)
                         for jmp in range(self.z):
-                            nnJump, ci = self.superCell.crys.cart2pos(self.dxJumps[jmp])
-                            self.assertEqual(ci, (0, 0))
-                            RsiteNew = Rsite + nnJump
-                            siteNew, _ = self.superCell.index(RsiteNew, (0, 0))
+                            xsiteNew = xSite + self.dxJumps[jmp]
+                            RsiteNew, ciSiteNew = self.superCell.crys.cart2pos(xsiteNew)
+                            siteNew, _ = self.superCell.index(RsiteNew, ciSiteNew)
                             self.assertEqual(siteNew, self.NNsites[jmp + 1, site])
                             a_site[jmp] = out[stateInd, channel, siteNew]
 
@@ -188,13 +197,67 @@ class TestGConv(unittest.TestCase):
         # Then check their symmetry
         y0 = y_np[self.IdentityIndex].copy()
         for gInd, g in tqdm(self.GIndToGDict.items(), position=0, leave=True, ncols=65):
-            for site in range(512):
-                _, Rsite = self.superCell.ciR(site)
-                RsiteNew, _ = self.superCell.crys.g_pos(g, Rsite, (0, 0))
-                RsiteNew = RsiteNew
-                siteNew, _ = self.superCell.index(RsiteNew, (0, 0))
+            for site in range(self.Nsites):
+                ciSite, Rsite = self.superCell.ciR(site)
+                RsiteNew, ciSiteNew = self.superCell.crys.g_pos(g, Rsite, ciSite)
+                siteNew, _ = self.superCell.index(RsiteNew, ciSiteNew)
                 for ch in range(y0.shape[0]):
                     assert np.allclose(np.dot(g.cartrot, y0[ch, :, site]), y_np[gInd, ch, :, siteNew])
+
+
+class TestGConv_orthogonal(TestGConv):
+
+    def setUp(self):
+
+        with h5py.File("../CrysDat_FCC/CrystData_ortho_5_cube.h5", "r") as fl:
+            self.lattice = np.array(fl["Lattice_basis_vectors"])
+            self.basis_cubic = np.array(fl["basis_sites"])
+            self.superlatt = np.array(fl["SuperLatt"])
+            self.dxJumps = np.array(fl["dxList_1nn"])
+            self.JumpNewSites = np.array(fl["JumpSiteIndexPermutation"])
+            self.GpermNNIdx = np.array(fl["GroupNNPermutation"])
+            self.NNsiteList = np.array(fl["NNsiteList_sitewise"])
+
+        self.N_ngb = self.NNsiteList.shape[0]
+        self.Nsites = self.NNsiteList.shape[1]
+
+        self.z = self.dxJumps.shape[0]
+        self.GnnPerms = pt.tensor(self.GpermNNIdx).long()
+
+        self.NNsites = pt.tensor(self.NNsiteList).long()
+        self.JumpVecs = pt.tensor(self.dxJumps.T, dtype=pt.double)
+        print("Jump Vectors: \n", self.JumpVecs.T, "\n")
+        self.Ndim = self.dxJumps.shape[1]
+
+        crys = crystal.Crystal(lattice=self.lattice, basis=[[b for b in self.basis_cubic]], chemistry=["A"], noreduce=True)
+        self.superCell = supercell.ClusterSupercell(crys, self.superlatt)
+
+        assert len(self.superCell.mobilepos) == self.Nsites
+        self.N_units = self.superCell.superlatt[0, 0]
+
+        # Now make a symmetry-related batch of random states
+        # The occupancies don't have to make sense. We just want them to follow symmetry
+        self.NspCh = 5
+        self.TestStates = np.random.randint(0, 5, (len(self.GpermNNIdx), self.NspCh, self.Nsites))
+        self.state0 = self.TestStates[0, :, :].copy()
+        self.GIndToGDict = {}
+        self.IdentityIndex = None
+        for gInd, g in enumerate(list(self.superCell.crys.G)):
+            self.GIndToGDict[gInd] = g  # Index the group operation
+            for siteInd in range(self.Nsites):
+                ciSite, RSite = self.superCell.ciR(siteInd)
+                Rnew, ciNew = self.superCell.crys.g_pos(g, RSite, ciSite)
+                siteIndNew, _ = self.superCell.index(Rnew, ciNew)
+                self.TestStates[gInd, :, siteIndNew] = self.state0[:, siteInd]
+
+            # Check the identity operation
+            if np.allclose(g.cartrot, np.eye(3)):
+                assert np.array_equal(self.TestStates[gInd, :, :], self.state0[:, :])
+                self.IdentityIndex = gInd
+
+        self.StateTensors = pt.tensor(self.TestStates, dtype=pt.double)
+
+        print("Setup complete.")
 
 
 class TestMsgPassing(unittest.TestCase):

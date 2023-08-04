@@ -128,14 +128,20 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
                 state1 = self.state1List[samp]
                 state2 = state1.copy()
                 NNsiteVac = self.NNsiteList[jSelect + 1, 0]
-                _, RsiteVac = self.superCell.ciR(NNsiteVac)
+                xsiteVac = self.dxJumps[jSelect]
+                RsiteVac, ciSiteVac = self.superCell.crys.cart2pos(xsiteVac)
+                NN_sup, _ = self.superCell.index(RsiteVac, ciSiteVac)
+                self.assertEqual(NN_sup, NNsiteVac)
+                self.assertEqual(state2[0], self.VacSpec)
                 state2[0] = state2[NNsiteVac]
                 state2[NNsiteVac] = self.VacSpec
 
                 for site in range(self.state1List.shape[1]):
-                    _, Rsite = self.superCell.ciR(site)
-                    RsiteNew = (Rsite + RsiteVac)
-                    siteNew, _ = self.superCell.index(RsiteNew, (0, 0))
+                    ciSite, Rsite = self.superCell.ciR(site)
+                    x_site = self.superCell.crys.pos2cart(Rsite, ciSite)
+                    x_site_new = x_site + xsiteVac
+                    RsiteNew, ciSiteNew = self.superCell.crys.cart2pos(x_site_new)
+                    siteNew, _ = self.superCell.index(RsiteNew, ciSiteNew)
                     spec1 = state1[site]
                     spec2 = state2[siteNew]
 
@@ -152,15 +158,7 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
                         self.assertEqual(State2_occs[samp, self.sp_ch[spec2], site], 1)
                         self.assertEqual(np.sum(State2_occs[samp, :, site]), 1)
 
-                NNR = np.dot(np.linalg.inv(self.superCell.crys.lattice), self.dxJumps[jSelect]).astype(int)
-                # Check that the displacements for each jump are okay
-                self.assertTrue(np.allclose(np.dot(self.superCell.crys.lattice, NNR), self.dxJumps[jSelect]))
-                NNRSite = self.superCell.index(NNR, (0, 0))[0]
-
-                NNsiteVac = self.NNsiteList[jSelect + 1, 0]
-                # check that NN sequence matches
-                self.assertTrue(np.all(NNRSite == NNsiteVac))
-
+                # check displacement recording
                 spec = self.state1List[samp, NNsiteVac]
                 assert np.allclose(disps[samp, 0], self.a0 * self.dxJumps[jSelect])
                 # Check that displacements are okay
@@ -363,10 +361,6 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
 
         for m in ["train", "all"]:
             print("testing mode : {}".format(m))
-            # State1_occs, State2_occs, rates, disps, OnSites_state1, OnSites_state2, sp_ch = \
-            #     makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
-            #                     self.JumpSelects, self.AllJumpRates_st1, self.JumpNewSites, self.dxJumps,
-            #                     self.NNsiteList, N_train, tracers=False, AllJumps=AllJumps, mode=m)
 
             State1_occs, State2_occs, rates, disps, GatherTensor_tracers, OnSites_state1, OnSites_state2, sp_ch = \
                 makeComputeData(self.state1List, self.state2List, self.dispList, specsToTrain, VacSpec, self.rateList,
@@ -392,14 +386,22 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
                 for jInd in range(self.z):
                     state2 = state1.copy()
                     NNsiteVac = self.NNsiteList[jInd + 1, 0]
-                    _, RsiteVacNN = self.superCell.ciR(NNsiteVac)
+                    xsiteVac = self.dxJumps[jInd]
+
+                    RsiteVac, ciSiteVac = self.superCell.crys.cart2pos(xsiteVac)
+                    NN_sup, _ = self.superCell.index(RsiteVac, ciSiteVac)
+                    self.assertEqual(NN_sup, NNsiteVac)
+
+                    self.assertEqual(state2[0], self.VacSpec)
                     state2[0] = state2[NNsiteVac]
                     state2[NNsiteVac] = self.VacSpec
 
                     for site in range(self.state1List.shape[1]):
-                        _, Rsite = self.superCell.ciR(site)
-                        RsiteNew = (Rsite + RsiteVacNN) % self.N_units
-                        siteNew, _ = self.superCell.index(RsiteNew, (0,0))
+                        ciSite, Rsite = self.superCell.ciR(site)
+                        xSite = self.superCell.crys.pos2cart(Rsite, ciSite)
+                        xSiteNew = xSite + self.dxJumps[jInd]
+                        RsiteNew, ciSiteNew = self.superCell.crys.cart2pos(xSiteNew)
+                        siteNew, _ = self.superCell.index(RsiteNew, ciSiteNew)
                         spec1 = state1[site]
                         spec2 = state2[siteNew]
 
@@ -427,9 +429,6 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
                                 self.assertEqual(OnSites_state2[stateInd * self.dxJumps.shape[0] + jInd, site], 0)
 
                     # check the displacements
-                    NNR = np.dot(np.linalg.inv(self.superCell.crys.lattice), self.dxJumps[jInd]).astype(int) % self.N_units
-                    NNsiteVac = self.NNsiteList[jInd + 1, 0]
-                    self.assertTrue(np.all(NNR == RsiteVacNN))
                     spec = state1[NNsiteVac]
                     self.assertTrue(np.allclose(disps[stateInd * self.dxJumps.shape[0] + jInd, 0],
                                                 self.a0 * self.dxJumps[jInd]))
@@ -846,6 +845,51 @@ class TestGCNetRun_HEA_collective(unittest.TestCase):
                 y2_jumpSum += y2_samp[jump] * state1JumpProbs[jump]
 
             assert np.allclose(y2_jumpSum, np.dot(g.cartrot, y1_jumpSum))
+
+
+class TestGCNetRun_HEA_collective_orthogonal(TestGCNetRun_HEA_collective):
+    def setUp(self):
+        self.T = 1173
+
+        self.state1List, self.state2List, self.dispList, self.rateList, self.AllJumpRates_st1, \
+        self.AllJumpRates_st2, self.JumpSelects = \
+            Load_Data("Test_Data/testData_HEA_MEAM_orthogonal.h5")
+
+        self.GpermNNIdx, self.NNsiteList, self.JumpNewSites, self.dxJumps =\
+            Load_crysDats("../CrysDat_FCC/CrystData_ortho_5_cube.h5")
+
+        with h5py.File("../CrysDat_FCC/CrystData_ortho_5_cube.h5", "r") as fl:
+            lattice = np.array(fl["Lattice_basis_vectors"])
+            superlatt = np.array(fl["SuperLatt"])
+            basis_cubic = np.array(fl["basis_sites"])
+            NNList = np.array(fl["NNsiteList_sitewise"])
+
+        crys = crystal.Crystal(lattice=lattice, basis=[[b for b in basis_cubic]], chemistry=["A"], noreduce=True)
+        self.superCell = supercell.ClusterSupercell(crys, superlatt)
+
+        self.N_units = self.superCell.superlatt[0, 0]
+
+        self.z = self.dxJumps.shape[0]
+        self.N_ngb = self.NNsiteList.shape[0]
+
+        self.GnnPerms = pt.tensor(self.GpermNNIdx).long()
+
+        print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(1, self.N_ngb - 1))
+        self.Nsites = self.NNsiteList.shape[1]
+
+        self.assertEqual(self.Nsites, self.state1List.shape[1])
+        self.assertEqual(self.Nsites, self.state2List.shape[1])
+
+        self.a0 = 3.595
+        self.NNsites = pt.tensor(self.NNsiteList).long()
+        self.JumpVecs = pt.tensor(self.dxJumps.T * self.a0, dtype=pt.double)
+        print("Jump Vectors: \n", self.JumpVecs.T, "\n")
+        self.Ndim = self.dxJumps.shape[1]
+
+        self.specCheck = 5
+        self.VacSpec = 0
+        self.sp_ch = {1: 0, 2: 1, 3: 2, 4: 3, 5: 4}
+        print("Setup complete.")
 
 
 # In the previous test, the vacancy had the lowest species. Now we make it the largest like in our lattice gas data
