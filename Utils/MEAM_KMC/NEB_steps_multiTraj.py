@@ -14,6 +14,7 @@ from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 
 from KMC_funcs import *
 import os
+import glob
 from scipy.constants import physical_constants
 kB = physical_constants["Boltzmann constant in eV/K"][0]
 
@@ -55,7 +56,11 @@ def Load_crysDat(CrysDatPath, a0):
     return dxList, SiteIndToNgb
 
 # load the data
-def load_Data(startStep, StateStart, batchSize, InitStateFile):
+def load_Data(StateStart, batchSize, InitStateFile):
+
+    Existing = glob.glob("data*.h5")
+    startStep = len(Existing)
+
     if startStep > 0:
 
         with h5py.File(RunPath + "data_{0}_{1}.h5".format(startStep, StateStart), "r") as fl:
@@ -93,7 +98,7 @@ def load_Data(startStep, StateStart, batchSize, InitStateFile):
         vacSiteIndAll = np.zeros(SiteIndToSpecAll.shape[0], dtype=int)
         np.save("states_step0.npy", SiteIndToSpecAll)
         
-    return SiteIndToSpecAll, vacSiteIndAll
+    return SiteIndToSpecAll, vacSiteIndAll, startStep
 
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, batchSize, SiteIndToNgb, chunkSize, PotPath,
@@ -143,7 +148,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
     start = time.time()
 
-    for step in range(Nsteps):
+    for step in range(Nsteps - startStep):
         for chunk in range(0, Ntraj, chunkSize):
             # Write the initial states from last accepted state
             sampleStart = chunk
@@ -268,10 +273,10 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                 fl.write(
                     "Chunk {0} of {1} in step {3} completed in : {2} seconds\n".format(chunk//chunkSize + 1,
                                                                                        int(np.ceil(Ntraj/chunkSize)),
-                                                                                       time.time() - start, step + 1))
+                                                                                       time.time() - start, startStep + step + 1))
 
         with open("StepTiming.txt", "a") as fl:
-            fl.write("Time per step up to {0} of {1} steps : {2} seconds\n".format(step + 1, Nsteps, (time.time() - start)/(step + 1)))
+            fl.write("Time per step up to {0} of {1} steps : {2} seconds\n".format(startStep + step + 1, Nsteps, (time.time() - start)/(step + 1)))
 
         # Next, save all the arrays in an hdf5 file for the current step.
         # For the first 10 steps, store test random numbers.
@@ -303,7 +308,7 @@ def main(args):
     dxList, SiteIndToNgb = Load_crysDat(args.CrysDatPath, args.LatPar)
 
     # Load the initial states
-    SiteIndToSpecAll, vacSiteIndAll = load_Data(args.startStep, args.StateStart,
+    SiteIndToSpecAll, vacSiteIndAll, startStep = load_Data(args.StateStart,
                                                 args.batchSize, args.InitStateFile)
 
     # Run a check on the vacancy positions
@@ -321,7 +326,7 @@ def main(args):
 
     # Then do the KMC steps
     print("Starting KMC NEB calculations.")
-    DoKMC(args.Temp, args.startStep, args.Nsteps, args.StateStart, dxList,
+    DoKMC(args.Temp, startStep, args.Nsteps, args.StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
           SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages,
           ts=args.TimeStep)
@@ -346,14 +351,11 @@ if __name__ == "__main__":
 
     parser.add_argument("-T", "--Temp", metavar="int", type=float, help="Temperature to read data from")
 
-    parser.add_argument("-st", "--startStep", metavar="int", type=int, default=0,
-                        help="From which step to start the simulation. Note - checkpointed data file must be present in running directory if value > 0.")
-
     parser.add_argument("-ni", "--NImages", metavar="int", type=int, default=11,
                         help="How many NEB Images to use. Must be odd number.")
 
     parser.add_argument("-ns", "--Nsteps", metavar="int", type=int, default=100,
-                        help="How many steps to continue AFTER \"starStep\" argument.")
+                        help="How many steps to run.")
 
     parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.01,
                         help="Force tolerance for ending NEB calculations.")
@@ -397,4 +399,3 @@ if __name__ == "__main__":
                 fl.write("{}:\t{}\n".format(key, val))
 
     main(args)
-
