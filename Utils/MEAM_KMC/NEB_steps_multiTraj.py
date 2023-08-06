@@ -87,7 +87,7 @@ def load_Data(StateStart, batchSize, InitStateFile):
         assert startStep == 0
         try:
             allStates = np.load(InitStateFile)
-            assert allStates.dtype == np.int8
+            assert allStates.dtype != float
             print("Starting from step zero.")
         except FileNotFoundError:
             raise FileNotFoundError("Initial states not found.")
@@ -119,7 +119,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     specs, counts = np.unique(SiteIndToSpecAll[0], return_counts=True)
     Nspec = len(specs)  # including the vacancy
     Ntraj = SiteIndToSpecAll.shape[0]
-    assert Ntraj == batchSize
+    assert Ntraj == batchSize, "Loaded number of states ({}) is not the same as entered batch size ({})".format(Ntraj, batchSize)
     print("No. of samples : {}".format(Ntraj))
 
     Nsites = SiteIndToSpecAll.shape[1]
