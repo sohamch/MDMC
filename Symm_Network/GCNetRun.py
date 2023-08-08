@@ -781,14 +781,6 @@ def makeDir(args, specsToTrain):
 
 def main(args):
 
-    # Dump args to file if necessary.
-    if args.DumpArgs:
-        print("Dumping arguments to: {}".format(args.DumpFile))
-        opts = vars(args)
-        with open(RunPath + args.DumpFile, "w") as fl:
-            for key, val in opts.items():
-                fl.write("{}: {}\n".format(key, val))
-
     print("Running at : "+ RunPath)
     if args.Mode=="train" and args.Tdata != args.TNet:
         raise ValueError("Different temperatures in training mode not allowed")
