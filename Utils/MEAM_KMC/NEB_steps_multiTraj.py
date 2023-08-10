@@ -238,6 +238,8 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                                                                                        int(np.ceil(Ntraj/chunkSize)),
                                                                                        time.time() - start, startStep + step + 1))
 
+                fl.write("Maxiterations: {}\n".format(np.unique(MaxIteration, return_counts=True)))
+
         with open("StepTiming.txt", "a") as fl:
             fl.write("Time per step up to {0} of {1} steps : {2} seconds\n".format(startStep + step + 1, Nsteps, (time.time() - start)/(step + 1)))
 
