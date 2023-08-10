@@ -187,10 +187,6 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     with open("out_{0}.txt".format(traj), "r") as fl:
                         lines = fl.readlines()
 
-                    for lInd, l in enumerate(lines):
-                        if "Climbing" in l:
-                            break
-
                     ebfLine = lines[-1].split()
 
                     ImageEns = np.array([float(x) for x in ebfLine[10::2]])
