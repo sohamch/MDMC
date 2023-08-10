@@ -138,8 +138,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     AllJumpImageE = np.zeros((Ntraj, NImages, SiteIndToNgb.shape[1]))
     AllJumpImageRD = np.zeros((Ntraj, NImages, SiteIndToNgb.shape[1]))
     AllJumpMaxForceAtom = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
-    AllJumpChooseCI = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
-    AllJumpChooseRegular = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
+    AllJumpMaxIteration = np.zeros((Ntraj, SiteIndToNgb.shape[1]), dtype=int)
 
     # Before starting, write the lammps input files
     write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol, ts=ts)
@@ -163,8 +162,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             ImageEn_Jumps = np.zeros((SiteIndToSpec.shape[0], NImages, SiteIndToNgb.shape[1]))
             ImageRD_Jumps = np.zeros((SiteIndToSpec.shape[0], NImages, SiteIndToNgb.shape[1]))
             MaxForceAtom = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
-            ChooseRegular = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]), dtype=np.int8)
-            ChooseCI = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]), dtype=np.int8)
+            MaxIteration = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]), dtype=int)
 
             # iterate through the 12 jumps
             for jumpInd in range(SiteIndToNgb.shape[1]):
@@ -193,47 +191,23 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                         if "Climbing" in l:
                             break
 
-                    LastLine_CI = lines[-1].split()
-                    LastLine_Regular = lines[lInd - 1].split()
+                    ebfLine = lines[-1].split()
 
-                    iters_total = int(LastLine_CI[0])
-                    iters_regular = int(LastLine_Regular[0])
-                    iters_CI = iters_total - iters_regular
+                    ImageEns = np.array([float(x) for x in ebfLine[10::2]])
+                    ImageRDs = np.array([float(x) for x in ebfLine[9::2]])
 
-                    if iters_CI >= 500 and iters_regular >= 5000:  # Neither CI nor regular converged
-                        ebfLine = None  # discard this jump
+                    assert ImageEns.shape[0] == ImageRDs.shape[0] == NImages
 
-                    elif iters_CI < 500:  # if CI is converged, consider the barrier
-                        ebfLine = LastLine_CI
-                        ChooseCI[traj, jumpInd] = 1
+                    ImageEn_Jumps[traj, :, jumpInd] = ImageEns[:]
+                    ImageRD_Jumps[traj, :, jumpInd] = ImageRDs[:]
 
-                    else:  # if CI is not converged, choose regular NEB barrier
-                        ebfLine = LastLine_Regular
-                        ChooseRegular[traj, jumpInd] = 1
+                    ebf = float(ebfLine[6])
+                    maxForce = float(ebfLine[2])
 
-                    if ebfLine is None:
-                        assert ChooseRegular[traj, jumpInd] == ChooseCI[traj, jumpInd] == 0
-                        rates[traj, jumpInd] = 0.0
-                        barriers[traj, jumpInd] = np.inf
-                        MaxForceAtom[traj, jumpInd] = np.inf
-
-                    else:
-                        assert ChooseRegular[traj, jumpInd] + ChooseCI[traj, jumpInd] == 1
-
-                        ImageEns = np.array([float(x) for x in ebfLine[10::2]])
-                        ImageRDs = np.array([float(x) for x in ebfLine[9::2]])
-
-                        assert ImageEns.shape[0] == ImageRDs.shape[0] == NImages
-
-                        ImageEn_Jumps[traj, :, jumpInd] = ImageEns[:]
-                        ImageRD_Jumps[traj, :, jumpInd] = ImageRDs[:]
-
-                        ebf = np.max(ImageEns) - ImageEns[0]
-                        maxForce = float(ebfLine[2])
-
-                        rates[traj, jumpInd] = np.exp(-ebf / (kB * T))
-                        barriers[traj, jumpInd] = ebf
-                        MaxForceAtom[traj, jumpInd] = maxForce
+                    rates[traj, jumpInd] = np.exp(-ebf / (kB * T))
+                    barriers[traj, jumpInd] = ebf
+                    MaxForceAtom[traj, jumpInd] = maxForce
+                    MaxIteration[traj, jumpInd] = int(ebfLine[0])
 
 
             # store all the rates
@@ -243,8 +217,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             AllJumpImageRD[sampleStart:sampleEnd, :, :] = ImageRD_Jumps[:, :, :]
 
             AllJumpMaxForceAtom[sampleStart:sampleEnd] = MaxForceAtom[:, :]
-            AllJumpChooseCI[sampleStart:sampleEnd] = ChooseCI[:, :]
-            AllJumpChooseRegular[sampleStart:sampleEnd] = ChooseRegular[:, :]
+            AllJumpMaxIteration[sampleStart:sampleEnd] = MaxIteration[:, :]
 
             # Then do selection
             jumpID, rateProbs, ratesCsum, rndNums, time_step = getJumpSelects(rates)
@@ -283,8 +256,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             fl.create_dataset("AllJumpImageEnergies", data=AllJumpImageE)
             fl.create_dataset("AllJumpImageRDs", data=AllJumpImageRD)
             fl.create_dataset("AllJumpMaxForceComponent", data=AllJumpMaxForceAtom)
-            fl.create_dataset("AllJumpChooseRegular", data=AllJumpChooseRegular)
-            fl.create_dataset("AllJumpChooseCI", data=AllJumpChooseCI)
+            fl.create_dataset("AllJumpMaxIterations", data=AllJumpMaxIteration)
             fl.create_dataset("JumpSelects", data=JumpSelects)
             fl.create_dataset("TestRandNums", data=TestRandomNums)
 
