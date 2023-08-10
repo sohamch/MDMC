@@ -6,7 +6,6 @@ import numpy as np
 import subprocess
 import time
 import h5py
-import pickle
 
 from ase.spacegroup import crystal
 from ase.build import make_supercell
@@ -136,9 +135,8 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
     AllJumpRates = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
     AllJumpBarriers = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
-    AllJumpISE = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
-    AllJumpTSE = np.zeros((Ntraj, NImages-2, SiteIndToNgb.shape[1]))
-    AllJumpFSE = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
+    AllJumpImageE = np.zeros((Ntraj, NImages, SiteIndToNgb.shape[1]))
+    AllJumpImageRD = np.zeros((Ntraj, NImages, SiteIndToNgb.shape[1]))
     AllJumpMaxForceAtom = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
     AllJumpChooseCI = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
     AllJumpChooseRegular = np.zeros((Ntraj, SiteIndToNgb.shape[1]))
@@ -162,9 +160,8 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             # declare arrays to store quantities
             rates = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
             barriers = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
-            ISE = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
-            TSE = np.zeros((SiteIndToSpec.shape[0], NImages-2, SiteIndToNgb.shape[1]))
-            FSE = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
+            ImageEn_Jumps = np.zeros((SiteIndToSpec.shape[0], NImages, SiteIndToNgb.shape[1]))
+            ImageRD_Jumps = np.zeros((SiteIndToSpec.shape[0], NImages, SiteIndToNgb.shape[1]))
             MaxForceAtom = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]))
             ChooseRegular = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]), dtype=np.int8)
             ChooseCI = np.zeros((SiteIndToSpec.shape[0], SiteIndToNgb.shape[1]), dtype=np.int8)
@@ -222,31 +219,28 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
                     else:
                         assert ChooseRegular[traj, jumpInd] + ChooseCI[traj, jumpInd] == 1
-                        ebf = float(ebfLine[6])
+
+                        ImageEns = np.array([float(x) for x in ebfLine[10::2]])
+                        ImageRDs = np.array([float(x) for x in ebfLine[9::2]])
+
+                        assert ImageEns.shape[0] == ImageRDs.shape[0] == NImages
+
+                        ImageEn_Jumps[traj, :, jumpInd] = ImageEns[:]
+                        ImageRD_Jumps[traj, :, jumpInd] = ImageRDs[:]
+
+                        ebf = np.max(ImageEns) - ImageEns[0]
                         maxForce = float(ebfLine[2])
 
                         rates[traj, jumpInd] = np.exp(-ebf / (kB * T))
                         barriers[traj, jumpInd] = ebf
                         MaxForceAtom[traj, jumpInd] = maxForce
 
-                        Is = float(ebfLine[10])
-
-                        for im in range(NImages-2):
-                            Ts = float(ebfLine[10 + 2 * (im + 1)])
-                            TSE[traj, im, jumpInd] = Ts
-
-                        Fs = float(ebfLine[10 + 2 * (NImages-1)])
-
-                        ISE[traj, jumpInd] = Is
-                        FSE[traj, jumpInd] = Fs
-
 
             # store all the rates
             AllJumpRates[sampleStart:sampleEnd] = rates[:, :]
             AllJumpBarriers[sampleStart:sampleEnd] = barriers[:, :]
-            AllJumpISE[sampleStart:sampleEnd] = ISE[:, :]
-            AllJumpTSE[sampleStart:sampleEnd, :, :] = TSE[:, :, :]
-            AllJumpFSE[sampleStart:sampleEnd] = FSE[:, :]
+            AllJumpImageE[sampleStart:sampleEnd, :, :] = ImageEn_Jumps[:, :, :]
+            AllJumpImageRD[sampleStart:sampleEnd, :, :] = ImageRD_Jumps[:, :, :]
 
             AllJumpMaxForceAtom[sampleStart:sampleEnd] = MaxForceAtom[:, :]
             AllJumpChooseCI[sampleStart:sampleEnd] = ChooseCI[:, :]
@@ -286,9 +280,8 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             fl.create_dataset("times", data=tarr)
             fl.create_dataset("AllJumpRates", data=AllJumpRates)
             fl.create_dataset("AllJumpBarriers", data=AllJumpBarriers)
-            fl.create_dataset("AllJumpISEnergy", data=AllJumpISE)
-            fl.create_dataset("AllJumpTSEnergy", data=AllJumpTSE)
-            fl.create_dataset("AllJumpFSEnergy", data=AllJumpFSE)
+            fl.create_dataset("AllJumpImageEnergies", data=AllJumpImageE)
+            fl.create_dataset("AllJumpImageRDs", data=AllJumpImageRD)
             fl.create_dataset("AllJumpMaxForceComponent", data=AllJumpMaxForceAtom)
             fl.create_dataset("AllJumpChooseRegular", data=AllJumpChooseRegular)
             fl.create_dataset("AllJumpChooseCI", data=AllJumpChooseCI)
