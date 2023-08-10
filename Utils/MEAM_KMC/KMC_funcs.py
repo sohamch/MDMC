@@ -15,11 +15,11 @@ def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.01):
             else:
                 fl.write("pair_coeff \t * * "+ potPath + "/library.meam Co Ni Cr Fe Mn " +
                          potPath + "/params.meam Co Ni Cr Fe Mn\n")
-            fl.write("fix \t 1 all neb 0.1 parallel ideal\n")
+            fl.write("fix \t 1 all neb 1.0 parallel ideal\n")
             fl.write("min_style \t fire\n")
             fl.write("timestep \t {}\n".format(ts))
             fl.write("min_modify \t norm max abcfire yes tmax 5 dmax 0.01\n")
-            fl.write("neb \t {0} {1} 5000 500 10 final final_{2}.data".format(etol, ftol, traj))
+            fl.write("neb \t {0} {1} 10000 0 10 final final_{2}.data".format(etol, ftol, traj))
 
 
 def write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, TopLines):
