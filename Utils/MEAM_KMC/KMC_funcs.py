@@ -1,6 +1,6 @@
 import numpy as np
 
-def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.01):
+def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.01, k=1.0):
     for traj in range(Ntr):
         with open("in.neb_{0}".format(traj), "w") as fl:
             fl.write("units \t metal\n")
@@ -15,7 +15,7 @@ def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.01):
             else:
                 fl.write("pair_coeff \t * * "+ potPath + "/library.meam Co Ni Cr Fe Mn " +
                          potPath + "/params.meam Co Ni Cr Fe Mn\n")
-            fl.write("fix \t 1 all neb 1.0 parallel ideal\n")
+            fl.write("fix \t 1 all neb {} parallel ideal\n".format(k))
             fl.write("min_style \t fire\n")
             fl.write("timestep \t {}\n".format(ts))
             fl.write("min_modify \t norm max abcfire yes tmax 5 dmax 0.01\n")

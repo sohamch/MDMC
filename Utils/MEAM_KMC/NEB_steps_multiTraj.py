@@ -101,7 +101,7 @@ def load_Data(StateStart, batchSize, InitStateFile):
 
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, batchSize, SiteIndToNgb, chunkSize, PotPath,
-          SiteIndToPos, WriteAllJumps=False, ftol=0.01, etol=0.0, ts=0.001, NImages=11):
+          SiteIndToPos, WriteAllJumps=False, ftol=0.01, etol=0.0, ts=0.001, NImages=11, k=1.0):
     try:
         with open("lammpsBox.txt", "r") as fl:
             Initlines = fl.readlines()
@@ -141,7 +141,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     AllJumpMaxIteration = np.zeros((Ntraj, SiteIndToNgb.shape[1]), dtype=int)
 
     # Before starting, write the lammps input files
-    write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol, ts=ts)
+    write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol, ts=ts, k=k)
 
     start = time.time()
 
@@ -299,7 +299,7 @@ def main(args):
     DoKMC(args.Temp, startStep, args.Nsteps, args.StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
           SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages,
-          ts=args.TimeStep)
+          ts=args.TimeStep, k=args.SpringConstant)
 
 if __name__ == "__main__":
 
@@ -334,6 +334,9 @@ if __name__ == "__main__":
                         help="Relative Energy change tolerance for ending NEB calculations.")
 
     parser.add_argument("-ts", "--TimeStep", metavar="float", type=float, default=0.001,
+                        help="Relative Energy change tolerance for ending NEB calculations.")
+
+    parser.add_argument("-k", "--SpringConstant", metavar="float", type=float, default=1.0,
                         help="Relative Energy change tolerance for ending NEB calculations.")
 
     parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
