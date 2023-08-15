@@ -142,7 +142,8 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     AllJumpMaxIteration = np.zeros((Ntraj, SiteIndToNgb.shape[1]), dtype=int)
 
     # Before starting, write the lammps input files
-    write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol, ts=ts, k=k, perp=perp)
+    if startStep == 0:
+        write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol, ts=ts, k=k, perp=perp)
 
     start = time.time()
 
