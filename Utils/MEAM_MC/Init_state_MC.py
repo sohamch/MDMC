@@ -333,8 +333,7 @@ if __name__ == "__main__":
                         help="Whether to use srun on not to launch lammps jobs.")
 
     parser.add_argument("-a0", "--LatPar", metavar="float", type=float, default=3.595,
-                        help="Lattice parameter - multiplied to displacements and used"
-                             "to construct LAMMPS coordinates.")
+                        help="Lattice parameter")
 
     parser.add_argument("-nv", "--NoVac", action="store_true",
                         help="Whether to disable vacancy creation.")
