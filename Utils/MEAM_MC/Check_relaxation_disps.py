@@ -9,7 +9,7 @@ import os
 import subprocess
 import argparse
 
-def write_lammps_input(potPath, etol=1e-7, ftol=0.001):
+def write_lammps_input(potPath, etol=1e-7, ftol=0.001, threshold=1.0):
     lines = ["units \t metal\n",
              "atom_style \t atomic\n",
              "atom_modify \t map array\n",
@@ -19,91 +19,33 @@ def write_lammps_input(potPath, etol=1e-7, ftol=0.001):
              "pair_style \t meam\n",
              "pair_coeff \t * * {0}/library.meam Co Ni Cr Fe Mn {0}/params.meam Co Ni Cr Fe Mn".format(potPath),
              "\n",
-             "min_style cg\n",
-             "min_modify norm max\n",
-             "minimize	\t {0} {1} 1000 1000000\n".format(etol, ftol),
-             "\n",
+             "min_style \t cg\n",
+             "min_modify \t norm max\n\n",
+
+             "variable \t Drel equal {}\n".format(threshold),
+             "variable \t check atom \"c_dsp[4] > v_Drel\"\n",
+             "compute \t dsp all displace/atom\n\n",
+
+             "minimize	\t {0} {1} 1000 1000000\n\n".format(etol, ftol),
+
              "variable x equal pe\n",
-             "print \"$x\" file Eng_check_disp.txt\n",
-             "dump \t 1 all xyz 1 relaxed_conf_check_disp.xyz\n",
+             "print \"$x\" file Eng_check_disp.txt\n\n",
+
+             "dump \t 1 all custom 1 disps.dump id type c_dsp[4]\n",
+             "dump_modify \t 1 append no thresh c_dsp[4] > ${Drel}\n",
              "run 0\n"
              ]
 
     with open("in_check_dips.minim", "w") as fl:
         fl.writelines(lines)
 
-
-def getminDist(x, N_units, a0=3.595):
-    corners = np.array([[n1*a0, n2*a0, n3*a0] for n1 in (0, N_units[0]) for n2 in (0, N_units[1]) for n3 in (0, N_units[2])])
-
-    dxPos = np.zeros((corners.shape[0], 3))
-    dxNorms = np.zeros(corners.shape[0])
-
-    for cInd in range(corners.shape[0]):
-        dx = x - corners[cInd]
-        dxPos[cInd, :] = dx
-        dxNorms[cInd] = np.linalg.norm(dx)
-
-    mn = np.argmin(dxNorms)
-    return dxPos[mn]
-
-def check_atomic_displacements(sup, N_units, a0=3.595, threshold=1.0):
-    with open("relaxed_conf_check_disp.xyz", "r") as fl:
-        lines = fl.readlines()
-
-    Natoms_saved = int(lines[0].split()[0])
-    Natoms = len(sup)
-    assert Natoms_saved == Natoms
-
-    mapping = True
-    elems = ["Co", "Ni", "Cr", "Fe", "Mn"]
-    lines = lines[2:]  # the atoms start from the third line onwards
-    disps = np.zeros(Natoms)
-    AllInitPos = np.zeros((Natoms, 3))
-    AllFinPos = np.zeros((Natoms, 3))
-
-    AllInitPos_min = np.zeros((Natoms, 3))
-    AllFinPos_min = np.zeros((Natoms, 3))
-
-    for at in range(Natoms):
-        # check that we have the correct atom
-        spec = int(lines[at].split()[0])
-        el = elems[spec - 1]
-        assert sup[at].symbol == el
-
-        # Then get the starting position
-        pos_at_init = sup[at].position
-        pos_at_fin = np.array([float(x) for x in lines[at].split()[1:]])
-
-        pos_at_init_min = getminDist(pos_at_init, N_units, a0=a0)
-        pos_at_fin_min = getminDist(pos_at_fin, N_units, a0=a0)
-
-        displacement_1 = np.linalg.norm(pos_at_fin_min - pos_at_init_min)
-        displacement_2 = np.linalg.norm(pos_at_fin - pos_at_init)
-        disps[at] = min(displacement_1, displacement_2)
-
-        AllInitPos[at, :] = pos_at_init[:]
-        AllFinPos[at, :] = pos_at_fin[:]
-
-        AllInitPos_min[at, :] = pos_at_init_min[:]
-        AllFinPos_min[at, :] = pos_at_fin_min[:]
-
-        if disps[at] > threshold:
-            mapping = False
-
-    mx = np.argmax(disps)
-
-    return mapping, disps[mx], AllInitPos[mx], AllFinPos[mx], AllInitPos_min[mx], AllFinPos_min[mx]
-
 def main(args):
 
     elems = ["Co", "Ni", "Cr", "Fe", "Mn"]
 
-
     badCheckpoints = []
-    badCheckpoints_energies = []
-    badCheckpoints_dispMax = []
-    write_lammps_input(args.PotPath, etol=args.EnTol, ftol=args.ForceTol)
+
+    write_lammps_input(args.PotPath, etol=args.EnTol, ftol=args.ForceTol, threshold=args.Threshold)
 
     if not args.NoSrun:
         cmdString = "srun --ntasks=1 --cpus-per-task=1 $LMPPATH/lmp -in in_check_dips.minim > out_check_disp.txt"
@@ -114,8 +56,6 @@ def main(args):
     Nsamps = args.Nckp
     interval = args.Interval
     En = np.load("Eng_all_steps.npy")
-
-    maxDisps = []
 
     with open("Check_disp_run.txt", "w") as fl:
         fl.write("")
@@ -130,7 +70,7 @@ def main(args):
 
         write_lammps_data("inp_MC_check_disp.data", sup, specorder=elems)
 
-        cmd = subprocess.run(cmdString, shell=True, check=True)
+        subprocess.run(cmdString, shell=True, check=True)
 
         with open("Eng_check_disp.txt", "r") as fl_en:
             e = fl_en.readline().split()[0]
@@ -139,28 +79,22 @@ def main(args):
         e_check = En[ckp]
         assert np.math.isclose(e_check, e, rel_tol=0, abs_tol=1e-6)
 
-        check_good, dispMax, initPosMax, finPosMax, initPosMax_min, finPosMax_min = check_atomic_displacements(sup, args.Nunits, a0=args.LatPar, threshold=args.Threshold)
-        maxDisps.append(dispMax)
-        if not check_good:
-            badCheckpoints.append(ckp)
-            badCheckpoints_energies.append(e)
-            badCheckpoints_dispMax.append((dispMax, initPosMax, finPosMax, initPosMax_min, finPosMax_min))
+        with open("disps.dump", "r") as fl:
+            lines = fl.readlines()
 
-    print("Maximum Displacement across all samples: {}".format(max(maxDisps)))
+        if len(lines) == 9:
+            assert lines[-1].split()[0] == "ITEM:"
+
+        else:
+            badCheckpoints.append(ckp)
 
     if len(badCheckpoints) > 0:
         with open("NonLatticeCheckPoints.txt", "w") as fl:
-            fl.write("Chkpt \t Energy\n")
-            for ckp, en, dsp in zip(badCheckpoints, badCheckpoints_energies, badCheckpoints_dispMax):
-                s = "{} \t".format(ckp)
-                s += "{} \t".format(en)
-                s += "{:.6f}\n".format(dsp[0])
-                s += "Initial positions: {:.6f} {:.6f} {:.6f} \t".format(dsp[1][0], dsp[1][1], dsp[1][2])
-                s += "{:.6f} {:.6f} {:.6f}\n".format(dsp[2][0], dsp[2][1], dsp[2][2])
-                s += "Periodic positions: {:.6f} {:.6f} {:.6f}\t".format(dsp[3][0], dsp[3][1], dsp[3][2])
-                s += "{:.6f} {:.6f} {:.6f}\n".format(dsp[4][0], dsp[4][1], dsp[4][2])
-                s += "\n"
-                fl.write(s)
+            s = ""
+            for ckp in badCheckpoints:
+                s += "{} ".format(ckp)
+
+            fl.write(s)
 
 if __name__ == "__main__":
 
