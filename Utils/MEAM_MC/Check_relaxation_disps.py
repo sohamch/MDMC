@@ -1,6 +1,5 @@
 import numpy as np
 import pickle
-import time
 
 from ase.spacegroup import crystal
 from ase.build import make_supercell
@@ -8,7 +7,6 @@ from ase.io.lammpsdata import write_lammps_data
 
 import os
 import subprocess
-import glob
 import argparse
 # Next, write a lammps input script for this run
 def write_lammps_input(potPath, etol=1e-7, ftol=0.001):
