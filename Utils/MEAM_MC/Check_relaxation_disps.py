@@ -20,7 +20,7 @@ def write_lammps_input(potPath, etol=1e-7, ftol=0.001):
              "pair_coeff \t * * {0}/library.meam Co Ni Cr Fe Mn {0}/params.meam Co Ni Cr Fe Mn".format(potPath),
              "\n",
              "min_style cg\n",
-             "min_modify norm max\n"
+             "min_modify norm max\n",
              "minimize	\t {0} {1} 1000 1000000\n".format(etol, ftol),
              "\n",
              "variable x equal pe\n",
@@ -29,7 +29,7 @@ def write_lammps_input(potPath, etol=1e-7, ftol=0.001):
              "run 0\n"
              ]
 
-    with open("in.minim", "w") as fl:
+    with open("in_check_dips.minim", "w") as fl:
         fl.writelines(lines)
 
 
@@ -106,9 +106,9 @@ def main(args):
     write_lammps_input(args.PotPath, etol=args.EnTol, ftol=args.ForceTol)
 
     if not args.NoSrun:
-        cmdString = "srun --ntasks=1 --cpus-per-task=1 $LMPPATH/lmp -in in.minim > out_check_disp.txt"
+        cmdString = "srun --ntasks=1 --cpus-per-task=1 $LMPPATH/lmp -in in_check_dips.minim > out_check_disp.txt"
     else:
-        cmdString = "$LMPPATH/lmp -in in.minim > out_check_disp.txt"
+        cmdString = "$LMPPATH/lmp -in in_check_dips.minim > out_check_disp.txt"
 
     start = args.Start
     Nsamps = args.Nckp
