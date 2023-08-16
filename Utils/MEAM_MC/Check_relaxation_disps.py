@@ -129,7 +129,6 @@ def main(args):
                 fl.write("{} \t {}\n".format(ckp, en))
 
 if __name__ == "__main__":
-    # N_units, a0, NoVac, T, N_swap, N_eqb, N_save
 
     parser = argparse.ArgumentParser(description="Input parameters for Metropolis Monte Carlo simulations with ASE.",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
