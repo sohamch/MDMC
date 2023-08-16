@@ -59,6 +59,9 @@ def check_atomic_displacements(sup, N_units, a0=3.595, threshold=1.0):
     elems = ["Co", "Ni", "Cr", "Fe", "Mn"]
     lines = lines[2:]  # the atoms start from the third line onwards
     disps = np.zeros(Natoms)
+    AllInitPos = np.zeros((Natoms, 3))
+    AllFinPos = np.zeros((Natoms, 3))
+
     for at in range(Natoms):
         # check that we have the correct atom
         spec = int(lines[at].split()[0])
@@ -74,10 +77,14 @@ def check_atomic_displacements(sup, N_units, a0=3.595, threshold=1.0):
 
         displacement = np.linalg.norm(pos_at_fin_min - pos_at_init_min)
         disps[at] = displacement
+        AllInitPos[at, :] = pos_at_init[:]
+        AllFinPos[at, :] = pos_at_fin[:]
         if displacement > threshold:
             mapping = False
 
-    return mapping, np.max(disps)
+    mx = np.argmax(disps)
+
+    return mapping, disps[mx], AllInitPos[mx], AllFinPos[mx]
 
 def main(args):
 
@@ -123,12 +130,12 @@ def main(args):
         e_check = En[ckp]
         assert np.math.isclose(e_check, e, rel_tol=0, abs_tol=1e-6)
 
-        check_good, dispMax = check_atomic_displacements(sup, args.Nunits, a0=args.LatPar, threshold=args.Threshold)
+        check_good, dispMax, initPosMax, finPosMax = check_atomic_displacements(sup, args.Nunits, a0=args.LatPar, threshold=args.Threshold)
         maxDisps.append(dispMax)
         if not check_good:
             badCheckpoints.append(ckp)
             badCheckpoints_energies.append(e)
-            badCheckpoints_dispMax.append(dispMax)
+            badCheckpoints_dispMax.append((dispMax, initPosMax, finPosMax))
 
     print("Maximum Displacement across all samples: {}".format(max(maxDisps)))
 
@@ -136,7 +143,9 @@ def main(args):
         with open("NonLatticeCheckPoints.txt", "w") as fl:
             fl.write("Chkpt \t Energy\n")
             for ckp, en, dsp in zip(badCheckpoints, badCheckpoints_energies, badCheckpoints_dispMax):
-                fl.write("{} \t {} \t {:.6f}\n".format(ckp, en, dsp))
+                fl.write("{} \t {} \t {:.6f} \t {:.6f} {:.6f} {:.6f} \t {:.6f} {:.6f} {:.6f}\n".format(ckp, en, dsp[0],
+                                                                                                       dsp[1][0], dsp[1][1], dsp[1][2],
+                                                                                                       dsp[2][0], dsp[2][1], dsp[2][2]))
 
 if __name__ == "__main__":
 
