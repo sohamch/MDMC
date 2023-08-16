@@ -62,6 +62,9 @@ def check_atomic_displacements(sup, N_units, a0=3.595, threshold=1.0):
     AllInitPos = np.zeros((Natoms, 3))
     AllFinPos = np.zeros((Natoms, 3))
 
+    AllInitPos_min = np.zeros((Natoms, 3))
+    AllFinPos_min = np.zeros((Natoms, 3))
+
     for at in range(Natoms):
         # check that we have the correct atom
         spec = int(lines[at].split()[0])
@@ -79,12 +82,16 @@ def check_atomic_displacements(sup, N_units, a0=3.595, threshold=1.0):
         disps[at] = displacement
         AllInitPos[at, :] = pos_at_init[:]
         AllFinPos[at, :] = pos_at_fin[:]
+
+        AllInitPos_min[at, :] = pos_at_init_min[:]
+        AllFinPos_min[at, :] = pos_at_fin_min[:]
+
         if displacement > threshold:
             mapping = False
 
     mx = np.argmax(disps)
 
-    return mapping, disps[mx], AllInitPos[mx], AllFinPos[mx]
+    return mapping, disps[mx], AllInitPos[mx], AllFinPos[mx], AllInitPos_min[mx], AllFinPos_min[mx]
 
 def main(args):
 
@@ -130,12 +137,12 @@ def main(args):
         e_check = En[ckp]
         assert np.math.isclose(e_check, e, rel_tol=0, abs_tol=1e-6)
 
-        check_good, dispMax, initPosMax, finPosMax = check_atomic_displacements(sup, args.Nunits, a0=args.LatPar, threshold=args.Threshold)
+        check_good, dispMax, initPosMax, finPosMax, initPosMax_min, finPosMax_min = check_atomic_displacements(sup, args.Nunits, a0=args.LatPar, threshold=args.Threshold)
         maxDisps.append(dispMax)
         if not check_good:
             badCheckpoints.append(ckp)
             badCheckpoints_energies.append(e)
-            badCheckpoints_dispMax.append((dispMax, initPosMax, finPosMax))
+            badCheckpoints_dispMax.append((dispMax, initPosMax, finPosMax, initPosMax_min, finPosMax_min))
 
     print("Maximum Displacement across all samples: {}".format(max(maxDisps)))
 
@@ -143,9 +150,15 @@ def main(args):
         with open("NonLatticeCheckPoints.txt", "w") as fl:
             fl.write("Chkpt \t Energy\n")
             for ckp, en, dsp in zip(badCheckpoints, badCheckpoints_energies, badCheckpoints_dispMax):
-                fl.write("{} \t {} \t {:.6f} \t {:.6f} {:.6f} {:.6f} \t {:.6f} {:.6f} {:.6f}\n".format(ckp, en, dsp[0],
-                                                                                                       dsp[1][0], dsp[1][1], dsp[1][2],
-                                                                                                       dsp[2][0], dsp[2][1], dsp[2][2]))
+                s = "{} \t".format(ckp)
+                s += "{} \t".format(en)
+                s += "{:.6f}\n".format(dsp[0])
+                s += "Initial positions: {:.6f} {:.6f} {:.6f} \t".format(dsp[1][0], dsp[1][1], dsp[1][2])
+                s += "{:.6f} {:.6f} {:.6f}\n".format(dsp[2][0], dsp[2][1], dsp[2][2])
+                s += "Periodic positions: {:.6f} {:.6f} {:.6f}\t".format(dsp[3][0], dsp[3][1], dsp[3][2])
+                s += "{:.6f} {:.6f} {:.6f}\n".format(dsp[4][0], dsp[4][1], dsp[4][2])
+                s += "\n"
+                fl.write(s)
 
 if __name__ == "__main__":
 
