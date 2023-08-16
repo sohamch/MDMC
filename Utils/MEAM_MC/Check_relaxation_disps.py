@@ -23,7 +23,6 @@ def write_lammps_input(potPath, etol=1e-7, ftol=0.001, threshold=1.0):
              "min_modify \t norm max\n\n",
 
              "variable \t Drel equal {}\n".format(threshold),
-             "variable \t check atom \"c_dsp[4] > v_Drel\"\n",
              "compute \t dsp all displace/atom\n\n",
 
              "minimize	\t {0} {1} 1000 1000000\n\n".format(etol, ftol),
