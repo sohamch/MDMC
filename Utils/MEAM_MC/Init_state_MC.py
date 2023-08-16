@@ -35,10 +35,45 @@ def write_lammps_input(potPath, etol=1e-7, ftol=0.001):
              "minimize	\t {0} {1} 1000 1000000\n".format(etol, ftol),
              "\n",
              "variable x equal pe\n",
-             "print \"$x\" file Eng.txt"]
+             "print \"$x\" file Eng.txt\n",
+             ]
 
     with open("in.minim", "w") as fl:
         fl.writelines(lines)
+
+def getminDist(x, N_units=5, a0=3.595):
+    corners = np.array([[n1*a0, n2*a0, n3*a0] for n1 in (0, N_units) for n2 in (0, N_units) for n3 in (0, N_units)])
+
+    dxPos = np.zeros((corners.shape[0], 3))
+    dxNorms = np.zeros((corners.shape[0], 3))
+
+    for cInd in range(corners.shape[0]):
+        dx = x - corners[cInd]
+        dxPos[cInd, :] = x
+        dxNorms[cInd] = np.linalg.norm(x)
+
+    mn = np.argmin(dxNorms)
+    return dxPos[mn]
+
+def check_atomic_displacements(sup, N_units=5, a0=3.595, threshold=1.0):
+    with open("relaxed_conf.xyz", "r") as fl:
+        lines = fl.readlines()
+
+    Natoms = len(sup)
+    mapping = True
+    for at in range(Natoms):
+        pos_at_init = sup[at].position
+        pos_at_fin = np.array([float(x) for x in lines[at + 2].split()[1:]])
+
+        pos_at_init_min = getminDist(pos_at_init, N_units=N_units, a0=a0)
+        pos_at_fin_min = getminDist(pos_at_fin, N_units=N_units, a0=a0)
+
+        displacement = np.linalg.norm(pos_at_fin_min - pos_at_init_min)
+
+        if displacement > threshold:
+            mapping = False
+
+    return mapping
 
 def clear_backup(lastChkPt, Eng_steps_all, accepts, rand_steps, swap_steps):
     try:
@@ -55,7 +90,7 @@ def clear_backup(lastChkPt, Eng_steps_all, accepts, rand_steps, swap_steps):
 
 # Next, we write the MC loop
 def MC_Run(T, SwapRun, ASE_Super, elems,
-           N_therm=2000, N_save=200, lastChkPt=0, NoSrun=False):
+           N_therm=2000, N_save=200, lastChkPt=0, NoSrun=False, N_units=5, a0=3.595):
 
     if not os.path.isdir(RunPath + "chkpt"):
         os.mkdir(RunPath + "chkpt")
@@ -154,7 +189,8 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
         de = e2 - e1
         rn = np.random.rand()
 
-        if rn <= np.exp(-beta * de):
+        if rn <= np.exp(-beta * de) and check_atomic_displacements(ASE_Super, N_units=N_units,
+                                                                   a0=a0):
             # Then accept the move
             N_accept += 1
             e1 = e2  # set the next initial state energy to the current final energy
@@ -250,6 +286,9 @@ def main(args):
     else:
         lastSave=0
 
+        # write the lammps commands
+        write_lammps_input(args.potPath, etol=args.EnTol, ftol=args.ForceTol)
+
         # Create an FCC primitive unit cell
         a = args.LatPar
         fcc = crystal('Ni', [(0, 0, 0)], spacegroup=225, cellpar=[a, a, a, 90, 90, 90], primitive_cell=args.Prim)
@@ -262,35 +301,43 @@ def main(args):
             print("Putting vacancy at site 0")
             assert np.allclose(superFCC[0].position, 0)
             del(superFCC[0])
-        
-        # randomize occupancies of the sites
+
+        accept_start_state=False
+
         Nsites = len(superFCC.get_positions())
         assert sum(args.Natoms) == Nsites, "Total number of atoms does not match supercell size."
 
-        Indices = np.random.permutation(Nsites) # store the sites in random order to be occupied randomly.
-        NSpec = len(elems)
+        while not accept_start_state:
+            # randomize occupancies of the sites
+            Indices = np.random.permutation(Nsites) # store the sites in random order to be occupied randomly.
+            NSpec = len(elems)
 
-        for i in range(NSpec):
+            for i in range(NSpec):
 
-            lower = sum(args.Natoms[j] for j in range(i))
-            upper = lower + args.Natoms[i]
-            print("{} : {} atoms".format(elems[i], upper - lower))
-            for at_Ind in range(lower, upper):
-                permInd = Indices[at_Ind]
-                superFCC[permInd].symbol = elems[i]
+                lower = sum(args.Natoms[j] for j in range(i))
+                upper = lower + args.Natoms[i]
+                for at_Ind in range(lower, upper):
+                    permInd = Indices[at_Ind]
+                    superFCC[permInd].symbol = elems[i]
+
+            write_lammps_data("inp_MC.data", superFCC, specorder=elems)
+            if not args.NoSrun:
+                cmdString = "srun --ntasks=1 --cpus-per-task=1 $LMPPATH/lmp -in in.minim > out.txt"
+            else:
+                cmdString = "$LMPPATH/lmp -in in.minim > out.txt"
+
+            cmd = subprocess.run(cmdString, shell=True, check=True)
+            if check_atomic_displacements(superFCC, N_units=args.Nunits, a0=a):
+                accept_start_state = True
+
+
 
         print("Supercell formula: {}". format(superFCC.get_chemical_formula()))
         # save the initial supercell
         print("Occupied Sites: \n{}".format(Indices))
         with open("superInitial.pkl", "wb") as fl:
             pickle.dump(superFCC, fl)
-        
 
-    # Run MC
-    if not args.UseLastChkPt:
-        # Lammps input script need be written only once. We're also starting from on-lattice positions for
-        # reproducibility.
-        write_lammps_input(args.potPath, etol=args.EnTol, ftol=args.ForceTol)
 
     start = time.time()
     N_total, N_accept = MC_Run(args.Temp, args.Nsteps, superFCC, elems, N_therm=args.NEqb, N_save=args.Nsave, lastChkPt=lastSave,
