@@ -33,8 +33,8 @@ def write_lammps_input(potPath, etol=1e-7, ftol=0.001):
         fl.writelines(lines)
 
 
-def getminDist(x, N_units=5, a0=3.595):
-    corners = np.array([[n1*a0, n2*a0, n3*a0] for n1 in (0, N_units) for n2 in (0, N_units) for n3 in (0, N_units)])
+def getminDist(x, N_units, a0=3.595):
+    corners = np.array([[n1*a0, n2*a0, n3*a0] for n1 in (0, N_units[0]) for n2 in (0, N_units[1]) for n3 in (0, N_units[2])])
 
     dxPos = np.zeros((corners.shape[0], 3))
     dxNorms = np.zeros(corners.shape[0])
@@ -47,7 +47,7 @@ def getminDist(x, N_units=5, a0=3.595):
     mn = np.argmin(dxNorms)
     return dxPos[mn]
 
-def check_atomic_displacements(sup, N_units=5, a0=3.595, threshold=1.0):
+def check_atomic_displacements(sup, N_units, a0=3.595, threshold=1.0):
     with open("relaxed_conf_check_disp.xyz", "r") as fl:
         lines = fl.readlines()
 
@@ -68,8 +68,8 @@ def check_atomic_displacements(sup, N_units=5, a0=3.595, threshold=1.0):
         pos_at_init = sup[at].position
         pos_at_fin = np.array([float(x) for x in lines[at].split()[1:]])
 
-        pos_at_init_min = getminDist(pos_at_init, N_units=N_units, a0=a0)
-        pos_at_fin_min = getminDist(pos_at_fin, N_units=N_units, a0=a0)
+        pos_at_init_min = getminDist(pos_at_init, N_units, a0=a0)
+        pos_at_fin_min = getminDist(pos_at_fin, N_units, a0=a0)
 
         displacement = np.linalg.norm(pos_at_fin_min - pos_at_init_min)
 
@@ -116,7 +116,7 @@ def main(args):
         e_check = En[ckp]
         assert np.math.isclose(e_check, e, rel_tol=0, abs_tol=1e-6)
 
-        check_good = check_atomic_displacements(sup, N_units=args.Nunits, a0=args.LatPar, threshold=args.Threshold)
+        check_good = check_atomic_displacements(sup, args.Nunits, a0=args.LatPar, threshold=args.Threshold)
 
         if not check_good:
             badCheckpoints.append(ckp)
