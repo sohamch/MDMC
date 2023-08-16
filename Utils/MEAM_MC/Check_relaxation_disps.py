@@ -58,6 +58,7 @@ def check_atomic_displacements(sup, N_units, a0=3.595, threshold=1.0):
     mapping = True
     elems = ["Co", "Ni", "Cr", "Fe", "Mn"]
     lines = lines[2:]  # the atoms start from the third line onwards
+    disps = np.zeros(Natoms)
     for at in range(Natoms):
         # check that we have the correct atom
         spec = int(lines[at].split()[0])
@@ -72,11 +73,11 @@ def check_atomic_displacements(sup, N_units, a0=3.595, threshold=1.0):
         pos_at_fin_min = getminDist(pos_at_fin, N_units, a0=a0)
 
         displacement = np.linalg.norm(pos_at_fin_min - pos_at_init_min)
-
+        disps[at] = displacement
         if displacement > threshold:
             mapping = False
 
-    return mapping
+    return mapping, np.max(disps)
 
 def main(args):
 
@@ -85,6 +86,7 @@ def main(args):
 
     badCheckpoints = []
     badCheckpoints_energies = []
+    badCheckpoints_dispMax = []
     write_lammps_input(args.PotPath, etol=args.EnTol, ftol=args.ForceTol)
 
     if not args.NoSrun:
@@ -97,6 +99,7 @@ def main(args):
     interval = args.Interval
     En = np.load("Eng_all_steps.npy")
 
+    maxDisps = []
     for ckp in range(start, start + (Nsamps - 1) * interval + 1, interval):
 
         with open("chkpt/supercell_{}.pkl".format(ckp), "rb") as fl:
@@ -116,17 +119,20 @@ def main(args):
         e_check = En[ckp]
         assert np.math.isclose(e_check, e, rel_tol=0, abs_tol=1e-6)
 
-        check_good = check_atomic_displacements(sup, args.Nunits, a0=args.LatPar, threshold=args.Threshold)
-
+        check_good, dispMax = check_atomic_displacements(sup, args.Nunits, a0=args.LatPar, threshold=args.Threshold)
+        maxDisps.append(dispMax)
         if not check_good:
             badCheckpoints.append(ckp)
             badCheckpoints_energies.append(e)
+            badCheckpoints_dispMax.append(dispMax)
+
+    print("Maximum Displacement across all samples: {}".format(max(maxDisps)))
 
     if len(badCheckpoints) > 0:
         with open("NonLatticeCheckPoints.txt", "w") as fl:
             fl.write("Chkpt \t Energy\n")
-            for ckp, en in zip(badCheckpoints, badCheckpoints_energies):
-                fl.write("{} \t {}\n".format(ckp, en))
+            for ckp, en, dsp in zip(badCheckpoints, badCheckpoints_energies, badCheckpoints_dispMax):
+                fl.write("{} \t {} \t {:.6f}\n".format(ckp, en, dsp))
 
 if __name__ == "__main__":
 
