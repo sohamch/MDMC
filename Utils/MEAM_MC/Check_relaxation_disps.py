@@ -78,15 +78,17 @@ def check_atomic_displacements(sup, N_units, a0=3.595, threshold=1.0):
         pos_at_init_min = getminDist(pos_at_init, N_units, a0=a0)
         pos_at_fin_min = getminDist(pos_at_fin, N_units, a0=a0)
 
-        displacement = np.linalg.norm(pos_at_fin_min - pos_at_init_min)
-        disps[at] = displacement
+        displacement_1 = np.linalg.norm(pos_at_fin_min - pos_at_init_min)
+        displacement_2 = np.linalg.norm(pos_at_fin - pos_at_init)
+        disps[at] = min(displacement_1, displacement_2)
+
         AllInitPos[at, :] = pos_at_init[:]
         AllFinPos[at, :] = pos_at_fin[:]
 
         AllInitPos_min[at, :] = pos_at_init_min[:]
         AllFinPos_min[at, :] = pos_at_fin_min[:]
 
-        if displacement > threshold:
+        if disps[at] > threshold:
             mapping = False
 
     mx = np.argmax(disps)
