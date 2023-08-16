@@ -95,6 +95,10 @@ def main(args):
 
             fl.write(s)
 
+    else:
+        with open("NonLatticeCheckPoints.txt", "w") as fl:
+            fl.write("None")
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Input parameters for Metropolis Monte Carlo simulations with ASE.",
