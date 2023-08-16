@@ -97,6 +97,8 @@ def main(args):
     start = args.Start
     Nsamps = args.Nckp
     interval = args.Interval
+    En = np.load("Eng_all_steps.npy")
+
     for ckp in range(start, start + (Nsamps - 1) * interval + 1, interval):
 
         with open("chkpt/supercell_{}.pkl".format(ckp), "rb") as fl:
@@ -112,6 +114,9 @@ def main(args):
         with open("Eng_check_disp.txt", "r") as fl_en:
             e = fl_en.readline().split()[0]
             e = float(e)
+
+        e_check = En[ckp]
+        assert np.math.isclose(e_check, e, rel_tol=0, abs_tol=1e-6)
 
         check_good = check_atomic_displacements(sup, N_units=args.Nunits, a0=args.LatPar, threshold=args.Threshold)
 
