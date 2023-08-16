@@ -81,16 +81,9 @@ def check_atomic_displacements(sup, N_units=5, a0=3.595, threshold=1.0):
     return mapping
 
 def main(args):
-    ChkPtFiles = os.getcwd() + "/chkpt/*.pkl"
-    files = glob.glob(ChkPtFiles)
 
     elems = ["Co", "Ni", "Cr", "Fe", "Mn"]
 
-    if len(files) == 0:
-        raise FileNotFoundError("No checkpoint found.")
-
-    # example of file name: chkpt/supercell_10000.pkl
-    files_sorted = sorted(files, key=lambda fl: int(fl.split("/")[-1][10:-4]))
 
     badCheckpoints = []
     badCheckpoints_energies = []
@@ -101,10 +94,16 @@ def main(args):
     else:
         cmdString = "$LMPPATH/lmp -in in.minim > out_check_disp.txt"
 
-    for f in files_sorted:
+    start = args.Start
+    Nsamps = args.Nckp
+    interval = args.Interval
+    for ckp in range(start, start + (Nsamps - 1) * interval + 1, interval):
 
-        with open(f, "rb") as fl:
+        with open("chkpt/supercell_{}.pkl".format(ckp), "rb") as fl:
             sup = pickle.load(fl)
+
+        with open("Check_disp_run.txt", "a") as fl:
+            fl.write("Loaded checkpoint: {}\n".format(ckp))
 
         write_lammps_data("inp_MC_check_disp.data", sup, specorder=elems)
 
@@ -117,13 +116,14 @@ def main(args):
         check_good = check_atomic_displacements(sup, N_units=args.Nunits, a0=args.LatPar, threshold=args.Threshold)
 
         if not check_good:
-            badCheckpoints.append(f.split("/")[-1])
+            badCheckpoints.append(ckp)
             badCheckpoints_energies.append(e)
 
     if len(badCheckpoints) > 0:
         with open("NonLatticeCheckPoints.txt", "w") as fl:
+            fl.write("Chkpt \t Energy\n")
             for ckp, en in zip(badCheckpoints, badCheckpoints_energies):
-                fl.write("{}\t{}\n".format(ckp, en))
+                fl.write("{} \t {}\n".format(ckp, en))
 
 if __name__ == "__main__":
     # N_units, a0, NoVac, T, N_swap, N_eqb, N_save
@@ -151,6 +151,15 @@ if __name__ == "__main__":
 
     parser.add_argument("-nosr", "--NoSrun", action="store_true",
                         help="Whether to use srun on not to launch lammps jobs.")
+
+    parser.add_argument("-st", "--Start", metavar="int", type=int, default=10000,
+                        help="Which checkpoints to start from.")
+
+    parser.add_argument("-i", "--Interval", metavar="int", type=int, default=1000,
+                        help="At what interval to load the checkpoints starting from the first.")
+
+    parser.add_argument("-ns", "--Nckp", metavar="int", type=int, default=100,
+                        help="How many total checkpoints to check (The starting sample will be included in the count).")
 
     args = parser.parse_args()
 
