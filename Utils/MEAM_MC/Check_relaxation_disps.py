@@ -100,6 +100,10 @@ def main(args):
     En = np.load("Eng_all_steps.npy")
 
     maxDisps = []
+
+    with open("Check_disp_run.txt", "w") as fl:
+        fl.write("")
+
     for ckp in range(start, start + (Nsamps - 1) * interval + 1, interval):
 
         with open("chkpt/supercell_{}.pkl".format(ckp), "rb") as fl:
