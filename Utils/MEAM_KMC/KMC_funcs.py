@@ -21,7 +21,7 @@ def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.01, k=1.0,
             fl.write("fix \t 1 all neb {} parallel ideal perp {}\n".format(k, perp))
             fl.write("min_style \t fire\n")
             fl.write("timestep \t {}\n".format(ts))
-            fl.write("min_modify \t norm max abcfire yes tmax 5 dmax 0.01\n")
+            fl.write("min_modify \t norm max abcfire yes tmax 5 dmax 0.01\n\n")
 
             # define the variables for the images
             s = "variable \t i universe"
@@ -35,7 +35,7 @@ def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.01, k=1.0,
             # 2. Do one NEB iteration
             fl.write("neb \t {0} {1} 1 0 1 final final_{2}.data\n".format(etol, ftol, traj))
             # 3. Unfix the setforce
-            fl.write("unfix \t force_fix")
+            fl.write("unfix \t force_fix\n")
 
             # 4. Invoke compute displace/atom to start atomic coordinates
             fl.write("variable \t Drel equal {}\n".format(threshold))
