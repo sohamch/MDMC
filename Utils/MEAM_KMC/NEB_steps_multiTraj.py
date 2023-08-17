@@ -173,8 +173,12 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                 write_final_states(SiteIndToPos, vacSiteInd, SiteIndToNgb, jumpInd, writeAll=WriteAllJumps)
 
                 # Then run lammps
+                # commands = [
+                #     "srun --exclusive -n {0} --cpus-per-task=1 --mem-per-cpu=100M $LMPPATH/lmp -log out_{1}.txt -screen screen_{1}.txt -p {0}x1 -in in.neb_{1}".format(NImages, traj)
+                #     for traj in range(SiteIndToSpec.shape[0])
+                # ]
                 commands = [
-                    "srun --exclusive -n {0} --cpus-per-task=1 --mem-per-cpu=100M $LMPPATH/lmp -log out_{1}.txt -screen screen_{1}.txt -p {0}x1 -in in.neb_{1}".format(NImages, traj)
+                    "mpirun -np {0} $LMPPATH/lmp -log out_{1}.txt -screen screen_{1}.txt -p {0}x1 -in in.neb_{1}".format(NImages, traj)
                     for traj in range(SiteIndToSpec.shape[0])
                 ]
                 cmdList = [subprocess.Popen(cmd, shell=True) for cmd in commands]
