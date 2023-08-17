@@ -31,7 +31,7 @@ def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.01, k=1.0,
 
             # set up dry NEB run to get images
             # 1. set all forces to zero
-            fl.write("fix force_fix all setforce 0 0 0\n")
+            fl.write("fix \t force_fix all setforce 0 0 0\n")
             # 2. Do one NEB iteration
             fl.write("neb \t {0} {1} 1 0 1 final final_{2}.data\n".format(etol, ftol, traj))
             # 3. Unfix the setforce
