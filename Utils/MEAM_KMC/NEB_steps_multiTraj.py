@@ -297,6 +297,10 @@ def main(args):
     print("Checked vacancy occupancies.")
 
     # Then do the KMC steps
+    # Make directory to store image displacement dump outputs
+    if not os.path.isdir("Image_disps"):
+        os.mkdir("Image_disps")
+
     print("Starting KMC NEB calculations.")
     DoKMC(args.Temp, startStep, args.Nsteps, args.StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
