@@ -102,7 +102,7 @@ def load_Data(StateStart, batchSize, InitStateFile):
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, batchSize, SiteIndToNgb, chunkSize, PotPath,
           SiteIndToPos, WriteAllJumps=False, ftol=0.01, etol=0.0, ts=0.001, NImages=11, k=1.0,
-          perp=1.0):
+          perp=1.0, threshold=1.0):
     try:
         with open("lammpsBox.txt", "r") as fl:
             Initlines = fl.readlines()
@@ -143,7 +143,8 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
     # Before starting, write the lammps input files
     if startStep == 0:
-        write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol, ts=ts, k=k, perp=perp)
+        write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol, ts=ts, k=k, perp=perp,
+                          threshold=threshold, NImages=NImages)
 
     start = time.time()
 
@@ -209,10 +210,21 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     ebf = float(ebfLine[6])
                     maxForce = float(ebfLine[2])
 
-                    rates[traj, jumpInd] = np.exp(-ebf / (kB * T))
-                    barriers[traj, jumpInd] = ebf
-                    MaxForceAtom[traj, jumpInd] = maxForce
-                    MaxIteration[traj, jumpInd] = int(ebfLine[0])
+                    # check displacements in the final state during neb minimization
+                    with open("Image_disps/disps_{0}_{1}.dump".format(traj, NImages), "r") as fl:
+                        Displines = fl.readlines()
+
+                    if len(Displines) == 9:  # No atom was displaced by more than the threshold in the final image
+                        rates[traj, jumpInd] = np.exp(-ebf / (kB * T))
+                        barriers[traj, jumpInd] = ebf
+                        MaxForceAtom[traj, jumpInd] = maxForce
+                        MaxIteration[traj, jumpInd] = int(ebfLine[0])
+
+                    else:  # at least one atom will have moved by more than the threshold in the final image
+                        rates[traj, jumpInd] = 0.0
+                        barriers[traj, jumpInd] = np.inf
+                        MaxForceAtom[traj, jumpInd] = np.inf
+                        MaxIteration[traj, jumpInd] = np.inf
 
 
             # store all the rates
@@ -305,7 +317,7 @@ def main(args):
     DoKMC(args.Temp, startStep, args.Nsteps, args.StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
           SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages,
-          ts=args.TimeStep, k=args.SpringConstant, perp=args.PerpSpringConstant)
+          ts=args.TimeStep, k=args.SpringConstant, perp=args.PerpSpringConstant, threshold=args.DispThreshold)
 
 if __name__ == "__main__":
 
@@ -338,6 +350,9 @@ if __name__ == "__main__":
 
     parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=0.0,
                         help="Relative Energy change tolerance for ending NEB calculations.")
+
+    parser.add_argument("-th", "--DispThreshold", metavar="float", type=float, default=0.0,
+                        help="Maximum allowed displacement after relaxation.")
 
     parser.add_argument("-ts", "--TimeStep", metavar="float", type=float, default=0.001,
                         help="Relative Energy change tolerance for ending NEB calculations.")
