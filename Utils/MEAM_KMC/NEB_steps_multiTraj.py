@@ -207,11 +207,8 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     # Assert that the initial state does not have more than threshold displacement
                     with open("Image_disps/disps_{0}_{1}.dump".format(traj, 1), "r") as fl:
                         Displines_init = fl.readlines()
-                    try:
-                        assert len(Displines_init) == 9
-                    except AssertionError:
-                        print("Initial state showing large relaxation in step: {}, sample: {} (trajectory Index: {})".format(step, chunk + traj, traj))
-                        raise
+
+                    assert len(Displines_init) == 9, "Initial state showing large relaxation in step: {}, sample: {} (trajectory Index: {})".format(step, chunk + traj, traj)
 
                     # check displacements in the final state during neb minimization
                     with open("Image_disps/disps_{0}_{1}.dump".format(traj, NImages), "r") as fl:
@@ -226,8 +223,8 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     else:  # at least one atom will have moved by more than the threshold in the final image
                         rates[traj, jumpInd] = 0.0
                         barriers[traj, jumpInd] = np.inf
-                        MaxForceAtom[traj, jumpInd] = np.inf
-                        MaxIteration[traj, jumpInd] = np.inf
+                        MaxForceAtom[traj, jumpInd] = maxForce
+                        MaxIteration[traj, jumpInd] = int(ebfLine[0])
 
 
             # store all the rates
