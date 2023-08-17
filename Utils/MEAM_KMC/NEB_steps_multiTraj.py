@@ -351,7 +351,7 @@ if __name__ == "__main__":
     parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=0.0,
                         help="Relative Energy change tolerance for ending NEB calculations.")
 
-    parser.add_argument("-th", "--DispThreshold", metavar="float", type=float, default=0.0,
+    parser.add_argument("-th", "--DispThreshold", metavar="float", type=float, default=1.0,
                         help="Maximum allowed displacement after relaxation.")
 
     parser.add_argument("-ts", "--TimeStep", metavar="float", type=float, default=0.001,
