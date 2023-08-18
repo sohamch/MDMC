@@ -100,7 +100,7 @@ def load_Data(StateStart, batchSize, InitStateFile):
     return SiteIndToSpecAll, vacSiteIndAll, startStep
 
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
-          SiteIndToSpecAll, vacSiteIndAll, batchSize, SiteIndToNgb, chunkSize, PotPath,
+          SiteIndToSpecAll, vacSiteIndAll, SiteIndToNgb, chunkSize, PotPath,
           SiteIndToPos, WriteAllJumps=False, ftol=0.01, etol=0.0, ts=0.001, NImages=11, k=1.0,
           perp=1.0, threshold=1.0):
     try:
@@ -119,7 +119,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     specs, counts = np.unique(SiteIndToSpecAll[0], return_counts=True)
     Nspec = len(specs)  # including the vacancy
     Ntraj = SiteIndToSpecAll.shape[0]
-    assert Ntraj == batchSize, "Loaded number of states ({}) is not the same as entered batch size ({})".format(Ntraj, batchSize)
+    # assert Ntraj == batchSize, "Loaded number of states ({}) is not the same as entered batch size ({})".format(Ntraj, batchSize)
     print("No. of samples : {}".format(Ntraj))
 
     Nsites = SiteIndToSpecAll.shape[1]
@@ -296,11 +296,7 @@ def main(args):
     SiteIndToSpecAll, vacSiteIndAll, startStep = load_Data(args.StateStart,
                                                 args.batchSize, args.InitStateFile)
 
-    # Run a check on the vacancy positions
-    try:
-        assert args.batchSize == SiteIndToSpecAll.shape[0]
-    except AssertionError:
-        raise TypeError("Different batch size (entered as argument) than loaded data detected.")
+    # Run a check on the vacancy position
 
     for traj in range(SiteIndToSpecAll.shape[0]):
         state = SiteIndToSpecAll[traj]
@@ -316,7 +312,7 @@ def main(args):
 
     print("Starting KMC NEB calculations.")
     DoKMC(args.Temp, startStep, args.Nsteps, args.StateStart, dxList,
-          SiteIndToSpecAll, vacSiteIndAll, args.batchSize, SiteIndToNgb, args.chunkSize, args.PotPath,
+          SiteIndToSpecAll, vacSiteIndAll, SiteIndToNgb, args.chunkSize, args.PotPath,
           SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages,
           ts=args.TimeStep, k=args.SpringConstant, perp=args.PerpSpringConstant, threshold=args.DispThreshold)
 
