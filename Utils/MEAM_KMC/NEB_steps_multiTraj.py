@@ -117,7 +117,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     specs, counts = np.unique(SiteIndToSpecAll[0], return_counts=True)
     Nspec = len(specs)  # including the vacancy
     Ntraj = SiteIndToSpecAll.shape[0]
-    # assert Ntraj == batchSize, "Loaded number of states ({}) is not the same as entered batch size ({})".format(Ntraj, batchSize)
+
     print("No. of samples : {}".format(Ntraj))
 
     Nsites = SiteIndToSpecAll.shape[1]
@@ -147,6 +147,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     TimeStart = time.time()
 
     for step in range(Nsteps - startStep):
+        BadSamples = []
         for chunk in range(0, Ntraj, chunkSize):
             # Write the initial states from last accepted state
             sampleStart = chunk
@@ -204,13 +205,15 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     maxForce = float(ebfLine[2])
 
                     # Assert that the initial state does not have more than threshold displacement
-                    with open("disps_{0}_{1}.dump".format(traj, 1), "r") as fl: # open("Image_disps/disps_{0}_{1}.dump".format(traj, 1), "r") as fl
+                    with open("disps_{0}_{1}.dump".format(traj, 1), "r") as fl:
                         Displines_init = fl.readlines()
 
-                    assert len(Displines_init) == 9, "Initial state showing large relaxation in step: {}, sample: {} (trajectory Index: {})".format(startStep + step + 1, chunk + traj, traj)
+                    # store the bad sample to check later one
+                    if len(Displines_init) != 9:
+                        BadSamples.append(chunk + traj)
 
                     # check displacements in the final state during neb minimization
-                    with open("disps_{0}_{1}.dump".format(traj, NImages), "r") as fl: #open("Image_disps/disps_{0}_{1}.dump".format(traj, NImages), "r") as fl:
+                    with open("disps_{0}_{1}.dump".format(traj, NImages), "r") as fl:
                         Displines_fin = fl.readlines()
 
                     if len(Displines_fin) == 9:  # No atom was displaced by more than the threshold in the final image
@@ -266,6 +269,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
         # Next, save all the arrays in an hdf5 file for the current step.
         # For the first 10 steps, store test random numbers.
         with h5py.File("data_{0}_{1}.h5".format(startStep + step + 1, StateStart), "w") as fl:
+            fl.create_dataset("BadSamples", data=BadSamples)
             fl.create_dataset("FinalStates", data=FinalStates)
             fl.create_dataset("SpecDisps", data=SpecDisps)
             fl.create_dataset("times", data=tarr)
