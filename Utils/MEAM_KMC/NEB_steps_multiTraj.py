@@ -63,16 +63,9 @@ def load_Data(StateStart, batchSize, InitStateFile):
     if startStep > 0:
 
         with h5py.File(RunPath + "data_{0}_{1}.h5".format(startStep, StateStart), "r") as fl:
-            batchStates = np.array(fl["FinalStates"])
+            SiteIndToSpecAll = np.array(fl["FinalStates"])
 
-        try:
-            assert batchStates.shape[0] == batchSize
-        except AssertionError:
-            raise AssertionError("The checkpointed number of states does not match batchSize argument.")
-
-        SiteIndToSpecAll = batchStates
-
-        vacSiteIndAll = np.zeros(batchSize, dtype=int)
+        vacSiteIndAll = np.zeros(SiteIndToSpecAll.shape[0], dtype=int)
         for stateInd in range(SiteIndToSpecAll.shape[0]):
             state = SiteIndToSpecAll[stateInd]
             vacSite = np.where(state == 0)[0][0]
@@ -92,6 +85,10 @@ def load_Data(StateStart, batchSize, InitStateFile):
             raise FileNotFoundError("Initial states not found.")
 
         SiteIndToSpecAll = allStates[StateStart: StateStart + batchSize]
+
+        # Do a small check on the batchSize
+        if SiteIndToSpecAll.shape[0] < batchSize:
+            assert StateStart + SiteIndToSpecAll.shape[0] == allStates.shape[0]
 
         assert np.all(SiteIndToSpecAll[:, 0] == 0), "All vacancies must be at the 0th site initially."
         vacSiteIndAll = np.zeros(SiteIndToSpecAll.shape[0], dtype=int)
