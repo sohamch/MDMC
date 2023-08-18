@@ -127,6 +127,8 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     # Begin KMC loop below
     FinalStates = SiteIndToSpecAll
     FinalVacSites = vacSiteIndAll
+
+    # Make arrays for storing the data
     SpecDisps = np.zeros((Ntraj, Nspec, 3))
     tarr = np.zeros(Ntraj)
     JumpSelects = np.zeros(Ntraj, dtype=np.int8)  # which jump is chosen for each trajectory
@@ -250,7 +252,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
             jumpAtomSelectArray, X_traj = updateStates(SiteIndToNgb, Nspec, SiteIndToSpec, vacSiteInd, jumpID, dxList)
             # def updateStates(SiteIndToNgb, Nspec,  SiteIndToSpec, vacSiteInd, jumpID, dxList):
 
-            # save final states, displacements and times
+            # store final states, displacements and times
             FinalStates[sampleStart: sampleEnd, :] = SiteIndToSpec[:, :]
             FinalVacSites[sampleStart: sampleEnd] = vacSiteInd[:]
             SpecDisps[sampleStart:sampleEnd, :, :] = X_traj[:, :, :]
@@ -306,11 +308,6 @@ def main(args):
         vacInd = np.where(state == 0)[0][0]
         assert vacInd == vacSiteIndAll[traj]
     print("Checked vacancy occupancies.")
-
-    # Then do the KMC steps
-    # # Make directory to store image displacement dump outputs
-    # if not os.path.isdir("Image_disps"):
-    #     os.mkdir("Image_disps")
 
     print("Starting KMC NEB calculations.")
     DoKMC(args.Temp, startStep, args.Nsteps, args.StateStart, dxList,
