@@ -100,6 +100,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, SiteIndToNgb, chunkSize, PotPath,
           SiteIndToPos, WriteAllJumps=False, ftol=0.01, etol=0.0, ts=0.001, NImages=11, k=1.0,
           perp=1.0, threshold=1.0):
+
     try:
         with open("lammpsBox.txt", "r") as fl:
             Initlines = fl.readlines()
