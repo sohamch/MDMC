@@ -144,7 +144,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
         write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol, ts=ts, k=k, perp=perp,
                           threshold=threshold, NImages=NImages)
 
-    start = time.time()
+    TimeStart = time.time()
 
     for step in range(Nsteps - startStep):
         for chunk in range(0, Ntraj, chunkSize):
@@ -256,12 +256,12 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                 fl.write(
                     "Chunk {0} of {1} in step {3} completed in : {2} seconds\n".format(chunk//chunkSize + 1,
                                                                                        int(np.ceil(Ntraj/chunkSize)),
-                                                                                       time.time() - start, startStep + step + 1))
+                                                                                       time.time() - TimeStart, startStep + step + 1))
 
                 # fl.write("Maxiterations: {}\n".format(np.unique(MaxIteration, return_counts=True)))
 
         with open("StepTiming.txt", "a") as fl:
-            fl.write("Time per step up to {0} of {1} steps : {2} seconds\n".format(startStep + step + 1, Nsteps, (time.time() - start)/(step + 1)))
+            fl.write("Time per step up to {0} of {1} steps : {2} seconds\n".format(startStep + step + 1, Nsteps, (time.time() - TimeStart)/(step + 1)))
 
         # Next, save all the arrays in an hdf5 file for the current step.
         # For the first 10 steps, store test random numbers.
