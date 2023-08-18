@@ -207,7 +207,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     with open("disps_{0}_{1}.dump".format(traj, 1), "r") as fl: # open("Image_disps/disps_{0}_{1}.dump".format(traj, 1), "r") as fl
                         Displines_init = fl.readlines()
 
-                    assert len(Displines_init) == 9, "Initial state showing large relaxation in step: {}, sample: {} (trajectory Index: {})".format(step, chunk + traj, traj)
+                    assert len(Displines_init) == 9, "Initial state showing large relaxation in step: {}, sample: {} (trajectory Index: {})".format(startStep + step + 1, chunk + traj, traj)
 
                     # check displacements in the final state during neb minimization
                     with open("disps_{0}_{1}.dump".format(traj, NImages), "r") as fl: #open("Image_disps/disps_{0}_{1}.dump".format(traj, NImages), "r") as fl:
