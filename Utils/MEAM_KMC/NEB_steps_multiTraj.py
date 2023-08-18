@@ -206,13 +206,13 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     maxForce = float(ebfLine[2])
 
                     # Assert that the initial state does not have more than threshold displacement
-                    with open("Image_disps/disps_{0}_{1}.dump".format(traj, 1), "r") as fl:
+                    with open("disps_{0}_{1}.dump".format(traj, 1), "r") as fl: # open("Image_disps/disps_{0}_{1}.dump".format(traj, 1), "r") as fl
                         Displines_init = fl.readlines()
 
                     assert len(Displines_init) == 9, "Initial state showing large relaxation in step: {}, sample: {} (trajectory Index: {})".format(step, chunk + traj, traj)
 
                     # check displacements in the final state during neb minimization
-                    with open("Image_disps/disps_{0}_{1}.dump".format(traj, NImages), "r") as fl:
+                    with open("disps_{0}_{1}.dump".format(traj, NImages), "r") as fl: #open("Image_disps/disps_{0}_{1}.dump".format(traj, NImages), "r") as fl:
                         Displines_fin = fl.readlines()
 
                     if len(Displines_fin) == 9:  # No atom was displaced by more than the threshold in the final image
@@ -310,9 +310,9 @@ def main(args):
     print("Checked vacancy occupancies.")
 
     # Then do the KMC steps
-    # Make directory to store image displacement dump outputs
-    if not os.path.isdir("Image_disps"):
-        os.mkdir("Image_disps")
+    # # Make directory to store image displacement dump outputs
+    # if not os.path.isdir("Image_disps"):
+    #     os.mkdir("Image_disps")
 
     print("Starting KMC NEB calculations.")
     DoKMC(args.Temp, startStep, args.Nsteps, args.StateStart, dxList,

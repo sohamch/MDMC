@@ -45,7 +45,7 @@ def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.01, k=1.0,
             fl.write("neb \t {0} {1} 10000 0 10 final final_{2}.data verbosity default\n".format(etol, ftol, traj))
 
             # Dump atomic displacements.
-            fl.write("dump \t disp_dmp all custom 1 Image_disps/disps_{}_$i.dump id type c_dsp[4]\n".format(traj))
+            fl.write("dump \t disp_dmp all custom 1 disps_{}_$i.dump id type c_dsp[4]\n".format(traj))
             fl.write("dump_modify \t disp_dmp append no thresh c_dsp[4] > ${Drel}\n")
             fl.write("run 0")
 
