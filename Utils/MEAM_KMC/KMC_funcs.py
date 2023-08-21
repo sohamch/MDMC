@@ -22,32 +22,29 @@ def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.01, k=1.0,
             fl.write("min_style \t fire\n")
             fl.write("timestep \t {}\n".format(ts))
             fl.write("min_modify \t norm max abcfire yes tmax 5 dmax 0.01\n\n")
-
-            # define the variables for the images
-            s = "variable \t i universe"
-            for im in range(NImages):
-                s += " {}".format(im+1)
-            fl.write(s + "\n")
-
-            # set up dry NEB run to get images
-            # 1. set all forces to zero
-            fl.write("fix \t force_fix all setforce 0 0 0\n")
-            # 2. Do one NEB iteration
-            fl.write("neb \t {0} {1} 1 0 1 final final_{2}.data verbosity default\n".format(etol, ftol, traj))
-            # 3. Unfix the setforce
-            fl.write("unfix \t force_fix\n")
-
-            # 4. Invoke compute displace/atom to start atomic coordinates
-            fl.write("variable \t Drel equal {}\n".format(threshold))
-            fl.write("compute \t dsp all displace/atom\n\n")
-
             # Run full NEB
             fl.write("neb \t {0} {1} 20000 0 50 final final_{2}.data verbosity default\n".format(etol, ftol, traj))
 
-            # Dump atomic displacements.
-            fl.write("dump \t disp_dmp all custom 1 disps_{}_$i.dump id type c_dsp[4]\n".format(traj))
-            fl.write("dump_modify \t disp_dmp append no thresh c_dsp[4] > ${Drel}\n")
-            fl.write("run 0")
+        with open("in.relax_final_{}".format(traj), "w") as fl:
+            fl.write("units \t metal\n")
+            fl.write("atom_style \t atomic\n")
+            fl.write("atom_modify \t map array\n")
+            fl.write("boundary \t p p p\n")
+            fl.write("atom_modify \t sort 0 0.0\n")
+            fl.write("read_data \t final_relax_{}.data\n".format(traj))
+            fl.write("pair_style \t meam\n")
+
+            if potPath is None:
+                fl.write("pair_coeff \t * * pot/library.meam Co Ni Cr Fe Mn pot/params.meam Co Ni Cr Fe Mn\n")
+            else:
+                fl.write("pair_coeff \t * * "+ potPath + "/library.meam Co Ni Cr Fe Mn " +
+                         potPath + "/params.meam Co Ni Cr Fe Mn\n")
+
+            fl.write("min_style \t fire\n")
+            fl.write("timestep \t {}\n".format(ts))
+            fl.write("min_modify \t norm max abcfire yes tmax 5 dmax 0.01\n\n")
+            fl.write("minimize	\t {0} {1} 1000 1000000\n".format(etol, ftol))
+
 
 
 def write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, TopLines):
@@ -65,10 +62,36 @@ def write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, TopLines):
                 fl.write("{} {} {} {} {}\n".format(counter, spec, pos[0], pos[1], pos[2]))
                 counter += 1
 
+def write_final_states_relaxation(SiteIndToSpec, SiteIndToPos, vacSiteInd, siteIndToNgb, jInd, TopLines):
+
+    for traj in range(SiteIndToSpec.shape[0]):
+        vacInd = vacSiteInd[traj]
+        state = SiteIndToSpec[traj]
+        JumpSite = siteIndToNgb[vacInd, jInd]
+
+        # Do the swap
+        assert state[vacInd] == 0
+        state[vacInd] = state[JumpSite]
+        state[JumpSite] = 0
+
+        # Now write the lines
+        with open("final_relax_{}.data".format(traj), "w") as fl:
+            fl.writelines(TopLines)
+            counter = 1
+            for idx in range(state.shape[0]):
+                spec = state[idx]
+                if spec == 0:  # if the site is vacant
+                    assert idx == JumpSite, "{} {}".format(idx, SiteIndToSpec[traj, idx])
+                    continue
+
+                pos = SiteIndToPos[idx]
+                fl.write("{} {} {} {} {}\n".format(counter, spec, pos[0], pos[1], pos[2]))
+                counter += 1
 
 def write_final_states(SiteIndToPos, vacSiteInd, siteIndToNgb, jInd, writeAll=False):
     Ntr = vacSiteInd.shape[0]
     for traj in range(Ntr):
+
         with open("final_{}.data".format(traj), "w") as fl:
             fl.write("{}\n".format(1))
             pos = SiteIndToPos[vacSiteInd[traj]]
