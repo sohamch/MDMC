@@ -198,7 +198,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
                 # Relax the final states
                 commands = [
-                    "$LMPPATH/lmp -log out_relax_final_{0}.txt -screen screen_relax_final_{0}.txt in.relax_final_{0}".format(traj)
+                    "$LMPPATH/lmp -in in.relax_final_{0} -log out_relax_final_{0}.txt -screen screen_relax_final_{0}.txt".format(traj)
                     for traj in range(SiteIndToSpec.shape[0])
                 ]
 
