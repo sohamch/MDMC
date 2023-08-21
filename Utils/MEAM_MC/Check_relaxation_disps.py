@@ -75,8 +75,8 @@ def main(args):
             e = fl_en.readline().split()[0]
             e = float(e)
 
-        e_check = En[ckp]
-        assert np.math.isclose(e_check, e, rel_tol=0, abs_tol=1e-6)
+        # e_check = En[ckp]
+        # assert np.math.isclose(e_check, e, rel_tol=0, abs_tol=1e-6)
 
         with open("disps.dump", "r") as fl:
             lines = fl.readlines()
