@@ -99,7 +99,7 @@ def load_Data(StateStart, batchSize, InitStateFile):
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, SiteIndToNgb, chunkSize, PotPath,
           SiteIndToPos, WriteAllJumps=False, ftol=0.01, etol=0.0, ts=0.001, NImages=11, k=1.0,
-          perp=1.0, threshold=1.0):
+          perp=1.0, threshold=1.0, MemPerCpu=1000):
 
     try:
         with open("lammpsBox.txt", "r") as fl:
@@ -181,7 +181,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
 
                 # Then run lammps
                 commands = [
-                    "srun --exclusive -n {0} --cpus-per-task=1 --mem-per-cpu=1000M $LMPPATH/lmp -log out_{1}.txt -screen screen_{1}.txt -p {0}x1 -in in.neb_{1}".format(NImages, traj)
+                    "srun --exclusive -n {0} --cpus-per-task=1 --mem-per-cpu={2}M $LMPPATH/lmp -log out_{1}.txt -screen screen_{1}.txt -p {0}x1 -in in.neb_{1}".format(NImages, traj, MemPerCpu)
                     for traj in range(SiteIndToSpec.shape[0])
                 ]
 
@@ -331,7 +331,8 @@ def main(args):
     DoKMC(args.Temp, startStep, args.Nsteps, args.StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, SiteIndToNgb, args.chunkSize, args.PotPath,
           SiteIndToPos, WriteAllJumps=args.WriteAllJumps, etol=args.EnTol, ftol=args.ForceTol, NImages=args.NImages,
-          ts=args.TimeStep, k=args.SpringConstant, perp=args.PerpSpringConstant, threshold=args.DispThreshold)
+          ts=args.TimeStep, k=args.SpringConstant, perp=args.PerpSpringConstant, threshold=args.DispThreshold,
+          MemPerCpu=args.MemPerCpu)
 
 if __name__ == "__main__":
 
