@@ -1,7 +1,7 @@
 import numpy as np
 
-def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.01, k=1.0, perp=1.0, threshold=1.0,
-                      NImages=11):
+def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.01, k=1.0, perp=1.0, threshold=1.0):
+
     for traj in range(Ntr):
         with open("in.neb_{0}".format(traj), "w") as fl:
             fl.write("units \t metal\n")
@@ -43,8 +43,15 @@ def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.01, k=1.0,
             fl.write("min_style \t fire\n")
             fl.write("timestep \t {}\n".format(ts))
             fl.write("min_modify \t norm max abcfire yes tmax 5 dmax 0.01\n\n")
-            fl.write("minimize	\t {0} {1} 1000 1000000\n".format(etol, ftol))
 
+            fl.write("variable \t Drel equal {}\n".format(threshold))
+            fl.write("compute \t dsp all displace/atom\n\n")
+
+            fl.write("minimize \t {0} {1} 1000 1000000\n\n".format(etol, ftol))
+
+            fl.write("dump \t 1 all custom 1 disps_final_{}.dump id type c_dsp[4]\n".format(traj))
+            fl.write("dump_modify \t 1 append no thresh c_dsp[4] > ${Drel}\n")
+            fl.write("run 0\n")
 
 
 def write_init_states(SiteIndToSpec, SiteIndToPos, vacSiteInd, TopLines):

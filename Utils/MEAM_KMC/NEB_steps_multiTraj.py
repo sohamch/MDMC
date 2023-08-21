@@ -109,7 +109,13 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                 if "Atoms" in line:
                     lineStartCoords = lineInd + 2
                     break
-    except:
+
+            # check that we have the correct line
+            firstLine = Initlines[lineStartCoords].split()
+            assert len(firstLine) == 5
+            assert firstLine[0] == "1"  # the atom index
+
+    except FileNotFoundError:
         raise FileNotFoundError("Template lammps data file not found.")
 
     assert SiteIndToSpecAll.shape[1] == len(Initlines[lineStartCoords:])
@@ -144,7 +150,7 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     # Before starting, write the lammps input files
     if startStep == 0:
         write_input_files(chunkSize, potPath=PotPath, etol=etol, ftol=ftol, ts=ts, k=k, perp=perp,
-                          threshold=threshold, NImages=NImages)
+                          threshold=threshold)
 
     TimeStart = time.time()
 
@@ -186,8 +192,29 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     rt_code = c.wait()
                     assert rt_code == 0  # check for system errors
 
+                # Write the final states for end-state relaxation
+                write_final_states_relaxation(SiteIndToSpec, SiteIndToPos, vacSiteInd, SiteIndToNgb,
+                                              jumpInd, Initlines[:lineStartCoords])
+
+                # Relax the final states
+                commands = [
+                    "$LMPPATH/lmp -log out_relax_final_{0}.txt -screen screen_relax_final_{0}.txt in.relax_final_{0}".format(traj)
+                    for traj in range(SiteIndToSpec.shape[0])
+                ]
+
+                cmdList = [subprocess.Popen(cmd, shell=True) for cmd in commands]
+
+                # wait for the lammps commands to complete
+                for c in cmdList:
+                    rt_code = c.wait()
+                    assert rt_code == 0  # check for system errors
+
                 # Then read the results for each trajectory
                 for traj in range(SiteIndToSpec.shape[0]):
+
+                    # check displacements in the final state during neb minimization
+                    with open("disps_final_{0}.dump".format(traj), "r") as fl:
+                        Displines_fin = fl.readlines()
 
                     with open("out_{0}.txt".format(traj), "r") as fl:
                         lines = fl.readlines()
@@ -206,27 +233,17 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
                     ebf = float(ebfLine[6])
                     maxForce = float(ebfLine[2])
 
-                    # Assert that the initial state does not have more than threshold displacement
-                    with open("disps_{0}_{1}.dump".format(traj, 1), "r") as fl:
-                        Displines_init = fl.readlines()
-
-                    # store the bad sample to check later one
-                    if len(Displines_init) != 9:
-                        BadSamples.append(chunk + traj)
-
-                    # check displacements in the final state during neb minimization
-                    with open("disps_{0}_{1}.dump".format(traj, NImages), "r") as fl:
-                        Displines_fin = fl.readlines()
-
-                    if len(Displines_fin) == 9:  # No atom was displaced by more than the threshold in the final image
-                        rates[traj, jumpInd] = np.exp(-ebf / (kB * T))
-                        barriers[traj, jumpInd] = ebf
+                    if len(Displines_fin) != 9:  # at least one atom will have moved by more than the threshold in the final image
+                        assert len(Displines_fin) > 9
+                        rates[traj, jumpInd] = 0.0
+                        barriers[traj, jumpInd] = np.inf
                         MaxForceAtom[traj, jumpInd] = maxForce
                         MaxIteration[traj, jumpInd] = int(ebfLine[0])
 
-                    else:  # at least one atom will have moved by more than the threshold in the final image
-                        rates[traj, jumpInd] = 0.0
-                        barriers[traj, jumpInd] = np.inf
+                    else:  # No atom was displaced by more than the threshold in the final image
+                        assert len(Displines_fin) == 9
+                        rates[traj, jumpInd] = np.exp(-ebf / (kB * T))
+                        barriers[traj, jumpInd] = ebf
                         MaxForceAtom[traj, jumpInd] = maxForce
                         MaxIteration[traj, jumpInd] = int(ebfLine[0])
 
