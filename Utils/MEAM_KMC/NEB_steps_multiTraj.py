@@ -394,6 +394,9 @@ if __name__ == "__main__":
     parser.add_argument("-wa", "--WriteAllJumps", action="store_true",
                         help="Whether to store final style NEB files for all jumps separately.")
 
+    parser.add_argument("-mpc", "--MemPerCpu", metavar="int", type=int, default=1000,
+                        help="Memory per cpu  (integer, in megabytes)for NEB calculations.")
+
     parser.add_argument("-dmp", "--DumpArguments", action="store_true",
                         help="Whether to dump all the parsed arguments into a text file.")
 
