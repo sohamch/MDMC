@@ -74,10 +74,11 @@ def write_final_states_relaxation(SiteIndToSpec, SiteIndToPos, vacSiteInd, siteI
     for traj in range(SiteIndToSpec.shape[0]):
         vacInd = vacSiteInd[traj]
         state = SiteIndToSpec[traj]
-        JumpSite = siteIndToNgb[vacInd, jInd]
 
         # Do the swap
-        assert state[vacInd] == 0
+        assert state[vacInd] == 0, "{} {}".format(vacInd, state[vacInd])
+
+        JumpSite = siteIndToNgb[vacInd, jInd]
         state[vacInd] = state[JumpSite]
         state[JumpSite] = 0
 
