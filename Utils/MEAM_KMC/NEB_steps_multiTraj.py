@@ -155,7 +155,6 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
     TimeStart = time.time()
 
     for step in range(Nsteps - startStep):
-        BadSamples = []
         for chunk in range(0, Ntraj, chunkSize):
             # Write the initial states from last accepted state
             sampleStart = chunk
@@ -288,8 +287,6 @@ def DoKMC(T, startStep, Nsteps, StateStart, dxList,
         # Next, save all the arrays in an hdf5 file for the current step.
         # For the first 10 steps, store test random numbers.
         with h5py.File("data_{0}_{1}.h5".format(startStep + step + 1, StateStart), "w") as fl:
-            if len(BadSamples) > 0:
-                fl.create_dataset("BadSamples", data=BadSamples)
             fl.create_dataset("FinalStates", data=FinalStates)
             fl.create_dataset("SpecDisps", data=SpecDisps)
             fl.create_dataset("times", data=tarr)
