@@ -1,10 +1,13 @@
 import numpy as np
-import h5py
+import pickle
 import subprocess
 
 from ase.spacegroup import crystal
 from ase.build import make_supercell
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
+
+import os
+import argparse
 
 from KMC_funcs import *
 from NEB_steps_multiTraj import Load_crysDat, CreateLammpsData
@@ -55,24 +58,24 @@ def compute_dynamical_matrix(Ntraj):
 
 # Load the initial states - all states must have the vacancy at the 0th site
 def load_states(InitStateFilePath, startIndex, batchSize):
-    InitStates = np.load(InitStateFilePath)[startIndex : startIndex + batchSize]
-    assert np.all(InitStates[:, 0] == 0) # assert that all initial states have vacancy at the origin
-    return InitStates
+    InitStates = np.load(InitStateFilePath)
+    assert np.all(InitStates[:, 0] == 0)  # assert that all initial states have vacancy at the origin
+    return InitStates[startIndex : startIndex + batchSize]
 
 def main(args):
 
     # write the NEB and relaxation input files
-    write_input_files(args.chunkSize, potPath=args.potPath, etol=args.etol, ftol=args.ftol, ts=args.timeStep,
-                      k=args.springConstant, perp=args.perpSpringConstant, threshold=args.dispThreshold)
+    write_input_files(args.chunkSize, potPath=args.PotPath, etol=args.etol, ftol=args.ftol, ts=args.TimeStep,
+                      k=args.SpringConstant, perp=args.PerpSpringConstant, threshold=args.DispThreshold)
 
     # Load the initial states
-    InitStates = load_states(args.InitStateFile, args.startSample, args.batchSize)
+    InitStates = load_states(args.InitStateFile, args.StateStart, args.batchSize)
 
     # Load the nearest neighbors
     _, SiteIndToNgb = Load_crysDat(args.CrysDatPath, a0=args.LatPar)
 
     # Make the LAMMPS coordinates
-    SiteIndToPos = CreateLammpsData(N_units=args.N_units, a=args.LatPar, prim=args.Prim)
+    SiteIndToPos = CreateLammpsData(N_units=args.Nunits, a=args.LatPar, prim=args.Prim)
     try:
         with open("lammpsBox.txt", "r") as fl:
             Initlines = fl.readlines()
@@ -99,10 +102,17 @@ def main(args):
     Initlines[3] = "{} atom types\n".format(Nspec - 1)  # minus one for the vacancy
 
     # Now do the NEB calculations and find the dynamical matrices
+    elems = ["Co", "Ni", "Cr", "Fe", "Mn"]
+    AttemptFreqs = {"Co": [], "Ni": [], "Cr": [], "Fe": [], "Mn": []}
+
+    Reject_Unstable_init_state = 0
+    Reject_moreThanOneUnstableMode_TS = 0
+    Reject_allPositiveModes_TS = 0
+    total = 0
     for chunk in range(0, InitStates.shape[0], args.chunkSize):
         start = chunk
         end = min(InitStates.shape[0], start + args.chunkSize)
-        samples = InitStates[start : end]
+        samples = InitStates[start:end, :]
         assert np.all(samples[:, 0] == 0)
         vacSiteInd = np.zeros(samples.shape[0], dtype=int)
 
@@ -152,7 +162,7 @@ def main(args):
 
                 # 1. First, for the initial state
                 im_init = 0  # the first image is the initial state
-                write_dynamical_matrix_commands(traj, im_init, JumpAtomIndex, args.potPath)
+                write_dynamical_matrix_commands(traj, im_init, JumpAtomIndex, args.PotPath)
 
             # calculate and read dynamical matrices for the initial state
             dynMat_Init = compute_dynamical_matrix(Ntraj=samples.shape[0])
@@ -168,12 +178,144 @@ def main(args):
                 ImageEns = np.array([float(x) for x in ebfLine[10::2]])
                 TS = np.argmax(ImageEns)
                 TSImages[traj] = TS
-                write_dynamical_matrix_commands(traj, TS, JumpAtomIndex, args.potPath)
+                write_dynamical_matrix_commands(traj, TS, JumpAtomIndex, args.PotPath)
 
             # calculate and read dynamical matrices for the transition states
             dynMat_Trans = compute_dynamical_matrix(Ntraj=samples.shape[0])
 
             # Now compute attempt frequencies if the dynamical matrices satisfy all the necessary conditions
+            for traj in range(samples.shape[0]):
 
+                if TSImages[traj] == args.NImages - 1: # 1. jump to unstable state
+                    continue
 
+                with open("disps_final_{0}.dump".format(traj), "r") as fl:
+                    Displines_fin = fl.readlines()
 
+                if len(Displines_fin) > 9: # 2. At least one atom moved a larger distance than the threshold
+                    continue
+
+                total += 1
+                # compute initial state eigenvalues
+                initD = dynMat_Init[traj, :, :]
+                vals, vecs = np.linalg.eig(initD)
+
+                # take the product of the square root of the eigenvalues
+                prod_init = np.prod(np.sqrt(vals))
+
+                if np.any(vals < 0):  # 3. if the initial state has less than 3 positive modes
+                    Reject_Unstable_init_state += 1
+                    continue
+
+                TSD = dynMat_Trans[traj, :, :]
+                vals, vecs = np.linalg.eig(TSD)
+                negative = 0
+                prod_TS = 1
+                for v in vals:
+                    if v < 0:
+                        negative += 1
+                    else:
+                        # take the product of the square root of the positive eigenvalues
+                        prod_TS *= np.sqrt(v)
+
+                if negative == 0:  # 4. metastable TS state or more than one unstable mode
+                    Reject_allPositiveModes_TS += 1
+                    continue
+
+                if negative > 1:  # 5. more than one unstable mode in the transition state
+                    Reject_moreThanOneUnstableMode_TS += 1
+                    continue
+
+                # If all the conditions are satisfied, then take the attempt frequency of the jumping atom
+                spJump = samples[traj, JumpAtomIndex]
+                elemJump = elems[spJump - 1]
+                freq = prod_init / prod_TS
+                AttemptFreqs[elemJump].append(freq)
+
+    # Next, save all the data and rejection counts
+    with open("Statistics.txt", "w") as fl:
+        fl.write("Total Jumps Simulated: {}\n".format(total))
+        fl.write("Initial states with negative mode: {}\n".format(Reject_Unstable_init_state))
+        fl.write("Transition states with all positive modes: {}\n".format(Reject_allPositiveModes_TS))
+        fl.write("Transition states with more than one negative mode: {}\n".format(Reject_moreThanOneUnstableMode_TS))
+
+        frac = total / (Reject_Unstable_init_state + Reject_moreThanOneUnstableMode_TS + Reject_allPositiveModes_TS)
+
+        fl.write("Fraction considered: {:.6f}".format(frac))
+
+    with open("AttemptFrequencies.pkl", "wb") as fl:
+        pickle.dump(AttemptFreqs, fl)
+
+if __name__ == "__main__":
+
+    # Add argument parser
+    parser = argparse.ArgumentParser(description="Input parameters for Kinetic Monte Carlo simulations with LAMMPS.",
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
+    parser.add_argument("-pp", "--PotPath", metavar="/path/to/potential/file", type=str, help="Path to the LAMMPS MEAM potential.")
+    parser.add_argument("-if", "--InitStateFile", metavar="/path/to/initial/file.npy", type=str, default=None,
+                        help="Path to the .npy file storing the 0-step states from Metropolis Monte Carlo.")
+
+    parser.add_argument("-a0", "--LatPar", metavar="float", type=float, default=3.595,
+                        help="Lattice parameter - multiplied to displacements and used"
+                                                                           "to construct LAMMPS coordinates.")
+
+    parser.add_argument("-pr", "--Prim", action="store_true",
+                        help="Whether to use primitive cell")
+
+    parser.add_argument("-ni", "--NImages", metavar="int", type=int, default=11,
+                        help="How many NEB Images to use. Must be odd number.")
+
+    parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.01,
+                        help="Force tolerance for ending NEB calculations.")
+
+    parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=0.0,
+                        help="Relative Energy change tolerance for ending NEB calculations.")
+
+    parser.add_argument("-th", "--DispThreshold", metavar="float", type=float, default=1.0,
+                        help="Maximum allowed displacement after relaxation.")
+
+    parser.add_argument("-ts", "--TimeStep", metavar="float", type=float, default=0.001,
+                        help="Relative Energy change tolerance for ending NEB calculations.")
+
+    parser.add_argument("-k", "--SpringConstant", metavar="float", type=float, default=1.0,
+                        help="Parallel spring constant for NEB calculations.")
+
+    parser.add_argument("-p", "--PerpSpringConstant", metavar="float", type=float, default=1.0,
+                        help="Perpendicular spring constant for NEB calculations.")
+
+    parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
+                        help="Number of unit cells in the supercell.")
+
+    parser.add_argument("-idx", "--StateStart", metavar="int", type=int, default=0,
+                        help="The starting index of the state for this run from the whole data set of starting states."
+                             "The whole data set is loaded, and then samples starting from this index to the next "
+                             "\"batchSize\" number of states are extracted.")
+
+    parser.add_argument("-bs", "--batchSize", metavar="int", type=int, default=200,
+                        help="How many initial states starting from StateStart should initially be loaded.")
+
+    parser.add_argument("-cs", "--chunkSize", metavar="int", type=int, default=20,
+                        help="How many samples to do NEB calculations for at a time.")
+
+    parser.add_argument("-mpc", "--MemPerCpu", metavar="int", type=int, default=1000,
+                        help="Memory per cpu  (integer, in megabytes)for NEB calculations.")
+
+    parser.add_argument("-dmp", "--DumpArguments", action="store_true",
+                        help="Whether to dump all the parsed arguments into a text file.")
+
+    parser.add_argument("-dpf", "--DumpFile", metavar="string", type=str, default="ArgFiles",
+                        help="The file in the run directory where all the args will be dumped.")
+
+    args = parser.parse_args()
+
+    if args.DumpArguments:
+        print("Dumping arguments to: {}".format(args.DumpFile))
+        opts = vars(args)
+        RunPath = os.getcwd() + '/'
+        with open(RunPath + args.DumpFile, "w") as fl:
+            for key, val in opts.items():
+                fl.write("{}:\t{}\n".format(key, val))
+
+    main(args)
