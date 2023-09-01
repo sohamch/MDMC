@@ -1,6 +1,7 @@
 import numpy as np
 
-def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.01, k=1.0, perp=1.0, threshold=1.0):
+def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.01, k=1.0, perp=1.0, threshold=1.0,
+                      writeImageData=False, NImages=11):
 
     for traj in range(Ntr):
         with open("in.neb_{0}".format(traj), "w") as fl:
@@ -24,6 +25,15 @@ def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.01, k=1.0,
             fl.write("min_modify \t norm max abcfire yes tmax 5 dmax 0.01\n\n")
             # Run full NEB
             fl.write("neb \t {0} {1} 20000 0 50 final final_{2}.data verbosity default\n".format(etol, ftol, traj))
+
+            if writeImageData:
+                s = "variable \t x universe"
+                for i in range(1, NImages + 1):
+                    s+= " {}".format(i)
+                s+="\n"
+                fl.write(s)
+                fl.write("write_data Image_{}_$x.data".format(traj))
+
 
         with open("in.relax_final_{}".format(traj), "w") as fl:
             fl.write("units \t metal\n")
