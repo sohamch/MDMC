@@ -72,7 +72,7 @@ def main(args):
             os.mkdir(RunPath + "Test")
 
     # write the NEB and relaxation input files
-    write_input_files(args.chunkSize, potPath=args.PotPath, etol=args.etol, ftol=args.ftol, ts=args.TimeStep,
+    write_input_files(args.chunkSize, potPath=args.PotPath, etol=args.EnTol, ftol=args.ForceTol, ts=args.TimeStep,
                       k=args.SpringConstant, perp=args.PerpSpringConstant, threshold=args.DispThreshold,
                       writeImageData=True, NImages=args.NImages)
 
