@@ -269,7 +269,7 @@ def main(args):
 
     # Next, save all the data and rejection counts
     with open("Statistics.txt", "w") as fl:
-        fl.write("Total Jumps Simulated: {}\n".format(total))
+        fl.write("Total Jumps Simulated with stable end state: {}\n".format(total))
         fl.write("Initial states with negative mode: {}\n".format(Reject_Unstable_init_state))
         fl.write("Transition states with all positive modes: {}\n".format(Reject_allPositiveModes_TS))
         fl.write("Transition states with more than one negative mode: {}\n".format(Reject_moreThanOneUnstableMode_TS))
