@@ -41,9 +41,11 @@ def compute_dynamical_matrix(Ntraj):
     ]
 
     cmdList = [subprocess.Popen(cmd, shell=True) for cmd in commands]
+    for c in cmdList:
+        rt_code = c.wait()
+        assert rt_code == 0  # check for system errors
 
     # Now read the dynamical matrix
-
     dynMat = np.zeros((Ntraj, 3, 3))
     # Now read the forces and the dynamical matrix
     for traj in range(Ntraj):
