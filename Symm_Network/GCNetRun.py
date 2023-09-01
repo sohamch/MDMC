@@ -146,7 +146,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
         dispData = np.zeros((NData, 2, Ndim))
     
     # Make the multichannel occupancies
-    print("Building Occupancy Tensors for species : {}".format(specsToTrain))
+    print("Building Occupancy Tensors.\nSpecies to train: {}".format(specsToTrain))
     print("No. of jumps : {}".format(NData))
 
     # Make a source to destination site tensor
