@@ -186,7 +186,7 @@ def main(args):
                 # Write dynamical matrix inputs
 
                 # 1. First, for the initial state
-                im_init = 0  # the first image is the initial state
+                im_init = 1  # the first image is the initial state
                 write_dynamical_matrix_commands(traj, im_init, JumpAtomIndex, args.PotPath)
 
             # calculate and read dynamical matrices for the initial state
@@ -204,9 +204,9 @@ def main(args):
                 assert "Climbing" in lines[-3]  # check correct stopping after regular stage
                 ebfLine = lines[-4].split()
                 ImageEns = np.array([float(x) for x in ebfLine[10::2]])
-                TS = np.argmax(ImageEns)
+                TS = np.argmax(ImageEns) + 1
                 TSImages[traj] = TS
-                write_dynamical_matrix_commands(traj, TS + 1, JumpAtomIndex, args.PotPath)
+                write_dynamical_matrix_commands(traj, TS, JumpAtomIndex, args.PotPath)
                 if args.Test:
                     np.save("Test/Image_Ens_{}_{}.npy".format(start + traj, jumpInd), ImageEns)
 
@@ -218,7 +218,7 @@ def main(args):
             # Now compute attempt frequencies if the dynamical matrices satisfy all the necessary conditions
             for traj in range(samples.shape[0]):
 
-                if TSImages[traj] == args.NImages - 1:  # 1. jump to unstable state
+                if TSImages[traj] == args.NImages:  # 1. jump to unstable state
                     continue
 
                 with open("disps_final_{0}.dump".format(traj), "r") as fl:
