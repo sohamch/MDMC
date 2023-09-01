@@ -15,19 +15,19 @@ from KMC_funcs import *
 from NEB_steps_multiTraj import Load_crysDat, CreateLammpsData
 
 Input_Dynamical_Matrix = \
-    """
-    units \t metal
-    atom_style \t atomic
-    atom_modify \t map array
-    boundary \t p p p
-    atom_modify \t sort 0 0.0
-    read_data \t Image_{0}_{1}.data
-    pair_style \t meam
-    pair_coeff \t * * {2}/library.meam Co Ni Cr Fe Mn {2}/params.meam Co Ni Cr Fe Mn
+"""
+units \t metal
+atom_style \t atomic
+atom_modify \t map array
+boundary \t p p p
+atom_modify \t sort 0 0.0
+read_data \t Image_{0}_{1}.data
+pair_style \t meam
+pair_coeff \t * * {2}/library.meam Co Ni Cr Fe Mn {2}/params.meam Co Ni Cr Fe Mn
 
-    group \t move id {3}
-    dynamical_matrix move eskm 0.000001 file dyn_{0}.dat
-    """
+group \t move id {3}
+dynamical_matrix move eskm 0.000001 file dyn_{0}.dat
+"""
 def write_dynamical_matrix_commands(traj, Image, JumpAtomIndex, potpath):
 
    with open("in.dyn_{0}".format(traj), "w") as fl:
