@@ -7,6 +7,7 @@ from ase.build import make_supercell
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
 
 import os
+RunPath = os.getcwd() + '/'
 import argparse
 
 from KMC_funcs import *
@@ -63,6 +64,11 @@ def load_states(InitStateFilePath, startIndex, batchSize):
     return InitStates[startIndex : startIndex + batchSize]
 
 def main(args):
+
+    # make a test directory if required
+    if args.Test:
+        if not os.path.isdir(RunPath + "Test"):
+            os.mkdir(RunPath + "Test")
 
     # write the NEB and relaxation input files
     write_input_files(args.chunkSize, potPath=args.PotPath, etol=args.etol, ftol=args.ftol, ts=args.TimeStep,
@@ -139,6 +145,14 @@ def main(args):
                 rt_code = c.wait()
                 assert rt_code == 0  # check for system errors
 
+            if args.Test:
+                # Copy the first state data to the test directory
+                for traj in range(samples.shape[0]):
+                    for im in range(1, args.NImages + 1):
+                        subprocess.run(
+                            "cp Image_{0}_{1}.data Test/Image_{0}_{1}_{2}.data".format(chunk + traj, im, jumpInd),
+                            shell=True, check=True)
+
             # Write the final states for end-state relaxation
             write_final_states_relaxation(samples, SiteIndToPos, vacSiteInd, SiteIndToNgb,
                                           jumpInd, Initlines[:lineStartCoords])
@@ -168,6 +182,9 @@ def main(args):
             # calculate and read dynamical matrices for the initial state
             dynMat_Init = compute_dynamical_matrix(Ntraj=samples.shape[0])
 
+            if args.Test:
+                np.save("Test/dynMat_Init_{}_{}.npy".format(chunk, jumpInd), dynMat_Init)
+
             # Write dynamical matrix commands for the transition states
             TSImages = np.zeros(samples.shape[0], dtype=int)
             for traj in range(samples.shape[0]):
@@ -180,9 +197,13 @@ def main(args):
                 TS = np.argmax(ImageEns)
                 TSImages[traj] = TS
                 write_dynamical_matrix_commands(traj, TS + 1, JumpAtomIndex, args.PotPath)
+                if args.Test:
+                    np.save("Test/Image_Ens_{}.npy".format(chunk + traj), ImageEns)
 
             # calculate and read dynamical matrices for the transition states
             dynMat_Trans = compute_dynamical_matrix(Ntraj=samples.shape[0])
+            if args.Test:
+                np.save("Test/dynMat_TS_{}_{}.npy".format(chunk, jumpInd), dynMat_Trans)
 
             # Now compute attempt frequencies if the dynamical matrices satisfy all the necessary conditions
             for traj in range(samples.shape[0]):
@@ -265,6 +286,9 @@ if __name__ == "__main__":
     parser.add_argument("-pr", "--Prim", action="store_true",
                         help="Whether to use primitive cell")
 
+    parser.add_argument("-test", "--Test", action="store_true",
+                        help="Whether to store data for testing.")
+
     parser.add_argument("-ni", "--NImages", metavar="int", type=int, default=11,
                         help="How many NEB Images to use. Must be odd number.")
 
@@ -314,7 +338,6 @@ if __name__ == "__main__":
     if args.DumpArguments:
         print("Dumping arguments to: {}".format(args.DumpFile))
         opts = vars(args)
-        RunPath = os.getcwd() + '/'
         with open(RunPath + args.DumpFile, "w") as fl:
             for key, val in opts.items():
                 fl.write("{}:\t{}\n".format(key, val))
