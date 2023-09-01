@@ -66,7 +66,8 @@ def main(args):
 
     # write the NEB and relaxation input files
     write_input_files(args.chunkSize, potPath=args.PotPath, etol=args.etol, ftol=args.ftol, ts=args.TimeStep,
-                      k=args.SpringConstant, perp=args.PerpSpringConstant, threshold=args.DispThreshold)
+                      k=args.SpringConstant, perp=args.PerpSpringConstant, threshold=args.DispThreshold,
+                      writeImageData=True, NImages=args.NImages)
 
     # Load the initial states
     InitStates = load_states(args.InitStateFile, args.StateStart, args.batchSize)
@@ -178,7 +179,7 @@ def main(args):
                 ImageEns = np.array([float(x) for x in ebfLine[10::2]])
                 TS = np.argmax(ImageEns)
                 TSImages[traj] = TS
-                write_dynamical_matrix_commands(traj, TS, JumpAtomIndex, args.PotPath)
+                write_dynamical_matrix_commands(traj, TS + 1, JumpAtomIndex, args.PotPath)
 
             # calculate and read dynamical matrices for the transition states
             dynMat_Trans = compute_dynamical_matrix(Ntraj=samples.shape[0])
