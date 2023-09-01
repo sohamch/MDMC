@@ -276,7 +276,7 @@ def main(args):
 
         frac = (Reject_Unstable_init_state + Reject_moreThanOneUnstableMode_TS + Reject_allPositiveModes_TS) / total
 
-        fl.write("Fraction considered: {:.6f}".format(frac))
+        fl.write("Fraction Rejected: {:.6f}".format(frac))
 
     with open("AttemptFrequencies.pkl", "wb") as fl:
         pickle.dump(AttemptFreqs, fl)
