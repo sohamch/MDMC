@@ -208,13 +208,13 @@ def main(args):
             # Now compute attempt frequencies if the dynamical matrices satisfy all the necessary conditions
             for traj in range(samples.shape[0]):
 
-                if TSImages[traj] == args.NImages - 1: # 1. jump to unstable state
+                if TSImages[traj] == args.NImages - 1:  # 1. jump to unstable state
                     continue
 
                 with open("disps_final_{0}.dump".format(traj), "r") as fl:
                     Displines_fin = fl.readlines()
 
-                if len(Displines_fin) > 9: # 2. At least one atom moved a larger distance than the threshold
+                if len(Displines_fin) > 9:  # 2. At least one atom moved a larger distance than the threshold
                     continue
 
                 total += 1
