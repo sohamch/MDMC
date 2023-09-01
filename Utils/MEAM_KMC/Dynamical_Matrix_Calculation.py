@@ -273,7 +273,7 @@ def main(args):
         fl.write("Transition states with all positive modes: {}\n".format(Reject_allPositiveModes_TS))
         fl.write("Transition states with more than one negative mode: {}\n".format(Reject_moreThanOneUnstableMode_TS))
 
-        frac = total / (Reject_Unstable_init_state + Reject_moreThanOneUnstableMode_TS + Reject_allPositiveModes_TS)
+        frac = (Reject_Unstable_init_state + Reject_moreThanOneUnstableMode_TS + Reject_allPositiveModes_TS) / total
 
         fl.write("Fraction considered: {:.6f}".format(frac))
 
