@@ -188,6 +188,7 @@ def main(args):
                 # 1. First, for the initial state
                 im_init = 1  # the first image is the initial state
                 write_dynamical_matrix_commands(traj, im_init, JumpAtomIndex, args.PotPath)
+                subprocess.run("cp in.dyn_{0} Test/in.dyn_IS_{1}_{2} ".format(traj, start + traj, jumpInd))
 
             # calculate and read dynamical matrices for the initial state
             dynMat_Init = compute_dynamical_matrix(Ntraj=samples.shape[0])
@@ -209,6 +210,7 @@ def main(args):
                 write_dynamical_matrix_commands(traj, TS, JumpAtomIndex, args.PotPath)
                 if args.Test:
                     np.save("Test/Image_Ens_{}_{}.npy".format(start + traj, jumpInd), ImageEns)
+                    subprocess.run("cp in.dyn_{0} Test/in.dyn_TS_{1}_{2} ".format(traj, start + traj, jumpInd))
 
             # calculate and read dynamical matrices for the transition states
             dynMat_Trans = compute_dynamical_matrix(Ntraj=samples.shape[0])
