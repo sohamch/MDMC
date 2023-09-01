@@ -188,7 +188,8 @@ def main(args):
                 # 1. First, for the initial state
                 im_init = 1  # the first image is the initial state
                 write_dynamical_matrix_commands(traj, im_init, JumpAtomIndex, args.PotPath)
-                subprocess.run("cp in.dyn_{0} Test/in.dyn_init_{1}_{2} ".format(traj, start + traj, jumpInd), shell=True, check=True)
+                if args.Test:
+                    subprocess.run("cp in.dyn_{0} Test/in.dyn_init_{1}_{2} ".format(traj, start + traj, jumpInd), shell=True, check=True)
 
             # calculate and read dynamical matrices for the initial state
             dynMat_Init = compute_dynamical_matrix(Ntraj=samples.shape[0])
