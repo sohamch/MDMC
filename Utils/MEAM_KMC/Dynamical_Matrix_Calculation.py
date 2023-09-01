@@ -2,6 +2,7 @@ import numpy as np
 import pickle
 import subprocess
 
+from tqdm import tqdm
 from ase.spacegroup import crystal
 from ase.build import make_supercell
 from ase.io.lammpsdata import write_lammps_data, read_lammps_data
@@ -116,7 +117,7 @@ def main(args):
     Reject_moreThanOneUnstableMode_TS = 0
     Reject_allPositiveModes_TS = 0
     total = 0
-    for chunk in range(0, InitStates.shape[0], args.chunkSize):
+    for chunk in tqdm(range(0, InitStates.shape[0], args.chunkSize), position=0, leave=True, ncols=65):
         start = chunk
         end = min(InitStates.shape[0], start + args.chunkSize)
         samples = InitStates[start:end, :]
@@ -146,11 +147,18 @@ def main(args):
                 assert rt_code == 0  # check for system errors
 
             if args.Test:
-                # Copy the first state data to the test directory
+                # Copy state data to the test directory
                 for traj in range(samples.shape[0]):
                     for im in range(1, args.NImages + 1):
                         subprocess.run(
-                            "cp Image_{0}_{1}.data Test/Image_{0}_{1}_{2}.data".format(chunk + traj, im, jumpInd),
+                            "cp Image_{0}_{1}.data Test/Image_{3}_{1}_{2}.data".format(traj, im, jumpInd, start + traj),
+                            shell=True, check=True)
+                        subprocess.run(
+                            "cp final_{0}.data Test/final_{2}_{1}.data".format(traj, jumpInd, start + traj),
+                            shell=True, check=True)
+
+                        subprocess.run(
+                            "cp initial_{0}.data Test/initial_{2}_{1}.data".format(traj, jumpInd, start + traj),
                             shell=True, check=True)
 
             # Write the final states for end-state relaxation
@@ -183,7 +191,7 @@ def main(args):
             dynMat_Init = compute_dynamical_matrix(Ntraj=samples.shape[0])
 
             if args.Test:
-                np.save("Test/dynMat_Init_{}_{}.npy".format(chunk, jumpInd), dynMat_Init)
+                np.save("Test/dynMat_Initial_{}_to_{}_jump_{}.npy".format(start, start+samples.shape[0], jumpInd), dynMat_Init)
 
             # Write dynamical matrix commands for the transition states
             TSImages = np.zeros(samples.shape[0], dtype=int)
@@ -198,12 +206,12 @@ def main(args):
                 TSImages[traj] = TS
                 write_dynamical_matrix_commands(traj, TS + 1, JumpAtomIndex, args.PotPath)
                 if args.Test:
-                    np.save("Test/Image_Ens_{}.npy".format(chunk + traj), ImageEns)
+                    np.save("Test/Image_Ens_{}_{}.npy".format(start + traj, jumpInd), ImageEns)
 
             # calculate and read dynamical matrices for the transition states
             dynMat_Trans = compute_dynamical_matrix(Ntraj=samples.shape[0])
             if args.Test:
-                np.save("Test/dynMat_TS_{}_{}.npy".format(chunk, jumpInd), dynMat_Trans)
+                np.save("Test/dynMat_TS_{}_to_{}_jump_{}.npy".format(start, start+samples.shape[0], jumpInd), dynMat_Trans)
 
             # Now compute attempt frequencies if the dynamical matrices satisfy all the necessary conditions
             for traj in range(samples.shape[0]):
