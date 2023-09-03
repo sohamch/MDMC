@@ -98,7 +98,7 @@ def load_Data(StateStart, batchSize, InitStateFile):
 
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, SiteIndToNgb, chunkSize, PotPath,
-          SiteIndToPos, WriteAllJumps=False, ftol=0.01, etol=0.0, ts=0.001, NImages=11, k=10.0,
+          SiteIndToPos, WriteAllJumps=False, ftol=0.001, etol=0.0, ts=0.001, NImages=11, k=10.0,
           perp=10.0, threshold=1.0, MemPerCpu=1000):
 
     try:
@@ -357,7 +357,7 @@ if __name__ == "__main__":
     parser.add_argument("-ns", "--Nsteps", metavar="int", type=int, default=100,
                         help="How many steps to run.")
 
-    parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.01,
+    parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.001,
                         help="Force tolerance for ending NEB calculations.")
 
     parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=0.0,

@@ -305,7 +305,7 @@ if __name__ == "__main__":
     parser.add_argument("-ni", "--NImages", metavar="int", type=int, default=11,
                         help="How many NEB Images to use. Must be odd number.")
 
-    parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.01,
+    parser.add_argument("-ftol", "--ForceTol", metavar="float", type=float, default=0.001,
                         help="Force tolerance for ending NEB calculations.")
 
     parser.add_argument("-etol", "--EnTol", metavar="float", type=float, default=0.0,

@@ -1,6 +1,6 @@
 import numpy as np
 
-def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.01, k=1.0, perp=1.0, threshold=1.0,
+def write_input_files(Ntr, potPath=None, ts = 0.001, etol=0.0, ftol=0.001, k=10.0, perp=10.0, threshold=1.0,
                       writeImageData=False, NImages=11):
 
     for traj in range(Ntr):
