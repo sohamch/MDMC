@@ -369,10 +369,10 @@ if __name__ == "__main__":
     parser.add_argument("-ts", "--TimeStep", metavar="float", type=float, default=0.001,
                         help="Relative Energy change tolerance for ending NEB calculations.")
 
-    parser.add_argument("-k", "--SpringConstant", metavar="float", type=float, default=1.0,
+    parser.add_argument("-k", "--SpringConstant", metavar="float", type=float, default=10.0,
                         help="Parallel spring constant for NEB calculations.")
 
-    parser.add_argument("-p", "--PerpSpringConstant", metavar="float", type=float, default=1.0,
+    parser.add_argument("-p", "--PerpSpringConstant", metavar="float", type=float, default=10.0,
                         help="Perpendicular spring constant for NEB calculations.")
 
     parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
