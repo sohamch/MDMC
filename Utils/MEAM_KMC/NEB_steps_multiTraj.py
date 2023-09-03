@@ -98,8 +98,8 @@ def load_Data(StateStart, batchSize, InitStateFile):
 
 def DoKMC(T, startStep, Nsteps, StateStart, dxList,
           SiteIndToSpecAll, vacSiteIndAll, SiteIndToNgb, chunkSize, PotPath,
-          SiteIndToPos, WriteAllJumps=False, ftol=0.01, etol=0.0, ts=0.001, NImages=11, k=1.0,
-          perp=1.0, threshold=1.0, MemPerCpu=1000):
+          SiteIndToPos, WriteAllJumps=False, ftol=0.01, etol=0.0, ts=0.001, NImages=11, k=10.0,
+          perp=10.0, threshold=1.0, MemPerCpu=1000):
 
     try:
         with open("lammpsBox.txt", "r") as fl:
