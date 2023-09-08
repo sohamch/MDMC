@@ -3,7 +3,6 @@ import numpy as np
 import collections
 import itertools
 # import Transitions - needs fixing
-from KRA3Body import KRA3bodyInteractions
 from ClustSpec import ClusterSpecies
 from onsager import crystal
 import time
@@ -15,14 +14,11 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, NSpec, vacSite, vacSpec, maxorder, Nvac=1, TScutoff=None, TScombShellRange=None,
-                 TSnnRange=None, jumpnetwork=None, MadeSpecClusts=None, TclusExp=False,
-                 zeroClusts=True):
+    def __init__(self, sup, clusexp, NSpec, vacSite, vacSpec, maxorder, Nvac=1, MadeSpecClusts=None, zeroClusts=True):
         """
         Cluster expansion for mono-atomic lattices
         :param sup : clusterSupercell object
         :param clusexp: cluster expansion about a single unit cell.
-        :param jumpnetwork: the single vacancy jump network in the lattice used to construct sup
         :param NSpec: no. of species to consider (including vacancies)
         :param vacSite: Index of the vacancy site (used in MC sampling and JIT construction)
         :param vacSite: the site of the vacancy as a clusterSite object. This does not change during the simulation.
@@ -55,15 +51,8 @@ class VectorClusterExpansion(object):
         else:
             self.SpecClusters = self.recalcClusters()
         end1 = time.time()
-        print("Built {} clusters:{:.4f} seconds".format(len([cl for clist in self.SpecClusters for cl in clist])
-                                                               ,end1 - start), flush=True)
-
-
-        start = time.time()
-        if TclusExp:
-            self.KRAexpander = KRA3bodyInteractions(sup, jumpnetwork, self.chem, TScombShellRange, TSnnRange, TScutoff,
-                                                    NSpec, self.Nvac, vacSite, self.vacSpec)
-        print("Built KRA expander : {:.4f}".format(time.time() - start))
+        print("Built {} clusters:{:.4f} seconds".format(len([cl for clist in self.SpecClusters for cl in clist]),
+                                                        end1 - start), flush=True)
 
         start = time.time()
         self.IndexClusters(self.SpecClusters)  # assign integer integer IDs to each cluster
@@ -332,15 +321,3 @@ class VectorClusterExpansion(object):
                     VecGroupInteracts[idx, vecidx] = tup[0]
         # print("Done Vector data for interactions")
         return numVecsInteracts, VecsInteracts, VecGroupInteracts
-
-    def makeSiteIndToSite(self):
-        Nsites = self.Nsites
-        N_units = self.sup.superlatt[0, 0]
-        siteIndtoR = np.zeros((Nsites, 3), dtype=int)
-        RtoSiteInd = np.zeros((N_units, N_units, N_units), dtype=int)
-
-        for siteInd in range(Nsites):
-            R = self.sup.ciR(siteInd)[1]
-            siteIndtoR[siteInd, :] = R
-            RtoSiteInd[R[0], R[1], R[2]] = siteInd
-        return siteIndtoR, RtoSiteInd
