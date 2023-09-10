@@ -13,7 +13,7 @@ class VectorClusterExpansion(object):
     """
     class to expand velocities and rates in vector cluster functions.
     """
-    def __init__(self, sup, clusexp, NSpec, vacSite, vacSpec, maxorder, Nvac=1, MadeSpecClusts=None, zeroClusts=True):
+    def __init__(self, sup, clusexp, NSpec, vacSite, vacSpec, maxorder, Nvac=1, chemExpand=0, MadeSpecClusts=None, zeroClusts=True):
         """
         Cluster expansion for mono-atomic lattices
         :param sup : clusterSupercell object
@@ -23,9 +23,10 @@ class VectorClusterExpansion(object):
         :param vacSite: the site of the vacancy as a clusterSite object. This does not change during the simulation.
         :param maxorder: the maximum order of a cluster in clusexp.
         :param MadeSpecClusts: an optional pre-made species cluster group list.
+        :param chemExpand: Which chemistry to build the expansion over
         :param zeroClusts: Same as parameter "zero" of ClusterSpecies class - whether to bring a cluster's centroid to zero or not.
         """
-        self.chem = 0  # we'll work with a monoatomic basis
+        self.chem = chemExpand  # we'll work with a monoatomic basis
         self.sup = sup
         self.N_units = sup.superlatt[0, 0]
         self.Nsites = len(self.sup.mobilepos)
