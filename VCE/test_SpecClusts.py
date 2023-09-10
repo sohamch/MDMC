@@ -56,7 +56,7 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
 
         if self.crtype == "FCC":
             print("Checking FCC")
-            self.assertTrue(OneBodyCount, self.NSpec - 1)
+            self.assertEqual(OneBodyCount, self.NSpec)
             two = (6 + 3) * (2 * (self.NSpec - 1) + (self.NSpec - 1) ** 2)
             # 6 translationally unique 1nn pairs, 3 for 2nn pairs,
             # then first term for vacancy-spec clusters, and second term for spec-spec clusters
@@ -67,9 +67,23 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
             # and 8 on the octahedral cage faces.
             self.assertEqual(three, ThreeBodyCount)
 
-        if self.crtype == "BCC":
+        elif self.crtype=="FCC_orthogonal":
+            print("Checking cubic FCC")
+
+            # For the cubic FCC lattice, a CE will be built around each of the basis sites, so we'll have 4 times
+            # as many as the primitive case
+
+            self.assertEqual(OneBodyCount, 4 * self.NSpec)
+
+            two = (6 + 3) * (2 * (self.NSpec - 1) + (self.NSpec - 1) ** 2)
+            self.assertEqual(4 * two, TwoBodyCount)
+
+            three = (12 + 8) * (3 * (self.NSpec - 1) ** 2 + (self.NSpec - 1) ** 3)
+            self.assertEqual(4 * three, ThreeBodyCount)
+
+        elif self.crtype == "BCC":
             print("Checking BCC")
-            self.assertTrue(OneBodyCount, self.NSpec - 1)
+            self.assertEqual(OneBodyCount, self.NSpec)
             two = (4 + 3) * (2 * (self.NSpec - 1) + (self.NSpec - 1) ** 2)
             self.assertEqual(two, TwoBodyCount)
 
@@ -340,7 +354,8 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
         allSpCl = [SpCl for SpClList in self.VclusExp.SpecClusters for SpCl in SpClList]
 
         if self.reqSites is None:
-            allCount = len(self.VclusExp.sup.mobilepos) * len(allSpCl)
+            # In all our use cases, chemistry 0 is the only chemistry
+            allCount = len(self.VclusExp.sup.mobilepos) * len(allSpCl) // len(self.crys.basis[self.VclusExp.chem])
             self.assertEqual(len(self.VclusExp.Id2InteractionDict), allCount,
                              msg="\n{}\n{}".format(len(self.VclusExp.Id2InteractionDict), allCount))
             self.assertEqual(allCount, len(numSitesInteracts))
@@ -383,8 +398,10 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
             for site in siteListBuilt:
                 R = site.R
                 ci = site.ci
-                R %= self.N_units
-                siteListnew.append(cluster.ClusterSite(ci=ci, R=R))
+                idxSite = self.VclusExp.sup.index(R, ci)
+                ciNew, RNew = self.VclusExp.sup.ciR(idxSite)
+                assert ciNew == ci
+                siteListnew.append(cluster.ClusterSite(ci=ci, R=RNew))
 
             SpCl = ClusterSpecies(specListBuilt, siteListnew)
             self.assertEqual(SpCl, repClusStored)
@@ -474,7 +491,7 @@ class test_BCC(test_Vector_Cluster_Expansion):
         self.MaxOrder = 3
         a0 = 1
         self.a0 = a0
-        self.crType = "FCC"
+        self.crtype = "FCC"
         self.crys = crystal.Crystal.BCC(a0, chemistry="A")
         self.N_units = 8
         self.superlatt = self.N_units * np.eye(3, dtype=int)
@@ -587,7 +604,7 @@ class test_FCC(test_Vector_Cluster_Expansion):
         self.MaxOrder = 3
         a0 = 1
         self.a0 = a0
-        self.crType="FCC"
+        self.crtype="FCC"
         self.crys = crystal.Crystal.FCC(a0, chemistry="A")
 
         self.N_units = 8
@@ -598,6 +615,8 @@ class test_FCC(test_Vector_Cluster_Expansion):
         self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
         self.vacsiteInd = self.superCell.index(np.zeros(3, dtype=int), (0, 0))[0]
         self.clusexp = cluster.makeclusters(self.crys, 1.01*a0, self.MaxOrder)
+        numClusts = sum(len(clSet) for clSet in self.clusexp)
+        print("Number of site clusters: {}".format(numClusts))
 
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superCell, self.clusexp, self.NSpec,
                                                                  self.vacsite, self.vacSpec, self.MaxOrder)
@@ -616,7 +635,8 @@ class test_FCC(test_Vector_Cluster_Expansion):
         dx = np.array([0.5, 0., 0.5]) * self.a0
         R, ci = self.crys.cart2pos(dx)
         site1 = cluster.ClusterSite(ci=ci, R=R)
-        site2 = cluster.ClusterSite(ci=ci, R=np.zeros(3, dtype=int))
+        R2, ci2 = self.crys.cart2pos(np.zeros(3))
+        site2 = cluster.ClusterSite(ci=ci2, R=R2)
 
         # choose any species
         spec1 = self.NSpec - 1
@@ -640,7 +660,8 @@ class test_FCC(test_Vector_Cluster_Expansion):
         dx = np.array([1., 0., 0.]) * self.a0
         R, ci = self.crys.cart2pos(dx)
         site1 = cluster.ClusterSite(ci=ci, R=R)
-        site2 = cluster.ClusterSite(ci=ci, R=np.zeros(3, dtype=int))
+        R2, ci2 = self.crys.cart2pos(np.zeros(3))
+        site2 = cluster.ClusterSite(ci=ci2, R=R2)
 
         specList = (spec1, spec2)
         siteList = (site1, site2)
@@ -691,12 +712,11 @@ class test_FCC_orthogonal(test_FCC):
         self.MaxOrder = 3
         a0 = 1
         self.a0 = a0
-        self.crType="FCC"
+        self.crtype="FCC_orthogonal"
         basis_cube_fcc = [np.array([0, 0, 0]), np.array([0, 0.5, 0.5]), np.array([0.5, 0., 0.5]),
                           np.array([0.5, 0.5, 0.])]
         self.crys = crystal.Crystal(lattice=np.eye(3) * a0, basis=[basis_cube_fcc], chemistry=["A"], noreduce=True)
-
-        self.N_units = 8
+        self.N_units = 5
         self.superlatt = self.N_units * np.eye(3, dtype=int)
         self.superCell = supercell.ClusterSupercell(self.crys, self.superlatt)
         # get the number of sites in the supercell - should be 8x8x8
@@ -706,6 +726,9 @@ class test_FCC_orthogonal(test_FCC):
         self.vacsite = cluster.ClusterSite(civac, Rvac)
         self.vacsiteInd = self.superCell.index(Rvac, civac)[0]
         self.clusexp = cluster.makeclusters(self.crys, 1.01*a0, self.MaxOrder)
+
+        numClusts = sum(len(clSet) for clSet in self.clusexp)
+        print("Number of site clusters: {}".format(numClusts))
 
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superCell, self.clusexp, self.NSpec,
                                                                  self.vacsite, self.vacSpec, self.MaxOrder)
