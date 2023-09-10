@@ -35,260 +35,7 @@ class test_ClusterSpecies(unittest.TestCase):
         print("Equality checks okay")
 
 
-class test_BCC(unittest.TestCase):
-
-    def setUp(self):
-        self.NSpec = 3
-        self.Nvac = 1
-        self.vacSpec = 2
-        self.MaxOrder = 3
-        self.MaxOrderTrans = 3
-        a0 = 1
-        self.a0 = a0
-        self.crys = crystal.Crystal.BCC(a0, chemistry="A")
-        jumpCutoff = 1.01*np.sqrt(3./4.)*a0
-        self.jnet = self.crys.jumpnetwork(0, jumpCutoff)
-        self.N_units = 8
-        self.superlatt = self.N_units * np.eye(3, dtype=int)
-        self.superCell = supercell.ClusterSupercell(self.crys, self.superlatt)
-        # get the number of sites in the supercell - should be 8x8x8
-        numSites = len(self.superCell.mobilepos)
-        self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
-        self.vacsiteInd = self.superCell.index(np.zeros(3, dtype=int), (0, 0))[0]
-        self.clusexp = cluster.makeclusters(self.crys, 1.01*a0, self.MaxOrder)
-
-        # TScombShellRange = 1  # upto 1nn combined shell
-        # TSnnRange = 4
-        # TScutoff = np.sqrt(3) * a0  # 5th nn cutoff
-
-        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superCell, self.clusexp, self.NSpec,
-                                                                 self.vacsite, self.vacSpec, self.MaxOrder, TScutoff=None,
-                                                                 TScombShellRange=None, TSnnRange=None,
-                                                                 jumpnetwork=None)
-
-        self.reqSites = None  #[i for i in range(10)]  # All interactions must have at least one of these sites
-        self.VclusExp.generateSiteSpecInteracts(reqSites=self.reqSites)
-
-        self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
-        self.VclusExp.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
-        self.VclusExp.indexClustertoVecClus()
-
-        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
-
-        self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
-        for site in range(1, numSites):
-            spec = np.random.randint(0, self.NSpec - 1)
-            self.mobOccs[spec][site] = 1
-        self.mobOccs[-1, self.vacsiteInd] = 1
-        self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
-        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
-        print("Done setting up BCC cluster expansion tests.")
-
-    def testBCC_counts(self):
-        # This test is specifically for a BCC, 3-spec, 3-order, 2nn cluster expansion
-        oneCounts = 0
-        twocounts = 0
-        threecounts = 0
-
-        oneBody = 0
-        TwoBody = 0
-        ThreeBody = 0
-
-        oneBodyList = []
-        TwoBodyList = []
-        ThreeBodyList = []
-
-        sitesFromClusexp = set([])
-        for clSet in self.clusexp:
-            for cl in list(clSet):
-                for g in self.VclusExp.crys.G:
-                    newsitelist = tuple([site.g(self.VclusExp.crys, g) for site in cl.sites])
-                    Rtrans = sum([site.R for site in newsitelist]) // len(newsitelist)
-                    sitesFromClusexp.add(tuple([site - Rtrans for site in newsitelist]))
-
-        for siteList in sitesFromClusexp:
-            ln = len(siteList)
-            if ln == 1:
-                oneCounts += 1
-            elif ln == 2:
-                twocounts += 1
-            elif ln == 3:
-                threecounts += 1
-
-        self.assertEqual((oneCounts, twocounts, threecounts), (1, 14, 24))
-        print("Checking cluster counts")
-        for clusterList in self.VclusExp.SpecClusters:
-            for clust in clusterList:
-                order = len(clust.SiteSpecs)
-                if order == 1:
-                    oneBody += 1
-                    oneBodyList.append(clust)
-                if order == 2:
-                    TwoBody += 1
-                    TwoBodyList.append(clust)
-
-                if order == 3:
-                    ThreeBody += 1
-                    ThreeBodyList.append(clust)
-
-        self.assertEqual(oneBody, 3)
-        self.assertEqual(TwoBody, 56)
-        self.assertEqual(ThreeBody, 240)
-
-        # Now let's check some two body numbers
-        vacCount = 0
-        nonVacCount = 0
-        for clust in TwoBodyList:
-            specList = clust.specList
-            if any([spec == 2 for spec in specList]):
-                vacCount += 1
-            else:
-                nonVacCount += 1
-
-        self.assertEqual(vacCount,
-                         2 * 2 * 4 + 2 * 2 * 3)  # The first term is for nearest neighbor, the second for second nearest neighbor
-        self.assertEqual(nonVacCount, 2 * 2 * 4 + 2 * 2 * 3)
-
-        # Now let's check some three body numbers
-        vacCount = 0
-        nonVacCount = 0
-        for clust in ThreeBodyList:
-            specList = clust.specList
-            if any([spec == 2 for spec in specList]):
-                vacCount += 1
-            else:
-                nonVacCount += 1
-
-        self.assertEqual(vacCount, (3 * 2 * 2) * 12)
-        self.assertEqual(nonVacCount, (2 * 2 * 2) * 12)
-
-
-class test_FCC(unittest.TestCase):
-
-    def setUp(self):
-        self.NSpec = 3
-        self.Nvac = 1
-        self.vacSpec = 2
-        self.MaxOrder = 3
-        self.MaxOrderTrans = 3
-        a0 = 1
-        self.a0 = a0
-        self.crys = crystal.Crystal.FCC(a0, chemistry="A")
-        jumpCutoff = 1.01*a0/np.sqrt(2.)
-        self.jnet = self.crys.jumpnetwork(0, jumpCutoff)
-        self.N_units = 8
-        self.superlatt = self.N_units * np.eye(3, dtype=int)
-        self.superCell = supercell.ClusterSupercell(self.crys, self.superlatt)
-        # get the number of sites in the supercell - should be 8x8x8
-        numSites = len(self.superCell.mobilepos)
-        self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
-        self.vacsiteInd = self.superCell.index(np.zeros(3, dtype=int), (0, 0))[0]
-        self.clusexp = cluster.makeclusters(self.crys, 1.01*a0, self.MaxOrder)
-
-        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superCell, self.clusexp, self.NSpec,
-                                                                 self.vacsite, self.vacSpec, self.MaxOrder, TScutoff=None,
-                                                                 TScombShellRange=None, TSnnRange=None,
-                                                                 jumpnetwork=None)
-
-        self.reqSites = None  #[i for i in range(10)]  # All interactions must have at least one of these sites
-        self.VclusExp.generateSiteSpecInteracts(reqSites=self.reqSites)
-
-        self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
-        self.VclusExp.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
-        self.VclusExp.indexClustertoVecClus()
-
-        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
-
-        self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
-        for site in range(1, numSites):
-            spec = np.random.randint(0, self.NSpec - 1)
-            self.mobOccs[spec][site] = 1
-        self.mobOccs[-1, self.vacsiteInd] = 1
-        self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
-        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
-        print("Done setting up FCC cluster expansion tests.")
-
-    def test_FCC_BasisVectors(self):
-        dx = np.array([0.5, 0., 0.5]) * self.a0
-        dxUnit = dx / np.linalg.norm(dx)
-        R, _ = self.crys.cart2pos(dx)
-        site1 = cluster.ClusterSite(ci=(0,0), R=R)
-        site2 = cluster.ClusterSite(ci=(0,0), R=np.zeros(3, dtype=int))
-
-        # choose any species
-        spec1 = self.NSpec - 1
-        spec2 = self.NSpec - 2
-        specList = (spec1, spec2)
-        siteList = (site1, site2)
-
-        spCl = ClustSpec.ClusterSpecies(specList, siteList)
-
-        clList = [cl for clList in self.VclusExp.SpecClusters for cl in clList]
-        self.assertTrue(spCl in clList)
-        clSymGroup = self.VclusExp.clust2SpecClus[spCl][0]
-        self.assertEqual(len(self.VclusExp.SpecClusters[clSymGroup]), 12)
-        NumVecGroups = self.VclusExp.clus2LenVecClus[clSymGroup]
-        self.assertEqual(NumVecGroups, 1)
-        vectorGroup, position = self.VclusExp.clust2vecClus[spCl][0]
-        print(dx, self.VclusExp.vecVec[vectorGroup][position])
-        print()
-        # Let's check out a straight axis
-        dx = np.array([1., 0., 0.]) * self.a0
-        dxUnit = dx / np.linalg.norm(dx)
-        R, _ = self.crys.cart2pos(dx)
-        site1 = cluster.ClusterSite(ci=(0,0), R=R)
-        site2 = cluster.ClusterSite(ci=(0,0), R=np.zeros(3, dtype=int))
-
-        specList = (spec1, spec2)
-        siteList = (site1, site2)
-
-        spCl = ClustSpec.ClusterSpecies(specList, siteList)
-
-        clList = [cl for clList in self.VclusExp.SpecClusters for cl in clList]
-        self.assertTrue(spCl in clList)
-        clSymGroup = self.VclusExp.clust2SpecClus[spCl][0]
-        self.assertEqual(len(self.VclusExp.SpecClusters[clSymGroup]), 6)
-        NumVecGroups = self.VclusExp.clus2LenVecClus[clSymGroup]
-        self.assertEqual(NumVecGroups, 1)
-        vectorGroup, position = self.VclusExp.clust2vecClus[spCl][0]
-        self.assertEqual(len(self.VclusExp.vecVec[vectorGroup]), 6)
-        print(dx, self.VclusExp.vecVec[vectorGroup][position])
-        print()
-        # Let's check out a 3-body cluster on the face - mirror symmetry
-        dx1 = np.array([1., 0., 0.]) * self.a0
-        dx2 = np.array([0.5, 0.5, 0.]) * self.a0
-        R1, _ = self.crys.cart2pos(dx1)
-        R2, _ = self.crys.cart2pos(dx2)
-        site1 = cluster.ClusterSite(ci=(0,0), R=R1)
-        site2 = cluster.ClusterSite(ci=(0, 0), R=R2)
-        site3 = cluster.ClusterSite(ci=(0, 0), R=np.zeros(3, dtype=int))
-        spec3 = self.NSpec - 3
-        specList = (spec1, spec2, spec3)
-        siteList = (site1, site2, site3)
-
-        spCl = ClustSpec.ClusterSpecies(specList, siteList)
-
-        clList = [cl for clList in self.VclusExp.SpecClusters for cl in clList]
-        self.assertTrue(spCl in clList)
-        clSymGroup = self.VclusExp.clust2SpecClus[spCl][0]
-        self.assertEqual(len(self.VclusExp.SpecClusters[clSymGroup]), 24)
-        NumVecGroups = self.VclusExp.clus2LenVecClus[clSymGroup]
-        self.assertEqual(NumVecGroups, 2)
-        print(dx1, dx2)
-        for vectorGroup, position in self.VclusExp.clust2vecClus[spCl]:
-            self.assertEqual(len(self.VclusExp.vecVec[vectorGroup]), 24)
-            print(self.VclusExp.vecVec[vectorGroup][position])
-
-__FCC__ = True
-
-if __FCC__:
-    Test_type = test_FCC
-    crtype = "FCC"
-else:
-    Test_type = test_BCC
-    crtype = "BCC"
-
-class test_Vector_Cluster_Expansion(Test_type):
+class test_Vector_Cluster_Expansion(unittest.TestCase):
 
     def test_recalcClusters(self):
         # check that every cluster appears just once in just one symmetry list
@@ -307,7 +54,7 @@ class test_Vector_Cluster_Expansion(Test_type):
             if len(cl.SiteSpecs) == 3:
                 ThreeBodyCount += 1
 
-        if crtype == "FCC":
+        if self.crtype == "FCC":
             print("Checking FCC")
             self.assertTrue(OneBodyCount, self.NSpec - 1)
             two = (6 + 3) * (2 * (self.NSpec - 1) + (self.NSpec - 1) ** 2)
@@ -320,7 +67,7 @@ class test_Vector_Cluster_Expansion(Test_type):
             # and 8 on the octahedral cage faces.
             self.assertEqual(three, ThreeBodyCount)
 
-        if crtype == "BCC":
+        if self.crtype == "BCC":
             print("Checking BCC")
             self.assertTrue(OneBodyCount, self.NSpec - 1)
             two = (4 + 3) * (2 * (self.NSpec - 1) + (self.NSpec - 1) ** 2)
@@ -350,7 +97,7 @@ class test_Vector_Cluster_Expansion(Test_type):
 
             for clust in clusterList:
                 Rtrans = sum([site.R for site in clust.siteList]) // len(clust.siteList)
-                sites_shift = tuple([site-Rtrans for site in clust.siteList])
+                sites_shift = tuple([site - Rtrans for site in clust.siteList])
                 # check correct translations
                 sitesBuilt = tuple([site for site, spec in clust.transPairs])
                 if self.VclusExp.zeroClusts:
@@ -403,16 +150,15 @@ class test_Vector_Cluster_Expansion(Test_type):
         print("Done species assignment tests")
 
     def test_genVecClustBasis(self):
-        """
-        Here, we test if we have generated the vector cluster basis (site-based only) properly
-        """
+        # Here, we test if we have generated the vector cluster basis (site-based only) properly
+
         for clListInd, clList, vecList in zip(itertools.count(), self.VclusExp.vecClus,
                                               self.VclusExp.vecVec):
             self.assertEqual(len(clList), len(vecList))
             cl0, vec0 = clList[0], vecList[0]
             for clust, vec in zip(clList, vecList):
                 # Check that symmetry operations are consistent
-                self.assertFalse(np.iscomplexobj(vec)) # check that all vectors are real.
+                self.assertFalse(np.iscomplexobj(vec))  # check that all vectors are real.
                 count = 0
                 for g in self.crys.G:
                     if cl0.g(self.crys, g) == clust:
@@ -433,7 +179,6 @@ class test_Vector_Cluster_Expansion(Test_type):
                 # There must be at least one group op that keeps the cluster invariant to be considered in vector
                 # groups
                 self.assertGreater(count, 0)
-
 
     def testcluster2vecClus(self):
 
@@ -464,7 +209,8 @@ class test_Vector_Cluster_Expansion(Test_type):
                             if clust.g(self.crys, g) == clust:
                                 count += 1
                                 self.assertTrue(np.allclose(np.dot(g.cartrot, vec0), vec0),
-                                                msg="\n{}, {} \n{}\n{}".format(vec0, clust, self.crys.lattice, g.cartrot))
+                                                msg="\n{}, {} \n{}\n{}".format(vec0, clust, self.crys.lattice,
+                                                                               g.cartrot))
                         # check that at least one group op was found that satisfied the test
                         self.assertGreater(count, 0)
 
@@ -478,7 +224,7 @@ class test_Vector_Cluster_Expansion(Test_type):
         # The key site should be present only once in every interaction stored for it
         interactCounter = collections.defaultdict(int)
         if self.reqSites is None:
-            self.assertEqual(len(self.VclusExp.SiteSpecInteractIds), self.NSpec*len(self.superCell.mobilepos))
+            self.assertEqual(len(self.VclusExp.SiteSpecInteractIds), self.NSpec * len(self.superCell.mobilepos))
         else:
             print("checking required site presence.")
 
@@ -508,7 +254,8 @@ class test_Vector_Cluster_Expansion(Test_type):
             self.assertEqual(count, len(interact))
 
         # check that all representative clusters have been translated
-        self.assertEqual(len(self.VclusExp.clust2InteractId), sum([len(clList) for clList in self.VclusExp.SpecClusters]),
+        self.assertEqual(len(self.VclusExp.clust2InteractId),
+                         sum([len(clList) for clList in self.VclusExp.SpecClusters]),
                          msg="{}".format(len(self.VclusExp.clust2InteractId)))
 
         clAll = [cl for clList in self.VclusExp.SpecClusters for cl in clList]
@@ -542,7 +289,8 @@ class test_Vector_Cluster_Expansion(Test_type):
                         if spec == sp and site.ci == ci:
                             count += 1  # a translation of this cluster should exist
 
-                self.assertEqual(count, len(interactIdList), msg="\ncount {}, stored {}\n{}".format(count, len(interactIdList), key))
+                self.assertEqual(count, len(interactIdList),
+                                 msg="\ncount {}, stored {}\n{}".format(count, len(interactIdList), key))
 
             else:
                 count = 0
@@ -567,7 +315,6 @@ class test_Vector_Cluster_Expansion(Test_type):
                 self.assertEqual(count, len(interactIdList),
                                  msg="\ncount {}, stored {}\n{}".format(count, len(interactIdList), key))
 
-
     def testcluster2SpecClusGroup(self):
 
         for clListInd, clList in enumerate(self.VclusExp.SpecClusters):
@@ -580,8 +327,8 @@ class test_Vector_Cluster_Expansion(Test_type):
         # First, we generate the Jit arrays
 
         # First, the chemical data
-        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,\
-        numInteractsSiteSpec, SiteSpecInterArray =\
+        numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, \
+        numInteractsSiteSpec, SiteSpecInterArray = \
             self.VclusExp.makeJitInteractionsData(self.Energies)
 
         # Next, the vector basis data
@@ -699,17 +446,269 @@ class test_Vector_Cluster_Expansion(Test_type):
                 numInteractStored = numInteractsSiteSpec[siteInd, spec]
                 # get the actual count
                 # ci, R = self.VclusExp.sup.ciR(siteInd)
-                #if len(self.reqSites) == 0:
+                # if len(self.reqSites) == 0:
                 if (siteInd, spec) in self.VclusExp.SiteSpecInteractIds.keys():
                     self.assertEqual(len(self.VclusExp.SiteSpecInteractIds[(siteInd, spec)]), numInteractStored,
                                      msg="key: {}, len: {}, stored_array: {}".format((siteInd, spec),
-                                                                                     len(self.VclusExp.SiteSpecInteractIds[(siteInd, spec)]),
+                                                                                     len(
+                                                                                         self.VclusExp.SiteSpecInteractIds[
+                                                                                             (siteInd, spec)]),
                                                                                      numInteractStored))
 
                 else:
                     self.assertEqual(0, numInteractStored, msg="key: {}, stored_array: {}".format((siteInd, spec),
-                                                                                     numInteractStored))
+                                                                                                  numInteractStored))
 
                 for IdxOfInteract in range(numInteractStored):
                     interactMainIndex = SiteSpecInterArray[siteInd, spec, IdxOfInteract]
-                    self.assertEqual(interactMainIndex, self.VclusExp.SiteSpecInteractIds[(siteInd, spec)][IdxOfInteract])
+                    self.assertEqual(interactMainIndex,
+                                     self.VclusExp.SiteSpecInteractIds[(siteInd, spec)][IdxOfInteract])
+
+
+class test_BCC(test_Vector_Cluster_Expansion):
+
+    def setUp(self):
+        self.NSpec = 3
+        self.Nvac = 1
+        self.vacSpec = 2
+        self.MaxOrder = 3
+        self.MaxOrderTrans = 3
+        a0 = 1
+        self.a0 = a0
+        self.crType = "FCC"
+        self.crys = crystal.Crystal.BCC(a0, chemistry="A")
+        jumpCutoff = 1.01*np.sqrt(3./4.)*a0
+        self.jnet = self.crys.jumpnetwork(0, jumpCutoff)
+        self.N_units = 8
+        self.superlatt = self.N_units * np.eye(3, dtype=int)
+        self.superCell = supercell.ClusterSupercell(self.crys, self.superlatt)
+        # get the number of sites in the supercell - should be 8x8x8
+        numSites = len(self.superCell.mobilepos)
+        self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
+        self.vacsiteInd = self.superCell.index(np.zeros(3, dtype=int), (0, 0))[0]
+        self.clusexp = cluster.makeclusters(self.crys, 1.01*a0, self.MaxOrder)
+
+        # sup, clusexp, NSpec, vacSite, vacSpec, maxorder, Nvac=1, MadeSpecClusts=None, zeroClusts=True
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superCell, self.clusexp, self.NSpec,
+                                                                 self.vacsite, self.vacSpec, self.MaxOrder)
+
+        self.reqSites = None #[i for i in range(10)]  # All interactions must have at least one of these sites
+        self.VclusExp.generateSiteSpecInteracts(reqSites=self.reqSites)
+
+        self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
+        self.VclusExp.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
+        self.VclusExp.indexClustertoVecClus()
+
+        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
+
+        self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
+        for site in range(1, numSites):
+            spec = np.random.randint(0, self.NSpec - 1)
+            self.mobOccs[spec][site] = 1
+        self.mobOccs[-1, self.vacsiteInd] = 1
+        self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
+        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
+        print("Done setting up BCC cluster expansion tests.")
+
+    def testBCC_counts(self):
+        # This test is specifically for a BCC, 3-spec, 3-order, 2nn cluster expansion
+        oneCounts = 0
+        twocounts = 0
+        threecounts = 0
+
+        oneBody = 0
+        TwoBody = 0
+        ThreeBody = 0
+
+        oneBodyList = []
+        TwoBodyList = []
+        ThreeBodyList = []
+
+        sitesFromClusexp = set([])
+        for clSet in self.clusexp:
+            for cl in list(clSet):
+                for g in self.VclusExp.crys.G:
+                    newsitelist = tuple([site.g(self.VclusExp.crys, g) for site in cl.sites])
+                    Rtrans = sum([site.R for site in newsitelist]) // len(newsitelist)
+                    sitesFromClusexp.add(tuple([site - Rtrans for site in newsitelist]))
+
+        for siteList in sitesFromClusexp:
+            ln = len(siteList)
+            if ln == 1:
+                oneCounts += 1
+            elif ln == 2:
+                twocounts += 1
+            elif ln == 3:
+                threecounts += 1
+
+        self.assertEqual((oneCounts, twocounts, threecounts), (1, 14, 24))
+        print("Checking cluster counts")
+        for clusterList in self.VclusExp.SpecClusters:
+            for clust in clusterList:
+                order = len(clust.SiteSpecs)
+                if order == 1:
+                    oneBody += 1
+                    oneBodyList.append(clust)
+                if order == 2:
+                    TwoBody += 1
+                    TwoBodyList.append(clust)
+
+                if order == 3:
+                    ThreeBody += 1
+                    ThreeBodyList.append(clust)
+
+        self.assertEqual(oneBody, 3)
+        self.assertEqual(TwoBody, 56)
+        self.assertEqual(ThreeBody, 240)
+
+        # Now let's check some two body numbers
+        vacCount = 0
+        nonVacCount = 0
+        for clust in TwoBodyList:
+            specList = clust.specList
+            if any([spec == 2 for spec in specList]):
+                vacCount += 1
+            else:
+                nonVacCount += 1
+
+        self.assertEqual(vacCount,
+                         2 * 2 * 4 + 2 * 2 * 3)  # The first term is for nearest neighbor, the second for second nearest neighbor
+        self.assertEqual(nonVacCount, 2 * 2 * 4 + 2 * 2 * 3)
+
+        # Now let's check some three body numbers
+        vacCount = 0
+        nonVacCount = 0
+        for clust in ThreeBodyList:
+            specList = clust.specList
+            if any([spec == 2 for spec in specList]):
+                vacCount += 1
+            else:
+                nonVacCount += 1
+
+        self.assertEqual(vacCount, (3 * 2 * 2) * 12)
+        self.assertEqual(nonVacCount, (2 * 2 * 2) * 12)
+
+
+class test_FCC(test_Vector_Cluster_Expansion):
+
+    def setUp(self):
+        self.NSpec = 3
+        self.Nvac = 1
+        self.vacSpec = 2
+        self.MaxOrder = 3
+        self.MaxOrderTrans = 3
+        a0 = 1
+        self.a0 = a0
+        self.crType="FCC"
+        self.crys = crystal.Crystal.FCC(a0, chemistry="A")
+        jumpCutoff = 1.01*a0/np.sqrt(2.)
+        self.jnet = self.crys.jumpnetwork(0, jumpCutoff)
+        self.N_units = 8
+        self.superlatt = self.N_units * np.eye(3, dtype=int)
+        self.superCell = supercell.ClusterSupercell(self.crys, self.superlatt)
+        # get the number of sites in the supercell - should be 8x8x8
+        numSites = len(self.superCell.mobilepos)
+        self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
+        self.vacsiteInd = self.superCell.index(np.zeros(3, dtype=int), (0, 0))[0]
+        self.clusexp = cluster.makeclusters(self.crys, 1.01*a0, self.MaxOrder)
+
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superCell, self.clusexp, self.NSpec,
+                                                                 self.vacsite, self.vacSpec, self.MaxOrder)
+
+        self.reqSites = None  #[i for i in range(10)]  # All interactions must have at least one of these sites
+        self.VclusExp.generateSiteSpecInteracts(reqSites=self.reqSites)
+
+        self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
+        self.VclusExp.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
+        self.VclusExp.indexClustertoVecClus()
+
+        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
+
+        self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
+        for site in range(1, numSites):
+            spec = np.random.randint(0, self.NSpec - 1)
+            self.mobOccs[spec][site] = 1
+        self.mobOccs[-1, self.vacsiteInd] = 1
+        self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
+        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
+        print("Done setting up FCC cluster expansion tests.")
+
+    def test_FCC_BasisVectors(self):
+        dx = np.array([0.5, 0., 0.5]) * self.a0
+        dxUnit = dx / np.linalg.norm(dx)
+        R, _ = self.crys.cart2pos(dx)
+        site1 = cluster.ClusterSite(ci=(0,0), R=R)
+        site2 = cluster.ClusterSite(ci=(0,0), R=np.zeros(3, dtype=int))
+
+        # choose any species
+        spec1 = self.NSpec - 1
+        spec2 = self.NSpec - 2
+        specList = (spec1, spec2)
+        siteList = (site1, site2)
+
+        spCl = ClustSpec.ClusterSpecies(specList, siteList)
+
+        clList = [cl for clList in self.VclusExp.SpecClusters for cl in clList]
+        self.assertTrue(spCl in clList)
+        clSymGroup = self.VclusExp.clust2SpecClus[spCl][0]
+        self.assertEqual(len(self.VclusExp.SpecClusters[clSymGroup]), 12)
+        NumVecGroups = self.VclusExp.clus2LenVecClus[clSymGroup]
+        self.assertEqual(NumVecGroups, 1)
+        vectorGroup, position = self.VclusExp.clust2vecClus[spCl][0]
+        print(dx, self.VclusExp.vecVec[vectorGroup][position])
+        print()
+        # Let's check out a straight axis
+        dx = np.array([1., 0., 0.]) * self.a0
+        dxUnit = dx / np.linalg.norm(dx)
+        R, _ = self.crys.cart2pos(dx)
+        site1 = cluster.ClusterSite(ci=(0,0), R=R)
+        site2 = cluster.ClusterSite(ci=(0,0), R=np.zeros(3, dtype=int))
+
+        specList = (spec1, spec2)
+        siteList = (site1, site2)
+
+        spCl = ClustSpec.ClusterSpecies(specList, siteList)
+
+        clList = [cl for clList in self.VclusExp.SpecClusters for cl in clList]
+        self.assertTrue(spCl in clList)
+        clSymGroup = self.VclusExp.clust2SpecClus[spCl][0]
+        self.assertEqual(len(self.VclusExp.SpecClusters[clSymGroup]), 6)
+        NumVecGroups = self.VclusExp.clus2LenVecClus[clSymGroup]
+        self.assertEqual(NumVecGroups, 1)
+        vectorGroup, position = self.VclusExp.clust2vecClus[spCl][0]
+        self.assertEqual(len(self.VclusExp.vecVec[vectorGroup]), 6)
+        print(dx, self.VclusExp.vecVec[vectorGroup][position])
+        print()
+        # Let's check out a 3-body cluster on the face - mirror symmetry
+        dx1 = np.array([1., 0., 0.]) * self.a0
+        dx2 = np.array([0.5, 0.5, 0.]) * self.a0
+        R1, _ = self.crys.cart2pos(dx1)
+        R2, _ = self.crys.cart2pos(dx2)
+        site1 = cluster.ClusterSite(ci=(0,0), R=R1)
+        site2 = cluster.ClusterSite(ci=(0, 0), R=R2)
+        site3 = cluster.ClusterSite(ci=(0, 0), R=np.zeros(3, dtype=int))
+        spec3 = self.NSpec - 3
+        specList = (spec1, spec2, spec3)
+        siteList = (site1, site2, site3)
+
+        spCl = ClustSpec.ClusterSpecies(specList, siteList)
+
+        clList = [cl for clList in self.VclusExp.SpecClusters for cl in clList]
+        self.assertTrue(spCl in clList)
+        clSymGroup = self.VclusExp.clust2SpecClus[spCl][0]
+        self.assertEqual(len(self.VclusExp.SpecClusters[clSymGroup]), 24)
+        NumVecGroups = self.VclusExp.clus2LenVecClus[clSymGroup]
+        self.assertEqual(NumVecGroups, 2)
+        print(dx1, dx2)
+        for vectorGroup, position in self.VclusExp.clust2vecClus[spCl]:
+            self.assertEqual(len(self.VclusExp.vecVec[vectorGroup]), 24)
+            print(self.VclusExp.vecVec[vectorGroup][position])
+
+# __FCC__ = True
+#
+# if __FCC__:
+#     Test_type = test_FCC
+#     crtype = "FCC"
+# else:
+#     Test_type = test_BCC
+#     crtype = "BCC"
