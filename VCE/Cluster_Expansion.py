@@ -178,7 +178,16 @@ class VectorClusterExpansion(object):
         generate interactions for every site - for MC moves
         :param reqSites : list of required sites - if None (default), all sites will be considered
         """
-        allLatTransTuples = [self.sup.ciR(siteInd) for siteInd in range(self.Nsites)]
+        allLatTransTuples = []
+        for siteInd in range(self.Nsites):
+            ciSite, RSite = self.sup.ciR(siteInd)
+            tup = tuple([RSite[i] for i in range(RSite.shape[0])])
+            if tup not in allLatTransTuples:
+                allLatTransTuples.append(tup)
+
+        assert self.Nsites % len(self.crys.basis[self.chem]) == 0
+        assert len(allLatTransTuples) == self.Nsites // len(self.crys.basis[self.chem])
+
         Id2InteractionDict = {}
         Interaction2IdDict = {}
         SiteSpecInteractIds = collections.defaultdict(list)
@@ -189,11 +198,11 @@ class VectorClusterExpansion(object):
 
         count = 0
         # Traverse through all the unit cells in the supercell
-        for translateInd in tqdm(range(self.Nsites), position=0, leave=True):
+        for translateInd in tqdm(range(len(allLatTransTuples)), position=0, leave=True):
             # Now, go through all the clusters and translate by each lattice translation
             for clID, cl in self.Num2Clus.items():
                 # get the cluster site
-                R = allLatTransTuples[translateInd][1]
+                R = np.array(allLatTransTuples[translateInd], dtype=int)
                 # translate all sites with this translation
                 interactSupInd = tuple(sorted([(self.sup.index(st.R + R, st.ci)[0], spec)
                                                for st, spec in cl.SiteSpecs],
@@ -204,9 +213,8 @@ class VectorClusterExpansion(object):
                     # beneficial for pre-made data sets, where only vacancy and its jump site need to be considered
                     continue
 
-                if interactSupInd in Id2InteractionDict:
-                    raise ValueError("Interaction encountered twice while either translating same cluster differently"
-                                     "or different clusters.")
+                if interactSupInd in Interaction2IdDict.keys():
+                    raise ValueError("Interaction encountered twice.")
                 # give the new interaction an Index
                 Id2InteractionDict[count] = interactSupInd
                 Interaction2IdDict[interactSupInd] = count
