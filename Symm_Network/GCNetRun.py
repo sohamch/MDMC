@@ -902,7 +902,7 @@ def main(args):
             np.save("val_{0}_{1}_{2}_n{3}c{4}_all_{5}_tracer.npy".format(direcString, args.Tdata, args.TNet, args.Nlayers,
                                                                   args.Nchannels,
                                                                   int(args.AllJumps)),
-                    valid_diff / (1.0 * args.N_train))
+                    valid_diff / (1.0 * (State1_occs.shape[0] - args.N_train)))
 
     elif args.Mode == "getY":
         if args.AllJumps:
