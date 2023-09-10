@@ -720,8 +720,6 @@ class test_FCC_orthogonal(test_FCC):
         self.N_units = 5
         self.superlatt = self.N_units * np.eye(3, dtype=int)
         self.superCell = supercell.ClusterSupercell(self.crys, self.superlatt)
-        # get the number of sites in the supercell - should be 8x8x8
-        numSites = len(self.superCell.mobilepos)
         xVac = np.zeros(3)
         Rvac, civac = self.crys.cart2pos(xVac)
         self.vacsite = cluster.ClusterSite(civac, Rvac)
