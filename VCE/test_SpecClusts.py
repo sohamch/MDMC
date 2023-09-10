@@ -398,9 +398,9 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
             for site in siteListBuilt:
                 R = site.R
                 ci = site.ci
-                idxSite = self.VclusExp.sup.index(R, ci)
+                idxSite, _ = self.VclusExp.sup.index(R, ci)
                 ciNew, RNew = self.VclusExp.sup.ciR(idxSite)
-                assert ciNew == ci
+                self.assertEqual(ciNew, ci)
                 siteListnew.append(cluster.ClusterSite(ci=ci, R=RNew))
 
             SpCl = ClusterSpecies(specListBuilt, siteListnew)
@@ -417,9 +417,10 @@ class test_Vector_Cluster_Expansion(unittest.TestCase):
 
         # Check that all repclusts were considered
         self.assertEqual(SpClset, allSpClset)
+        # Check that all translations of the clusters were considered
         for key, item in repclustCount.items():
             if self.reqSites is None:
-                self.assertEqual(item, len(self.VclusExp.sup.mobilepos))
+                self.assertEqual(item, len(self.VclusExp.sup.mobilepos) // len(self.crys.basis[self.VclusExp.chem]))
 
         print("checked interactions \n checking vectors", flush=True)
 
