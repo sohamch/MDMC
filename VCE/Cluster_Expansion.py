@@ -2,7 +2,6 @@ from onsager import cluster
 import numpy as np
 import collections
 import itertools
-# import Transitions - needs fixing
 from ClustSpec import ClusterSpecies
 from onsager import crystal
 import time
@@ -321,3 +320,167 @@ class VectorClusterExpansion(object):
                     VecGroupInteracts[idx, vecidx] = tup[0]
         # print("Done Vector data for interactions")
         return numVecsInteracts, VecsInteracts, VecGroupInteracts
+
+
+from numba.experimental import jitclass
+from numba import int64, float64
+
+# Paste all the function definitions here as comments
+JitSpec = [
+    ("numInteractsSiteSpec", int64[:, :]),
+    ("SiteSpecInterArray", int64[:, :, :]),
+    ("numSitesInteracts", int64[:]),
+    ("SupSitesInteracts", int64[:, :]),
+    ("SpecOnInteractSites", int64[:, :]),
+    ("Interaction2En", float64[:]),
+    ("mobOcc", int64[:]),
+    ("Nsites", int64),
+    ("Nspecs", int64),
+    ("OffSiteCount", int64[:]),
+    ("vacSpec", int64),
+]
+
+
+@jitclass(JitSpec)
+class JITExpanderClass(object):
+
+    def __init__(self, vacSpec, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,
+                 Interaction2En, numInteractsSiteSpec, SiteSpecInterArray):
+
+        self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites, self.Interaction2En, self.numInteractsSiteSpec,\
+        self.SiteSpecInterArray = \
+            numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, numInteractsSiteSpec, SiteSpecInterArray
+
+        self.vacSpec = vacSpec
+
+        # check if proper sites and species data are entered
+        self.Nsites, self.Nspecs = numInteractsSiteSpec.shape[0], numInteractsSiteSpec.shape[1]
+
+    def DoSwapUpdate(self, state, siteA, siteB, lenVecClus, OffSiteCount,
+                     numVecsInteracts, VecGroupInteracts, VecsInteracts):
+
+        del_lamb = np.zeros((lenVecClus, 3))
+        delE = 0.0
+        # Switch required sites off
+        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
+            # check if an interaction is on
+            interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
+            if OffSiteCount[interMainInd] == 0:
+                delE -= self.Interaction2En[interMainInd]
+                # take away the vectors for this interaction
+                if numVecsInteracts is not None:
+                    for i in range(numVecsInteracts[interMainInd]):
+                        del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
+            OffSiteCount[interMainInd] += 1
+
+        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
+            interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
+            if OffSiteCount[interMainInd] == 0:
+                delE -= self.Interaction2En[interMainInd]
+                if numVecsInteracts is not None:
+                    for i in range(numVecsInteracts[interMainInd]):
+                        del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
+            OffSiteCount[interMainInd] += 1
+
+        # Next, switch required sites on
+        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
+            interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
+            OffSiteCount[interMainInd] -= 1
+            if OffSiteCount[interMainInd] == 0:
+                delE += self.Interaction2En[interMainInd]
+                # add the vectors for this interaction
+                if numVecsInteracts is not None:
+                    for i in range(numVecsInteracts[interMainInd]):
+                        del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
+
+        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
+            interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
+            OffSiteCount[interMainInd] -= 1
+            if OffSiteCount[interMainInd] == 0:
+                delE += self.Interaction2En[interMainInd]
+                # add the vectors for this interaction
+                # for interactions with zero vector basis, numVecsInteracts[interMainInd] = -1 and the
+                # loop doesn't run
+                if numVecsInteracts is not None:
+                    for i in range(numVecsInteracts[interMainInd]):
+                        del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
+
+        return delE, del_lamb
+
+    def revert(self, offsc, state, siteA, siteB):
+        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
+            offsc[self.SiteSpecInterArray[siteA, state[siteA], interIdx]] -= 1
+
+        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
+            offsc[self.SiteSpecInterArray[siteB, state[siteB], interIdx]] -= 1
+
+        for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteB]]):
+            offsc[self.SiteSpecInterArray[siteA, state[siteB], interIdx]] += 1
+
+        for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteA]]):
+            offsc[self.SiteSpecInterArray[siteB, state[siteA], interIdx]] += 1
+
+    def getLambda(self, offsc, NVclus, numVecsInteracts, VecGroupInteracts, VecsInteracts):
+        lamb = np.zeros((NVclus, 3))
+        for interactInd in range(offsc.shape[0]):
+            if offsc[interactInd] == 0:
+                for vGInd in range(numVecsInteracts[interactInd]):
+                    vGroup = VecGroupInteracts[interactInd, vGInd]
+                    vec = VecsInteracts[interactInd, vGInd]
+                    lamb[vGroup, :] += vec
+        return lamb
+
+    def getDelLamb(self, state, offsc, siteA, siteB, lenVecClus,
+                   numVecsInteracts, VecGroupInteracts, VecsInteracts):
+
+
+        _, del_lamb = self.DoSwapUpdate(state, siteA, siteB, lenVecClus, offsc,
+                                        numVecsInteracts, VecGroupInteracts, VecsInteracts)
+
+        # Then revert back off site count to original values
+        self.revert(offsc, state, siteA, siteB)
+
+        return del_lamb
+
+    def Expand(self, state, ijList, dxList, spec, OffSiteCount,
+               numVecsInteracts, VecGroupInteracts, VecsInteracts,
+               lenVecClus, vacSiteInd, RateList):
+
+        del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
+        delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
+        ratelist = RateList.copy()
+
+        siteA, specA = vacSiteInd, state[vacSiteInd]
+        # go through all the transition
+
+        for jumpInd in range(ijList.shape[0]):
+            # Get the transition site and species
+            siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
+
+            # next, calculate the energy and basis function change due to site swapping
+            delE, del_lamb = self.DoSwapUpdate(state, siteA, siteB, lenVecClus, OffSiteCount,
+                                               numVecsInteracts, VecGroupInteracts, VecsInteracts)
+
+            # Next, restore OffSiteCounts to original values for next jump
+            self.revert(OffSiteCount, state, siteA, siteB)
+            del_lamb_mat[:, :, jumpInd] = np.dot(del_lamb, del_lamb.T)
+
+            # let's do the tensordot by hand (numba doesn't support np.tensordot)
+            for i in range(lenVecClus):
+                if spec == specA:
+                    delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], dxList[jumpInd, :])
+                elif spec == specB:
+                    delxDotdelLamb[i, jumpInd] = np.dot(del_lamb[i, :], -dxList[jumpInd, :])
+
+        WBar = np.zeros((lenVecClus, lenVecClus))
+        for i in range(lenVecClus):
+            WBar[i, i] += np.dot(del_lamb_mat[i, i, :], ratelist)
+            for j in range(i):
+                WBar[i, j] += np.dot(del_lamb_mat[i, j, :], ratelist)
+                WBar[j, i] = WBar[i, j]
+
+        BBar = np.zeros(lenVecClus)
+        for i in range(lenVecClus):
+            BBar[i] = np.dot(ratelist, delxDotdelLamb[i, :])
+
+        return WBar, BBar, ratelist
