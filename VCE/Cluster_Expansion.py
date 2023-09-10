@@ -369,13 +369,11 @@ class JITExpanderClass(object):
                      numVecsInteracts, VecGroupInteracts, VecsInteracts):
 
         del_lamb = np.zeros((lenVecClus, 3))
-        delE = 0.0
         # Switch required sites off
         for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
             # check if an interaction is on
             interMainInd = self.SiteSpecInterArray[siteA, state[siteA], interIdx]
             if OffSiteCount[interMainInd] == 0:
-                delE -= self.Interaction2En[interMainInd]
                 # take away the vectors for this interaction
                 if numVecsInteracts is not None:
                     for i in range(numVecsInteracts[interMainInd]):
@@ -385,7 +383,6 @@ class JITExpanderClass(object):
         for interIdx in range(self.numInteractsSiteSpec[siteB, state[siteB]]):
             interMainInd = self.SiteSpecInterArray[siteB, state[siteB], interIdx]
             if OffSiteCount[interMainInd] == 0:
-                delE -= self.Interaction2En[interMainInd]
                 if numVecsInteracts is not None:
                     for i in range(numVecsInteracts[interMainInd]):
                         del_lamb[VecGroupInteracts[interMainInd, i]] -= VecsInteracts[interMainInd, i, :]
@@ -396,7 +393,6 @@ class JITExpanderClass(object):
             interMainInd = self.SiteSpecInterArray[siteA, state[siteB], interIdx]
             OffSiteCount[interMainInd] -= 1
             if OffSiteCount[interMainInd] == 0:
-                delE += self.Interaction2En[interMainInd]
                 # add the vectors for this interaction
                 if numVecsInteracts is not None:
                     for i in range(numVecsInteracts[interMainInd]):
@@ -406,7 +402,6 @@ class JITExpanderClass(object):
             interMainInd = self.SiteSpecInterArray[siteB, state[siteA], interIdx]
             OffSiteCount[interMainInd] -= 1
             if OffSiteCount[interMainInd] == 0:
-                delE += self.Interaction2En[interMainInd]
                 # add the vectors for this interaction
                 # for interactions with zero vector basis, numVecsInteracts[interMainInd] = -1 and the
                 # loop doesn't run
@@ -414,7 +409,7 @@ class JITExpanderClass(object):
                     for i in range(numVecsInteracts[interMainInd]):
                         del_lamb[VecGroupInteracts[interMainInd, i]] += VecsInteracts[interMainInd, i, :]
 
-        return delE, del_lamb
+        return del_lamb
 
     def revert(self, offsc, state, siteA, siteB):
         for interIdx in range(self.numInteractsSiteSpec[siteA, state[siteA]]):
@@ -443,7 +438,7 @@ class JITExpanderClass(object):
                    numVecsInteracts, VecGroupInteracts, VecsInteracts):
 
 
-        _, del_lamb = self.DoSwapUpdate(state, siteA, siteB, lenVecClus, offsc,
+        del_lamb = self.DoSwapUpdate(state, siteA, siteB, lenVecClus, offsc,
                                         numVecsInteracts, VecGroupInteracts, VecsInteracts)
 
         # Then revert back off site count to original values
@@ -467,7 +462,7 @@ class JITExpanderClass(object):
             siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
 
             # next, calculate the energy and basis function change due to site swapping
-            delE, del_lamb = self.DoSwapUpdate(state, siteA, siteB, lenVecClus, OffSiteCount,
+            del_lamb = self.DoSwapUpdate(state, siteA, siteB, lenVecClus, OffSiteCount,
                                                numVecsInteracts, VecGroupInteracts, VecsInteracts)
 
             # Next, restore OffSiteCounts to original values for next jump
