@@ -472,13 +472,10 @@ class test_BCC(test_Vector_Cluster_Expansion):
         self.Nvac = 1
         self.vacSpec = 2
         self.MaxOrder = 3
-        self.MaxOrderTrans = 3
         a0 = 1
         self.a0 = a0
         self.crType = "FCC"
         self.crys = crystal.Crystal.BCC(a0, chemistry="A")
-        jumpCutoff = 1.01*np.sqrt(3./4.)*a0
-        self.jnet = self.crys.jumpnetwork(0, jumpCutoff)
         self.N_units = 8
         self.superlatt = self.N_units * np.eye(3, dtype=int)
         self.superCell = supercell.ClusterSupercell(self.crys, self.superlatt)
@@ -499,14 +496,6 @@ class test_BCC(test_Vector_Cluster_Expansion):
         self.VclusExp.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
         self.VclusExp.indexClustertoVecClus()
 
-        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
-
-        self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
-        for site in range(1, numSites):
-            spec = np.random.randint(0, self.NSpec - 1)
-            self.mobOccs[spec][site] = 1
-        self.mobOccs[-1, self.vacsiteInd] = 1
-        self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
         print("Done setting up BCC cluster expansion tests.")
 
@@ -596,13 +585,11 @@ class test_FCC(test_Vector_Cluster_Expansion):
         self.Nvac = 1
         self.vacSpec = 2
         self.MaxOrder = 3
-        self.MaxOrderTrans = 3
         a0 = 1
         self.a0 = a0
         self.crType="FCC"
         self.crys = crystal.Crystal.FCC(a0, chemistry="A")
-        jumpCutoff = 1.01*a0/np.sqrt(2.)
-        self.jnet = self.crys.jumpnetwork(0, jumpCutoff)
+
         self.N_units = 8
         self.superlatt = self.N_units * np.eye(3, dtype=int)
         self.superCell = supercell.ClusterSupercell(self.crys, self.superlatt)
@@ -623,22 +610,13 @@ class test_FCC(test_Vector_Cluster_Expansion):
         self.VclusExp.indexClustertoVecClus()
 
         self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
-
-        self.mobOccs = np.zeros((self.NSpec, numSites), dtype=int)
-        for site in range(1, numSites):
-            spec = np.random.randint(0, self.NSpec - 1)
-            self.mobOccs[spec][site] = 1
-        self.mobOccs[-1, self.vacsiteInd] = 1
-        self.mobCountList = [np.sum(self.mobOccs[i]) for i in range(self.NSpec)]
-        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
         print("Done setting up FCC cluster expansion tests.")
 
     def test_FCC_BasisVectors(self):
         dx = np.array([0.5, 0., 0.5]) * self.a0
-        dxUnit = dx / np.linalg.norm(dx)
-        R, _ = self.crys.cart2pos(dx)
-        site1 = cluster.ClusterSite(ci=(0,0), R=R)
-        site2 = cluster.ClusterSite(ci=(0,0), R=np.zeros(3, dtype=int))
+        R, ci = self.crys.cart2pos(dx)
+        site1 = cluster.ClusterSite(ci=ci, R=R)
+        site2 = cluster.ClusterSite(ci=ci, R=np.zeros(3, dtype=int))
 
         # choose any species
         spec1 = self.NSpec - 1
@@ -657,12 +635,12 @@ class test_FCC(test_Vector_Cluster_Expansion):
         vectorGroup, position = self.VclusExp.clust2vecClus[spCl][0]
         print(dx, self.VclusExp.vecVec[vectorGroup][position])
         print()
+
         # Let's check out a straight axis
         dx = np.array([1., 0., 0.]) * self.a0
-        dxUnit = dx / np.linalg.norm(dx)
-        R, _ = self.crys.cart2pos(dx)
-        site1 = cluster.ClusterSite(ci=(0,0), R=R)
-        site2 = cluster.ClusterSite(ci=(0,0), R=np.zeros(3, dtype=int))
+        R, ci = self.crys.cart2pos(dx)
+        site1 = cluster.ClusterSite(ci=ci, R=R)
+        site2 = cluster.ClusterSite(ci=ci, R=np.zeros(3, dtype=int))
 
         specList = (spec1, spec2)
         siteList = (site1, site2)
@@ -682,11 +660,12 @@ class test_FCC(test_Vector_Cluster_Expansion):
         # Let's check out a 3-body cluster on the face - mirror symmetry
         dx1 = np.array([1., 0., 0.]) * self.a0
         dx2 = np.array([0.5, 0.5, 0.]) * self.a0
-        R1, _ = self.crys.cart2pos(dx1)
-        R2, _ = self.crys.cart2pos(dx2)
-        site1 = cluster.ClusterSite(ci=(0,0), R=R1)
-        site2 = cluster.ClusterSite(ci=(0, 0), R=R2)
-        site3 = cluster.ClusterSite(ci=(0, 0), R=np.zeros(3, dtype=int))
+        R1, ci1 = self.crys.cart2pos(dx1)
+        R2, ci2 = self.crys.cart2pos(dx2)
+        R3, ci3 = self.crys.cart2pos(np.zeros(3))
+        site1 = cluster.ClusterSite(ci=ci1, R=R1)
+        site2 = cluster.ClusterSite(ci=ci2, R=R2)
+        site3 = cluster.ClusterSite(ci=ci3, R=R3)
         spec3 = self.NSpec - 3
         specList = (spec1, spec2, spec3)
         siteList = (site1, site2, site3)
@@ -704,11 +683,39 @@ class test_FCC(test_Vector_Cluster_Expansion):
             self.assertEqual(len(self.VclusExp.vecVec[vectorGroup]), 24)
             print(self.VclusExp.vecVec[vectorGroup][position])
 
-# __FCC__ = True
-#
-# if __FCC__:
-#     Test_type = test_FCC
-#     crtype = "FCC"
-# else:
-#     Test_type = test_BCC
-#     crtype = "BCC"
+class test_FCC_orthogonal(test_FCC):
+    def setUp(self):
+        self.NSpec = 3
+        self.Nvac = 1
+        self.vacSpec = 2
+        self.MaxOrder = 3
+        a0 = 1
+        self.a0 = a0
+        self.crType="FCC"
+        basis_cube_fcc = [np.array([0, 0, 0]), np.array([0, 0.5, 0.5]), np.array([0.5, 0., 0.5]),
+                          np.array([0.5, 0.5, 0.])]
+        self.crys = crystal.Crystal(lattice=np.eye(3) * a0, basis=[basis_cube_fcc], chemistry=["A"], noreduce=True)
+
+        self.N_units = 8
+        self.superlatt = self.N_units * np.eye(3, dtype=int)
+        self.superCell = supercell.ClusterSupercell(self.crys, self.superlatt)
+        # get the number of sites in the supercell - should be 8x8x8
+        numSites = len(self.superCell.mobilepos)
+        xVac = np.zeros(3)
+        Rvac, civac = self.crys.cart2pos(xVac)
+        self.vacsite = cluster.ClusterSite(civac, Rvac)
+        self.vacsiteInd = self.superCell.index(Rvac, civac)[0]
+        self.clusexp = cluster.makeclusters(self.crys, 1.01*a0, self.MaxOrder)
+
+        self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superCell, self.clusexp, self.NSpec,
+                                                                 self.vacsite, self.vacSpec, self.MaxOrder)
+
+        self.reqSites = None  #[i for i in range(10)]  # All interactions must have at least one of these sites
+        self.VclusExp.generateSiteSpecInteracts(reqSites=self.reqSites)
+
+        self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
+        self.VclusExp.indexVclus2Clus()  # Index vector cluster list to cluster symmetry groups
+        self.VclusExp.indexClustertoVecClus()
+
+        self.Energies = np.random.rand(len(self.VclusExp.SpecClusters))
+        print("Done setting up orthogonal FCC cluster expansion tests.")
