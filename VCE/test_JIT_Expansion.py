@@ -142,10 +142,15 @@ class Test_Jit(unittest.TestCase):
         self.assertTrue(np.allclose(self.Interaction2En, self.JitExpander.Interaction2En))
 
         print("Starting LBAM tests")
-        Wbar_test = np.zeros_like(Wbar, dtype=float)
-        Bbar_test = np.zeros_like(Bbar, dtype=float)
+        # Check the symmetry
+        self.assertEqual(Wbar.shape[0], Wbar.shape[1])
+        for i in range(Wbar.shape[0]):
+            for j in range(i):
+                self.assertEqual(Wbar[i, j], Wbar[j, i])
 
         # Now test the rate expansion by explicitly constructing it
+        Wbar_test = np.zeros_like(Wbar, dtype=float)
+        Bbar_test = np.zeros_like(Bbar, dtype=float)
         for vs1 in tqdm(range(rng), position=0, leave=True, ncols=65):
             for vs2 in range(rng):
                 # Go through all the jumps
@@ -283,7 +288,7 @@ class Test_Jit(unittest.TestCase):
                 self.assertAlmostEqual(Wbar[vs1, vs2], Wbar_test[vs1, vs2], 8,
                                        msg="\n{} {}".format(Wbar[vs1, vs2], Wbar_test[vs1, vs2]))
 
-        self.assertTrue(np.allclose(Bbar, Bbar_test))
+        self.assertTrue(np.allclose(Bbar[:rng], Bbar_test[:rng], rtol=0, atol=1e-8))
 
 class Test_JIT_FCC(Test_Jit):
 
@@ -309,11 +314,12 @@ class Test_JIT_FCC(Test_Jit):
         self.jList = NNList[1:, self.vacsiteInd]
 
         self.clusexp = cluster.makeclusters(self.crys, 1.01 * a0, self.MaxOrder)
+        print("No. of site Cluster symmetry groups: ", len(self.clusexp))
         self.NSpec = 3
         self.vacSpec = vsp
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superFCC, self.clusexp, self.NSpec, self.vacsite,
                                                                  self.vacSpec, self.MaxOrder)
-
+        print("No. of Species Cluster symmetry groups: ", len(self.VclusExp.SpecClusters))
         self.VclusExp.generateSiteSpecInteracts()
 
         self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
@@ -397,11 +403,13 @@ class Test_JIT_FCC_orthogonal(Test_Jit):
         self.jList = NNList[1:, self.vacsiteInd]
 
         self.clusexp = cluster.makeclusters(self.crys, 1.01 * a0, self.MaxOrder)
+        print("No. of site Cluster symmetry groups: ", len(self.clusexp))
+
         self.NSpec = 3
         self.vacSpec = vsp
         self.VclusExp = Cluster_Expansion.VectorClusterExpansion(self.superFCC, self.clusexp, self.NSpec, self.vacsite,
                                                                  self.vacSpec, self.MaxOrder)
-
+        print("No. of Species Cluster symmetry groups: ",len(self.VclusExp.SpecClusters))
         self.VclusExp.generateSiteSpecInteracts()
 
         self.VclusExp.genVecClustBasis(self.VclusExp.SpecClusters)
