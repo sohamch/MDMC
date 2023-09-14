@@ -86,9 +86,9 @@ class VectorClusterExpansion(object):
 
                     allClusts.update(newSymSet)
                     newList = list(newSymSet)
-                    # self.SpecClust2Clus[len(symClusterList)] = clSetInd
                     symClusterList.append(newList)
 
+        # Check that every cluster appears only once.
         AllAfterSym = [cl for clList in symClusterList for cl in clList]
         assert set(AllAfterSym) == allClusts
 
