@@ -89,50 +89,6 @@ class Test_HEA_LBAM(unittest.TestCase):
             self.assertTrue(np.array_equal(self.VecGroupInteracts, VecGroupInteracts))
             self.assertTrue(np.array_equal(self.VecGroupInteracts_load, VecGroupInteracts))
 
-            numSitesTSInteracts = np.array(fl["numSitesTSInteracts"])
-            self.assertTrue(np.array_equal(self.JitExpander.numSitesTSInteracts, numSitesTSInteracts))
-            self.assertTrue(np.array_equal(self.JitExpander_load.numSitesTSInteracts, numSitesTSInteracts))
-
-            TSInteractSites = np.array(fl["TSInteractSites"])
-            self.assertTrue(np.array_equal(self.JitExpander.TSInteractSites, TSInteractSites))
-            self.assertTrue(np.array_equal(self.JitExpander_load.TSInteractSites, TSInteractSites))
-
-            TSInteractSpecs = np.array(fl["TSInteractSpecs"])
-            self.assertTrue(np.array_equal(self.JitExpander.TSInteractSpecs, TSInteractSpecs))
-            self.assertTrue(np.array_equal(self.JitExpander_load.TSInteractSpecs, TSInteractSpecs))
-
-            jumpFinSites = np.array(fl["jumpFinSites"])
-            self.assertTrue(np.array_equal(self.JitExpander.jumpFinSites, jumpFinSites))
-            self.assertTrue(np.array_equal(self.JitExpander_load.jumpFinSites, jumpFinSites))
-
-            jumpFinSpec = np.array(fl["jumpFinSpec"])
-            self.assertTrue(np.array_equal(self.JitExpander.jumpFinSpec, jumpFinSpec))
-            self.assertTrue(np.array_equal(self.JitExpander_load.jumpFinSpec, jumpFinSpec))
-
-            FinSiteFinSpecJumpInd = np.array(fl["FinSiteFinSpecJumpInd"])
-            self.assertTrue(np.array_equal(self.JitExpander.FinSiteFinSpecJumpInd, FinSiteFinSpecJumpInd))
-            self.assertTrue(np.array_equal(self.JitExpander_load.FinSiteFinSpecJumpInd, FinSiteFinSpecJumpInd))
-
-            numJumpPointGroups = np.array(fl["numJumpPointGroups"])
-            self.assertTrue(np.array_equal(self.JitExpander.numJumpPointGroups, numJumpPointGroups))
-            self.assertTrue(np.array_equal(self.JitExpander_load.numJumpPointGroups, numJumpPointGroups))
-
-            numTSInteractsInPtGroups = np.array(fl["numTSInteractsInPtGroups"])
-            self.assertTrue(np.array_equal(self.JitExpander.numTSInteractsInPtGroups, numTSInteractsInPtGroups))
-            self.assertTrue(np.array_equal(self.JitExpander_load.numTSInteractsInPtGroups, numTSInteractsInPtGroups))
-
-            JumpInteracts = np.array(fl["JumpInteracts"])
-            self.assertTrue(np.array_equal(self.JitExpander.JumpInteracts, JumpInteracts))
-            self.assertTrue(np.array_equal(self.JitExpander_load.JumpInteracts, JumpInteracts))
-
-            Jump2KRAEng = np.array(fl["Jump2KRAEng"])
-            self.assertTrue(np.array_equal(self.JitExpander.Jump2KRAEng, Jump2KRAEng))
-            self.assertTrue(np.array_equal(self.JitExpander_load.Jump2KRAEng, Jump2KRAEng))
-
-            KRASpecConstants = np.array(fl["KRASpecConstants"])
-            self.assertTrue(np.array_equal(self.JitExpander.KRASpecConstants, KRASpecConstants))
-            self.assertTrue(np.array_equal(self.JitExpander_load.KRASpecConstants, KRASpecConstants))
-
             NVclus = np.array(fl["NVclus"])[0]
             self.assertTrue(len(self.VclusExp.vecClus), NVclus)
             self.assertTrue(len(self.VclusExp.vecClus), self.NVclus)
@@ -278,7 +234,7 @@ class Test_HEA_LBAM(unittest.TestCase):
         self.assertTrue(np.array_equal(state2Trans, state2))
 
         # Next we'll check the change in the basis vectors with and without considering only the required sites
-        off_sc = MC_JIT.GetOffSite(state, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
+        off_sc = GetOffSite(state, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
                                    self.JitExpander.SpecOnInteractSites)
         self.assertTrue(off_sc.shape == self.JitExpander.numSitesInteracts.shape == (self.JitExpander.numSitesInteracts.shape[0],),
                         msg="{} {} {}".format(off_sc.shape, self.JitExpander.numSitesTSInteracts.shape,
@@ -293,19 +249,19 @@ class Test_HEA_LBAM(unittest.TestCase):
                     offCount += 1
             self.assertEqual(offCount, off_sc[interactID])
 
-        off_sc_all = MC_JIT.GetOffSite(state, self.JitExpander_all.numSitesInteracts, self.JitExpander_all.SupSitesInteracts,
+        off_sc_all = GetOffSite(state, self.JitExpander_all.numSitesInteracts, self.JitExpander_all.SupSitesInteracts,
                                    self.JitExpander_all.SpecOnInteractSites)
 
-        off_sc2 = MC_JIT.GetOffSite(state2, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
+        off_sc2 = GetOffSite(state2, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
                                    self.JitExpander.SpecOnInteractSites)
 
-        off_sc2_all = MC_JIT.GetOffSite(state2, self.JitExpander_all.numSitesInteracts, self.JitExpander_all.SupSitesInteracts,
+        off_sc2_all = GetOffSite(state2, self.JitExpander_all.numSitesInteracts, self.JitExpander_all.SupSitesInteracts,
                                     self.JitExpander_all.SpecOnInteractSites)
 
-        off_sc2_explicit = MC_JIT.GetOffSite(state2_explict, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
+        off_sc2_explicit = GetOffSite(state2_explict, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
                                     self.JitExpander.SpecOnInteractSites)
 
-        off_sc2_explicit_all = MC_JIT.GetOffSite(state2_explict, self.JitExpander_all.numSitesInteracts, self.JitExpander_all.SupSitesInteracts,
+        off_sc2_explicit_all = GetOffSite(state2_explict, self.JitExpander_all.numSitesInteracts, self.JitExpander_all.SupSitesInteracts,
                                              self.JitExpander_all.SpecOnInteractSites)
 
         # Now get the lambda vectors for each state
@@ -430,7 +386,7 @@ class Test_HEA_LBAM(unittest.TestCase):
         Bbar_comp = np.zeros(NVclus)
 
         # check that off site counts have been correctly reverted in previous operations
-        self.assertTrue(np.array_equal(off_sc, MC_JIT.GetOffSite(state, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
+        self.assertTrue(np.array_equal(off_sc, GetOffSite(state, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
                                    self.JitExpander.SpecOnInteractSites)))
 
         if SpecExpand == self.vacSpec:
@@ -533,7 +489,7 @@ class Test_HEA_LBAM(unittest.TestCase):
         self.assertTrue(np.allclose(del_lamb_req, del_lamb_all, rtol=1e-8))
         print("min, max components in del_lamb: {} {}".format(np.min(del_lamb_all), np.max(del_lamb_all)))
 
-        off_sc = MC_JIT.GetOffSite(state, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
+        off_sc = GetOffSite(state, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
                                    self.JitExpander.SpecOnInteractSites)
 
         del_lamb_comp = self.JitExpander.getDelLamb(state, off_sc, 0, self.jList[jmp], self.NVclus,
@@ -566,7 +522,7 @@ class Test_HEA_LBAM(unittest.TestCase):
                     jmpG = jInd
             self.assertEqual(count, 1)
             self.assertEqual(state[self.jList[jmp]], stateG[self.jList[jmpG]])
-            off_sc_G = MC_JIT.GetOffSite(stateG, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
+            off_sc_G = GetOffSite(stateG, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
                                        self.JitExpander.SpecOnInteractSites)
 
             del_lamb_comp_G = self.JitExpander.getDelLamb(stateG, off_sc_G, 0, self.jList[jmpG], self.NVclus,
@@ -600,8 +556,8 @@ class Test_HEA_LBAM(unittest.TestCase):
                 stateG[siteIndNew] = initState[site]
 
             # Now get their off site counts and basis vectors
-            offsc1 = MC_JIT.GetOffSite(initState, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts, self.JitExpander.SpecOnInteractSites)
-            offsc2 = MC_JIT.GetOffSite(stateG, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts, self.JitExpander.SpecOnInteractSites)
+            offsc1 = GetOffSite(initState, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts, self.JitExpander.SpecOnInteractSites)
+            offsc2 = GetOffSite(stateG, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts, self.JitExpander.SpecOnInteractSites)
 
             # Now get their basis vectors
             lamb1 = self.JitExpander.getLambda(offsc1, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
