@@ -446,20 +446,20 @@ class JITExpanderClass(object):
 
         return del_lamb
 
-    def Expand(self, state, ijList, dxList, spec, OffSiteCount,
+    def Expand(self, state, jList, dxList, spec, OffSiteCount,
                numVecsInteracts, VecGroupInteracts, VecsInteracts,
                lenVecClus, vacSiteInd, RateList):
 
-        del_lamb_mat = np.zeros((lenVecClus, lenVecClus, ijList.shape[0]))
-        delxDotdelLamb = np.zeros((lenVecClus, ijList.shape[0]))
+        del_lamb_mat = np.zeros((lenVecClus, lenVecClus, jList.shape[0]))
+        delxDotdelLamb = np.zeros((lenVecClus, jList.shape[0]))
         ratelist = RateList.copy()
 
         siteA, specA = vacSiteInd, state[vacSiteInd]
         # go through all the transition
 
-        for jumpInd in range(ijList.shape[0]):
+        for jumpInd in range(jList.shape[0]):
             # Get the transition site and species
-            siteB, specB = ijList[jumpInd], state[ijList[jumpInd]]
+            siteB, specB = jList[jumpInd], state[jList[jumpInd]]
 
             # next, calculate the energy and basis function change due to site swapping
             del_lamb = self.DoSwapUpdate(state, siteA, siteB, lenVecClus, OffSiteCount,
