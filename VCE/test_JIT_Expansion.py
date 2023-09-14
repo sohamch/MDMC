@@ -106,7 +106,6 @@ class Test_Jit(unittest.TestCase):
         offscjit = GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
         state = initState.copy()
         spec = 1
-        beta = 1.0
 
         # self, state, jList, dxList, spec, OffSiteCount,
         # numVecsInteracts, VecGroupInteracts, VecsInteracts,
