@@ -93,10 +93,6 @@ def makeVClusExp(superCell, jList, clustCut, MaxOrder, NSpec, vacsite, vacSpec, 
     crys = superCell.crys
     clusexp = cluster.makeclusters(crys, clustCut, MaxOrder)
 
-    # We'll create a dummy KRA expander anyway since the MC_JIT module is designed to accept transition arrays
-    # However, this dummy KEA expander will never get used
-    # TODO: Remove KRA Expander or make it optional from JIT code for problems where it's not needed.
-
     # sup, clusexp, NSpec, vacSite, vacSpec, maxorder, Nvac = 1, chemExpand = 0, MadeSpecClusts = None, zeroClusts = True
     VclusExp = Cluster_Expansion.VectorClusterExpansion(superCell, clusexp, NSpec, vacsite, vacSpec, MaxOrder)
 
