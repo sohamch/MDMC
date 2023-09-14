@@ -8,7 +8,6 @@ from onsager import crystal, supercell, cluster
 import numpy as np
 import scipy.linalg as spla
 import Cluster_Expansion
-import MC_JIT
 import pickle
 import h5py
 import unittest
@@ -19,11 +18,11 @@ cp = "../../CrysDat_FCC/"
 class Test_HEA_LBAM(unittest.TestCase):
 
     def setUp(self):
-        self.DataPath = ("testData_HEA.h5")
-        self.CrysDatPath = (cp + "CrystData.h5")
-        self.a0 = 3.59
+        self.DataPath = ("testData_HEA_MEAM_orthogonal.h5")
+        self.CrysDatPath = (cp + "CrystData_ortho_5_cube.h5")
+        self.a0 = 3.595
         self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
-        self.jList, self.dxList, self.jumpNewIndices, self.superCell, self.jnet, self.vacsite, self.vacsiteInd =\
+        self.jList, self.dxList, self.jumpNewIndices, self.superCell, self.vacsite, self.vacsiteInd =\
             Load_crys_Data(self.CrysDatPath)
 
         self.AllSpecs = np.unique(self.state1List[0])
@@ -38,45 +37,45 @@ class Test_HEA_LBAM(unittest.TestCase):
         self.ClustCut = 1.01
         self.MaxOrder = 2
 
-        self.VclusExp = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
+        self.VclusExp = makeVClusExp(self.superCell, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=False)
 
-        self.MCJit, self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.NVclus = CreateJitCalculator(self.VclusExp, self.NSpec,
+        self.JitExpander, self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.NVclus = CreateJitCalculator(self.VclusExp, self.NSpec,
                                                                                                 scratch=True,
                                                                                                 save=True)
 
         # Now re-make the same calculator by loading from saved h5 file
-        self.MCJit_load, self.numVecsInteracts_load, self.VecsInteracts_load, self.VecGroupInteracts_load,\
+        self.JitExpander_load, self.numVecsInteracts_load, self.VecsInteracts_load, self.VecGroupInteracts_load,\
         self.NVclus_load = CreateJitCalculator(self.VclusExp, self.NSpec, scratch=False)
 
-        self.VclusExp_all = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
+        self.VclusExp_all = makeVClusExp(self.superCell, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=True)
 
-        self.MCJit_all, self.numVecsInteracts_all, self.VecsInteracts_all, self.VecGroupInteracts_all,\
+        self.JitExpander_all, self.numVecsInteracts_all, self.VecsInteracts_all, self.VecGroupInteracts_all,\
         self.NVclus_all = CreateJitCalculator(self.VclusExp_all, self.NSpec, scratch=True, save=False)
 
     def test_CreateJitCalculator(self):
         # This is to check whether the Jit arrays have been properly stored
         with h5py.File("JitArrays.h5", "r") as fl:
             numSitesInteracts = np.array(fl["numSitesInteracts"])
-            self.assertTrue(np.array_equal(self.MCJit.numSitesInteracts, numSitesInteracts))
-            self.assertTrue(np.array_equal(self.MCJit_load.numSitesInteracts, numSitesInteracts))
+            self.assertTrue(np.array_equal(self.JitExpander.numSitesInteracts, numSitesInteracts))
+            self.assertTrue(np.array_equal(self.JitExpander_load.numSitesInteracts, numSitesInteracts))
 
             SupSitesInteracts = np.array(fl["SupSitesInteracts"])
-            self.assertTrue(np.array_equal(self.MCJit.SupSitesInteracts, SupSitesInteracts))
-            self.assertTrue(np.array_equal(self.MCJit_load.SupSitesInteracts, SupSitesInteracts))
+            self.assertTrue(np.array_equal(self.JitExpander.SupSitesInteracts, SupSitesInteracts))
+            self.assertTrue(np.array_equal(self.JitExpander_load.SupSitesInteracts, SupSitesInteracts))
 
             SpecOnInteractSites = np.array(fl["SpecOnInteractSites"])
-            self.assertTrue(np.array_equal(self.MCJit.SpecOnInteractSites, SpecOnInteractSites))
-            self.assertTrue(np.array_equal(self.MCJit_load.SpecOnInteractSites, SpecOnInteractSites))
+            self.assertTrue(np.array_equal(self.JitExpander.SpecOnInteractSites, SpecOnInteractSites))
+            self.assertTrue(np.array_equal(self.JitExpander_load.SpecOnInteractSites, SpecOnInteractSites))
 
             numInteractsSiteSpec = np.array(fl["numInteractsSiteSpec"])
-            self.assertTrue(np.array_equal(self.MCJit.numInteractsSiteSpec, numInteractsSiteSpec))
-            self.assertTrue(np.array_equal(self.MCJit_load.numInteractsSiteSpec, numInteractsSiteSpec))
+            self.assertTrue(np.array_equal(self.JitExpander.numInteractsSiteSpec, numInteractsSiteSpec))
+            self.assertTrue(np.array_equal(self.JitExpander_load.numInteractsSiteSpec, numInteractsSiteSpec))
 
             SiteSpecInterArray = np.array(fl["SiteSpecInterArray"])
-            self.assertTrue(np.array_equal(self.MCJit.SiteSpecInterArray, SiteSpecInterArray))
-            self.assertTrue(np.array_equal(self.MCJit_load.SiteSpecInterArray, SiteSpecInterArray))
+            self.assertTrue(np.array_equal(self.JitExpander.SiteSpecInterArray, SiteSpecInterArray))
+            self.assertTrue(np.array_equal(self.JitExpander_load.SiteSpecInterArray, SiteSpecInterArray))
 
             numVecsInteracts = np.array(fl["numVecsInteracts"])
             self.assertTrue(np.array_equal(self.numVecsInteracts, numVecsInteracts))
@@ -91,48 +90,48 @@ class Test_HEA_LBAM(unittest.TestCase):
             self.assertTrue(np.array_equal(self.VecGroupInteracts_load, VecGroupInteracts))
 
             numSitesTSInteracts = np.array(fl["numSitesTSInteracts"])
-            self.assertTrue(np.array_equal(self.MCJit.numSitesTSInteracts, numSitesTSInteracts))
-            self.assertTrue(np.array_equal(self.MCJit_load.numSitesTSInteracts, numSitesTSInteracts))
+            self.assertTrue(np.array_equal(self.JitExpander.numSitesTSInteracts, numSitesTSInteracts))
+            self.assertTrue(np.array_equal(self.JitExpander_load.numSitesTSInteracts, numSitesTSInteracts))
 
             TSInteractSites = np.array(fl["TSInteractSites"])
-            self.assertTrue(np.array_equal(self.MCJit.TSInteractSites, TSInteractSites))
-            self.assertTrue(np.array_equal(self.MCJit_load.TSInteractSites, TSInteractSites))
+            self.assertTrue(np.array_equal(self.JitExpander.TSInteractSites, TSInteractSites))
+            self.assertTrue(np.array_equal(self.JitExpander_load.TSInteractSites, TSInteractSites))
 
             TSInteractSpecs = np.array(fl["TSInteractSpecs"])
-            self.assertTrue(np.array_equal(self.MCJit.TSInteractSpecs, TSInteractSpecs))
-            self.assertTrue(np.array_equal(self.MCJit_load.TSInteractSpecs, TSInteractSpecs))
+            self.assertTrue(np.array_equal(self.JitExpander.TSInteractSpecs, TSInteractSpecs))
+            self.assertTrue(np.array_equal(self.JitExpander_load.TSInteractSpecs, TSInteractSpecs))
 
             jumpFinSites = np.array(fl["jumpFinSites"])
-            self.assertTrue(np.array_equal(self.MCJit.jumpFinSites, jumpFinSites))
-            self.assertTrue(np.array_equal(self.MCJit_load.jumpFinSites, jumpFinSites))
+            self.assertTrue(np.array_equal(self.JitExpander.jumpFinSites, jumpFinSites))
+            self.assertTrue(np.array_equal(self.JitExpander_load.jumpFinSites, jumpFinSites))
 
             jumpFinSpec = np.array(fl["jumpFinSpec"])
-            self.assertTrue(np.array_equal(self.MCJit.jumpFinSpec, jumpFinSpec))
-            self.assertTrue(np.array_equal(self.MCJit_load.jumpFinSpec, jumpFinSpec))
+            self.assertTrue(np.array_equal(self.JitExpander.jumpFinSpec, jumpFinSpec))
+            self.assertTrue(np.array_equal(self.JitExpander_load.jumpFinSpec, jumpFinSpec))
 
             FinSiteFinSpecJumpInd = np.array(fl["FinSiteFinSpecJumpInd"])
-            self.assertTrue(np.array_equal(self.MCJit.FinSiteFinSpecJumpInd, FinSiteFinSpecJumpInd))
-            self.assertTrue(np.array_equal(self.MCJit_load.FinSiteFinSpecJumpInd, FinSiteFinSpecJumpInd))
+            self.assertTrue(np.array_equal(self.JitExpander.FinSiteFinSpecJumpInd, FinSiteFinSpecJumpInd))
+            self.assertTrue(np.array_equal(self.JitExpander_load.FinSiteFinSpecJumpInd, FinSiteFinSpecJumpInd))
 
             numJumpPointGroups = np.array(fl["numJumpPointGroups"])
-            self.assertTrue(np.array_equal(self.MCJit.numJumpPointGroups, numJumpPointGroups))
-            self.assertTrue(np.array_equal(self.MCJit_load.numJumpPointGroups, numJumpPointGroups))
+            self.assertTrue(np.array_equal(self.JitExpander.numJumpPointGroups, numJumpPointGroups))
+            self.assertTrue(np.array_equal(self.JitExpander_load.numJumpPointGroups, numJumpPointGroups))
 
             numTSInteractsInPtGroups = np.array(fl["numTSInteractsInPtGroups"])
-            self.assertTrue(np.array_equal(self.MCJit.numTSInteractsInPtGroups, numTSInteractsInPtGroups))
-            self.assertTrue(np.array_equal(self.MCJit_load.numTSInteractsInPtGroups, numTSInteractsInPtGroups))
+            self.assertTrue(np.array_equal(self.JitExpander.numTSInteractsInPtGroups, numTSInteractsInPtGroups))
+            self.assertTrue(np.array_equal(self.JitExpander_load.numTSInteractsInPtGroups, numTSInteractsInPtGroups))
 
             JumpInteracts = np.array(fl["JumpInteracts"])
-            self.assertTrue(np.array_equal(self.MCJit.JumpInteracts, JumpInteracts))
-            self.assertTrue(np.array_equal(self.MCJit_load.JumpInteracts, JumpInteracts))
+            self.assertTrue(np.array_equal(self.JitExpander.JumpInteracts, JumpInteracts))
+            self.assertTrue(np.array_equal(self.JitExpander_load.JumpInteracts, JumpInteracts))
 
             Jump2KRAEng = np.array(fl["Jump2KRAEng"])
-            self.assertTrue(np.array_equal(self.MCJit.Jump2KRAEng, Jump2KRAEng))
-            self.assertTrue(np.array_equal(self.MCJit_load.Jump2KRAEng, Jump2KRAEng))
+            self.assertTrue(np.array_equal(self.JitExpander.Jump2KRAEng, Jump2KRAEng))
+            self.assertTrue(np.array_equal(self.JitExpander_load.Jump2KRAEng, Jump2KRAEng))
 
             KRASpecConstants = np.array(fl["KRASpecConstants"])
-            self.assertTrue(np.array_equal(self.MCJit.KRASpecConstants, KRASpecConstants))
-            self.assertTrue(np.array_equal(self.MCJit_load.KRASpecConstants, KRASpecConstants))
+            self.assertTrue(np.array_equal(self.JitExpander.KRASpecConstants, KRASpecConstants))
+            self.assertTrue(np.array_equal(self.JitExpander_load.KRASpecConstants, KRASpecConstants))
 
             NVclus = np.array(fl["NVclus"])[0]
             self.assertTrue(len(self.VclusExp.vecClus), NVclus)
@@ -154,7 +153,7 @@ class Test_HEA_LBAM(unittest.TestCase):
         etaBar = np.random.rand(self.NVclus)
 
         L, Lsamps = Calculate_L(stateList, self.SpecExpand, self.vacSpec, rateList, dispList, jumpSelects,
-                    self.jList, self.dxList * self.a0, self.vacsiteInd, self.NVclus, self.MCJit, etaBar, 0, 10,
+                    self.jList, self.dxList * self.a0, self.vacsiteInd, self.NVclus, self.JitExpander, etaBar, 0, 10,
                     self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts)
 
         self.assertAlmostEqual(np.sum(Lsamps) / 10, L, places=8)
@@ -279,42 +278,42 @@ class Test_HEA_LBAM(unittest.TestCase):
         self.assertTrue(np.array_equal(state2Trans, state2))
 
         # Next we'll check the change in the basis vectors with and without considering only the required sites
-        off_sc = MC_JIT.GetOffSite(state, self.MCJit.numSitesInteracts, self.MCJit.SupSitesInteracts,
-                                   self.MCJit.SpecOnInteractSites)
-        self.assertTrue(off_sc.shape == self.MCJit.numSitesInteracts.shape == (self.MCJit.numSitesInteracts.shape[0],),
-                        msg="{} {} {}".format(off_sc.shape, self.MCJit.numSitesTSInteracts.shape,
-                                              (self.MCJit.numSitesInteracts.shape[0],)))
+        off_sc = MC_JIT.GetOffSite(state, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
+                                   self.JitExpander.SpecOnInteractSites)
+        self.assertTrue(off_sc.shape == self.JitExpander.numSitesInteracts.shape == (self.JitExpander.numSitesInteracts.shape[0],),
+                        msg="{} {} {}".format(off_sc.shape, self.JitExpander.numSitesTSInteracts.shape,
+                                              (self.JitExpander.numSitesInteracts.shape[0],)))
         # check off site count
-        for interactID in range(self.MCJit.numSitesInteracts.shape[0]):
+        for interactID in range(self.JitExpander.numSitesInteracts.shape[0]):
             offCount = 0
-            for IntSiteInd in range(self.MCJit.numSitesInteracts[interactID]):
-                supSite = self.MCJit.SupSitesInteracts[interactID, IntSiteInd]
-                sp = self.MCJit.SpecOnInteractSites[interactID, IntSiteInd]
+            for IntSiteInd in range(self.JitExpander.numSitesInteracts[interactID]):
+                supSite = self.JitExpander.SupSitesInteracts[interactID, IntSiteInd]
+                sp = self.JitExpander.SpecOnInteractSites[interactID, IntSiteInd]
                 if state[supSite] != sp:
                     offCount += 1
             self.assertEqual(offCount, off_sc[interactID])
 
-        off_sc_all = MC_JIT.GetOffSite(state, self.MCJit_all.numSitesInteracts, self.MCJit_all.SupSitesInteracts,
-                                   self.MCJit_all.SpecOnInteractSites)
+        off_sc_all = MC_JIT.GetOffSite(state, self.JitExpander_all.numSitesInteracts, self.JitExpander_all.SupSitesInteracts,
+                                   self.JitExpander_all.SpecOnInteractSites)
 
-        off_sc2 = MC_JIT.GetOffSite(state2, self.MCJit.numSitesInteracts, self.MCJit.SupSitesInteracts,
-                                   self.MCJit.SpecOnInteractSites)
+        off_sc2 = MC_JIT.GetOffSite(state2, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
+                                   self.JitExpander.SpecOnInteractSites)
 
-        off_sc2_all = MC_JIT.GetOffSite(state2, self.MCJit_all.numSitesInteracts, self.MCJit_all.SupSitesInteracts,
-                                    self.MCJit_all.SpecOnInteractSites)
+        off_sc2_all = MC_JIT.GetOffSite(state2, self.JitExpander_all.numSitesInteracts, self.JitExpander_all.SupSitesInteracts,
+                                    self.JitExpander_all.SpecOnInteractSites)
 
-        off_sc2_explicit = MC_JIT.GetOffSite(state2_explict, self.MCJit.numSitesInteracts, self.MCJit.SupSitesInteracts,
-                                    self.MCJit.SpecOnInteractSites)
+        off_sc2_explicit = MC_JIT.GetOffSite(state2_explict, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
+                                    self.JitExpander.SpecOnInteractSites)
 
-        off_sc2_explicit_all = MC_JIT.GetOffSite(state2_explict, self.MCJit_all.numSitesInteracts, self.MCJit_all.SupSitesInteracts,
-                                             self.MCJit_all.SpecOnInteractSites)
+        off_sc2_explicit_all = MC_JIT.GetOffSite(state2_explict, self.JitExpander_all.numSitesInteracts, self.JitExpander_all.SupSitesInteracts,
+                                             self.JitExpander_all.SpecOnInteractSites)
 
         # Now get the lambda vectors for each state
         lamb1 = np.zeros((NVclus, 3))
         lamb2 = np.zeros((NVclus, 3))
         lamb2_explicit = np.zeros((NVclus, 3))
 
-        assert self.numVecsInteracts.shape[0] == self.MCJit.numSitesInteracts.shape[0]
+        assert self.numVecsInteracts.shape[0] == self.JitExpander.numSitesInteracts.shape[0]
 
         for interactID in range(self.numVecsInteracts.shape[0]):
             if off_sc[interactID] == 0:
@@ -344,7 +343,7 @@ class Test_HEA_LBAM(unittest.TestCase):
         lamb2_all = np.zeros((self.NVclus_all, 3))
         lamb2_explicit_all = np.zeros((self.NVclus_all, 3))
 
-        assert self.numVecsInteracts_all.shape[0] == self.MCJit_all.numSitesInteracts.shape[0]
+        assert self.numVecsInteracts_all.shape[0] == self.JitExpander_all.numSitesInteracts.shape[0]
         for interactID in range(self.numVecsInteracts_all.shape[0]):
             if off_sc_all[interactID] == 0:
                 numVecs = self.numVecsInteracts_all[interactID]
@@ -375,25 +374,25 @@ class Test_HEA_LBAM(unittest.TestCase):
         self.assertTrue(np.allclose(del_lamb, del_lamb_all_interacts),
                         msg="\n{} \n {}".format(del_lamb[:5], del_lamb_all_interacts[:5]))
 
-        lamb1_comp = self.MCJit.getLambda(off_sc, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
+        lamb1_comp = self.JitExpander.getLambda(off_sc, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
                                              self.VecsInteracts)
 
         self.assertTrue(np.allclose(lamb1_comp, lamb1))
 
-        lamb2_comp = self.MCJit.getLambda(off_sc2, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
+        lamb2_comp = self.JitExpander.getLambda(off_sc2, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
                                      self.VecsInteracts)
 
         self.assertTrue(np.allclose(lamb2_comp, lamb2))
 
-        _, del_lamb_comp = self.MCJit.DoSwapUpdate(state, 0, self.jList[jumpSelects[0]], NVclus, off_sc,
+        _, del_lamb_comp = self.JitExpander.DoSwapUpdate(state, 0, self.jList[jumpSelects[0]], NVclus, off_sc,
                                         self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts)
 
         self.assertTrue(np.array_equal(off_sc, off_sc2_explicit))
 
-        self.MCJit.revert(off_sc, state, 0, self.jList[jumpSelects[0]])
+        self.JitExpander.revert(off_sc, state, 0, self.jList[jumpSelects[0]])
 
         # check the del_lamb function
-        del_lamb_comp_2 = self.MCJit.getDelLamb(state, off_sc, 0, self.jList[jumpSelects[0]], self.NVclus,
+        del_lamb_comp_2 = self.JitExpander.getDelLamb(state, off_sc, 0, self.jList[jumpSelects[0]], self.NVclus,
                    self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts)
 
         self.assertTrue(np.allclose(del_lamb_comp, del_lamb), msg="\n{} \n {}".format(del_lamb_comp[:5], del_lamb[:5]))
@@ -402,7 +401,7 @@ class Test_HEA_LBAM(unittest.TestCase):
         # Try with single jump dataset first
         Wbar, Bbar, etaBar, offscTime, expandTime = Expand(1073, stateList, 0, 1, self.jList,
                                                                  self.dxList, AllJumpRates, jumpSelects, dispList, rateList,
-                                                                 SpecExpand, self.MCJit, NVclus,
+                                                                 SpecExpand, self.JitExpander, NVclus,
                                                                  self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts,
                                                                  aj=False)
 
@@ -423,7 +422,7 @@ class Test_HEA_LBAM(unittest.TestCase):
         print(a0)
         Wbar, Bbar, etaBar, offscTime, expandTime = Expand(1073, stateList, self.vacsiteInd, 1, self.jList,
                                                                  self.dxList * a0, AllJumpRates, jumpSelects, dispList, rateList,
-                                                                 SpecExpand, self.MCJit, NVclus,
+                                                                 SpecExpand, self.JitExpander, NVclus,
                                                                  self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts,
                                                                  aj=True)
 
@@ -431,14 +430,14 @@ class Test_HEA_LBAM(unittest.TestCase):
         Bbar_comp = np.zeros(NVclus)
 
         # check that off site counts have been correctly reverted in previous operations
-        self.assertTrue(np.array_equal(off_sc, MC_JIT.GetOffSite(state, self.MCJit.numSitesInteracts, self.MCJit.SupSitesInteracts,
-                                   self.MCJit.SpecOnInteractSites)))
+        self.assertTrue(np.array_equal(off_sc, MC_JIT.GetOffSite(state, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
+                                   self.JitExpander.SpecOnInteractSites)))
 
         if SpecExpand == self.vacSpec:
             print("Testing vacancy")
 
         for jmp in range(self.dxList.shape[0]):
-            del_lamb = self.MCJit.getDelLamb(state, off_sc, 0, self.jList[jmp], self.NVclus,
+            del_lamb = self.JitExpander.getDelLamb(state, off_sc, 0, self.jList[jmp], self.NVclus,
                                                     self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts)
 
             for l1 in range(NVclus):
@@ -534,10 +533,10 @@ class Test_HEA_LBAM(unittest.TestCase):
         self.assertTrue(np.allclose(del_lamb_req, del_lamb_all, rtol=1e-8))
         print("min, max components in del_lamb: {} {}".format(np.min(del_lamb_all), np.max(del_lamb_all)))
 
-        off_sc = MC_JIT.GetOffSite(state, self.MCJit.numSitesInteracts, self.MCJit.SupSitesInteracts,
-                                   self.MCJit.SpecOnInteractSites)
+        off_sc = MC_JIT.GetOffSite(state, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
+                                   self.JitExpander.SpecOnInteractSites)
 
-        del_lamb_comp = self.MCJit.getDelLamb(state, off_sc, 0, self.jList[jmp], self.NVclus,
+        del_lamb_comp = self.JitExpander.getDelLamb(state, off_sc, 0, self.jList[jmp], self.NVclus,
                    self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts)
 
         self.assertTrue(np.allclose(del_lamb_comp, del_lamb_all, rtol=1e-8), msg="{} \n\n {}".format(del_lamb_comp, del_lamb_all))
@@ -567,10 +566,10 @@ class Test_HEA_LBAM(unittest.TestCase):
                     jmpG = jInd
             self.assertEqual(count, 1)
             self.assertEqual(state[self.jList[jmp]], stateG[self.jList[jmpG]])
-            off_sc_G = MC_JIT.GetOffSite(stateG, self.MCJit.numSitesInteracts, self.MCJit.SupSitesInteracts,
-                                       self.MCJit.SpecOnInteractSites)
+            off_sc_G = MC_JIT.GetOffSite(stateG, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
+                                       self.JitExpander.SpecOnInteractSites)
 
-            del_lamb_comp_G = self.MCJit.getDelLamb(stateG, off_sc_G, 0, self.jList[jmpG], self.NVclus,
+            del_lamb_comp_G = self.JitExpander.getDelLamb(stateG, off_sc_G, 0, self.jList[jmpG], self.NVclus,
                                                   self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts)
 
             del_lamb_rot = np.dot(g.cartrot, del_lamb_comp.T).T
@@ -601,13 +600,13 @@ class Test_HEA_LBAM(unittest.TestCase):
                 stateG[siteIndNew] = initState[site]
 
             # Now get their off site counts and basis vectors
-            offsc1 = MC_JIT.GetOffSite(initState, self.MCJit.numSitesInteracts, self.MCJit.SupSitesInteracts, self.MCJit.SpecOnInteractSites)
-            offsc2 = MC_JIT.GetOffSite(stateG, self.MCJit.numSitesInteracts, self.MCJit.SupSitesInteracts, self.MCJit.SpecOnInteractSites)
+            offsc1 = MC_JIT.GetOffSite(initState, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts, self.JitExpander.SpecOnInteractSites)
+            offsc2 = MC_JIT.GetOffSite(stateG, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts, self.JitExpander.SpecOnInteractSites)
 
             # Now get their basis vectors
-            lamb1 = self.MCJit.getLambda(offsc1, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
+            lamb1 = self.JitExpander.getLambda(offsc1, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
                                                  self.VecsInteracts)
-            lamb2 = self.MCJit.getLambda(offsc2, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
+            lamb2 = self.JitExpander.getLambda(offsc2, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
                                                  self.VecsInteracts)
 
             # Rotate lamb1 by the group operation
@@ -646,18 +645,18 @@ class Test_HEA_LBAM_vac(Test_HEA_LBAM):
         self.VclusExp = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=False)
 
-        self.MCJit, self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.NVclus = CreateJitCalculator(self.VclusExp, self.NSpec,
+        self.JitExpander, self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.NVclus = CreateJitCalculator(self.VclusExp, self.NSpec,
                                                                                                 scratch=True,
                                                                                                 save=True)
 
         # Now re-make the same calculator by loading from saved h5 file
-        self.MCJit_load, self.numVecsInteracts_load, self.VecsInteracts_load, self.VecGroupInteracts_load, \
+        self.JitExpander_load, self.numVecsInteracts_load, self.VecsInteracts_load, self.VecGroupInteracts_load, \
         self.NVclus_load = CreateJitCalculator(self.VclusExp, self.NSpec, scratch=False)
 
         self.VclusExp_all = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=True)
 
-        self.MCJit_all, self.numVecsInteracts_all, self.VecsInteracts_all, self.VecGroupInteracts_all,\
+        self.JitExpander_all, self.numVecsInteracts_all, self.VecsInteracts_all, self.VecGroupInteracts_all,\
         self.NVclus_all = CreateJitCalculator(self.VclusExp_all, self.NSpec, save=False)
 
 class Test_HEA_LBAM_SR2(Test_HEA_LBAM):
@@ -685,17 +684,17 @@ class Test_HEA_LBAM_SR2(Test_HEA_LBAM):
         self.VclusExp = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=False)
 
-        self.MCJit, self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.NVclus = CreateJitCalculator(self.VclusExp, self.NSpec,
+        self.JitExpander, self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.NVclus = CreateJitCalculator(self.VclusExp, self.NSpec,
                                                                                                 scratch=True,
                                                                                                 save=True)
 
         # Now re-make the same calculator by loading from saved h5 file
-        self.MCJit_load, self.numVecsInteracts_load, self.VecsInteracts_load, self.VecGroupInteracts_load,\
+        self.JitExpander_load, self.numVecsInteracts_load, self.VecsInteracts_load, self.VecGroupInteracts_load,\
         self.NVclus_load = CreateJitCalculator(self.VclusExp, self.NSpec, scratch=False)
 
         self.VclusExp_all = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=True)
 
-        self.MCJit_all, self.numVecsInteracts_all, self.VecsInteracts_all, self.VecGroupInteracts_all,\
+        self.JitExpander_all, self.numVecsInteracts_all, self.VecsInteracts_all, self.VecGroupInteracts_all,\
         self.NVclus_all = CreateJitCalculator(self.VclusExp_all, self.NSpec, scratch=True, save=False)
 
