@@ -13,13 +13,27 @@ from onsager import crystal, supercell, cluster
 import numpy as np
 import scipy.linalg as spla
 import Cluster_Expansion
-import MC_JIT
 import pickle
 import h5py
 from tqdm import tqdm
 import argparse
 import gc
+from numba import jit, int64
 import time
+
+@jit(nopython=True)
+def GetOffSite(state, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites):
+    """
+    :param state: State for which to count off sites of interactions
+    :return: OffSiteCount array (N_interaction x 1)
+    """
+    OffSiteCount = np.zeros(numSitesInteracts.shape[0], dtype=int64)
+    for interactIdx in range(numSitesInteracts.shape[0]):
+        for intSiteind in range(numSitesInteracts[interactIdx]):
+            if state[SupSitesInteracts[interactIdx, intSiteind]] != \
+                    SpecOnInteractSites[interactIdx, intSiteind]:
+                OffSiteCount[interactIdx] += 1
+    return OffSiteCount
 
 # Load all the crystal data
 def Load_crys_Data(CrysDatPath):
@@ -28,21 +42,27 @@ def Load_crys_Data(CrysDatPath):
     with h5py.File(CrysDatPath, "r") as fl:
         lattice = np.array(fl["Lattice_basis_vectors"])
         superlatt = np.array(fl["SuperLatt"])
+        try:
+            basis_sites = np.array(fl["basis_sites"])
+            basis = [[b for b in basis_sites]]
+        except KeyError:
+            basis = [[np.array([0., 0., 0.])]]
+
         dxList = np.array(fl["dxList_1nn"])
         NNList = np.array(fl["NNsiteList_sitewise"])
         jumpNewIndices = np.array(fl["JumpSiteIndexPermutation"])
 
-    jList = NNList[1:, 0]
-
-    crys = crystal.Crystal(lattice=lattice, basis=[[np.array([0., 0., 0.])]], chemistry=["A"])
+    crys = crystal.Crystal(lattice=lattice, basis=basis, chemistry=["A"])
     superCell = supercell.ClusterSupercell(crys, superlatt)
 
-    jnet = [[((0, 0), dxList[jInd]) for jInd in range(dxList.shape[0])]]
-
-    vacsite = cluster.ClusterSite(ci=(0, 0), R=np.zeros(3, dtype=int))
-    vacsiteInd = superCell.index(np.zeros(3, dtype=int), (0, 0))[0]
+    dxVac = np.zeros(3)
+    Rvac, civac = crys.cart2pos(dxVac)
+    vacsite = cluster.ClusterSite(ci=civac, R=Rvac)
+    vacsiteInd = superCell.index(Rvac, civac)[0]
     assert vacsiteInd == 0
-    return jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd
+
+    jList = NNList[1:, vacsiteInd]
+    return jList, dxList, jumpNewIndices, superCell, vacsite, vacsiteInd
 
 def Load_Data(DataPath, Perm=False):
     with h5py.File(DataPath, "r") as fl:
@@ -67,7 +87,7 @@ def Load_Data(DataPath, Perm=False):
     return state1List, dispList, rateList, AllJumpRates, jmpSelects
 
 
-def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite, vacSpec, AllInteracts=False):
+def makeVClusExp(superCell, jList, clustCut, MaxOrder, NSpec, vacsite, vacSpec, AllInteracts=False):
 
     print("Creating cluster expansion.")
     crys = superCell.crys
@@ -76,13 +96,9 @@ def makeVClusExp(superCell, jnet, jList, clustCut, MaxOrder, NSpec, vacsite, vac
     # We'll create a dummy KRA expander anyway since the MC_JIT module is designed to accept transition arrays
     # However, this dummy KEA expander will never get used
     # TODO: Remove KRA Expander or make it optional from JIT code for problems where it's not needed.
-    
-    TScombShellRange = 1  # upto 1nn combined shell
-    TSnnRange = 4
-    TScutoff = np.sqrt(2)  # 4th nn cutoff - must be the same as TSnnRange
-    VclusExp = Cluster_Expansion.VectorClusterExpansion(superCell, clusexp, NSpec, vacsite, vacSpec, MaxOrder, TclusExp=True,
-                                                    TScutoff=TScutoff, TScombShellRange=TScombShellRange,
-                                                    TSnnRange=TSnnRange, jumpnetwork=jnet)
+
+    # sup, clusexp, NSpec, vacSite, vacSpec, maxorder, Nvac = 1, chemExpand = 0, MadeSpecClusts = None, zeroClusts = True
+    VclusExp = Cluster_Expansion.VectorClusterExpansion(superCell, clusexp, NSpec, vacsite, vacSpec, MaxOrder)
 
     print("Vacancy species : {}".format(VclusExp.vacSpec))
     vacSiteInd, _ = superCell.index(vacsite.R, vacsite.ci)
@@ -141,17 +157,6 @@ def CreateJitCalculator(VclusExp, NSpec, scratch=True, save=True):
                 fl.create_dataset("VecsInteracts", data=VecsInteracts)
                 fl.create_dataset("VecGroupInteracts", data=VecGroupInteracts)
 
-                fl.create_dataset("numSitesTSInteracts", data=numSitesTSInteracts)
-                fl.create_dataset("TSInteractSites", data=TSInteractSites)
-                fl.create_dataset("TSInteractSpecs", data=TSInteractSpecs)
-                fl.create_dataset("jumpFinSites", data=jumpFinSites)
-                fl.create_dataset("jumpFinSpec", data=jumpFinSpec)
-                fl.create_dataset("FinSiteFinSpecJumpInd", data=FinSiteFinSpecJumpInd)
-                fl.create_dataset("numJumpPointGroups", data=numJumpPointGroups)
-                fl.create_dataset("numTSInteractsInPtGroups", data=numTSInteractsInPtGroups)
-                fl.create_dataset("JumpInteracts", data=JumpInteracts)
-                fl.create_dataset("Jump2KRAEng", data=Jump2KRAEng)
-                fl.create_dataset("KRASpecConstants", data=KRASpecConstants)
                 fl.create_dataset("NVclus", data=np.array([NVclus], dtype=int))
                 fl.create_dataset("vacSpec", data=np.array([vacSpec], dtype=int))
 
@@ -167,48 +172,36 @@ def CreateJitCalculator(VclusExp, NSpec, scratch=True, save=True):
             VecsInteracts = np.array(fl["VecsInteracts"])
             VecGroupInteracts = np.array(fl["VecGroupInteracts"])
 
-            numSitesTSInteracts = np.array(fl["numSitesTSInteracts"])
-            TSInteractSites = np.array(fl["TSInteractSites"])
-            TSInteractSpecs = np.array(fl["TSInteractSpecs"])
-            jumpFinSites = np.array(fl["jumpFinSites"])
-            jumpFinSpec = np.array(fl["jumpFinSpec"])
-            FinSiteFinSpecJumpInd = np.array(fl["FinSiteFinSpecJumpInd"])
-            numJumpPointGroups = np.array(fl["numJumpPointGroups"])
-            numTSInteractsInPtGroups = np.array(fl["numTSInteractsInPtGroups"])
-            JumpInteracts = np.array(fl["JumpInteracts"])
-            Jump2KRAEng = np.array(fl["Jump2KRAEng"])
-            KRASpecConstants = np.array(fl["KRASpecConstants"])
             NVclus = np.array(fl["NVclus"])[0]
             vacSpec = np.array(fl["vacSpec"])[0]
     
     # Make the MC class
     print("vacancy species: {}".format(vacSpec))
     Interaction2En = np.zeros_like(numSitesInteracts, dtype=float)
-    MCJit = MC_JIT.MCSamplerClass(
+    # vacSpec, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,
+    # Interaction2En, numInteractsSiteSpec, SiteSpecInterArray
+    JitExpander = Cluster_Expansion.JITExpanderClass(
         vacSpec, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En,
-        numInteractsSiteSpec, SiteSpecInterArray,
-        numSitesTSInteracts, TSInteractSites, TSInteractSpecs, jumpFinSites, jumpFinSpec,
-        FinSiteFinSpecJumpInd, numJumpPointGroups, numTSInteractsInPtGroups,
-        JumpInteracts, Jump2KRAEng, KRASpecConstants
+        numInteractsSiteSpec, SiteSpecInterArray
     )
     
-    # The vector expansion data are not explicitly part of MCJit, so we'll return them separately
-    return MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus
+    # The vector expansion data are not explicitly part of JitExpander, so we'll return them separately
+    return JitExpander, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus
 
 
 def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
-           jSelectList, dispSelects, ratesEscape, SpecExpand, MCJit, NVclus,
+           jSelectList, dispSelects, ratesEscape, SpecExpand, JitExpander, NVclus,
            numVecsInteracts, VecsInteracts, VecGroupInteracts, aj, rcond=1e-8):
 
 
     # Get a dummy TS offsite counts
-    TSOffSc = np.zeros(MCJit.numSitesTSInteracts.shape[0], dtype=np.int8)
+    TSOffSc = np.zeros(JitExpander.numSitesTSInteracts.shape[0], dtype=np.int8)
 
     # Then we write the expansion loop
     totalW = np.zeros((NVclus, NVclus))
     totalB = np.zeros(NVclus)
     
-    assert np.all(state1List[:, vacsiteInd] == MCJit.vacSpec)
+    assert np.all(state1List[:, vacsiteInd] == JitExpander.vacSpec)
 
     state1ListCpy = state1List.copy()
 
@@ -223,24 +216,27 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
         state = state1ListCpy[samp]
 
         start = time.time()
-        offsc = MC_JIT.GetOffSite(state, MCJit.numSitesInteracts, MCJit.SupSitesInteracts, MCJit.SpecOnInteractSites)
+        offsc = GetOffSite(state, JitExpander.numSitesInteracts, JitExpander.SupSitesInteracts, JitExpander.SpecOnInteractSites)
         end = time.time()
         offscTime += end - start
 
         start = time.time()
+        # Expand(self, state, jList, dxList, spec, OffSiteCount,
+        #        numVecsInteracts, VecGroupInteracts, VecsInteracts,
+        #        lenVecClus, vacSiteInd, RateList)
         if aj:
-            WBar, bBar, rates_used, _, _ = MCJit.Expand(state, jSiteList, dxList, SpecExpand, offsc,
-                                              TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
-                                              NVclus, 0, vacsiteInd, AllJumpRates[samp])
+            WBar, bBar, rates_used, _, _ = JitExpander.Expand(state, jSiteList, dxList, SpecExpand, offsc,
+                                              numVecsInteracts, VecGroupInteracts, VecsInteracts,
+                                              NVclus, vacsiteInd, AllJumpRates[samp])
 
             assert np.array_equal(state, state1List[samp])  # assert revertions
             assert np.allclose(rates_used, AllJumpRates[samp])
 
         else:
             jList = np.array([jSiteList[jSelectList[samp]]], dtype=int)
-            dxList = np.array([dispSelects[samp, MCJit.vacSpec, :]], dtype=float) # The last one is the vacancy jump
+            dxList = np.array([dispSelects[samp, JitExpander.vacSpec, :]], dtype=float) # The last one is the vacancy jump
             Rate = np.array([ratesEscape[samp]], dtype=float)
-            WBar, bBar, rates_used, _, _ = MCJit.Expand(state, jList, dxList, SpecExpand, offsc,
+            WBar, bBar, rates_used, _, _ = JitExpander.Expand(state, jList, dxList, SpecExpand, offsc,
                                                         TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
                                                         NVclus, 0, vacsiteInd, Rate)
             assert np.array_equal(state, state1List[samp])  # assert revertions
@@ -255,13 +251,6 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
     totalW /= Nsamples
     totalB /= Nsamples
 
-    np.save(RunPath + "Bbar_{}.npy".format(T), totalB)
-
-    np.save(RunPath + "Wbar_{}.npy".format(T), totalW)
-    # save eigvals
-    vals, _ = np.linalg.eigh(totalW)
-    np.save("W_eigs_{}.npy".format(T), vals)
-
     # Compute relaxation expansion
     etaBar, residues, rank, singVals = spla.lstsq(totalW, -totalB, cond=rcond)
     np.save(RunPath + "etabar_{}.npy".format(T), etaBar)
@@ -269,10 +258,9 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
 
     return totalW, totalB, etaBar, offscTime / Nsamples, expandTime / Nsamples
 
-
 # Get the Transport coefficients
 def Calculate_L(state1List, SpecExpand, VacSpec, rateList, dispList, jumpSelects,
-        jList, dxList, vacsiteInd, NVclus, MCJit, etaBar, start, end,
+        jList, dxList, vacsiteInd, NVclus, JitExpander, etaBar, start, end,
         numVecsInteracts, VecGroupInteracts, VecsInteracts):
 
     L = 0.
@@ -282,13 +270,13 @@ def Calculate_L(state1List, SpecExpand, VacSpec, rateList, dispList, jumpSelects
     for samp in tqdm(range(start, end), position=0, leave=True):
         state = state1List[samp]
     
-        offsc = MC_JIT.GetOffSite(state, MCJit.numSitesInteracts, MCJit.SupSitesInteracts, MCJit.SpecOnInteractSites)
+        offsc = GetOffSite(state, JitExpander.numSitesInteracts, JitExpander.SupSitesInteracts, JitExpander.SpecOnInteractSites)
         jSelect = jumpSelects[samp]
         jSite = jList[jSelect]
 
-        assert state[vacsiteInd] == MCJit.vacSpec
+        assert state[vacsiteInd] == JitExpander.vacSpec
 
-        del_lamb = MCJit.getDelLamb(state, offsc, vacsiteInd, jSite, NVclus,
+        del_lamb = JitExpander.getDelLamb(state, offsc, vacsiteInd, jSite, NVclus,
                                     numVecsInteracts, VecGroupInteracts, VecsInteracts)
     
         disp_sp = dispList[samp, SpecExpand, :]
@@ -329,7 +317,7 @@ def main(args):
     SpecExpand = args.SpecExpand
 
     # Load Crystal Data
-    jList, dxList, jumpNewIndices, superCell, jnet, vacsite, vacsiteInd = Load_crys_Data(args.CrysDatPath)
+    jList, dxList, jumpNewIndices, superCell, vacsite, vacsiteInd = Load_crys_Data(args.CrysDatPath)
     
     # Let's find which jump was selected
     a0 = np.linalg.norm(dispList[0, args.VacSpec]) / np.linalg.norm(dxList[0])
@@ -358,7 +346,7 @@ def main(args):
     if args.Scratch:
         # (superCell, jList, clustCut, MaxOrder, NSpec, vacsite, AllInteracts=False):
         print("Generating New cluster expansion with vacancy at {}, {}".format(vacsite.ci, vacsite.R))
-        VclusExp = makeVClusExp(superCell, jnet, jList, args.ClustCut, args.MaxOrder, NSpec, vacsite,
+        VclusExp = makeVClusExp(superCell, jList, args.ClustCut, args.MaxOrder, NSpec, vacsite,
                                 args.VacSpec, AllInteracts=args.AllInteracts)
         if args.SaveCE:
             with open(RunPath+"VclusExp.pkl", "wb") as fl:
@@ -369,7 +357,7 @@ def main(args):
         saveJit = False
 
     # Make MCJIT
-    MCJit, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus = CreateJitCalculator(VclusExp, NSpec,
+    JitExpander, numVecsInteracts, VecsInteracts, VecGroupInteracts, NVclus = CreateJitCalculator(VclusExp, NSpec,
                                                                                             scratch=args.Scratch,
                                                                                             save=saveJit)
     if args.Scratch and saveJit and args.ArrayOnly:
@@ -380,7 +368,7 @@ def main(args):
     if not args.NoExpand:
         print("Expanding.")
         Wbar, Bbar, etaBar, offscTime, expandTime = Expand(args.Temp, state1List, vacsiteInd, args.NTrain, jList, dxList*a0,
-                                          AllJumpRates, jumpSelects, dispList, rateList, SpecExpand, MCJit, NVclus,
+                                          AllJumpRates, jumpSelects, dispList, rateList, SpecExpand, JitExpander, NVclus,
                                           numVecsInteracts, VecsInteracts, VecGroupInteracts, args.AllJumps, args.rcond)
 
         print("Off site counting time per sample: {}".format(offscTime))
@@ -397,13 +385,13 @@ def main(args):
     etaBar = np.load(RunPath + "etabar_{}.npy".format(args.Temp))
     L_train, L_train_samples = Calculate_L(state1List, SpecExpand, args.VacSpec, rateList,
             dispList, jumpSelects, jList, dxList*a0,
-            vacsiteInd, NVclus, MCJit, 
+            vacsiteInd, NVclus, JitExpander,
             etaBar, 0, args.NTrain,
             numVecsInteracts, VecGroupInteracts, VecsInteracts)
 
     L_val, L_val_samples = Calculate_L(state1List, SpecExpand, args.VacSpec, rateList,
             dispList, jumpSelects, jList, dxList*a0,
-            vacsiteInd, NVclus, MCJit, 
+            vacsiteInd, NVclus, JitExpander,
             etaBar, args.NTrain, state1List.shape[0],
             numVecsInteracts, VecGroupInteracts, VecsInteracts)
 
