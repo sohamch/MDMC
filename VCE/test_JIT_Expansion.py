@@ -58,6 +58,29 @@ class Test_Jit(unittest.TestCase):
             lamb1G = np.dot(g.cartrot, lamb1.T).T
             self.assertTrue(np.allclose(lamb1G, lamb2))
 
+    def test_getLambda_translation(self):
+        initState = self.initState
+        R_trans = np.array([4, 2, 1])
+        initState_trans = np.zeros_like(initState)
+
+        for siteInd in range(initState.shape[0]):
+            ciSite, RSite = self.VclusExp.sup.ciR(siteInd)
+            RNew = RSite + R_trans
+            siteNew = self.VclusExp.sup.index(RNew, ciSite)
+            initState_trans[siteNew] = initState[siteInd]
+
+        NVclus = len(self.VclusExp.vecVec)
+
+        offsc1 = GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
+        lamb1 = self.JitExpander.getLambda(offsc1, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
+                                           self.VecsInteracts)
+
+        offsc2 = GetOffSite(initState_trans, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
+        lamb2 = self.JitExpander.getLambda(offsc2, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
+                                           self.VecsInteracts)
+
+        self.assertTrue(np.allclose(lamb1, lamb2))
+
     def test_getDelLamb(self):
         initState = self.initState
         NVclus = len(self.VclusExp.vecClus)
