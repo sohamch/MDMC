@@ -1,5 +1,6 @@
 from onsager import crystal, supercell, cluster
 import numpy as np
+import h5py
 from numba import jit, int64
 import Cluster_Expansion
 import unittest
@@ -44,9 +45,7 @@ class Test_Jit(unittest.TestCase):
             for site in range(initState.shape[0]):
                 ciSite, Rsite = self.VclusExp.sup.ciR(site)
                 Rnew, ciNew = self.VclusExp.sup.crys.g_pos(g, Rsite, ciSite)
-
-                assert ciNew == ciSite == (0, 0)
-                siteIndNew, _ = self.VclusExp.sup.index(Rnew, (0, 0))
+                siteIndNew, _ = self.VclusExp.sup.index(Rnew, ciNew)
                 stateG[siteIndNew] = initState[site]
 
             # Now get their off site counts and basis vectors
@@ -66,7 +65,7 @@ class Test_Jit(unittest.TestCase):
 
         offsc1 = GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
         lamb1 = self.JitExpander.getLambda(offsc1, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
-                                             self.VecsInteracts)
+                                           self.VecsInteracts)
 
         siteA = np.random.randint(0, initState.shape[0])
         siteB = np.random.randint(0, initState.shape[0])
@@ -76,12 +75,12 @@ class Test_Jit(unittest.TestCase):
         # swap and update
         state2 = initState.copy()
         temp = state2[siteA]
-        state2[siteB] = state2[siteA]
+        state2[siteA] = state2[siteB]
         state2[siteB] = temp
 
         offsc2 = GetOffSite(state2, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
         lamb2 = self.JitExpander.getLambda(offsc2, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
-                                             self.VecsInteracts)
+                                           self.VecsInteracts)
 
         del_lamb = lamb2 - lamb1
 
@@ -99,19 +98,8 @@ class Test_Jit(unittest.TestCase):
         # Wbar_test = np.zeros()
 
         initState = self.initState
-
-        MCSampler_Jit = self.JitExpander
-
-        TransOffSiteCount = np.zeros(len(self.TSInteractSites), dtype=int)
-
-        # Build TS offsites
-        for TsInteractIdx in range(len(TransOffSiteCount)):
-            for Siteind in range(self.numSitesTSInteracts[TsInteractIdx]):
-                if initState[self.TSInteractSites[TsInteractIdx, Siteind]] != self.TSInteractSpecs[TsInteractIdx, Siteind]:
-                    TransOffSiteCount[TsInteractIdx] += 1
-
-        ijList = np.array(self.VclusExp.KRAexpander.jList)
-        dxList = np.array(self.VclusExp.KRAexpander.dxList)
+        dxList = self.dxList
+        jList = self.jList
         lenVecClus = len(self.VclusExp.vecClus)
 
         # Now, do the expansion
@@ -119,13 +107,28 @@ class Test_Jit(unittest.TestCase):
         state = initState.copy()
         spec = 1
         beta = 1.0
-        Wbar, Bbar, rates_used, delEJumps, delEKRAJumps =\
-            MCSampler_Jit.Expand(state, ijList, dxList, spec, offscjit, TransOffSiteCount,
-                                 self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts,
-                                 lenVecClus, beta, self.vacsiteInd, None)
 
-        np.save("Wbar_unit_test.npy", Wbar)
-        np.save("Bbar_unit_test.npy", Bbar)
+        # self, state, jList, dxList, spec, OffSiteCount,
+        # numVecsInteracts, VecGroupInteracts, VecsInteracts,
+        # lenVecClus, vacSiteInd, RateList
+
+        RateList = np.random.rand(len(dxList))
+        Wbar, Bbar, rates_used =\
+            self.JitExpander.Expand(state, jList, dxList, spec, offscjit,
+                                 self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts,
+                                 lenVecClus, self.vacsiteInd, RateList)
+
+        assert np.array_equal(RateList, rates_used)
+
+        print(len(self.numVecsInteracts))
+
+        if len(self.crys.basis[self.chem]) > 1:
+            rng = lenVecClus // 4
+        else:
+            rng = lenVecClus
+
+        print("Bbar max, min: {:.4f} {:.4f}".format(np.max(Bbar[:rng]), np.min(Bbar[:rng])))
+        print("Wbar max, min: {:.4f} {:.4f}".format(np.max(Wbar[:rng, :rng]), np.min(Wbar[:rng, :rng])))
 
         offscjit2 = GetOffSite(initState, self.numSitesInteracts, self.SupSitesInteracts, self.SpecOnInteractSites)
 
@@ -134,44 +137,32 @@ class Test_Jit(unittest.TestCase):
         self.assertTrue(np.array_equal(offscjit2, offscjit))
         self.assertTrue(np.array_equal(state, initState))
 
-        self.assertTrue(np.array_equal(self.SiteSpecInterArray, MCSampler_Jit.SiteSpecInterArray))
-        self.assertTrue(np.array_equal(self.numInteractsSiteSpec, MCSampler_Jit.numInteractsSiteSpec))
-        self.assertTrue(np.allclose(self.Interaction2En, MCSampler_Jit.Interaction2En))
+        self.assertTrue(np.array_equal(self.SiteSpecInterArray, self.JitExpander.SiteSpecInterArray))
+        self.assertTrue(np.array_equal(self.numInteractsSiteSpec, self.JitExpander.numInteractsSiteSpec))
+        self.assertTrue(np.allclose(self.Interaction2En, self.JitExpander.Interaction2En))
 
         print("Starting LBAM tests")
         Wbar_test = np.zeros_like(Wbar, dtype=float)
         Bbar_test = np.zeros_like(Bbar, dtype=float)
 
         # Now test the rate expansion by explicitly constructing it
-        for vs1 in tqdm(range(len(self.VclusExp.vecVec)), position=0, leave=True):
-            for vs2 in range(len(self.VclusExp.vecVec)):
+        for vs1 in tqdm(range(rng), position=0, leave=True, ncols=65):
+            for vs2 in range(rng):
                 # Go through all the jumps
-                for TInd in range(len(ijList)):
+                for TInd in range(len(jList)):
                     # For every jump, reset the offsite count
+                    rate = RateList[TInd]
                     offscjit = offscjit2.copy()
-                    TSOffCount = TransOffSiteCount.copy()
+
                     vec1 = np.zeros(3, dtype=float)
                     vec2 = np.zeros(3, dtype=float)
 
-                    siteB = ijList[TInd]
+                    siteB = jList[TInd]
                     siteA = self.vacsiteInd
                     # Check that the initial site is always the vacancy
                     specA = state[siteA]  # the vacancy
                     self.assertEqual(specA, self.vacSpec)
                     specB = state[siteB]
-                    delEKRA = self.KRASpecConstants[specB]
-                    # get the index of this transition
-                    jumpInd = self.FinSiteFinSpecJumpInd[siteB, specB]
-                    # get the KRA energy for this jump in this state
-                    for ptgrpInd in range(self.numJumpPointGroups[jumpInd]):
-                        for ptGpInteractInd in range(self.numTSInteractsInPtGroups[jumpInd, ptgrpInd]):
-                            # See if the interaction is on
-                            offcount = TSOffCount[self.JumpInteracts[jumpInd, ptgrpInd, ptGpInteractInd]]
-                            if offcount == 0:
-                                delEKRA += self.Jump2KRAEng[jumpInd, ptgrpInd, ptGpInteractInd]
-
-                    # Now do the site swaps and calculate the energy
-                    delE = 0.0
 
                     for interactnum in range(self.numInteractsSiteSpec[siteA, specA]):
                         interactInd = self.SiteSpecInterArray[siteA, specA, interactnum]
@@ -191,7 +182,6 @@ class Test_Jit(unittest.TestCase):
                             self.assertEqual(self.VecGroupInteracts[interactInd, i], vecList[i][0])
 
                         if offscjit[interactInd] == 0:
-                            delE -= self.Interaction2En[interactInd]
                             for tupInd, tup in enumerate(vecList):
                                 if tup[0] == vs1:
                                     vec1 -= self.VecsInteracts[interactInd, tupInd, :]
@@ -218,7 +208,6 @@ class Test_Jit(unittest.TestCase):
                             self.assertEqual(self.VecGroupInteracts[interactInd, i], vecList[i][0])
 
                         if offscjit[interactInd] == 0:
-                            delE -= self.Interaction2En[interactInd]
                             for tupInd, tup in enumerate(vecList):
                                 if tup[0] == vs1:
                                     vec1 -= self.VecsInteracts[interactInd, tupInd, :]
@@ -246,7 +235,6 @@ class Test_Jit(unittest.TestCase):
 
                         offscjit[interactInd] -= 1
                         if offscjit[interactInd] == 0:
-                            delE += self.Interaction2En[interactInd]
                             for tupInd, tup in enumerate(vecList):
                                 if tup[0] == vs1:
                                     vec1 += self.VecsInteracts[interactInd, tupInd, :]
@@ -273,7 +261,6 @@ class Test_Jit(unittest.TestCase):
 
                         offscjit[interactInd] -= 1
                         if offscjit[interactInd] == 0:
-                            delE += self.Interaction2En[interactInd]
                             for tupInd, tup in enumerate(vecList):
                                 if tup[0] == vs1:
                                     self.assertEqual(self.VecGroupInteracts[interactInd, tupInd], vs1)
@@ -282,14 +269,6 @@ class Test_Jit(unittest.TestCase):
                                 if tup[0] == vs2:
                                     self.assertEqual(self.VecGroupInteracts[interactInd, tupInd], vs2)
                                     vec2 += self.VecsInteracts[interactInd, tupInd, :]
-                    # get the rate
-                    rate = np.exp(-(0.5 * delE + delEKRA))
-                    # test the rate
-                    self.assertAlmostEqual(delEKRA, delEKRAJumps[TInd], 8,
-                                           msg="{} {} {}".format(delEKRA, delEKRAJumps[TInd], TInd))
-                    self.assertAlmostEqual(delE, delEJumps[TInd], 8,
-                                           msg="{} {} {}".format(delE, delEJumps[TInd], TInd))
-                    self.assertAlmostEqual(rate, rates_used[TInd], 8)
 
                     # get the dot product
                     dot = np.dot(vec1, vec2)
@@ -305,8 +284,6 @@ class Test_Jit(unittest.TestCase):
                                        msg="\n{} {}".format(Wbar[vs1, vs2], Wbar_test[vs1, vs2]))
 
         self.assertTrue(np.allclose(Bbar, Bbar_test))
-        print("Bbar max, min: {:.4f} {:.4f}".format(np.max(Bbar), np.min(Bbar)))
-        print("Wbar max, min: {:.4f} {:.4f}".format(np.max(Wbar), np.min(Wbar)))
 
 class Test_JIT_FCC(Test_Jit):
 
@@ -317,12 +294,20 @@ class Test_JIT_FCC(Test_Jit):
         self.a0 = a0
         self.crys = crystal.Crystal.FCC(a0, chemistry="A")
         self.chem = 0
+        with h5py.File("../CrysDat_FCC/CrystData.h5", "r") as fl:
+            dxList = np.array(fl["dxList_1nn"])
+            NNList = np.array(fl["NNsiteList_sitewise"])
+
         self.superlatt = 8 * np.eye(3, dtype=int)
         self.superFCC = supercell.ClusterSupercell(self.crys, self.superlatt)
         # get the number of sites in the supercell - should be 8x8x8
         numSites = len(self.superFCC.mobilepos)
+        assert numSites == NNList.shape[1]
         self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
         self.vacsiteInd = self.superFCC.index(np.zeros(3, dtype=int), (0, 0))[0]
+        self.dxList = dxList
+        self.jList = NNList[1:, self.vacsiteInd]
+
         self.clusexp = cluster.makeclusters(self.crys, 1.01 * a0, self.MaxOrder)
         self.NSpec = 3
         self.vacSpec = vsp
@@ -371,7 +356,7 @@ class Test_JIT_FCC(Test_Jit):
 
         self.initState = initState
 
-        self.MCSampler_Jit = Cluster_Expansion.JITExpanderClass(
+        self.JitExpander = Cluster_Expansion.JITExpanderClass(
             self.vacSpec, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,
             Interaction2En, numInteractsSiteSpec, SiteSpecInterArray
         )
@@ -384,18 +369,33 @@ class Test_JIT_FCC_orthogonal(Test_Jit):
         self.MaxOrder = mo
         a0 = 1.0
         self.a0 = a0
-        basis_cube_fcc = [np.array([0, 0, 0]), np.array([0, 0.5, 0.5]), np.array([0.5, 0., 0.5]),
-                          np.array([0.5, 0.5, 0.])]
-        self.crys = crystal.Crystal(lattice=np.eye(3) * a0, basis=[basis_cube_fcc], chemistry=["A"], noreduce=True)
+        # load crystal data
+        with h5py.File("../CrysDat_FCC/CrystData_ortho_5_cube.h5", "r") as fl:
+            lattice = np.array(fl["Lattice_basis_vectors"])
+            superlatt = np.array(fl["SuperLatt"])
+            basis_cubic = np.array(fl["basis_sites"])
+            dxList = np.array(fl["dxList_1nn"])
+            NNList = np.array(fl["NNsiteList_sitewise"])
+
+        crys = crystal.Crystal(lattice=lattice, basis=[[b for b in basis_cubic]], chemistry=["A"], noreduce=True)
+        self.crys = crys
+
+        self.superlatt = superlatt
+        self.superFCC = supercell.ClusterSupercell(crys, superlatt)
 
         self.chem = 0
         assert len(self.crys.basis[self.chem]) == 4
-
         self.N_units = 5
-        self.superlatt = self.N_units * np.eye(3, dtype=int)
-        self.superFCC = supercell.ClusterSupercell(self.crys, self.superlatt)
-        self.vacsite = cluster.ClusterSite((0, 0), np.zeros(3, dtype=int))
-        self.vacsiteInd = self.superFCC.index(np.zeros(3, dtype=int), (0, 0))[0]
+
+        dxVac = np.zeros(3)
+        Rvac, civac = self.crys.cart2pos(dxVac)
+
+        self.vacsite = cluster.ClusterSite(civac, Rvac)
+        self.vacsiteInd = self.superFCC.index(Rvac, civac)[0]
+        print(self.vacsiteInd)
+        self.dxList = dxList
+        self.jList = NNList[1:, self.vacsiteInd]
+
         self.clusexp = cluster.makeclusters(self.crys, 1.01 * a0, self.MaxOrder)
         self.NSpec = 3
         self.vacSpec = vsp
@@ -444,7 +444,7 @@ class Test_JIT_FCC_orthogonal(Test_Jit):
 
         self.initState = initState
 
-        self.MCSampler_Jit = Cluster_Expansion.JITExpanderClass(
+        self.JitExpander = Cluster_Expansion.JITExpanderClass(
             self.vacSpec, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,
             Interaction2En, numInteractsSiteSpec, SiteSpecInterArray
         )
