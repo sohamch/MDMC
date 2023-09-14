@@ -30,8 +30,7 @@ def GetOffSite(state, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites)
     OffSiteCount = np.zeros(numSitesInteracts.shape[0], dtype=int64)
     for interactIdx in range(numSitesInteracts.shape[0]):
         for intSiteind in range(numSitesInteracts[interactIdx]):
-            if state[SupSitesInteracts[interactIdx, intSiteind]] != \
-                    SpecOnInteractSites[interactIdx, intSiteind]:
+            if state[SupSitesInteracts[interactIdx, intSiteind]] != SpecOnInteractSites[interactIdx, intSiteind]:
                 OffSiteCount[interactIdx] += 1
     return OffSiteCount
 
@@ -52,7 +51,7 @@ def Load_crys_Data(CrysDatPath):
         NNList = np.array(fl["NNsiteList_sitewise"])
         jumpNewIndices = np.array(fl["JumpSiteIndexPermutation"])
 
-    crys = crystal.Crystal(lattice=lattice, basis=basis, chemistry=["A"])
+    crys = crystal.Crystal(lattice=lattice, basis=basis, chemistry=["A"], noreduce=True)
     superCell = supercell.ClusterSupercell(crys, superlatt)
 
     dxVac = np.zeros(3)
@@ -119,12 +118,11 @@ def CreateJitCalculator(VclusExp, NSpec, scratch=True, save=True):
         # Lattice gas Like -  set all energies to zero
         # All the rates are known to us anyway - they are the ones that are going to get used
         Energies = np.zeros(len(VclusExp.SpecClusters))
-        KRAEnergies = [np.zeros(len(KRAClusterDict)) for (key, KRAClusterDict) in 
-                VclusExp.KRAexpander.clusterSpeciesJumps.items()]
-
-        KRASpecConstants = np.zeros(NSpec)
 
         # First, the chemical data
+        # numSitesInteracts, SupSitesInteracts, SpecOnInteractSites, Interaction2En, \
+        # numInteractsSiteSpec, SiteSpecInterArray
+
         numSitesInteracts, SupSitesInteracts, SpecOnInteractSites,\
         Interaction2En, numInteractsSiteSpec, SiteSpecInterArray = VclusExp.makeJitInteractionsData(Energies)
 
@@ -136,10 +134,6 @@ def CreateJitCalculator(VclusExp, NSpec, scratch=True, save=True):
         # Note : The KRA expansion works only for binary alloys
         # Right now we don't need them, since we already know the rates
         # However, we create a dummy one since the JIT MC calculator requires the arrays
-        KRACounterSpec = 1
-        TsInteractIndexDict, Index2TSinteractDict, numSitesTSInteracts, TSInteractSites,\
-        TSInteractSpecs, jumpFinSites, jumpFinSpec, FinSiteFinSpecJumpInd, numJumpPointGroups,\
-        numTSInteractsInPtGroups, JumpInteracts, Jump2KRAEng = VclusExp.KRAexpander.makeTransJitData(KRACounterSpec, KRAEnergies)
     
         if save:
             print("Saving JIT arrays")
@@ -230,7 +224,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
 
         else:
             jList = np.array([jSiteList[jSelectList[samp]]], dtype=int)
-            dxList = np.array([dispSelects[samp, JitExpander.vacSpec, :]], dtype=float) # The last one is the vacancy jump
+            dxList = np.array([dispSelects[samp, JitExpander.vacSpec, :]], dtype=float)
             Rate = np.array([ratesEscape[samp]], dtype=float)
             WBar, bBar, rates_used, _, _ = JitExpander.Expand(state, jList, dxList, SpecExpand, offsc,
                                                         TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
@@ -274,7 +268,7 @@ def Calculate_L(state1List, SpecExpand, VacSpec, rateList, dispList, jumpSelects
 
         del_lamb = JitExpander.getDelLamb(state, offsc, vacsiteInd, jSite, NVclus,
                                     numVecsInteracts, VecGroupInteracts, VecsInteracts)
-    
+
         disp_sp = dispList[samp, SpecExpand, :]
 
         # Check displacements
