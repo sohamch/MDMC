@@ -22,16 +22,21 @@ class Test_HEA_LBAM(unittest.TestCase):
         self.CrysDatPath = (cp + "CrystData_ortho_5_cube.h5")
         self.a0 = 3.595
         self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
-        self.jList, self.dxList, self.jumpNewIndices, self.superCell, self.vacsite, self.vacsiteInd =\
+        self.jList, self.dxList, self.superCell, self.vacsite, self.vacsiteInd =\
             Load_crys_Data(self.CrysDatPath)
 
+        self.crys = self.superCell.crys
+        print(self.crys)
+
+        print("Sites in Dataset: ", self.state1List.shape)
+        print("Sites in supercell: ", len(self.superCell.mobilepos))
         self.AllSpecs = np.unique(self.state1List[0])
         self.NSpec = self.AllSpecs.shape[0]
         self.vacSpec = self.state1List[0, 0]
         print(self.vacSpec)
         self.SpecExpand = 5
         print("All Species: {}".format(self.AllSpecs))
-        print("Vacancy Species: {}".format(self.vacSpec))
+        print("Vacancy Species: {}. Vacancy site: {}".format(self.vacSpec, self.vacsiteInd))
         print("Expanding Species: {}".format(self.SpecExpand))
 
         self.ClustCut = 1.01
@@ -100,19 +105,28 @@ class Test_HEA_LBAM(unittest.TestCase):
             self.assertEqual(np.max(VecGroupInteracts), NVclus - 1)
 
     def test_Calculate_L(self):
-        sampInd = np.random.randint(0, self.state1List.shape[0])
-        print("Testing sample: {}".format(sampInd))
+        sampInd = np.random.randint(0, self.state1List.shape[0] - 10)
+        print("Testing 10 samples from: {}".format(sampInd))
         stateList = self.state1List[sampInd: sampInd + 10]
         jumpSelects = self.jumpSelects[sampInd: sampInd + 10]
         dispList = self.dispList[sampInd: sampInd + 10]
         rateList = self.rateList[sampInd: sampInd + 10]
         etaBar = np.random.rand(self.NVclus)
 
+        self.assertTrue(self.vacsiteInd == 0)
+        # (state1List, SpecExpand, VacSpec, rateList, dispList, jumpSelects,
+        #  jList, dxList, vacsiteInd, NVclus, JitExpander, etaBar, start, end,
+        #  numVecsInteracts, VecGroupInteracts, VecsInteracts)
+
         L, Lsamps = Calculate_L(stateList, self.SpecExpand, self.vacSpec, rateList, dispList, jumpSelects,
                     self.jList, self.dxList * self.a0, self.vacsiteInd, self.NVclus, self.JitExpander, etaBar, 0, 10,
                     self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts)
 
         self.assertAlmostEqual(np.sum(Lsamps) / 10, L, places=8)
+        Ns = [self.superCell.superlatt[i, i] for i in range(self.superCell.superlatt.shape[0])]
+        Lattice_translations = [np.array([R1, R2, R3], dtype=int) for R1 in range(0, Ns[0]) for R2 in range(0, Ns[1])
+                                for R3 in range(0, Ns[2])]
+        assert len(Lattice_translations) == self.VclusExp.Nsites // len(self.VclusExp.crys.basis[self.VclusExp.chem])
 
         # Now go through each of the samples and verify
         if self.SpecExpand == self.vacSpec:
@@ -123,8 +137,8 @@ class Test_HEA_LBAM(unittest.TestCase):
             # small check for jump indexing
             state2_explict = state.copy()
             jSite = self.jList[jmp]
-            state2_explict[jSite] = state[0]
-            state2_explict[0] = state[jSite]
+            state2_explict[jSite] = state[self.vacsiteInd]
+            state2_explict[self.vacsiteInd] = state[jSite]
 
             disp = dispList[samp, self.SpecExpand, :]
             if self.SpecExpand == self.vacSpec:
@@ -136,8 +150,7 @@ class Test_HEA_LBAM(unittest.TestCase):
 
             lamb1_req = np.zeros((len(self.VclusExp.vecVec), 3))
             lamb2_req = np.zeros((len(self.VclusExp.vecVec), 3))
-            on1 = 0
-            on2 = 0
+
             for vcInd in range(lamb1_all.shape[0]):
                 clustList = self.VclusExp.vecClus[vcInd]
                 vecList = self.VclusExp.vecVec[vcInd]
@@ -147,17 +160,15 @@ class Test_HEA_LBAM(unittest.TestCase):
                     clSpecs = clust.specList
                     # print(clSpecs)
                     self.assertEqual(len(clSpecs), len(clSites))
-                    for siteInd in range(self.VclusExp.Nsites):
-                        ci, R = self.VclusExp.sup.ciR(siteInd)
+                    for R in Lattice_translations:
                         siteListNew = []  # to store translated sites
                         for cSite in clSites:
                             ciSite, Rsite = cSite.ci, cSite.R
                             RsiteNew = Rsite + R
-                            siteIndNew, _ = self.VclusExp.sup.index(RsiteNew, (0, 0))  # mono-atomic anyway
+                            siteIndNew, _ = self.VclusExp.sup.index(RsiteNew, ciSite)
                             siteListNew.append(siteIndNew)
 
                         # check if the translated cluster is on
-                        # print(siteListNew, clSpecs)
                         off1 = 0
                         off2 = 0
                         for st, sp in zip(siteListNew, clSpecs):
@@ -167,12 +178,11 @@ class Test_HEA_LBAM(unittest.TestCase):
                                 off2 += 1
 
                         if off1 == 0:
-                            on1 += 1
                             lamb1_all[vcInd] += vec
                         if off2 == 0:
-                            on2 += 1
                             lamb2_all[vcInd] += vec
 
+                        # Now get the vectors only if the interactions contain the vacancy neighboring sites.
                         if any([st in [self.vacsiteInd] + list(self.jList) for st in siteListNew]):
                             off1 = 0
                             off2 = 0
@@ -189,7 +199,7 @@ class Test_HEA_LBAM(unittest.TestCase):
 
             del_lamb_all = lamb2_all - lamb1_all
             del_lamb_req = lamb2_req - lamb1_req
-            self.assertFalse(np.allclose(del_lamb_req, 0.))
+            self.assertFalse(np.allclose(del_lamb_req, 0.)) # some clusters must have changed after a jump
             self.assertTrue(np.allclose(del_lamb_req, del_lamb_all, rtol=1e-8))
             dy = np.dot(del_lamb_req.T, etaBar)
             dispMod = disp + dy
@@ -199,45 +209,41 @@ class Test_HEA_LBAM(unittest.TestCase):
             print("checked Lsamp : {}".format(Ls))
 
     def test_Expand(self):
-        stateList = self.state1List[:1]
-        AllJumpRates = self.AllJumpRates[:1]
-        jumpSelects = self.jumpSelects[:1]
-        dispList = self.dispList[:1]
-        rateList = self.rateList[:1]
+        sampInd = 10
+        stateList = self.state1List[sampInd:sampInd + 1]
+        AllJumpRates = self.AllJumpRates[sampInd:sampInd + 1]
+        jumpSelects = self.jumpSelects[sampInd:sampInd + 1]
+        dispList = self.dispList[sampInd:sampInd + 1]
+        rateList = self.rateList[sampInd:sampInd + 1]
         SpecExpand = self.SpecExpand
         NVclus = len(self.VclusExp.vecClus)
         assert NVclus == self.NVclus
 
         state = stateList[0]
 
-        # small check for jump indexing
-        state2 = state[self.jumpNewIndices[jumpSelects[0]]]
-
         state2_explict = state.copy()
         jmp = jumpSelects[0]
         jSite = self.jList[jmp]
-        state2_explict[jSite] = state[0]
-        state2_explict[0] = state[jSite]
+        state2_explict[jSite] = state[self.vacsiteInd]
+        state2_explict[self.vacsiteInd] = state[jSite]
 
-        dxR, _ = self.superCell.crys.cart2pos(self.dxList[jmp])
-
+        dxJmp = self.dxList[jmp]
         state2Trans = np.zeros_like(state)
         for siteInd in range(state.shape[0]):
-            ci, Rsite = self.superCell.ciR(siteInd)
-            RsiteNew = Rsite - dxR
-            siteIndNew, _ = self.superCell.index(RsiteNew, ci)
+            cisite, Rsite = self.superCell.ciR(siteInd)
+            dxSite = self.crys.pos2cart(Rsite, cisite)
+            dxSiteNew = dxSite - dxJmp
+            RsiteNew, ciSiteNew = self.crys.cart2pos(dxSiteNew)
+            siteIndNew, _ = self.superCell.index(RsiteNew, ciSiteNew)
             state2Trans[siteIndNew] = state2_explict[siteInd]
-            self.assertEqual(state2[siteIndNew], state2_explict[siteInd], msg="{} {} {} {} {}".format(siteInd, siteIndNew,
-                                                                                                      self.jList[jmp],
-                                                                                                      state2[siteIndNew],
-                                                                                                      state2_explict[siteInd]))
-        self.assertTrue(np.array_equal(state2Trans, state2))
+
+        state2 = state2Trans
 
         # Next we'll check the change in the basis vectors with and without considering only the required sites
         off_sc = GetOffSite(state, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
                                    self.JitExpander.SpecOnInteractSites)
         self.assertTrue(off_sc.shape == self.JitExpander.numSitesInteracts.shape == (self.JitExpander.numSitesInteracts.shape[0],),
-                        msg="{} {} {}".format(off_sc.shape, self.JitExpander.numSitesTSInteracts.shape,
+                        msg="{} {} {}".format(off_sc.shape, self.JitExpander.numSitesInteracts.shape,
                                               (self.JitExpander.numSitesInteracts.shape[0],)))
         # check off site count
         for interactID in range(self.JitExpander.numSitesInteracts.shape[0]):
@@ -263,6 +269,24 @@ class Test_HEA_LBAM(unittest.TestCase):
 
         off_sc2_explicit_all = GetOffSite(state2_explict, self.JitExpander_all.numSitesInteracts, self.JitExpander_all.SupSitesInteracts,
                                              self.JitExpander_all.SpecOnInteractSites)
+
+        on1 = np.zeros(NVclus, dtype=int)
+        on2 = np.zeros(NVclus, dtype=int)
+        assert off_sc2_explicit_all.shape[0] == off_sc2_all.shape[0]
+        for interactID in range(off_sc2_all.shape[0]):
+            if off_sc2_all[interactID] == 0:
+                numVecs = self.numVecsInteracts_all[interactID]
+                for vecInd in range(numVecs):
+                    vecGroup = self.VecGroupInteracts_all[interactID, vecInd]
+                    on1[vecGroup] += 1
+
+            if off_sc2_explicit_all[interactID] == 0:
+                numVecs = self.numVecsInteracts_all[interactID]
+                for vecInd in range(numVecs):
+                    vecGroup = self.VecGroupInteracts_all[interactID, vecInd]
+                    on2[vecGroup] += 1
+
+        self.assertTrue(np.array_equal(on1, on2))
 
         # Now get the lambda vectors for each state
         lamb1 = np.zeros((NVclus, 3))
@@ -293,7 +317,7 @@ class Test_HEA_LBAM(unittest.TestCase):
                     vecGroup = self.VecGroupInteracts[interactID, vecInd]
                     lamb2_explicit[vecGroup] += vec
 
-        # Now get the lambda vectors for each state
+        # Now get the lambda vectors for each state with all interactions
         assert self.NVclus_all == len(self.VclusExp_all.vecClus)
         lamb1_all = np.zeros((self.NVclus_all, 3))
         lamb2_all = np.zeros((self.NVclus_all, 3))
@@ -323,8 +347,10 @@ class Test_HEA_LBAM(unittest.TestCase):
                     lamb2_explicit_all[vecGroup] += vec
 
         # Translational symmetry will be broken if not all interactions are included.
-        # However, all necessary interactions to compute CHANGE in lambda are still accounted for.
-        self.assertTrue(np.allclose(lamb2_explicit_all, lamb2_all))
+        # So lamb2_explicit and lamb2 won't be the same.
+        # However, all necessary interactions to compute CHANGE in lambda must still be accounted for.
+        self.assertTrue(np.allclose(lamb2_explicit_all, lamb2_all),
+                        msg="\n{} \n\n {}".format(lamb2_explicit_all[:10], lamb2_all[:10]))
         del_lamb_all_interacts = lamb2_all - lamb1_all
         del_lamb = lamb2_explicit - lamb1
         self.assertTrue(np.allclose(del_lamb, del_lamb_all_interacts),
@@ -333,14 +359,14 @@ class Test_HEA_LBAM(unittest.TestCase):
         lamb1_comp = self.JitExpander.getLambda(off_sc, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
                                              self.VecsInteracts)
 
-        self.assertTrue(np.allclose(lamb1_comp, lamb1))
+        self.assertTrue(np.allclose(lamb1_comp, lamb1, rtol=0, atol=1e-8))
 
         lamb2_comp = self.JitExpander.getLambda(off_sc2, NVclus, self.numVecsInteracts, self.VecGroupInteracts,
                                      self.VecsInteracts)
 
-        self.assertTrue(np.allclose(lamb2_comp, lamb2))
+        self.assertTrue(np.allclose(lamb2_comp, lamb2, rtol=0, atol=1e-8))
 
-        _, del_lamb_comp = self.JitExpander.DoSwapUpdate(state, 0, self.jList[jumpSelects[0]], NVclus, off_sc,
+        del_lamb_comp = self.JitExpander.DoSwapUpdate(state, 0, self.jList[jumpSelects[0]], NVclus, off_sc,
                                         self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts)
 
         self.assertTrue(np.array_equal(off_sc, off_sc2_explicit))
@@ -355,7 +381,11 @@ class Test_HEA_LBAM(unittest.TestCase):
         self.assertTrue(np.allclose(del_lamb_comp_2, del_lamb), msg="\n{} \n {}".format(del_lamb_comp[:5], del_lamb[:5]))
 
         # Try with single jump dataset first
-        Wbar, Bbar, etaBar, offscTime, expandTime = Expand(1073, stateList, 0, 1, self.jList,
+        # Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
+        #        jSelectList, dispSelects, ratesEscape, SpecExpand, JitExpander, NVclus,
+        #        numVecsInteracts, VecsInteracts, VecGroupInteracts, aj, rcond=1e-8)
+
+        Wbar, Bbar, etaBar, offscTime, expandTime = Expand(1073, stateList, self.vacsiteInd, 1, self.jList,
                                                                  self.dxList, AllJumpRates, jumpSelects, dispList, rateList,
                                                                  SpecExpand, self.JitExpander, NVclus,
                                                                  self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts,
@@ -417,6 +447,11 @@ class Test_HEA_LBAM(unittest.TestCase):
         dispList = self.dispList[sampInd: sampInd + 1]
         rateList = self.rateList[sampInd: sampInd + 1]
 
+        Ns = [self.superCell.superlatt[i, i] for i in range(self.superCell.superlatt.shape[0])]
+        Lattice_translations = [np.array([R1, R2, R3], dtype=int) for R1 in range(0, Ns[0]) for R2 in range(0, Ns[1])
+                                for R3 in range(0, Ns[2])]
+        assert len(Lattice_translations) == self.VclusExp.Nsites // len(self.VclusExp.crys.basis[self.VclusExp.chem])
+
         state = stateList[0]
         jmp = jumpSelects[0]
         # small check for jump indexing
@@ -442,17 +477,15 @@ class Test_HEA_LBAM(unittest.TestCase):
                 clSpecs = clust.specList
                 # print(clSpecs)
                 self.assertEqual(len(clSpecs), len(clSites))
-                for siteInd in range(self.VclusExp.Nsites):
-                    ci, R = self.VclusExp.sup.ciR(siteInd)
+                for R in Lattice_translations:
                     siteListNew = [] # to store translated sites
                     for cSite in clSites:
                         ciSite, Rsite = cSite.ci, cSite.R
                         RsiteNew = Rsite + R
-                        siteIndNew, _ = self.VclusExp.sup.index(RsiteNew, (0, 0)) # mono-atomic anyway
+                        siteIndNew, _ = self.VclusExp.sup.index(RsiteNew, ciSite)
                         siteListNew.append(siteIndNew)
 
                     # check if the translated cluster is on
-                    #print(siteListNew, clSpecs)
                     off1 = 0
                     off2 = 0
                     for st, sp in zip(siteListNew, clSpecs):
@@ -492,10 +525,12 @@ class Test_HEA_LBAM(unittest.TestCase):
         off_sc = GetOffSite(state, self.JitExpander.numSitesInteracts, self.JitExpander.SupSitesInteracts,
                                    self.JitExpander.SpecOnInteractSites)
 
-        del_lamb_comp = self.JitExpander.getDelLamb(state, off_sc, 0, self.jList[jmp], self.NVclus,
+        del_lamb_comp = self.JitExpander.getDelLamb(state, off_sc, self.vacsiteInd, self.jList[jmp], self.NVclus,
                    self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts)
 
-        self.assertTrue(np.allclose(del_lamb_comp, del_lamb_all, rtol=1e-8), msg="{} \n\n {}".format(del_lamb_comp, del_lamb_all))
+        print("min, max components in del_lamb computed: {} {}".format(np.min(del_lamb_comp), np.max(del_lamb_comp)))
+
+        self.assertTrue(np.allclose(del_lamb_comp, del_lamb_all, rtol=1e-8), msg="{} \n\n {}".format(del_lamb_comp.shape, del_lamb_all.shape))
 
         # Now let's rotate the jump and check the vector change symmetries as well
         dxJmp = self.dxList[jmp]
@@ -508,9 +543,7 @@ class Test_HEA_LBAM(unittest.TestCase):
             for site in range(state.shape[0]):
                 ciSite, Rsite = self.VclusExp.sup.ciR(site)
                 Rnew, ciNew = self.VclusExp.sup.crys.g_pos(g, Rsite, ciSite)
-
-                self.assertTrue(ciNew == ciSite == (0, 0))
-                siteIndNew, _ = self.VclusExp.sup.index(Rnew, (0, 0))
+                siteIndNew, _ = self.VclusExp.sup.index(Rnew, ciNew)
                 stateG[siteIndNew] = state[site]
 
             dxJmpG = np.dot(g.cartrot, dxJmp)
@@ -537,9 +570,6 @@ class Test_HEA_LBAM(unittest.TestCase):
             # print(np.dot(g.cartrot, y1), yg)
 
     def test_symm(self):
-        """
-        test the symmetry of the basis vectors.
-        """
         initState = self.state1List[0]
         # let's make some random etabar
         NVclus = len(self.VclusExp.vecClus)
@@ -550,9 +580,7 @@ class Test_HEA_LBAM(unittest.TestCase):
             for site in range(initState.shape[0]):
                 ciSite, Rsite = self.VclusExp.sup.ciR(site)
                 Rnew, ciNew = self.VclusExp.sup.crys.g_pos(g, Rsite, ciSite)
-
-                assert ciNew == ciSite == (0, 0)
-                siteIndNew, _ = self.VclusExp.sup.index(Rnew, (0, 0))
+                siteIndNew, _ = self.VclusExp.sup.index(Rnew, ciNew)
                 stateG[siteIndNew] = initState[site]
 
             # Now get their off site counts and basis vectors
@@ -581,7 +609,7 @@ class Test_HEA_LBAM_vac(Test_HEA_LBAM):
         self.CrysDatPath = (cp + "CrystData.h5")
         self.a0 = 3.59
         self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
-        self.jList, self.dxList, self.jumpNewIndices, self.superCell, self.jnet, self.vacsite, self.vacsiteInd =\
+        self.jList, self.dxList, self.superCell, self.jnet, self.vacsite, self.vacsiteInd =\
             Load_crys_Data(self.CrysDatPath)
 
         self.AllSpecs = np.unique(self.state1List[0])
@@ -598,7 +626,7 @@ class Test_HEA_LBAM_vac(Test_HEA_LBAM):
         self.ClustCut = 1.01
         self.MaxOrder = 2
 
-        self.VclusExp = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
+        self.VclusExp = makeVClusExp(self.superCell, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=False)
 
         self.JitExpander, self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.NVclus = CreateJitCalculator(self.VclusExp, self.NSpec,
@@ -609,7 +637,7 @@ class Test_HEA_LBAM_vac(Test_HEA_LBAM):
         self.JitExpander_load, self.numVecsInteracts_load, self.VecsInteracts_load, self.VecGroupInteracts_load, \
         self.NVclus_load = CreateJitCalculator(self.VclusExp, self.NSpec, scratch=False)
 
-        self.VclusExp_all = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
+        self.VclusExp_all = makeVClusExp(self.superCell, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=True)
 
         self.JitExpander_all, self.numVecsInteracts_all, self.VecsInteracts_all, self.VecGroupInteracts_all,\
@@ -622,9 +650,10 @@ class Test_HEA_LBAM_SR2(Test_HEA_LBAM):
         self.CrysDatPath = (cp + "CrystData.h5")
         self.a0 = 1
         self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
-        self.jList, self.dxList, self.jumpNewIndices, self.superCell, self.jnet, self.vacsite, self.vacsiteInd =\
+        self.jList, self.dxList, self.superCell, self.vacsite, self.vacsiteInd =\
             Load_crys_Data(self.CrysDatPath)
 
+        self.crys = self.superCell.crys
         self.AllSpecs = np.unique(self.state1List[0])
         self.NSpec = self.AllSpecs.shape[0]
         self.vacSpec = self.state1List[0, 0]
@@ -637,7 +666,7 @@ class Test_HEA_LBAM_SR2(Test_HEA_LBAM):
         self.ClustCut = 1.01
         self.MaxOrder = 2
 
-        self.VclusExp = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
+        self.VclusExp = makeVClusExp(self.superCell, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=False)
 
         self.JitExpander, self.numVecsInteracts, self.VecsInteracts, self.VecGroupInteracts, self.NVclus = CreateJitCalculator(self.VclusExp, self.NSpec,
@@ -648,7 +677,7 @@ class Test_HEA_LBAM_SR2(Test_HEA_LBAM):
         self.JitExpander_load, self.numVecsInteracts_load, self.VecsInteracts_load, self.VecGroupInteracts_load,\
         self.NVclus_load = CreateJitCalculator(self.VclusExp, self.NSpec, scratch=False)
 
-        self.VclusExp_all = makeVClusExp(self.superCell, self.jnet, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
+        self.VclusExp_all = makeVClusExp(self.superCell, self.jList, self.ClustCut, self.MaxOrder, self.NSpec, self.vacsite, self.vacSpec,
                                 AllInteracts=True)
 
         self.JitExpander_all, self.numVecsInteracts_all, self.VecsInteracts_all, self.VecGroupInteracts_all,\
