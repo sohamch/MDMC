@@ -86,7 +86,8 @@ def Load_crys_Data(CrysDatPath, ReduceToPrimitve=False):
         crys_primitve = crystal.Crystal(lattice=lattice, basis=basis, chemistry=["A"], noreduce=False)
 
         superlatt_transf = np.dot(np.linalg.inv(crys_primitve.lattice), superlatt)
-        superCell_primitve = supercell.ClusterSupercell(crys_primitve, superlatt_transf)
+        assert np.allclose(superlatt_transf, superlatt_transf.astype(int))
+        superCell_primitve = supercell.ClusterSupercell(crys_primitve, superlatt_transf.astype(int))
 
         # Make a mapping of the site indices
         siteMap_nonPrimitive_to_primitive = make_siteMap_non_prim_to_prim(superCell, superCell_primitve)

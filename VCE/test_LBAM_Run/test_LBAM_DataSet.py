@@ -21,9 +21,16 @@ class Test_HEA_LBAM(unittest.TestCase):
         self.DataPath = ("testData_HEA_MEAM_orthogonal.h5")
         self.CrysDatPath = (cp + "CrystData_ortho_5_cube.h5")
         self.a0 = 3.595
-        self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
-        self.jList, self.dxList, self.superCell, self.vacsite, self.vacsiteInd =\
-            Load_crys_Data(self.CrysDatPath)
+
+        self.remap = True
+
+        self.jList, self.dxList, self.superCell, self.vacsite, self.vacsiteInd, self.siteMap_nonPrimitive_to_primitive =\
+            Load_crys_Data(self.CrysDatPath, ReduceToPrimitve=True)
+
+        self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = \
+            Load_Data(self.DataPath, self.siteMap_nonPrimitive_to_primitive)
+
+        self.assertTrue(self.siteMap_nonPrimitive_to_primitive is not None)
 
         self.crys = self.superCell.crys
         print(self.crys)
@@ -58,6 +65,108 @@ class Test_HEA_LBAM(unittest.TestCase):
 
         self.JitExpander_all, self.numVecsInteracts_all, self.VecsInteracts_all, self.VecGroupInteracts_all,\
         self.NVclus_all = CreateJitCalculator(self.VclusExp_all, self.NSpec, scratch=True, save=False)
+
+    def test_crystal_data(self):
+
+        # Load the original data
+        with h5py.File(self.DataPath, "r") as fl:
+            state1List = np.array(fl["InitStates"])
+            dispList = np.array(fl["SpecDisps"])
+            rateList = np.array(fl["rates"])
+            AllJumpRates = np.array(fl["AllJumpRates_Init"])
+            jmpSelects = np.array(fl["JumpSelects"])
+
+        # check that rates and displacements haven't been changed
+        # self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects
+        self.assertTrue(np.array_equal(self.dispList, dispList))
+        self.assertTrue(np.array_equal(self.rateList, rateList))
+        self.assertTrue(np.array_equal(self.AllJumpRates, AllJumpRates))
+        self.assertTrue(np.array_equal(self.jumpSelects, jmpSelects))
+
+        # Load the original crystal data
+        with h5py.File(self.CrysDatPath, "r") as fl:
+            lattice = np.array(fl["Lattice_basis_vectors"])
+            superlatt = np.array(fl["SuperLatt"])
+
+            try:
+                basis_sites = np.array(fl["basis_sites"])
+                basis = [[b for b in basis_sites]]
+            except KeyError:
+                basis = [[np.array([0., 0., 0.])]]
+
+            dxList = np.array(fl["dxList_1nn"])
+            NNList = np.array(fl["NNsiteList_sitewise"])
+
+        # Create the original supercell
+        crys = crystal.Crystal(lattice=lattice, basis=basis, chemistry=["A"], noreduce=self.remap)
+        superCell = supercell.ClusterSupercell(crys, superlatt)
+
+        # Match the cartesian coordinates after the mapping
+        superCell_prim = self.VclusExp.sup
+        crys_prim = self.VclusExp.sup.crys
+
+
+        # Check the vacancy nearest neighbors
+        self.assertTrue(np.array_equal(self.dxList, dxList))
+        print("Original vacancy neighbors: ", NNList[1:, 0])
+        print("Simulation vacancy neighbors: ", self.jList)
+
+        for jumpInd in range(dxList.shape[0]):
+            dxJump = self.dxList[jumpInd]
+            Rsite, ciSite = crys_prim.cart2pos(dxJump)
+            self.assertTrue(ciSite == (0, 0))
+            siteInd_primitive = superCell_prim.index(Rsite, ciSite)[0]
+            self.assertEqual(self.jList[jumpInd], siteInd_primitive)
+
+            Rsite_original, ciSite_original = superCell.crys.cart2pos(dxJump)
+            siteInd_original = superCell.index(Rsite_original, ciSite_original)[0]
+            self.assertEqual(NNList[1 + jumpInd, 0], siteInd_original)
+
+        if not self.remap:
+            print("Testing no remapping")
+            self.assertTrue(np.array_equal(self.jList, NNList[1:, 0]))
+            self.assertTrue(self.siteMap_nonPrimitive_to_primitive is None)
+
+        # check the re-indexing of the data
+        # We'll get the cartesian position from the original supercell
+        # Then we'll check it matches up with the position from the primitive supercell
+        else:
+            print("Testing remapping")
+            self.assertTrue(self.siteMap_nonPrimitive_to_primitive is not None)
+
+            # check that the site positions are consistent
+            for siteInd_primitive in range(self.siteMap_nonPrimitive_to_primitive.shape[0]):
+                ci_primitive, R_primitive = superCell_prim.ciR(siteInd_primitive)
+                xPrimitive = superCell_prim.crys.pos2cart(R_primitive, ci_primitive)
+
+                siteInd_original = self.siteMap_nonPrimitive_to_primitive[siteInd_primitive]
+                ci_original, R_original = superCell.ciR(siteInd_original)
+                xOriginal = superCell.crys.pos2cart(R_original, ci_original)
+
+                self.assertTrue(np.allclose(xOriginal, xPrimitive, rtol=0, atol=1e-8))
+
+            for stateInd in range(state1List.shape[0]):
+                state = state1List[stateInd]
+                state_mapped = self.state1List[stateInd]
+
+                self.assertFalse(np.array_equal(state, state_mapped),
+                                 msg="state {} failed\nSite map:\n{}".format(stateInd, self.siteMap_nonPrimitive_to_primitive))
+
+                self.assertTrue(np.array_equal(state_mapped, state[self.siteMap_nonPrimitive_to_primitive]))
+
+                # First check that the composition is preserved
+                specs_1, counts_1 = np.unique(state, return_counts=True)
+                specs_2, counts_2 = np.unique(state_mapped, return_counts=True)
+                self.assertTrue(np.array_equal(specs_1, specs_2))
+                self.assertTrue(np.array_equal(counts_1, counts_2))
+
+                # Then check that the occupancies of the sites are consistent
+                self.assertTrue(self.siteMap_nonPrimitive_to_primitive is not None)
+                for siteInd_primitive in range(self.siteMap_nonPrimitive_to_primitive.shape[0]):
+                    siteInd_original = self.siteMap_nonPrimitive_to_primitive[siteInd_primitive]
+                    self.assertEqual(state[siteInd_original], state_mapped[siteInd_primitive])
+
+            print("Tested {} states".format(stateInd + 1))
 
     def test_CreateJitCalculator(self):
         # This is to check whether the Jit arrays have been properly stored
