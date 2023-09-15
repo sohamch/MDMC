@@ -113,6 +113,10 @@ def Load_crys_Data(CrysDatPath, ReduceToPrimitve=False):
     if not ReduceToPrimitve:
         assert np.all(jList == NNList[1:, vacsiteInd])
 
+    print("Wroking Crystal:")
+    print(superCell.crys)
+    print()
+
     return jList, dxList, superCell, vacsite, vacsiteInd, siteMap_nonPrimitive_to_primitive
 
 def Load_Data(DataPath, siteMap_nonPrimitive_to_primitive, Perm=False):
