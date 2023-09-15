@@ -34,13 +34,41 @@ def GetOffSite(state, numSitesInteracts, SupSitesInteracts, SpecOnInteractSites)
                 OffSiteCount[interactIdx] += 1
     return OffSiteCount
 
+def make_siteMap_non_prim_to_prim(superCell, superCell_primitve):
+
+    crys = superCell.crys
+    crys_primitve = superCell_primitve.crys
+    assert len(superCell_primitve.mobilepos) == len(superCell.mobilepos)
+    Nsites = len(superCell.mobilepos)
+
+    siteMap_nonPrimitive_to_primitive = np.zeros(Nsites, dtype=int)
+    primtive_site_encountered = set([])
+    for siteInd in range(Nsites):
+        # First, determine the cartesian position from the non-primitive lattice
+        ciSite, Rsite = superCell.ciR(siteInd)
+        xSite = crys.pos2cart(Rsite, ciSite)
+
+        # Now get the lattice position with the primitive cell
+        Rsite_prim, ciSite_prim = crys_primitve.cart2pos(xSite)
+        siteInd_primitive = superCell_primitve.index(Rsite_prim, ciSite_prim)
+
+        # check that there is no collision
+        assert siteInd_primitive not in primtive_site_encountered
+        primtive_site_encountered.add(siteInd_primitive)
+
+        # Then store it in the indexing array
+        siteMap_nonPrimitive_to_primitive[siteInd_primitive] = siteInd
+
+    return siteMap_nonPrimitive_to_primitive
+
 # Load all the crystal data
-def Load_crys_Data(CrysDatPath):
+def Load_crys_Data(CrysDatPath, ReduceToPrimitve=False):
     print("Loading Crystal data at {}".format(CrysDatPath))
 
     with h5py.File(CrysDatPath, "r") as fl:
         lattice = np.array(fl["Lattice_basis_vectors"])
         superlatt = np.array(fl["SuperLatt"])
+
         try:
             basis_sites = np.array(fl["basis_sites"])
             basis = [[b for b in basis_sites]]
@@ -49,21 +77,45 @@ def Load_crys_Data(CrysDatPath):
 
         dxList = np.array(fl["dxList_1nn"])
         NNList = np.array(fl["NNsiteList_sitewise"])
-        jumpNewIndices = np.array(fl["JumpSiteIndexPermutation"])
 
     crys = crystal.Crystal(lattice=lattice, basis=basis, chemistry=["A"], noreduce=True)
     superCell = supercell.ClusterSupercell(crys, superlatt)
 
+    if ReduceToPrimitve:
+        print("Reducing crystal to primitive form.")
+        crys_primitve = crystal.Crystal(lattice=lattice, basis=basis, chemistry=["A"], noreduce=False)
+
+        superlatt_transf = np.dot(np.linalg.inv(crys_primitve.lattice), superlatt)
+        superCell_primitve = supercell.ClusterSupercell(crys_primitve, superlatt_transf)
+
+        # Make a mapping of the site indices
+        siteMap_nonPrimitive_to_primitive = make_siteMap_non_prim_to_prim(superCell, superCell_primitve)
+
+        superCell = superCell_primitve
+
+    else:
+        siteMap_nonPrimitive_to_primitive = None
+
     dxVac = np.zeros(3)
-    Rvac, civac = crys.cart2pos(dxVac)
+    Rvac, civac = superCell.crys.cart2pos(dxVac)
     vacsite = cluster.ClusterSite(ci=civac, R=Rvac)
     vacsiteInd = superCell.index(Rvac, civac)[0]
     assert vacsiteInd == 0
 
-    jList = NNList[1:, vacsiteInd]
-    return jList, dxList, jumpNewIndices, superCell, vacsite, vacsiteInd
+    # construct the jump neighbor list
+    jList = np.zeros(dxList.shape[0], dtype=int)
+    for jumpInd in range(dxList.shape[0]):
+        dx = dxList[jumpInd]
+        Rsite, ciSite = superCell.crys.cart2pos(dx)
+        siteInd = superCell.index(Rsite, ciSite)[0]
+        jList[jumpInd] = siteInd
 
-def Load_Data(DataPath, Perm=False):
+    if not ReduceToPrimitve:
+        assert np.all(jList == NNList[1:, vacsiteInd])
+
+    return jList, dxList, superCell, vacsite, vacsiteInd, siteMap_nonPrimitive_to_primitive
+
+def Load_Data(DataPath, siteMap_nonPrimitive_to_primitive, Perm=False):
     with h5py.File(DataPath, "r") as fl:
         if not Perm:
             perm = np.arange(len(fl["InitStates"]))
@@ -82,6 +134,12 @@ def Load_Data(DataPath, Perm=False):
         rateList = np.array(fl["rates"])[perm]
         AllJumpRates = np.array(fl["AllJumpRates_Init"])[perm]
         jmpSelects = np.array(fl["JumpSelects"])[perm]
+
+        if siteMap_nonPrimitive_to_primitive is not None:
+            print("Re-indexing sites from non-primitive to primitive lattice")
+            for stateInd in range(state1List.shape[0]):
+                state = state1List[stateInd].copy()
+                state1List[stateInd, :] = state[siteMap_nonPrimitive_to_primitive][:]
 
     return state1List, dispList, rateList, AllJumpRates, jmpSelects
 
@@ -183,10 +241,6 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
            jSelectList, dispSelects, ratesEscape, SpecExpand, JitExpander, NVclus,
            numVecsInteracts, VecsInteracts, VecGroupInteracts, aj, rcond=1e-8):
 
-
-    # Get a dummy TS offsite counts
-    TSOffSc = np.zeros(JitExpander.numSitesTSInteracts.shape[0], dtype=np.int8)
-
     # Then we write the expansion loop
     totalW = np.zeros((NVclus, NVclus))
     totalB = np.zeros(NVclus)
@@ -215,7 +269,7 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
         #        numVecsInteracts, VecGroupInteracts, VecsInteracts,
         #        lenVecClus, vacSiteInd, RateList)
         if aj:
-            WBar, bBar, rates_used, _, _ = JitExpander.Expand(state, jSiteList, dxList, SpecExpand, offsc,
+            WBar, bBar, rates_used = JitExpander.Expand(state, jSiteList, dxList, SpecExpand, offsc,
                                               numVecsInteracts, VecGroupInteracts, VecsInteracts,
                                               NVclus, vacsiteInd, AllJumpRates[samp])
 
@@ -226,9 +280,13 @@ def Expand(T, state1List, vacsiteInd, Nsamples, jSiteList, dxList, AllJumpRates,
             jList = np.array([jSiteList[jSelectList[samp]]], dtype=int)
             dxList = np.array([dispSelects[samp, JitExpander.vacSpec, :]], dtype=float)
             Rate = np.array([ratesEscape[samp]], dtype=float)
-            WBar, bBar, rates_used, _, _ = JitExpander.Expand(state, jList, dxList, SpecExpand, offsc,
-                                                        TSOffSc, numVecsInteracts, VecGroupInteracts, VecsInteracts,
-                                                        NVclus, 0, vacsiteInd, Rate)
+            # (self, state, jList, dxList, spec, OffSiteCount,
+            #  numVecsInteracts, VecGroupInteracts, VecsInteracts,
+            #  lenVecClus, vacSiteInd, RateList):
+
+            WBar, bBar, rates_used = JitExpander.Expand(state, jList, dxList, SpecExpand, offsc,
+                                                        numVecsInteracts, VecGroupInteracts, VecsInteracts,
+                                                        NVclus, vacsiteInd, Rate)
             assert np.array_equal(state, state1List[samp])  # assert revertions
             assert np.allclose(rates_used, Rate)
 
@@ -297,17 +355,19 @@ def Calculate_L(state1List, SpecExpand, VacSpec, rateList, dispList, jumpSelects
 
 def main(args):
 
+    # Load Crystal Data
+    jList, dxList, superCell, vacsite, vacsiteInd, siteMap_nonPrimitive_to_primitive = \
+        Load_crys_Data(args.CrysDatPath, ReduceToPrimitve=args.ReduceToPrimitve)
+
     # Load Data
     specExpOriginal = args.SpecExpand
-    state1List, dispList, rateList, AllJumpRates, jumpSelects = Load_Data(args.DataPath, Perm=args.Perm)
+    state1List, dispList, rateList, AllJumpRates, jumpSelects =\
+        Load_Data(args.DataPath, siteMap_nonPrimitive_to_primitive, Perm=args.Perm)
 
     AllSpecs = np.unique(state1List[0])
     NSpec = AllSpecs.shape[0]
 
     SpecExpand = args.SpecExpand
-
-    # Load Crystal Data
-    jList, dxList, jumpNewIndices, superCell, vacsite, vacsiteInd = Load_crys_Data(args.CrysDatPath)
     
     # Let's find which jump was selected
     a0 = np.linalg.norm(dispList[0, args.VacSpec]) / np.linalg.norm(dxList[0])
@@ -407,7 +467,10 @@ if __name__ == "__main__":
     
     parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str,
                         help="Path to crystal Data.")
-    
+
+    parser.add_argument("-red", "--ReduceToPrimitve", action="store_true",
+                        help="Whether to reduce the crystal from the crystal data file to a primitive crystal.")
+
     parser.add_argument("-mo", "--MaxOrder", metavar="int", type=int, default=None,
                         help="Maximum sites to consider in a cluster.")
     
