@@ -28,7 +28,6 @@ class VectorClusterExpansion(object):
         """
         self.chem = chemExpand  # we'll work with a monoatomic basis
         self.sup = sup
-        self.N_units = sup.superlatt[0, 0]
         self.Nsites = len(self.sup.mobilepos)
         self.crys = self.sup.crys
         # vacInd will always be the initial state in the transitions that we consider.
