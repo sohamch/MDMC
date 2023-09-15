@@ -35,12 +35,11 @@ class Test_HEA_LBAM(unittest.TestCase):
         self.crys = self.superCell.crys
         print(self.crys)
 
-        print("Sites in Dataset: ", self.state1List.shape)
+        print("Sites in Dataset: ", self.state1List.shape[1])
         print("Sites in supercell: ", len(self.superCell.mobilepos))
         self.AllSpecs = np.unique(self.state1List[0])
         self.NSpec = self.AllSpecs.shape[0]
         self.vacSpec = self.state1List[0, 0]
-        print(self.vacSpec)
         self.SpecExpand = 5
         print("All Species: {}".format(self.AllSpecs))
         print("Vacancy Species: {}. Vacancy site: {}".format(self.vacSpec, self.vacsiteInd))
@@ -127,6 +126,13 @@ class Test_HEA_LBAM(unittest.TestCase):
             self.assertTrue(np.array_equal(self.jList, NNList[1:, 0]))
             self.assertTrue(self.siteMap_nonPrimitive_to_primitive is None)
 
+            for stateInd in range(state1List.shape[0]):
+                state = state1List[stateInd]
+                state_mapped = self.state1List[stateInd]
+
+                self.assertTrue(np.array_equal(state, state_mapped),
+                                 msg="state {} failed\nSite map:\n{}".format(stateInd, self.siteMap_nonPrimitive_to_primitive))
+
         # check the re-indexing of the data
         # We'll get the cartesian position from the original supercell
         # Then we'll check it matches up with the position from the primitive supercell
@@ -149,6 +155,8 @@ class Test_HEA_LBAM(unittest.TestCase):
                 state = state1List[stateInd]
                 state_mapped = self.state1List[stateInd]
 
+                self.assertTrue(state.shape[0] == state_mapped.shape[0] == self.VclusExp.Nsites)
+
                 self.assertFalse(np.array_equal(state, state_mapped),
                                  msg="state {} failed\nSite map:\n{}".format(stateInd, self.siteMap_nonPrimitive_to_primitive))
 
@@ -162,11 +170,14 @@ class Test_HEA_LBAM(unittest.TestCase):
 
                 # Then check that the occupancies of the sites are consistent
                 self.assertTrue(self.siteMap_nonPrimitive_to_primitive is not None)
-                for siteInd_primitive in range(self.siteMap_nonPrimitive_to_primitive.shape[0]):
+                for siteInd_primitive in range(self.VclusExp.Nsites):
                     siteInd_original = self.siteMap_nonPrimitive_to_primitive[siteInd_primitive]
+                    if siteInd_primitive == 0:  # check that the vacancy is at 0 in both cases
+                        self.assertEqual(siteInd_original, 0)
+
                     self.assertEqual(state[siteInd_original], state_mapped[siteInd_primitive])
 
-            print("Tested {} states".format(stateInd + 1))
+            print("Tested {} states. Last site checked: {}".format(stateInd + 1, siteInd_primitive))
 
     def test_CreateJitCalculator(self):
         # This is to check whether the Jit arrays have been properly stored
@@ -232,9 +243,15 @@ class Test_HEA_LBAM(unittest.TestCase):
                     self.numVecsInteracts, self.VecGroupInteracts, self.VecsInteracts)
 
         self.assertAlmostEqual(np.sum(Lsamps) / 10, L, places=8)
-        Ns = [self.superCell.superlatt[i, i] for i in range(self.superCell.superlatt.shape[0])]
-        Lattice_translations = [np.array([R1, R2, R3], dtype=int) for R1 in range(0, Ns[0]) for R2 in range(0, Ns[1])
-                                for R3 in range(0, Ns[2])]
+        Lattice_translations = []
+        translationSet = set()
+        for siteInd in range(self.VclusExp.Nsites):
+            ciSite, Rsite = self.VclusExp.sup.ciR(siteInd)
+            Rtup = tuple([r for r in Rsite])
+            assert Rtup not in translationSet
+            Lattice_translations.append(Rsite)
+            translationSet.add(Rtup)
+
         assert len(Lattice_translations) == self.VclusExp.Nsites // len(self.VclusExp.crys.basis[self.VclusExp.chem])
 
         # Now go through each of the samples and verify
@@ -556,9 +573,15 @@ class Test_HEA_LBAM(unittest.TestCase):
         dispList = self.dispList[sampInd: sampInd + 1]
         rateList = self.rateList[sampInd: sampInd + 1]
 
-        Ns = [self.superCell.superlatt[i, i] for i in range(self.superCell.superlatt.shape[0])]
-        Lattice_translations = [np.array([R1, R2, R3], dtype=int) for R1 in range(0, Ns[0]) for R2 in range(0, Ns[1])
-                                for R3 in range(0, Ns[2])]
+        Lattice_translations = []
+        translationSet = set()
+        for siteInd in range(self.VclusExp.Nsites):
+            ciSite, Rsite = self.VclusExp.sup.ciR(siteInd)
+            Rtup = tuple([r for r in Rsite])
+            assert Rtup not in translationSet
+            Lattice_translations.append(Rsite)
+            translationSet.add(Rtup)
+
         assert len(Lattice_translations) == self.VclusExp.Nsites // len(self.VclusExp.crys.basis[self.VclusExp.chem])
 
         state = stateList[0]
@@ -714,12 +737,25 @@ class Test_HEA_LBAM(unittest.TestCase):
 class Test_HEA_LBAM_vac(Test_HEA_LBAM):
 
     def setUp(self):
-        self.DataPath = ("testData_HEA.h5")
-        self.CrysDatPath = (cp + "CrystData.h5")
-        self.a0 = 3.59
-        self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
-        self.jList, self.dxList, self.superCell, self.jnet, self.vacsite, self.vacsiteInd =\
-            Load_crys_Data(self.CrysDatPath)
+        self.DataPath = ("testData_HEA_MEAM_orthogonal.h5")
+        self.CrysDatPath = (cp + "CrystData_ortho_5_cube.h5")
+        self.a0 = 3.595
+
+        self.remap = True
+
+        self.jList, self.dxList, self.superCell, self.vacsite, self.vacsiteInd, self.siteMap_nonPrimitive_to_primitive = \
+            Load_crys_Data(self.CrysDatPath, ReduceToPrimitve=True)
+
+        self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = \
+            Load_Data(self.DataPath, self.siteMap_nonPrimitive_to_primitive)
+
+        self.assertTrue(self.siteMap_nonPrimitive_to_primitive is not None)
+
+        self.crys = self.superCell.crys
+        print(self.crys)
+
+        print("Sites in Dataset: ", self.state1List.shape[1])
+        print("Sites in supercell: ", len(self.superCell.mobilepos))
 
         self.AllSpecs = np.unique(self.state1List[0])
         self.NSpec = self.AllSpecs.shape[0]
@@ -758,9 +794,16 @@ class Test_HEA_LBAM_SR2(Test_HEA_LBAM):
         self.DataPath = ("testData_SR2.h5")
         self.CrysDatPath = (cp + "CrystData.h5")
         self.a0 = 1
-        self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = Load_Data(self.DataPath)
-        self.jList, self.dxList, self.superCell, self.vacsite, self.vacsiteInd =\
-            Load_crys_Data(self.CrysDatPath)
+
+        self.remap = False
+
+        self.jList, self.dxList, self.superCell, self.vacsite, self.vacsiteInd, self.siteMap_nonPrimitive_to_primitive = \
+            Load_crys_Data(self.CrysDatPath, ReduceToPrimitve=self.remap)
+
+        self.assertTrue(self.siteMap_nonPrimitive_to_primitive is None)
+
+        self.state1List, self.dispList, self.rateList, self.AllJumpRates, self.jumpSelects = \
+            Load_Data(self.DataPath, self.siteMap_nonPrimitive_to_primitive)
 
         self.crys = self.superCell.crys
         self.AllSpecs = np.unique(self.state1List[0])
