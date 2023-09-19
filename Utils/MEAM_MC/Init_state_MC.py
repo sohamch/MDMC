@@ -104,7 +104,13 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
         assert len(rand_steps) == lastChkPt, "{} {}".format(len(rand_steps), lastChkPt)
         assert len(swap_steps) == lastChkPt, "{} {}".format(len(swap_steps), lastChkPt)
 
-        # Then clear the backup folder and only store the last loaded history
+        # Create running copies of history
+        np.save("Eng_all_steps.npy", np.array(Eng_steps_all))
+        np.save("accepts_all_steps.npy", np.array(accepts))
+        np.save("rands_all_steps.npy", np.array(rand_steps))
+        np.save("swap_atoms_all_steps.npy", np.array(swap_steps))
+
+        # Then clear the backup folder.
         clear_backup(lastChkPt, Eng_steps_all, accepts, rand_steps, swap_steps)
 
     # write the supercell as a lammps file
