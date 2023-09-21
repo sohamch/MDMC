@@ -130,6 +130,7 @@ def MC_Run(T, SwapRun, ASE_Super, elems,
     
     beta = 1.0/(kB * T)
     Eng_steps_all.append(e1)
+    np.save("Eng_all_steps.npy", np.array(Eng_steps_all))
     while N_total < SwapRun - lastChkPt: # run the remaining steps only
         
         # Now randomize the atomic occupancies
