@@ -382,7 +382,8 @@ def train_batch_tracer(gNet, batch, end, state1Batch, state2Batch, rateBatch, di
 
     # sum the contributions by each site occupied by the species of interest in the initial state
     On_st1Batch = On_st1[batch: end].to(device)
-    diff_sum_sites = pt.sum(diff_sites_all * On_st1Batch, dim=1)
+    OnCounts = pt.sum(On_st1Batch, dim=1)
+    diff_sum_sites = pt.sum(diff_sites_all * On_st1Batch, dim=1) / OnCounts
     diff_batch_total = pt.sum(diff_sum_sites) / L0
 
     return diff_batch_total, y1, y2
