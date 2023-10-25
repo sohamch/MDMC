@@ -244,7 +244,7 @@ def getStateSum(st, GSites, stringSites):
 def getJumpRate(st1, st2, GSites, stringSites, mu, std):
     s1 = getStateSum(st1, GSites, stringSites)
     s2 = getStateSum(st2, GSites, stringSites)
-    sm = s1 * s2 // (s1 + s2)
+    sm = (s1 * s2) // (s1 + s2)
     random.seed(sm)
     # for i in range(500):
     #     un = random.gauss(mu, std)
