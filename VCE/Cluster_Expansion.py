@@ -479,7 +479,7 @@ class JITExpanderClass(object):
         for i in range(lenVecClus):
             WBar[i, i] += np.dot(del_lamb_mat[i, i, :], ratelist)
             for j in range(i):
-                WBar[i, j] += np.dot(del_lamb_mat[i, j, :], ratelist)
+                WBar[i, j] = np.dot(del_lamb_mat[i, j, :], ratelist)
                 WBar[j, i] = WBar[i, j]
 
         BBar = np.zeros(lenVecClus)
