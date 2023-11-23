@@ -29,7 +29,6 @@ def ScaledResBias(States, yStates, yStateExits, dxList, NNvacList, JumpProbs, va
 
     # Initialize basis array
     NSpec = np.unique(States[0]).shape[0]
-    print(NSpec)
     # We'll store the basis vectors for each species separately
     ndim = dxList.shape[1]
     Basis_specs_states = np.zeros((NSpec, States.shape[0], ndim))
