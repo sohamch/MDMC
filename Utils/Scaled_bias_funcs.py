@@ -22,7 +22,7 @@ def ScaledBiasBasis(States, dxList, NNvacList, JumpProbs, vacSpec):
         assert np.allclose(-Basis_specs_states[0][stateInd],
                            sum([Basis_specs_states[sp][stateInd] for sp in range(1, 6)]))
 
-        return Basis_specs_states
+    return Basis_specs_states
 
 def ScaledResBias(States, yStates, yStateExits, dxList, NNvacList, JumpProbs, vacSpec, specExpand):
     # Now we do the scaled bias basis correction procedure to improve the transport coefficients.
