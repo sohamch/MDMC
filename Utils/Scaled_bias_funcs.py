@@ -58,6 +58,8 @@ def ScaledResBias(States, yStates, yStateExits, dxList, NNvacList, JumpProbs, va
 
             # Then the atomic species
             else:
+                # First for the vacancy accumulate residual bias
+                Basis_specs_states[vacSpec, stateInd] += gamma_jump * (dxJmp)
                 if sp == specExpand:
                     Basis_specs_states[sp, stateInd] += \
                         gamma_jump * (-dxJmp + yStateExits[stateInd * z + jmp] - yStates[stateInd])
