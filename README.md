@@ -37,10 +37,6 @@ The directory ```Examples/4_Monte_Carlo_LAMMPS/``` contains a ReadMe file and an
 The directory ```Examples/4_Monte_Carlo_LAMMPS/``` contains a ReadMe file and an example job script that show how to perform Kinetic Monte Carlo simulations with LAMMPS using climbing-image NEB calculations in the CoNiCrFeMn 5-component FCC alloys using 8x8x8 primitive supercells. A relative energy tolerance of $10^{-5}$ and absolute force tolerance of $10^{-5}$ is used for convergence criteria for the NEB calculations. This is done using the python script ```Utils/MEAM_MC/NEB_steps_multiTraj.py```. An example jupyter notebook is also provided that shows how to process the outputs from this code for a 2-step KMC trajectory to generate data sets in the format necessary for the machine learning and cluster expansion codes
 
 ## References
-* Soham Chattopadhyay and Dallas R. Trinkle "Accelerated Transport Coefficient Prediction in Random Alloys
-Using Deep Learning" (publication in progress)
 * Dallas R. Trinkle, "Variational principle for mass transport.", Physcial Review Letters (2018) [doi:doi.org/10.1103/PhysRevLett.121.235901]
-* Won-Mi Choi, Yong Hee Jo, Seok Su Sohn, Sunghak Lee & Byeong-Joo Lee - "Understanding the physical metallurgy of the CoCrFeMnNi high-entropy alloy: an atomistic simulation study", npj Computational Materials, 2018 [doi: doi.org/10.1038/s41524-017-0060-9]
- - This MEAM potential was obtained from this paper.
-* Taco Cohen and Max Welling - "Group equivariant convolutional networks", PMLR 48:2990-2999, 2016.
- - This paper is the basis for the symmetry-conforming neural network design.
+* Won-Mi Choi, Yong Hee Jo, Seok Su Sohn, Sunghak Lee & Byeong-Joo Lee - "Understanding the physical metallurgy of the CoCrFeMnNi high-entropy alloy: an atomistic simulation study", npj Computational Materials, 2018 [doi: doi.org/10.1038/s41524-017-0060-9]. This MEAM potential was obtained from this paper.
+* Taco Cohen and Max Welling - "Group equivariant convolutional networks", PMLR 48:2990-2999, 2016. This paper is the basis for the symmetry-conforming neural network design.
