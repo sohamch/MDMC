@@ -20,7 +20,7 @@ def ScaledBiasBasis(States, dxList, NNvacList, JumpProbs, vacSpec):
             Basis_specs_states[sp][stateInd] += gamma_jump * (-dxList[jmp])
 
         assert np.allclose(-Basis_specs_states[0][stateInd],
-                           sum([Basis_specs_states[sp][stateInd] for sp in range(1, 6)]))
+                           sum([Basis_specs_states[sp][stateInd] for sp in range(1, NSpec)]))
 
     return Basis_specs_states
 
