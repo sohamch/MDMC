@@ -14,12 +14,12 @@ def ScaledBiasBasis(States, dxList, NNvacList, JumpProbs, vacSpec):
         for jmp in range(dxList.shape[0]):
             gamma_jump = JumpProbs[stateInd, jmp]
             # First, the vacancy
-            Basis_specs_states[0][stateInd] += gamma_jump * (dxList[jmp])
+            Basis_specs_states[vacSpec][stateInd] += gamma_jump * (dxList[jmp])
             sp = state[NNvacList[jmp]]
             assert sp != vacSpec
             Basis_specs_states[sp][stateInd] += gamma_jump * (-dxList[jmp])
 
-        assert np.allclose(-Basis_specs_states[0][stateInd],
+        assert np.allclose(-Basis_specs_states[vacSpec][stateInd],
                            sum([Basis_specs_states[sp][stateInd] for sp in range(1, NSpec)]))
 
     return Basis_specs_states
@@ -50,7 +50,7 @@ def ScaledResBias(States, yStates, yStateExits, dxList, NNvacList, JumpProbs, va
             # First, we handle the vacancy case
             if specExpand == vacSpec:
                 # For the vacancy, accumulate scaled residual bias
-                Basis_specs_states[0, stateInd] += \
+                Basis_specs_states[vacSpec, stateInd] += \
                     gamma_jump * (dxJmp + yStateExits[stateInd * z + jmp] - yStates[stateInd])
 
                 # For the other specs, accumulate just scaled bias
@@ -58,7 +58,7 @@ def ScaledResBias(States, yStates, yStateExits, dxList, NNvacList, JumpProbs, va
 
             # Then the atomic species
             else:
-                # First for the vacancy accumulate residual bias
+                # First for the vacancy accumulate scaled bias
                 Basis_specs_states[vacSpec, stateInd] += gamma_jump * (dxJmp)
                 if sp == specExpand:
                     Basis_specs_states[sp, stateInd] += \
