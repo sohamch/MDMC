@@ -20,7 +20,7 @@ def ScaledBiasBasis(States, dxList, NNvacList, JumpProbs, vacSpec):
             Basis_specs_states[sp][stateInd] += gamma_jump * (-dxList[jmp])
 
         assert np.allclose(-Basis_specs_states[vacSpec][stateInd],
-                           sum([Basis_specs_states[sp][stateInd] for sp in range(1, NSpec)]))
+                           sum([Basis_specs_states[sp][stateInd] for sp in range(NSpec) if sp != vacSpec]))
 
     return Basis_specs_states
 
@@ -60,12 +60,14 @@ def ScaledResBias(States, yStates, yStateExits, dxList, NNvacList, JumpProbs, va
             else:
                 # First for the vacancy accumulate scaled bias
                 Basis_specs_states[vacSpec, stateInd] += gamma_jump * (dxJmp)
+
+                # Now for the atomic species
                 if sp == specExpand:
                     Basis_specs_states[sp, stateInd] += \
                         gamma_jump * (-dxJmp + yStateExits[stateInd * z + jmp] - yStates[stateInd])
 
                 else:
-                    # Accumulate residual bias with zero actual displacement
+                    # Accumulate residual bias with zero actual displacement for species of interest
                     Basis_specs_states[specExpand, stateInd] += \
                         gamma_jump * (yStateExits[stateInd * z + jmp] - yStates[stateInd])
 
