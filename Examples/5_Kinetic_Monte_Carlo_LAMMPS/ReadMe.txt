@@ -43,17 +43,20 @@ Section 3 - Input parameters for Kinetic Monte Carlo simulations with LAMMPS.
 Input parameters for Kinetic Monte Carlo simulations with LAMMPS.
 
 optional arguments:
-  -h, --help            show this help message and exit
   -cr /path/to/crys/dat, --CrysDatPath /path/to/crys/dat
                         Path to crystal Data. (default: None)
+
   -pp /path/to/potential/file, --PotPath /path/to/potential/file
                         Path to the LAMMPS MEAM potential. (default: None)
+
   -if /path/to/initial/file.npy, --InitStateFile /path/to/initial/file.npy
                         Path to the .npy file storing the 0-step states from
                         Metropolis Monte Carlo. (default: None)
+
   -a0 float, --LatPar float
                         Lattice parameter - multiplied to displacements and
                         usedto construct LAMMPS coordinates. (default: 3.595)
+
   -pr, --Prim           Whether to use primitive cell (default: False)
 
   -T int, --Temp int    Temperature to read data from (default: None)
@@ -74,12 +77,11 @@ optional arguments:
                         calculations. (default: 0.0)
 
   -th float, --DispThreshold float
-                        Maximum allowed displacement after relaxation in Agnstroms.
+                        Maximum allowed displacement after relaxation in Angstroms.
                         (default: 1.0)
 
   -ts float, --TimeStep float
-                        Relative Energy change tolerance for ending NEB
-                        calculations. (default: 0.001)
+                        Starting time step for NEB calculations. (default: 0.001)
 
   -k float, --SpringConstant float
                         Parallel spring constant for NEB calculations.
@@ -89,7 +91,7 @@ optional arguments:
                         Perpendicular spring constant for NEB calculations.
                         (default: 10.0)
 
-  -u int, --Nunits int  Number of unit cells in the supercell. (default: 8)
+  -u int, --Nunits int  Number of unit cells in the supercell. (default: 5)
 
   -idx int, --StateStart int
                         The starting index of the state for this run from the

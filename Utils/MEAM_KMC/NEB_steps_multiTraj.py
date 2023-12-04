@@ -364,10 +364,10 @@ if __name__ == "__main__":
                         help="Relative Energy change tolerance for ending NEB calculations.")
 
     parser.add_argument("-th", "--DispThreshold", metavar="float", type=float, default=1.0,
-                        help="Maximum allowed displacement after relaxation.")
+                        help="Maximum allowed displacement after relaxation in Angstroms.")
 
     parser.add_argument("-ts", "--TimeStep", metavar="float", type=float, default=0.001,
-                        help="Relative Energy change tolerance for ending NEB calculations.")
+                        help="Starting time step for NEB calculations.")
 
     parser.add_argument("-k", "--SpringConstant", metavar="float", type=float, default=10.0,
                         help="Parallel spring constant for NEB calculations.")
