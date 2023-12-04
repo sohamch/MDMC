@@ -37,46 +37,45 @@ usage: Init_state_MC.py [-h] [-pp /path/to/potential/file]
 Input parameters for Metropolis Monte Carlo simulations with ASE.
 
 optional arguments:
-  -h, --help            show the help message and exit
-  
+  -h, --help            show this help message and exit
   -pp /path/to/potential/file, --potPath /path/to/potential/file
                         Path to the LAMMPS MEAM potential. (default: None)
-                        
   -na int [int ...], --Natoms int [int ...]
                         Number of atoms of each kind of Co, Ni, Cr, Fe, Mn in
-                        that order. (default: [102, 103, 102, 102, 102])
-                        
+                        that order. (default: None)
   -ckp, --UseLastChkPt  Whether to restart simulations from saved checkpoints.
                         If used, this flag will restart the Monte Carlo runs
                         from the second last saved ASE supercell in the
                         checkpoint directory. (default: False)
-                        
-  -u int, --Nunits int  Number of unit cells in the supercell. (default: 8)
-  
+  -u int [int ...], --Nunits int [int ...]
+                        Number of unit cells in the supercell. (default: [5,
+                        5, 5])
+  -pr, --Prim           Whether to use primitive cell (default: False)
+  -nosr, --NoSrun       Whether to use srun on not to launch lammps jobs.
+                        (default: False)
   -a0 float, --LatPar float
-                        Lattice parameter - multiplied to displacements and
-                        usedto construct LAMMPS coordinates. (default: 3.59)
-                        
+                        Lattice parameter (default: 3.595)
   -nv, --NoVac          Whether to disable vacancy creation. (default: False)
-  
   -T float, --Temp float
-                        Temperature in Kelvin. (default: 1073.0)
-                        
+                        Temperature in Kelvin. (default: None)
   -nt int, --Nsteps int
                         Total number of Metropolis trials to run. A Metropolis
                         trial consists of swapping two sites and accepting
                         with a probability. (default: 60000)
-                        
   -ne int, --NEqb int   Number of equilibrating/thermalizing steps. (default:
                         2000)
-                        
   -ns int, --Nsave int  Interval of steps after equilibration after which to
                         collect a state as a sample. (default: 200)
-                        
+  -ftol float, --ForceTol float
+                        Force tolerance to stop CG minimization of energies.
+                        (default: 0.001)
+  -etol float, --EnTol float
+                        Relative energy change tolerance to stop CG
+                        minimization of energies. (default: 0.0)
   -dmp, --DumpArguments
                         Whether to dump all the parsed arguments into a text
                         file. (default: False)
-                        
   -dpf string, --DumpFile string
                         The file in the run directory where all the args will
                         be dumped. (default: ArgFiles)
+
