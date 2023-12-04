@@ -375,7 +375,7 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--PerpSpringConstant", metavar="float", type=float, default=10.0,
                         help="Perpendicular spring constant for NEB calculations.")
 
-    parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=8,
+    parser.add_argument("-u", "--Nunits", metavar="int", type=int, default=5,
                         help="Number of unit cells in the supercell.")
 
     parser.add_argument("-idx", "--StateStart", metavar="int", type=int, default=0,
