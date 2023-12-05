@@ -455,7 +455,7 @@ if __name__ == "__main__":
                         help="Maximum sites to consider in a cluster.")
     
     parser.add_argument("-cc", "--ClustCut", metavar="float", type=float, default=None,
-                        help="Maximum distance between sites to consider in a cluster.")
+                        help="Maximum distance between sites to consider in a cluster in lattice parameter units.")
     
     parser.add_argument("-sp", "--SpecExpand", metavar="int", type=int, default=5,
                         help="Which species to expand.")
