@@ -9,7 +9,6 @@ import pickle
 import h5py
 from tqdm import tqdm
 import argparse
-import gc
 from numba import jit, int64
 import time
 
@@ -111,25 +110,13 @@ def Load_crys_Data(CrysDatPath, ReduceToPrimitve=False):
 
     return jList, dxList, superCell, vacsite, vacsiteInd, siteMap_nonPrimitive_to_primitive
 
-def Load_Data(DataPath, siteMap_nonPrimitive_to_primitive, Perm=False):
+def Load_Data(DataPath, siteMap_nonPrimitive_to_primitive):
     with h5py.File(DataPath, "r") as fl:
-        if not Perm:
-            perm = np.arange(len(fl["InitStates"]))
-            print("Permutation disabled. Not mixing data.")
-
-        else:
-            try:
-                perm = np.array(fl["Permutation"])
-                print("found permuation and  (-prm flag set). mixing data before splitting.")
-            except:
-                perm = np.arange(len(fl["InitStates"]))
-                print("No Permutation array found. Not mixing data.")
-
-        state1List = np.array(fl["InitStates"])[perm]
-        dispList = np.array(fl["SpecDisps"])[perm]
-        rateList = np.array(fl["rates"])[perm]
-        AllJumpRates = np.array(fl["AllJumpRates_Init"])[perm]
-        jmpSelects = np.array(fl["JumpSelects"])[perm]
+        state1List = np.array(fl["InitStates"])
+        dispList = np.array(fl["SpecDisps"])
+        rateList = np.array(fl["rates"])
+        AllJumpRates = np.array(fl["AllJumpRates_Init"])
+        jmpSelects = np.array(fl["JumpSelects"])
 
         if siteMap_nonPrimitive_to_primitive is not None:
             print("Re-indexing sites from non-primitive to primitive lattice")
@@ -358,7 +345,7 @@ def main(args):
     # Load Data
     specExpOriginal = args.SpecExpand
     state1List, dispList, rateList, AllJumpRates, jumpSelects =\
-        Load_Data(args.DataPath, siteMap_nonPrimitive_to_primitive, Perm=args.Perm)
+        Load_Data(args.DataPath, siteMap_nonPrimitive_to_primitive)
 
     AllSpecs = np.unique(state1List[0])
     NSpec = AllSpecs.shape[0]
@@ -457,9 +444,6 @@ if __name__ == "__main__":
     
     parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str,
                         help="Path to Data file.")
-
-    parser.add_argument("-prm", "--Perm", action="store_true",
-                        help="Whether to mix all the data before splitting into training and testing. A mixing array is required to be present in the h5 data set.")
     
     parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str,
                         help="Path to crystal Data.")
