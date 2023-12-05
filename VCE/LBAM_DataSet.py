@@ -85,8 +85,7 @@ def Load_crys_Data(CrysDatPath, ReduceToPrimitve=False):
         print("Reducing crystal to primitive form.")
         crys_primitve = crystal.Crystal(lattice=lattice, basis=basis, chemistry=["A"], noreduce=False)
 
-        superlatt_transf = np.dot(np.linalg.inv(crys_primitve.lattice), superlatt)
-        assert np.allclose(superlatt_transf, superlatt_transf.astype(int))
+        superlatt_transf = np.dot(np.linalg.inv(crys_primitve.lattice), superlatt).round(decimals=0)
         superCell_primitve = supercell.ClusterSupercell(crys_primitve, superlatt_transf.astype(int))
 
         # Make a mapping of the site indices
@@ -114,7 +113,7 @@ def Load_crys_Data(CrysDatPath, ReduceToPrimitve=False):
     if not ReduceToPrimitve:
         assert np.all(jList == NNList[1:, vacsiteInd])
 
-    print("Wroking Crystal:")
+    print("Working Crystal:")
     print(superCell.crys)
     print()
 
