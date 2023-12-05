@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# import sys
-# This is the path to the cluster expansion modules
-# sys.path.append("/mnt/WorkPartition/Work/Research/UIUC/MDMC/VCE")
-# Commenting out - add this path to $PYTHONPATH instead.
-
 import os
 RunPath = os.getcwd() + "/"
 
@@ -124,7 +116,7 @@ def Load_Data(DataPath, siteMap_nonPrimitive_to_primitive, Perm=False):
         if not Perm:
             perm = np.arange(len(fl["InitStates"]))
             print("Permutation disabled. Not mixing data.")
-        
+
         else:
             try:
                 perm = np.array(fl["Permutation"])
@@ -465,7 +457,7 @@ if __name__ == "__main__":
     
     parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str,
                         help="Path to Data file.")
-    
+
     parser.add_argument("-prm", "--Perm", action="store_true",
                         help="Whether to mix all the data before splitting into training and testing. A mixing array is required to be present in the h5 data set.")
     
