@@ -28,27 +28,15 @@ def Load_crysDats(CrysDatPath):
 
     return GpermNNIdx, NNsiteList, JumpNewSites, dxJumps
 
-def Load_Data(DataPath, Perm=False):
+def Load_Data(DataPath):
     with h5py.File(DataPath, "r") as fl:
-        if Perm:
-            try:
-                perm = np.array(fl["Permutation"])
-                print("found permuation to mix data set.")
-            except:        
-                print("No permuation array found in data set to mix data set.")
-                perm = np.arange(len(fl["InitStates"]))
-
-        else:
-                print("Permutation not enabled.")
-                perm = np.arange(len(fl["InitStates"]))
-
-        state1List = np.array(fl["InitStates"])[perm]
-        state2List = np.array(fl["FinStates"])[perm]
-        dispList = np.array(fl["SpecDisps"])[perm]
-        rateList = np.array(fl["rates"])[perm]
-        AllJumpRates_st1 = np.array(fl["AllJumpRates_Init"])[perm]
-        AllJumpRates_st2 = np.array(fl["AllJumpRates_Fin"])[perm]
-        JumpSelects = np.array(fl["JumpSelects"])[perm]
+        state1List = np.array(fl["InitStates"])
+        state2List = np.array(fl["FinStates"])
+        dispList = np.array(fl["SpecDisps"])
+        rateList = np.array(fl["rates"])
+        AllJumpRates_st1 = np.array(fl["AllJumpRates_Init"])
+        AllJumpRates_st2 = np.array(fl["AllJumpRates_Fin"])
+        JumpSelects = np.array(fl["JumpSelects"])
  
     return state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, JumpSelects
 
@@ -827,7 +815,7 @@ def main(args):
 
     # 2. Load data
     state1List, state2List, dispList, rateList, AllJumpRates_st1, AllJumpRates_st2, JumpSelects =\
-        Load_Data(args.DataPath, args.Perm)
+        Load_Data(args.DataPath)
 
     # 2.1 Convert jump rates to probabilities
     if args.BoundTrain:
@@ -1033,7 +1021,6 @@ if __name__ == "__main__":
     # Add argument parser
     parser = argparse.ArgumentParser(description="Input parameters for using GCnets", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-DP", "--DataPath", metavar="/path/to/data", type=str, help="Path to Data file.")
-    parser.add_argument("-prm", "--Perm", action="store_true", help="Whether to mix up the data set if a permutation array is found.")
     parser.add_argument("-cr", "--CrysDatPath", metavar="/path/to/crys/dat", type=str, help="Path to crystal Data.")
     parser.add_argument("-a0", "--LatParam", metavar="float", type=float, default=1.0, help="Lattice parameter.")
 
