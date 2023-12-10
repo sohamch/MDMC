@@ -5,12 +5,11 @@ All examples in this repository are mainly focused on FCC alloys, both model sys
 
 ## Pre-requisites
  - Python 3.
- - Linux environment (such as in an HPC environment).
  - Some Standard packages: numpy, scipy, numba, PyTorch(1.7 or higher), h5py.
  - Onsager package by Dallas. R. Trinkle, with the cluster modules (https://github.com/DallasTrinkle/Onsager/tree/cluster).
  - The ASE package (https://wiki.fysik.dtu.dk/ase/).
- - An installation of the LAMMPS package to use MEAM potentials and do climbing-image NEB calculations. LAMMPS jobs should be able to be launched from the terminal with the syntax ```$LMPPATH/lmp```, where ```$LMPPATH``` is the path to the directory containing ```lmp```, the LAMMPS executable. This directory path should be added to the shell configuration file (such as the .bashrc file) with the ```export``` command.
-
+ - An installation of the LAMMPS package to use MEAM potentials and do climbing-image NEB calculations.
+ - 
 ## Getting Started
 ## (1) Accessing the modules
 The easiest way to access the required codes to perform transport coefficient calculations is to the add the "Symm_Network", "VCE" (short for Vector-valued Cluster Expansion) and "Utils" directories to the $PYTHONPATH variable or add them to your conda environment using the ```conda develop``` command.
