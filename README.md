@@ -9,7 +9,6 @@ All examples in this repository are mainly focused on FCC alloys, both model sys
  - Onsager package by Dallas. R. Trinkle, with the cluster modules (https://github.com/DallasTrinkle/Onsager/tree/cluster).
  - The ASE package (https://wiki.fysik.dtu.dk/ase/).
  - An installation of the LAMMPS package to use MEAM potentials and do climbing-image NEB calculations.
- - 
 ## Getting Started
 ## (1) Accessing the modules
 The easiest way to access the required codes to perform transport coefficient calculations is to the add the "Symm_Network", "VCE" (short for Vector-valued Cluster Expansion) and "Utils" directories to the $PYTHONPATH variable or add them to your conda environment using the ```conda develop``` command.
