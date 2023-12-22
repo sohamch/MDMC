@@ -24,7 +24,7 @@
 
 # We take the example of the data set with 80% slow species.
 c=80
-$VKMC=/path/to/local/copy/of/VKMC/repository/
+VKMC=/path/to/local/copy/of/VKMC/repository/
 CP=$VKMC/CrysDat_FCC/CrystData.h5
 
 $DataSets=/full/path/to/dataset/file # example: /FullPathToMyDataSetDirectory/singleStep_FCC_SR2_c0_${c}.h5

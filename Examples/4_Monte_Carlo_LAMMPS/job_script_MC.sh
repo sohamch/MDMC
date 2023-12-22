@@ -20,7 +20,7 @@ VKMC=/path/to/the/local/copy/of/the/VKMC/repository # We Need to add the full pa
 potpath=$VKMC/Utils/pot
 
 # Path to the directory containing the Monte Carlo Python module
-$LMP_MC=$VKMC/Utils/MEAM_MC
+LMP_MC=$VKMC/Utils/MEAM_MC
 
 
 # Runs from scratch

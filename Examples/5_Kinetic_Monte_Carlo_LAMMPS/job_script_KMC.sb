@@ -13,7 +13,7 @@
 # conda activate My_fav_Env
 
 VKMC=/path/to/the/local/copy/of/the/VKMC/repository # We Need to add the full path to the local copy of the VKMC respository here.
-$LMP_KMC=$VKMC/Utils/MEAM_KMC # The path to the directory containing the NEB_steps_multiTraj.py module to perform KMC steps with LAMMPS NEB calculations for multiple KMC trajectories.
+LMP_KMC=$VKMC/Utils/MEAM_KMC # The path to the directory containing the NEB_steps_multiTraj.py module to perform KMC steps with LAMMPS NEB calculations for multiple KMC trajectories.
 potpath=$VKMC/Utils/pot # Path for the Lammps potential
 CD=$VKMC/CrysDat_FCC/CrystData_ortho_5_cube.h5 # Path for the Crystal data. In our simulations we used orthogonal supercells.
 T=1073 # Temperature
