@@ -5,12 +5,10 @@ All examples in this repository are mainly focused on FCC alloys, both model sys
 
 ## Pre-requisites
  - Python 3.
- - Linux environment (such as in an HPC environment).
  - Some Standard packages: numpy, scipy, numba, PyTorch(1.7 or higher), h5py.
  - Onsager package by Dallas. R. Trinkle, with the cluster modules (https://github.com/DallasTrinkle/Onsager/tree/cluster).
  - The ASE package (https://wiki.fysik.dtu.dk/ase/).
- - An installation of the LAMMPS package to use MEAM potentials and do climbing-image NEB calculations. LAMMPS jobs should be able to be launched from the terminal with the syntax ```$LMPPATH/lmp```, where ```$LMPPATH``` is the path to the directory containing ```lmp```, the LAMMPS executable. This directory path should be added to the shell configuration file (such as the .bashrc file) with the ```export``` command.
-
+ - An installation of the LAMMPS package to use MEAM potentials and do climbing-image NEB calculations.
 ## Getting Started
 ## (1) Accessing the modules
 The easiest way to access the required codes to perform transport coefficient calculations is to the add the "Symm_Network", "VCE" (short for Vector-valued Cluster Expansion) and "Utils" directories to the $PYTHONPATH variable or add them to your conda environment using the ```conda develop``` command.
@@ -34,7 +32,7 @@ The directory ```Examples/3_Cluster_expansion_training/``` contains an example j
 The directory ```Examples/4_Monte_Carlo_LAMMPS/``` contains a ReadMe file and an example job script that show how to perform Monte Carlo simulations with LAMMPS for the CoNiCrFeMn 5-component FCC alloys. This is done using the python script ```Utils/MEAM_MC/Init_state_MC.py```. An example notebook is provided that shows how to save these generated atomic configuration into numpy arrays. These states are then to be used as initial states for KMC random walk calculations. 
 
 ### (3.4) MEAM Potential Kinetic Monte Carlo example.
-The directory ```Examples/4_Monte_Carlo_LAMMPS/``` contains a ReadMe file and an example job script that show how to perform Kinetic Monte Carlo simulations with LAMMPS using climbing-image NEB calculations in the CoNiCrFeMn 5-component FCC alloys. This is done using the python script ```Utils/MEAM_MC/NEB_steps_multiTraj.py```. An example jupyter notebook is also provided that shows how to process the outputs from this code for a 2-step KMC trajectory to generate data sets in the format necessary for the machine learning and cluster expansion codes.
+The directory ```Examples/5_Kinetic_Monte_Carlo_LAMMPS/``` contains a ReadMe file and an example job script that show how to perform Kinetic Monte Carlo simulations with LAMMPS using climbing-image NEB calculations in the CoNiCrFeMn 5-component FCC alloys. This is done using the python script ```Utils/MEAM_MC/NEB_steps_multiTraj.py```.
 
 ## References
 * Dallas R. Trinkle, "Variational principle for mass transport.", Physcial Review Letters (2018) [doi:doi.org/10.1103/PhysRevLett.121.235901]
