@@ -187,7 +187,7 @@ def makeComputeData(state1List, state2List, dispList, specsToTrain, VacSpec, rat
                 for siteInd in range(Nsites):
                     if siteInd == NNsvac[jInd]:  # whichever site jumps, record it. We'll extract it later if it is the
                                                  # species of interest using the Onsites tensor.
-                        dispData[samp, :, siteInd] -= dispList[samp, 0, :]
+                        dispData[samp, :, siteInd] -= dispList[samp, VacSpec, :]
                     for dim in range(Ndim):
                         GatherTensor_tracers[samp, dim, siteInd] = source2Dest[jInd, siteInd]
 
