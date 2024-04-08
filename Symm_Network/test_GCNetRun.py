@@ -1418,3 +1418,43 @@ class TestGCNetRun_HEA_tracers_orthogonal(TestGCNetRun_HEA_tracers):
         self.VacSpec = 0
         self.sp_ch = {1: 0, 2: 1, 3: 2, 4: 3, 5: 4}
         print("Setup complete.")
+
+class TestGCNetRun_binary_tracers(TestGCNetRun_HEA_tracers):
+    def setUp(self):
+        self.T = 60
+        self.state1List, self.state2List, self.dispList, self.rateList, self.AllJumpRates_st1, \
+        self.AllJumpRates_st2, self.JumpSelects = \
+            Load_Data(Data2)
+
+        self.GpermNNIdx, self.NNsiteList, self.JumpNewSites, self.dxJumps = Load_crysDats(CrysDatPath)
+
+        with h5py.File(CrysDatPath, "r") as fl:
+            lattice = np.array(fl["Lattice_basis_vectors"])
+            superlatt = np.array(fl["SuperLatt"])
+
+        crys = crystal.Crystal(lattice=lattice, basis=[[np.array([0., 0., 0.])]], chemistry=["A"])
+        self.superCell = supercell.ClusterSupercell(crys, superlatt)
+
+        self.N_units = self.superCell.superlatt[0, 0]
+
+        self.z = self.dxJumps.shape[0]
+        self.N_ngb = self.NNsiteList.shape[0]
+
+        self.GnnPerms = pt.tensor(self.GpermNNIdx).long()
+
+        print("Filter neighbor range : {}nn. Filter neighborhood size: {}".format(1, self.N_ngb - 1))
+        self.Nsites = self.NNsiteList.shape[1]
+
+        self.assertEqual(self.Nsites, self.state1List.shape[1])
+        self.assertEqual(self.Nsites, self.state2List.shape[1])
+
+        self.a0 = 1.0
+        self.NNsites = pt.tensor(self.NNsiteList).long()
+        self.JumpVecs = pt.tensor(self.dxJumps.T * self.a0, dtype=pt.double)
+        print("Jump Vectors: \n", self.JumpVecs.T, "\n")
+        self.Ndim = self.dxJumps.shape[1]
+
+        self.specCheck = 1
+        self.VacSpec = 2
+        self.sp_ch = {0: 0, 1: 1}
+        print("Setup complete.")
