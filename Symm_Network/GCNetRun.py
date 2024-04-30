@@ -324,6 +324,7 @@ def train_batch_collective(gNet, batch, end, state1Batch, state2Batch, rateBatch
 
     y1 = gNet(state1Batch)
     y2 = gNet(state2Batch)
+    Ndim = dispBatch.shape[1]
 
     if SpecsToTrain == [VacSpec]:
         y1, y2 = vacBatchOuts(y1, y2, jProbs_st1_batch, jProbs_st2_batch, Boundary_train)
@@ -335,7 +336,7 @@ def train_batch_collective(gNet, batch, end, state1Batch, state2Batch, rateBatch
                                Boundary_train, AddOnSites)
 
     dy = y2 - y1
-    diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1) ** 2) / (6. * L0)
+    diff = pt.sum(rateBatch * pt.norm((dispBatch + dy), dim=1) ** 2) / (2. * Ndim * L0)
     return diff, y1, y2
 
 
@@ -343,6 +344,7 @@ def train_batch_collective(gNet, batch, end, state1Batch, state2Batch, rateBatch
 def train_batch_tracer(gNet, batch, end, state1Batch, state2Batch, rateBatch, dispBatch, GatherTensorBatch,
                        SpecsToTrain, VacSpec, On_st1, L0=1.0):
 
+    Ndim = dispBatch.shape[1]
     if VacSpec in SpecsToTrain:
         raise NotImplementedError("Tracer training type is not meant for single vacancy.")
 
@@ -365,7 +367,7 @@ def train_batch_tracer(gNet, batch, end, state1Batch, state2Batch, rateBatch, di
     rateBatch = rateBatch.unsqueeze(1).to(device)
 
     # Now do a broadcasted multiple and divide by 6 to get average of the trace
-    diff_sites_all = rateBatch * dxModNorms / 6.0
+    diff_sites_all = rateBatch * dxModNorms / (2. * Ndim)
     # diff_sites has shape (Nbatch, Nsites)
 
     # sum the contributions by each site occupied by the species of interest in the initial state
@@ -654,12 +656,12 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
         print("Boundary training indicated. Using jump probabilities.")
         jProbs_st1, jProbs_st2 = sort_jp(jProbs_st1, jProbs_st2, jumpSort)
 
-        y1Vecs = np.zeros((Nsamples, 3))
-        y2Vecs = np.zeros((Nsamples, 3))
+        y1Vecs = np.zeros((Nsamples, Ndim))
+        y2Vecs = np.zeros((Nsamples, Ndim))
 
     else:
-        y1Vecs = np.zeros((Nsamples, 3))
-        y2Vecs = np.zeros((Nsamples, 3))
+        y1Vecs = np.zeros((Nsamples, Ndim))
+        y2Vecs = np.zeros((Nsamples, Ndim))
 
 
     gNet.to(device)
@@ -704,7 +706,7 @@ def Gather_Y(T, dirPath, State1_Occs, State2_Occs, OnSites_st1, OnSites_st2, jPr
 
     return y1Vecs, y2Vecs
 
-def GetRep(dirPath, State_Occs, epoch, gNet, LayerInd, batch_size=1000):
+def GetRep(dirPath, State_Occs, epoch, gNet, LayerInd, batch_size=1000, Ndim=3):
     
     N_batch = batch_size
     # Convert compute data to pytorch tensors
@@ -716,7 +718,7 @@ def GetRep(dirPath, State_Occs, epoch, gNet, LayerInd, batch_size=1000):
 
     if LayerInd == len(gNet.net):
         ch = gNet.net[LayerInd - 3].Psi.shape[0]
-        stReps = np.zeros((Nsamples, ch, 3, Nsites))
+        stReps = np.zeros((Nsamples, ch, Ndim, Nsites))
     else:
         ch = gNet.net[LayerInd - 2].Psi.shape[0]
         stReps = np.zeros((Nsamples, ch, Nsites))
@@ -958,18 +960,18 @@ def main(args):
                                  JumpNewSites, AllJumps=True)
 
             stReps_st1 = GetRep(dirPath, State1_occs, args.Start_epoch, gNet, args.RepLayer,
-                                 batch_size=args.Batch_size)
+                                 batch_size=args.Batch_size, Ndim=Ndim)
             stReps_st1_exits = GetRep(dirPath, State1_exit_occs, args.Start_epoch, gNet, args.RepLayer,
-                                   batch_size=args.Batch_size)
+                                   batch_size=args.Batch_size, Ndim=Ndim)
 
             State2_occs, State2_exit_occs, _, _, _ = \
                 makeStateTensors(state2List[args.RepStart : args.RepStart + args.N_train], specsToTrain, args.VacSpec,
                                  JumpNewSites, AllJumps=True)
             stReps_st2 = GetRep(dirPath, State2_occs, args.Start_epoch, gNet, args.RepLayer,
-                                   batch_size=args.Batch_size)
+                                   batch_size=args.Batch_size, Ndim=Ndim)
 
             stReps_st2_exits = GetRep(dirPath, State2_exit_occs, args.Start_epoch, gNet, args.RepLayer,
-                                batch_size=args.Batch_size)
+                                batch_size=args.Batch_size, Ndim=Ndim)
 
             np.save("Rep_L_{0}_st1_{1}_{2}_{3}_n{4}c{5}_all_{6}_{7}.npy".format(args.RepLayer, direcString, args.Tdata,
                                                                                 args.TNet, args.Nlayers,args.Nchannels,
