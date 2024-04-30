@@ -91,6 +91,8 @@ def TrajAv(X_steps, t_steps, diff):
             diff[spec, step] += np.dot(X[spec], X[spec])/(6*t)
 
 
+# TODO: How to unify 2d and 1d parts of the code.
+
 # Function to convert a state into grid form
 @jit(nopython=True)
 def gridState(state, siteIndtoR, N_units):
@@ -107,6 +109,23 @@ def gridState(state, siteIndtoR, N_units):
     for siteInd in range(siteIndtoR.shape[0]):
         R = siteIndtoR[siteInd]
         stateGrid[R[0], R[1], R[2]] = state[siteInd]
+    return stateGrid
+
+# In 2d form
+@jit(nopython=True)
+def gridState2d(state, siteIndtoR, N_units):
+    """
+    Function to transform a mono-atomic lattice supercell state into a 2d grid based on lattice coordinates
+    :param state: flat numpy array describing the occupancy of supercell sites
+    :param siteIndtoR: takes the index of a site and returns the lattice coordinate for its location.
+    :param N_units: scaling of the supercell. (how many unit cells along each lattice vector)
+    :return:
+    """
+
+    stateGrid = np.zeros((N_units[0], N_units[1]), dtype=int64)
+    for siteInd in range(siteIndtoR.shape[0]):
+        R = siteIndtoR[siteInd]
+        stateGrid[R[0], R[1]] = state[siteInd]
     return stateGrid
 
 @jit(nopython=True)
@@ -132,6 +151,28 @@ def translateState(state, vacSiteNow, vacsiteDes, RtoSiteInd, siteIndtoR, N_unit
     return state2New
 
 @jit(nopython=True)
+def translateState2d(state, vacSiteNow, vacsiteDes, RtoSiteInd, siteIndtoR, N_units):
+    """
+    Function to periodically translate a grid state so that the vacancy is at a desired location
+    in a monoatomic two-dimensional lattice
+    :param state: The state to translate
+    :param vacSiteNow: Where the vacancy is at the current state
+    :param vacsiteDes: Where the vacancy should be at the end state
+    :param RtoSiteInd: Takes the lattice coordinates of a site and returns the site index (see makeSiteIndtoR)
+    :param siteIndtoR: Takes the site index and returns the lattice coordinates of a site
+    :param N_units: Integer - supercell scaling units
+    :return: state2New : The translated state
+    """
+    state2New = np.zeros_like(state, dtype=int64)
+    dR = siteIndtoR[vacsiteDes] - siteIndtoR[vacSiteNow]  # this is the vector by which everything has to move
+    for siteInd in range(siteIndtoR.shape[0]):
+        Rsite = siteIndtoR[siteInd]
+        spec = state[Rsite[0], Rsite[1]]
+        RsiteNew = (Rsite + dR) % N_units
+        state2New[RsiteNew[0], RsiteNew[1]] = spec
+    return state2New
+
+@jit(nopython=True)
 def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
                   vacSiteInit, N_unit, siteIndtoR, RtoSiteInd):
     """
@@ -154,17 +195,16 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
     jmpFinSites - The exit site index list for the vacancy out of the final state - for testing.
     """
     NSpec = SpecRates.shape[0] + 1
-
-    counts = np.zeros(NSpec, dtype=int64)
+    Ndim = N_unit.shape[0]
+    counts = np.zeros(NSpec, dtype=np.int64)
     Nsites = state.shape[0]
     for siteInd in range(Nsites):
         spec = state[siteInd]
         counts[spec] += 1
 
-    X = np.zeros((NSpec, 3))
+    X = np.zeros((NSpec, Ndim))
     t = 0.
-
-    X_steps = np.zeros((Nsteps, NSpec, 3))
+    X_steps = np.zeros((Nsteps, NSpec, Ndim))
     t_steps = np.zeros(Nsteps)
 
     rateArr = np.zeros(ijList.shape[0])
@@ -172,8 +212,8 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
     jmpFinSiteList = ijList.copy()
     vacSiteNow = vacSiteInit
 
-    jmpSelectSteps = np.zeros(Nsteps, dtype=int64)  # To store which jump was selected in each step
-    randSteps = np.zeros(Nsteps, dtype=float64)  # To store which jump was selected in each step
+    jmpSelectSteps = np.zeros(Nsteps, dtype=np.int64)  # To store which jump was selected in each step
+    randSteps = np.zeros(Nsteps, dtype=np.float64)  # To store which jump was selected in each step
 
     for step in range(Nsteps):
 
@@ -215,7 +255,13 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
                 RfinSiteNew = (dR + siteIndtoR[ijList[jmp]]) % N_unit  # This returns element wise modulo when N_unit is an
                                                                        # array instead of an integer.
 
-                jmpFinSiteList[jmp] = RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
+                if Ndim == 3:
+                    jmpFinSiteList[jmp] = RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
+                else:  # Handling the 2d case
+                    RfinSiteNew_unsqz = np.zeros(3, dtype=np.int64)
+                    for i in range(Ndim):
+                        RfinSiteNew_unsqz[i] = RfinSiteNew[i]
+                    jmpFinSiteList[jmp] = RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], 0]
 
             # Next, do the site swap to update the state
             temp = state[vacSiteNow]
@@ -254,7 +300,8 @@ def getJumpRate(st1, st2, GSites, stringSites, mu, std):
 @jit(nopython=True)
 def LatGasKMCTrajRandomRate(stateInit, Nsteps, NSpec, jList, jumpSitePerms,
                GSitePerms, stringSites, dxList, muArray, stdArray):
-    X_steps = np.zeros((Nsteps, NSpec, 3))
+    Ndim = dxList.shape[1]
+    X_steps = np.zeros((Nsteps, NSpec, Ndim))
     rates_steps = np.zeros((Nsteps, jList.shape[0]))
     t_steps = np.zeros(Nsteps)
     rn_steps = np.zeros(Nsteps)
