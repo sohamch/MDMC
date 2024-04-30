@@ -103,7 +103,10 @@ def gridState(state, siteIndtoR, N_units):
     :return:
     """
     Ndim = N_units.shape[0]
-    stateGrid = np.zeros((N_units[i] for i in range(N_units.shape[0])), dtype=int64)
+    if Ndim == 3:
+        stateGrid = np.zeros((N_units[0], N_units[1], N_units[2]), dtype=int64)
+    else:
+        stateGrid = np.zeros((N_units[0], N_units[1]), dtype=int64)
 
     for siteInd in range(siteIndtoR.shape[0]):
         R = siteIndtoR[siteInd]
