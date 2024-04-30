@@ -263,15 +263,15 @@ def getJumpRate(st1, st2, GSites, stringSites, mu, std):
     s2 = getStateSum(st2, GSites, stringSites)
     sm = (s1 * s2) // (s1 + s2)
     random.seed(sm)
-    # for i in range(500):
-    #     un = random.gauss(mu, std)
+
     un = random.gauss(mu, std) # un denotes a dimensionless energy barrier
     return np.exp(-un)
 
 @jit(nopython=True)
 def LatGasKMCTrajRandomRate(stateInit, Nsteps, NSpec, jList, jumpSitePerms,
                GSitePerms, stringSites, dxList, muArray, stdArray):
-    X_steps = np.zeros((Nsteps, NSpec, 3))
+    Ndim = dxList.shape[1]
+    X_steps = np.zeros((Nsteps, NSpec, Ndim))
     rates_steps = np.zeros((Nsteps, jList.shape[0]))
     t_steps = np.zeros(Nsteps)
     rn_steps = np.zeros(Nsteps)
