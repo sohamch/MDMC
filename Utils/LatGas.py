@@ -84,12 +84,11 @@ def TrajAv(X_steps, t_steps, diff):
     :param diff: array to accumulate the diffusivity in
     """
     Nsteps = X_steps.shape[0]
-    Ndim = X_steps.shape[2]
     for step in range(Nsteps):
         t = t_steps[step]
         X = X_steps[step].copy()
         for spec in range(X_steps.shape[1]):
-            diff[spec, step] += np.dot(X[spec], X[spec])/(2*Ndim*t)
+            diff[spec, step] += np.dot(X[spec], X[spec])/(6*t)
 
 
 # Function to convert a state into grid form
@@ -102,19 +101,12 @@ def gridState(state, siteIndtoR, N_units):
     :param N_units: scaling of the supercell. (how many unit cells along each lattice vector)
     :return:
     """
-    Ndim = N_units.shape[0]
-    if Ndim == 3:
-        stateGrid = np.zeros((N_units[0], N_units[1], N_units[2]), dtype=int64)
-    else:
-        stateGrid = np.zeros((N_units[0], N_units[1]), dtype=int64)
+
+    stateGrid = np.zeros((N_units[0], N_units[1], N_units[2]), dtype=int64)
 
     for siteInd in range(siteIndtoR.shape[0]):
         R = siteIndtoR[siteInd]
-        if Ndim == 3:
-            stateGrid[R[0], R[1], R[2]] = state[siteInd]
-        else:
-            stateGrid[R[0], R[1]] = state[siteInd]
-
+        stateGrid[R[0], R[1], R[2]] = state[siteInd]
     return stateGrid
 
 @jit(nopython=True)
@@ -131,19 +123,12 @@ def translateState(state, vacSiteNow, vacsiteDes, RtoSiteInd, siteIndtoR, N_unit
     :return: state2New : The translated state
     """
     state2New = np.zeros_like(state, dtype=int64)
-    Ndim  = N_units.shape[0]
     dR = siteIndtoR[vacsiteDes] - siteIndtoR[vacSiteNow]  # this is the vector by which everything has to move
     for siteInd in range(siteIndtoR.shape[0]):
         Rsite = siteIndtoR[siteInd]
-        if Ndim == 3:
-            spec = state[Rsite[0], Rsite[1], Rsite[2]]
-            RsiteNew = (Rsite + dR) % N_units
-            state2New[RsiteNew[0], RsiteNew[1], RsiteNew[2]] = spec
-        else:
-            spec = state[Rsite[0], Rsite[1]]
-            RsiteNew = (Rsite + dR) % N_units
-            state2New[RsiteNew[0], RsiteNew[1]] = spec
-
+        spec = state[Rsite[0], Rsite[1], Rsite[2]]
+        RsiteNew = (Rsite + dR) % N_units
+        state2New[RsiteNew[0], RsiteNew[1], RsiteNew[2]] = spec
     return state2New
 
 @jit(nopython=True)
@@ -176,12 +161,10 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
         spec = state[siteInd]
         counts[spec] += 1
 
-    Ndim = N_unit.shape[0]
-
-    X = np.zeros((NSpec, Ndim))
+    X = np.zeros((NSpec, 3))
     t = 0.
 
-    X_steps = np.zeros((Nsteps, NSpec, Ndim))
+    X_steps = np.zeros((Nsteps, NSpec, 3))
     t_steps = np.zeros(Nsteps)
 
     rateArr = np.zeros(ijList.shape[0])
@@ -232,10 +215,7 @@ def LatGasKMCTraj(state, SpecRates, Nsteps, ijList, dxList,
                 RfinSiteNew = (dR + siteIndtoR[ijList[jmp]]) % N_unit  # This returns element wise modulo when N_unit is an
                                                                        # array instead of an integer.
 
-                if Ndim == 3:
-                    jmpFinSiteList[jmp] = RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
-                else:
-                    jmpFinSiteList[jmp] = RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1]]
+                jmpFinSiteList[jmp] = RtoSiteInd[RfinSiteNew[0], RfinSiteNew[1], RfinSiteNew[2]]
 
             # Next, do the site swap to update the state
             temp = state[vacSiteNow]
@@ -266,15 +246,15 @@ def getJumpRate(st1, st2, GSites, stringSites, mu, std):
     s2 = getStateSum(st2, GSites, stringSites)
     sm = (s1 * s2) // (s1 + s2)
     random.seed(sm)
-
+    # for i in range(500):
+    #     un = random.gauss(mu, std)
     un = random.gauss(mu, std) # un denotes a dimensionless energy barrier
     return np.exp(-un)
 
 @jit(nopython=True)
 def LatGasKMCTrajRandomRate(stateInit, Nsteps, NSpec, jList, jumpSitePerms,
                GSitePerms, stringSites, dxList, muArray, stdArray):
-    Ndim = dxList.shape[1]
-    X_steps = np.zeros((Nsteps, NSpec, Ndim))
+    X_steps = np.zeros((Nsteps, NSpec, 3))
     rates_steps = np.zeros((Nsteps, jList.shape[0]))
     t_steps = np.zeros(Nsteps)
     rn_steps = np.zeros(Nsteps)
