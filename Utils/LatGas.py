@@ -84,11 +84,12 @@ def TrajAv(X_steps, t_steps, diff):
     :param diff: array to accumulate the diffusivity in
     """
     Nsteps = X_steps.shape[0]
+    dim = X_steps.shape[-1]
     for step in range(Nsteps):
         t = t_steps[step]
         X = X_steps[step].copy()
         for spec in range(X_steps.shape[1]):
-            diff[spec, step] += np.dot(X[spec], X[spec])/(6*t)
+            diff[spec, step] += np.dot(X[spec], X[spec])/(2*dim*t)
 
 
 # TODO: How to unify 2d and 1d parts of the code.
